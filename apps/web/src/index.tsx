@@ -2,6 +2,9 @@
 import { render } from 'solid-js/web'
 import 'solid-devtools'
 import './styles.css'
+import '@fontsource-variable/jetbrains-mono'
+import '@fontsource-variable/geist'
+
 import App from './App'
 
 const root = document.getElementById('root')

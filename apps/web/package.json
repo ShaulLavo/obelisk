@@ -13,6 +13,9 @@
   "license": "MIT",
   "devDependencies": {
     "@repo/eslint-config": "*",
+    "@types/node": "^24.10.1",
+    "@types/wicg-file-system-access": "^2023.10.7",
+    "@xterm/addon-fit": "^0.10.0",
     "elysia": "^1.4.16",
     "eslint": "^9.39.1",
     "eslint-plugin-solid": "^0.14.5",
@@ -23,7 +26,17 @@
   },
   "dependencies": {
     "@elysiajs/eden": "^1.4.5",
+    "@fontsource-variable/geist": "^5.2.8",
+    "@fontsource-variable/jetbrains-mono": "^5.2.8",
+    "@repo/fs": "*",
+    "@solid-primitives/deep": "^0.3.3",
+    "@solid-primitives/storage": "^4.3.3",
     "@tailwindcss/vite": "^4.1.17",
+    "@xterm/xterm": "^5.5.0",
+    "add": "^2.0.6",
+    "local-echo": "wavesoft/local-echo",
+    "localforage": "^1.10.0",
+    "nanoid": "^5.1.6",
     "solid-js": "^1.9.5",
     "tailwindcss": "^4.1.17",
     "zod": "^4.1.13"

@@ -13,13 +13,19 @@
   "devDependencies": {
     "@repo/eslint-config": "*",
     "@repo/typescript-config": "*",
-    "@types/node": "^22.15.3",
+    "@types/node": "^24.10.1",
     "eslint": "^9.39.1",
     "typescript": "5.9.2"
   },
   "dependencies": {
+    "@kobalte/core": "^0.13.11",
     "@tailwindcss/vite": "^4.1.17",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "solid-js": "^1.9.5",
-    "tailwindcss": "^4.1.17"
+    "solid-sonner": "^0.2.8",
+    "tailwind-merge": "^3.4.0",
+    "tailwindcss": "^4.1.17",
+    "tailwindcss-animate": "^1.0.7"
   }
 }

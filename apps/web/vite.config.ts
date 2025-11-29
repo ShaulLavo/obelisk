@@ -11,11 +11,26 @@ export default defineConfig(({ mode }) => {
 	return {
 		envDir,
 		plugins: [tailwindcss(), devtools(), solidPlugin()],
+		resolve: {
+			alias: {
+				'~': path.resolve(__dirname, './src')
+			}
+		},
 		server: {
-			port: webPort
+			port: webPort,
+			headers: {
+				'Cross-Origin-Opener-Policy': 'same-origin',
+				'Cross-Origin-Embedder-Policy': 'require-corp'
+			}
 		},
 		build: {
-			target: 'esnext'
+			target: 'esnext',
+			modulePreload: {
+				polyfill: false
+			}
+		},
+		optimizeDeps: {
+			exclude: []
 		}
 	}
 })

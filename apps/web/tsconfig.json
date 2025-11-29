@@ -1,8 +1,15 @@
 {
 	"extends": "@repo/typescript-config/solid-library.json",
 	"compilerOptions": {
-		"types": ["vite/client"]
+		"baseUrl": ".",
+		"types": ["vite/client"],
+		"paths": {
+			"local-echo": ["./src/types/local-echo"],
+			"vite": ["../../node_modules/vite"],
+			"~/*": ["./src/*"]
+		}
 	},
-	"include": ["**/*.ts", "**/*.tsx"],
+	"baseUrl": ".",
+	"include": ["**/*.ts", "**/*.tsx", "**/*.d.ts"],
 	"exclude": ["node_modules"]
 }

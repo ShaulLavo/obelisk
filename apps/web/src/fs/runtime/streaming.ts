@@ -1,0 +1,279 @@
+import type { FsSource } from '../types'
+import { ensureFs } from './fsRuntime'
+
+const pendingFileReads = new Map<string, Promise<unknown>>()
+const streamControllers = new Map<string, AbortController>()
+const DEFAULT_CHUNK_SIZE = 64 * 1024
+
+export type SafeReadOptions = {
+	sizeLimitBytes?: number
+	chunkSize?: number
+}
+
+export type SafeReadResult = {
+	text: string
+	truncated: boolean
+	totalSize?: number
+}
+
+export type FileTextStreamOptions = {
+	chunkSize?: number
+}
+
+export type FileTextChunk = {
+	done: boolean
+	chunk?: string
+	offset: number
+	bytesRead: number
+}
+
+export type FileTextStream = {
+	getSize(): Promise<number>
+	readNext(): Promise<FileTextChunk>
+	readAt(offset: number): Promise<FileTextChunk>
+	close(): Promise<void>
+}
+
+const resolveChunkSize = (chunkSize?: number) =>
+	chunkSize && chunkSize > 0 ? chunkSize : DEFAULT_CHUNK_SIZE
+
+const trackPendingRead = <T>(
+	path: string,
+	operation: () => Promise<T>
+): Promise<T> => {
+	const pending = pendingFileReads.get(path)
+	if (pending) return pending as Promise<T>
+
+	const promise = (async () => {
+		try {
+			return await operation()
+		} finally {
+			pendingFileReads.delete(path)
+		}
+	})()
+
+	pendingFileReads.set(path, promise)
+	return promise
+}
+
+export function resetStreamingState() {
+	streamControllers.forEach(controller => controller.abort())
+	streamControllers.clear()
+	pendingFileReads.clear()
+}
+
+export function cancelOtherStreams(keepPath: string) {
+	for (const [path, controller] of streamControllers) {
+		if (path === keepPath) continue
+		controller.abort()
+		streamControllers.delete(path)
+		pendingFileReads.delete(path)
+	}
+}
+
+export async function readFileText(
+	source: FsSource,
+	path: string
+): Promise<string> {
+	return trackPendingRead(path, async () => {
+		const ctx = await ensureFs(source)
+		const file = ctx.file(path, 'r')
+		return file.text()
+	})
+}
+
+export async function safeReadFileText(
+	source: FsSource,
+	path: string,
+	options?: SafeReadOptions
+): Promise<SafeReadResult> {
+	const chunkSize = resolveChunkSize(options?.chunkSize)
+	const sizeLimit = options?.sizeLimitBytes
+
+	return trackPendingRead(path, async () => {
+		const ctx = await ensureFs(source)
+		const file = ctx.file(path, 'r')
+		const reader = await file.createReader()
+		const fileSize = await reader.getSize()
+
+		let offset = 0
+		let loadedBytes = 0
+		let truncated = false
+		const decoder = new TextDecoder()
+		const segments: string[] = []
+
+		try {
+			while (offset < fileSize) {
+				const remainingBytes = fileSize - offset
+				let toRead = Math.min(chunkSize, remainingBytes)
+
+				if (sizeLimit !== undefined) {
+					if (loadedBytes >= sizeLimit) {
+						truncated = true
+						break
+					}
+
+					if (loadedBytes + toRead > sizeLimit) {
+						toRead = sizeLimit - loadedBytes
+						truncated = true
+					}
+				}
+
+				if (toRead <= 0) {
+					truncated = sizeLimit !== undefined
+					break
+				}
+
+				const buffer = await reader.read(toRead, { at: offset })
+				const bytes = new Uint8Array(buffer)
+				const bytesRead = bytes.byteLength
+
+				if (bytesRead === 0) break
+
+				const chunk = decoder.decode(bytes, {
+					stream: offset + bytesRead < fileSize
+				})
+				if (chunk) {
+					segments.push(chunk)
+				}
+
+				offset += bytesRead
+				loadedBytes += bytesRead
+
+				if (truncated) break
+			}
+
+			const flushed = decoder.decode()
+			if (flushed) {
+				segments.push(flushed)
+			}
+
+			return {
+				text: segments.join(''),
+				truncated,
+				totalSize: fileSize
+			}
+		} finally {
+			await reader.close().catch(() => undefined)
+		}
+	})
+}
+
+export async function createFileTextStream(
+	source: FsSource,
+	path: string,
+	options?: FileTextStreamOptions
+): Promise<FileTextStream> {
+	const chunkSize = resolveChunkSize(options?.chunkSize)
+	const ctx = await ensureFs(source)
+	const file = ctx.file(path, 'r')
+	const reader = await file.createReader()
+	const fileSize = await reader.getSize()
+
+	let position = 0
+	let closed = false
+	const decoder = new TextDecoder()
+
+	const ensureOpen = () => {
+		if (closed) {
+			throw new Error('FileTextStream is closed')
+		}
+	}
+
+	const readAt = async (offset: number): Promise<FileTextChunk> => {
+		ensureOpen()
+
+		if (offset >= fileSize) {
+			return { done: true, offset, bytesRead: 0 }
+		}
+
+		const remaining = fileSize - offset
+		const toRead = Math.min(chunkSize, remaining)
+		const buffer = await reader.read(toRead, { at: offset })
+		const bytes = new Uint8Array(buffer)
+		const bytesRead = bytes.byteLength
+
+		if (bytesRead === 0) {
+			return { done: true, offset, bytesRead }
+		}
+
+		const chunk = decoder.decode(bytes, { stream: false })
+
+		return {
+			done: false,
+			chunk,
+			offset,
+			bytesRead
+		}
+	}
+
+	const readNext = async (): Promise<FileTextChunk> => {
+		const result = await readAt(position)
+		if (!result.done) {
+			position += result.bytesRead
+		}
+		return result
+	}
+
+	const close = async () => {
+		if (closed) return
+		closed = true
+		await reader.close().catch(() => undefined)
+	}
+
+	return {
+		getSize: async () => fileSize,
+		readAt,
+		readNext,
+		close
+	}
+}
+
+export async function streamFileText(
+	source: FsSource,
+	path: string,
+	onChunk?: (text: string) => void
+): Promise<string> {
+	const pending = pendingFileReads.get(path)
+	if (pending) return pending as Promise<string>
+
+	const controller = new AbortController()
+	streamControllers.get(path)?.abort()
+	streamControllers.set(path, controller)
+
+	return trackPendingRead(path, async () => {
+		let stream: FileTextStream | undefined
+
+		try {
+			if (controller.signal.aborted) {
+				throw new DOMException('Aborted', 'AbortError')
+			}
+
+			stream = await createFileTextStream(source, path, {
+				chunkSize: DEFAULT_CHUNK_SIZE
+			})
+
+			if (controller.signal.aborted) {
+				throw new DOMException('Aborted', 'AbortError')
+			}
+
+			const result = await stream.readNext()
+
+			if (controller.signal.aborted) {
+				throw new DOMException('Aborted', 'AbortError')
+			}
+
+			if (!result.done && result.chunk) {
+				onChunk?.(result.chunk)
+				return result.chunk
+			}
+
+			return ''
+		} finally {
+			await stream?.close().catch(() => undefined)
+			if (streamControllers.get(path) === controller) {
+				streamControllers.delete(path)
+			}
+		}
+	})
+}

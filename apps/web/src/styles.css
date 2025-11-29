@@ -1,1 +1,7 @@
 @import 'tailwindcss';
+
+:root {
+	--font-mono: 'JetBrains Mono Variable', monospace;
+	--font-serif: 'Geist Variable', sans-serif;
+	--font-sans: 'Geist Variable', sans-serif;
+}
