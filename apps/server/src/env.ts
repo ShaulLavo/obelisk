@@ -1,5 +1,45 @@
-import 'dotenv/config'
+import fs from 'node:fs'
+import path from 'node:path'
+import { parse as parseEnvFile } from 'dotenv'
 import { z } from 'zod'
+
+const envMode = process.env.NODE_ENV ?? 'development'
+const envFiles = [
+	{ name: '.env', allowOverride: false },
+	{ name: '.env.local', allowOverride: true },
+	{ name: `.env.${envMode}`, allowOverride: true },
+	{ name: `.env.${envMode}.local`, allowOverride: true }
+]
+
+const envDirectories: Array<{ dir: string; allowDirOverride: boolean }> = [
+	{ dir: path.resolve(__dirname, '..', '..', '..'), allowDirOverride: false },
+	{ dir: path.resolve(__dirname, '..'), allowDirOverride: true }
+]
+
+const originalEnvKeys = new Set(Object.keys(process.env))
+
+const applyEnvFile = (filePath: string, shouldOverride: boolean) => {
+	if (!fs.existsSync(filePath)) return
+	const parsed = parseEnvFile(fs.readFileSync(filePath))
+	for (const [key, value] of Object.entries(parsed)) {
+		const hasKey = Object.prototype.hasOwnProperty.call(process.env, key)
+		if (!hasKey) {
+			process.env[key] = value
+			continue
+		}
+		if (shouldOverride && !originalEnvKeys.has(key)) {
+			process.env[key] = value
+		}
+	}
+}
+
+for (const { dir, allowDirOverride } of envDirectories) {
+	for (const { name, allowOverride } of envFiles) {
+		const filePath = path.join(dir, name)
+		const shouldOverride = allowOverride || allowDirOverride
+		applyEnvFile(filePath, shouldOverride)
+	}
+}
 
 const envSchema = z.object({
 	VITE_SERVER_PORT: z.coerce.number().int().positive(),

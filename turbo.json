@@ -1,11 +1,18 @@
 {
   "$schema": "https://turborepo.com/schema.json",
   "ui": "tui",
-  "globalDependencies": [".env*"],
+  "globalEnv": [
+    "VITE_SERVER_PORT",
+    "VITE_WEB_PORT",
+    "VITE_API_ORIGIN",
+    "VITE_WEB_ORIGIN",
+    "WEB_ORIGIN"
+  ],
+  "globalDependencies": [".env*", "apps/*/.env*"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*", "apps/*/.env*"],
       "outputs": [".next/**", "!.next/cache/**"]
     },
     "lint": {

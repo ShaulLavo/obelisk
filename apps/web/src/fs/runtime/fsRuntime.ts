@@ -60,5 +60,7 @@ export {
 	streamFileText,
 	readFileText,
 	safeReadFileText,
-	createFileTextStream
+	createFileTextStream,
+	getFileSize,
+	readFilePreviewBytes
 } from './streaming'

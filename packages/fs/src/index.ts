@@ -2,6 +2,7 @@ export { getRootDirectory } from './getRoot'
 export {
 	createFs,
 	createVfs,
+	createStore,
 	VDir,
 	VFile
 } from './vfs'
@@ -16,5 +17,8 @@ export type {
 	FsFileTreeNode,
 	FsDirTreeNode,
 	FsTreeNode,
-	FsTreeOptions
+	FsTreeOptions,
+	VfsStore,
+	CreateVfsStoreOptions,
+	VfsStoreSource
 } from './vfs'

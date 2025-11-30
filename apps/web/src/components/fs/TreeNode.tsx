@@ -1,6 +1,6 @@
 import { For, Show } from 'solid-js'
 import type { FsDirTreeNode, FsTreeNode } from '@repo/fs'
-import { useFs } from '../../fs/FsContext'
+import { useFs } from '../../fs/context/FsContext'
 
 export const TreeNode = (props: { node: FsTreeNode }) => {
 	const [state, actions] = useFs()

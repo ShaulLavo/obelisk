@@ -7,7 +7,7 @@ type FsMutationDeps = {
 	refresh: (source?: FsSource) => Promise<void>
 	setExpanded: SetStoreFunction<Record<string, boolean>>
 	setSelectedPath: Setter<string | undefined>
-	setSelectedFileContent: Setter<string>
+	setSelectedFileSize: Setter<number | undefined>
 	setError: Setter<string | undefined>
 	getState: () => FsState
 	getActiveSource: () => FsSource
@@ -20,7 +20,7 @@ export const createFsMutations = ({
 	getActiveSource,
 	setExpanded,
 	setSelectedPath,
-	setSelectedFileContent,
+	setSelectedFileSize,
 	setError,
 	getState,
 	refresh
@@ -38,7 +38,9 @@ export const createFsMutations = ({
 			})
 			await refresh()
 		} catch (error) {
-			setError(error instanceof Error ? error.message : 'Failed to create directory')
+			setError(
+				error instanceof Error ? error.message : 'Failed to create directory'
+			)
 		}
 	}
 
@@ -57,7 +59,7 @@ export const createFsMutations = ({
 			batch(() => {
 				setExpanded(parentPath, true)
 				setSelectedPath(newPath)
-				setSelectedFileContent(fileContent)
+				setSelectedFileSize(new Blob([fileContent]).size)
 			})
 			await refresh()
 		} catch (error) {
@@ -77,12 +79,14 @@ export const createFsMutations = ({
 					state.selectedPath?.startsWith(`${path}/`)
 				) {
 					setSelectedPath(undefined)
-					setSelectedFileContent('')
+					setSelectedFileSize(undefined)
 				}
 			})
 			await refresh()
 		} catch (error) {
-			setError(error instanceof Error ? error.message : 'Failed to delete entry')
+			setError(
+				error instanceof Error ? error.message : 'Failed to delete entry'
+			)
 		}
 	}
 

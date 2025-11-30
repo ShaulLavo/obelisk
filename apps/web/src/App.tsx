@@ -1,7 +1,7 @@
 import { type Component } from 'solid-js'
-import { FsProvider } from './fs/FsContext'
 import Main from './Main'
 import { Toaster } from '@repo/ui/toaster'
+import { FsProvider } from './fs/context/FsProvider'
 const App: Component = () => (
 	<FsProvider>
 		<Main />

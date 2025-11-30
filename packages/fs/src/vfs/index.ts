@@ -830,6 +830,179 @@ export class VDir {
 	}
 }
 
+const DEFAULT_STORE_PATH = '.vfs-store/store.json'
+
+function isFsContext(value: unknown): value is FsContext {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		typeof (value as FsContext).file === 'function' &&
+		typeof (value as FsContext).dir === 'function'
+	)
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+export interface VfsStore {
+	getItem<T>(key: string): Promise<T | null>
+	setItem<T>(key: string, value: T): Promise<T>
+	removeItem(key: string): Promise<void>
+	clear(): Promise<void>
+	length(): Promise<number>
+	key(index: number): Promise<string | null>
+	keys(): Promise<string[]>
+	iterate<T, U>(
+		iteratee: (
+			value: T,
+			key: string,
+			iterationNumber: number
+		) => U | Promise<U>
+	): Promise<U | undefined>
+}
+
+export interface CreateVfsStoreOptions {
+	filePath?: string
+	fsOptions?: FsContextOptions
+}
+
+
+class VfsStoreImpl implements VfsStore {
+	#file: VFile
+	#cache: Map<string, unknown> | null = null
+	#loading: Promise<Map<string, unknown>> | null = null
+
+	constructor(file: VFile) {
+		this.#file = file
+	}
+
+	async getItem<T>(key: string): Promise<T | null> {
+		const data = await this.#ensureCache()
+		return data.has(key) ? (data.get(key) as T) : null
+	}
+
+	async setItem<T>(key: string, value: T): Promise<T> {
+		const data = await this.#ensureCache()
+		data.set(key, value === undefined ? null : (value as unknown))
+		await this.#persist()
+		return value
+	}
+
+	async removeItem(key: string): Promise<void> {
+		const data = await this.#ensureCache()
+		if (!data.delete(key)) return
+		await this.#persist()
+	}
+
+	async clear(): Promise<void> {
+		const data = await this.#ensureCache()
+		if (data.size === 0) return
+		data.clear()
+		await this.#persist()
+	}
+
+	async length(): Promise<number> {
+		const data = await this.#ensureCache()
+		return data.size
+	}
+
+	async key(index: number): Promise<string | null> {
+		const keys = await this.keys()
+		return keys[index] ?? null
+	}
+
+	async keys(): Promise<string[]> {
+		const data = await this.#ensureCache()
+		return Array.from(data.keys())
+	}
+
+	async iterate<T, U>(
+		iteratee: (
+			value: T,
+			key: string,
+			iterationNumber: number
+		) => U | Promise<U>
+	): Promise<U | undefined> {
+		const data = await this.#ensureCache()
+		let iterationNumber = 1
+		for (const [key, value] of data.entries()) {
+			const result = await iteratee(value as T, key, iterationNumber++)
+			if (result !== undefined) {
+				return result
+			}
+		}
+		return undefined
+	}
+
+	async #ensureCache(): Promise<Map<string, unknown>> {
+		if (this.#cache) return this.#cache
+		if (this.#loading) return this.#loading
+		this.#loading = this.#readFromDisk()
+			.then(data => {
+				this.#cache = data
+				return data
+			})
+			.finally(() => {
+				this.#loading = null
+			})
+		return this.#loading
+	}
+
+	async #readFromDisk(): Promise<Map<string, unknown>> {
+		const exists = await this.#file.exists()
+		if (!exists) {
+			await this.#file.writeJSON({}, { truncate: true })
+			return new Map()
+		}
+
+		const text = await this.#file.text()
+		if (text.trim() === '') {
+			return new Map()
+		}
+
+		let parsed: unknown
+		try {
+			parsed = JSON.parse(text)
+		} catch (error) {
+			throw new Error(
+				`Failed to parse store data from "${this.#file.path}": ${error instanceof Error ? error.message : String(error)}`
+			)
+		}
+
+		if (!isPlainRecord(parsed)) {
+			throw new Error(
+				`Store file "${this.#file.path}" must contain a JSON object with string keys`
+			)
+		}
+
+		return new Map(Object.entries(parsed))
+	}
+
+	async #persist(): Promise<void> {
+		if (!this.#cache) return
+		const payload: Record<string, unknown> = {}
+		for (const [key, value] of this.#cache.entries()) {
+			payload[key] = value === undefined ? null : value
+		}
+		await this.#file.writeJSON(payload, { truncate: true })
+	}
+}
+
+export type VfsStoreSource = FsContext | FileSystemDirectoryHandle
+
+export function createStore(
+	source: VfsStoreSource,
+	options?: CreateVfsStoreOptions
+): VfsStore {
+	const ctx = isFsContext(source)
+		? source
+		: createFs(source, options?.fsOptions)
+	const filePath = sanitizePath(options?.filePath ?? DEFAULT_STORE_PATH)
+	const file = ctx.file(filePath, 'rw')
+	return new VfsStoreImpl(file)
+}
+
 /**
  * Create a new FS context bound to a FileSystemDirectoryHandle.
  */

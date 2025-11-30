@@ -1,6 +1,7 @@
 import { Elysia, t } from 'elysia'
 import { cors } from '@elysiajs/cors'
 import { env } from './env'
+import { serverLogger } from './logger'
 
 const app = new Elysia()
 	.use(
@@ -18,7 +19,7 @@ const app = new Elysia()
 	})
 	.listen(env.serverPort)
 
-console.log(
+serverLogger.ready(
 	`🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`
 )
 

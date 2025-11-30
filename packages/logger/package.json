@@ -1,5 +1,5 @@
 {
-  "name": "@repo/code-editor",
+  "name": "@repo/logger",
   "version": "0.0.0",
   "private": true,
   "exports": {
@@ -10,10 +10,7 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
-    "@repo/logger": "*",
-    "@repo/ui": "*",
-    "@solid-primitives/event-listener": "^2.4.3",
-    "solid-js": "^1.9.5"
+    "consola": "^3.4.2"
   },
   "devDependencies": {
     "@repo/eslint-config": "*",

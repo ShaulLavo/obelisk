@@ -5,7 +5,7 @@ const pendingFileTextReads = new Map<string, Promise<string>>()
 const pendingSafeFileTextReads = new Map<string, Promise<SafeReadResult>>()
 const pendingStreamReads = new Map<string, Promise<string>>()
 const streamControllers = new Map<string, AbortController>()
-const DEFAULT_CHUNK_SIZE = 64 * 1024
+const DEFAULT_CHUNK_SIZE = 1024 * 1024 * 1 // 1 MB
 
 export type SafeReadOptions = {
 	sizeLimitBytes?: number
@@ -85,6 +85,35 @@ export async function readFileText(
 		const file = ctx.file(path, 'r')
 		return file.text()
 	})
+}
+
+export async function getFileSize(
+	source: FsSource,
+	path: string
+): Promise<number> {
+	const ctx = await ensureFs(source)
+	const file = ctx.file(path, 'r')
+	return file.getSize()
+}
+
+export async function readFilePreviewBytes(
+	source: FsSource,
+	path: string,
+	maxBytes = 8192
+): Promise<Uint8Array> {
+	const ctx = await ensureFs(source)
+	const file = ctx.file(path, 'r')
+	const reader = await file.createReader()
+
+	try {
+		const fileSize = await reader.getSize()
+		if (fileSize === 0) return new Uint8Array()
+		const toRead = Math.min(Math.max(maxBytes, 0), fileSize)
+		const buffer = await reader.read(toRead, { at: 0 })
+		return new Uint8Array(buffer)
+	} finally {
+		await reader.close().catch(() => undefined)
+	}
 }
 
 export async function safeReadFileText(
@@ -177,7 +206,10 @@ export async function createFileTextStream(
 
 	let position = 0
 	let closed = false
-	const sequentialDecoder = new TextDecoder()
+	const sequentialDecoder = new TextDecoder('utf-8', {
+		fatal: true,
+		ignoreBOM: true
+	})
 
 	const ensureOpen = () => {
 		if (closed) {
@@ -202,8 +234,16 @@ export async function createFileTextStream(
 			return { done: true, offset, bytesRead }
 		}
 
-		const decoder = new TextDecoder()
-		const chunk = decoder.decode(bytes, { stream: false })
+		const decoder = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true })
+
+		let chunk = ''
+		try {
+			chunk = decoder.decode(bytes, {
+				stream: false
+			})
+		} catch (e) {
+			throw new Error(`Failed to decode file chunk at offset ${offset}: ${e}`)
+		}
 
 		return {
 			done: false,
@@ -230,10 +270,14 @@ export async function createFileTextStream(
 		if (bytesRead === 0) {
 			return { done: true, offset, bytesRead }
 		}
-
-		const chunk = sequentialDecoder.decode(bytes, {
-			stream: offset + bytesRead < fileSize
-		})
+		let chunk = ''
+		try {
+			chunk = sequentialDecoder.decode(bytes, {
+				stream: offset + bytesRead < fileSize
+			})
+		} catch (e) {
+			throw new Error(`Failed to decode file chunk at offset ${offset}: ${e}`)
+		}
 
 		position += bytesRead
 

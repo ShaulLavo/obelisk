@@ -4,10 +4,40 @@ import solidPlugin from 'vite-plugin-solid'
 import devtools from 'solid-devtools/vite'
 import tailwindcss from '@tailwindcss/vite'
 
+const originalEnvKeys = new Set(Object.keys(process.env))
+const managedEnvKeys = new Set<string>()
+
+const resetManagedEnv = () => {
+	for (const key of managedEnvKeys) {
+		delete process.env[key]
+	}
+	managedEnvKeys.clear()
+}
+
+const mergeEnvIntoProcess = (
+	source: Record<string, string>,
+	{ override }: { override: boolean }
+) => {
+	for (const [key, value] of Object.entries(source)) {
+		if (!key.startsWith('VITE_')) continue
+		const hasKey = Object.prototype.hasOwnProperty.call(process.env, key)
+		if (!hasKey || (override && !originalEnvKeys.has(key))) {
+			process.env[key] = value
+			managedEnvKeys.add(key)
+		}
+	}
+}
+
 export default defineConfig(({ mode }) => {
-	const envDir = path.resolve(__dirname, '..', '..')
-	const env = loadEnv(mode, envDir, '')
-	const webPort = Number(env.VITE_WEB_PORT ?? env.PORT) || 3000
+	resetManagedEnv()
+	const envDir = path.resolve(__dirname)
+	const rootEnvDir = path.resolve(__dirname, '..', '..')
+	const rootEnv = loadEnv(mode, rootEnvDir, '')
+	mergeEnvIntoProcess(rootEnv, { override: false })
+	const localEnv = loadEnv(mode, envDir, '')
+	mergeEnvIntoProcess(localEnv, { override: true })
+	const mergedEnv = { ...rootEnv, ...localEnv }
+	const webPort = Number(mergedEnv.VITE_WEB_PORT ?? mergedEnv.PORT) || 3000
 	return {
 		envDir,
 		plugins: [tailwindcss(), devtools(), solidPlugin()],

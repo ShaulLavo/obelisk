@@ -1,4 +1,6 @@
-import type { FsDirTreeNode } from '@repo/fs'
+import type { FsDirTreeNode, FsTreeNode } from '@repo/fs'
+import type { ParseResult } from '~/utils/parse'
+import type { PieceTableSnapshot } from '~/utils/pieceTable'
 
 export type FsSource = 'memory' | 'local' | 'opfs'
 
@@ -8,6 +10,14 @@ export type FsState = {
 	selectedPath?: string
 	activeSource: FsSource
 	selectedFileContent: string
+	selectedFileSize?: number
 	error?: string
 	loading: boolean
+	fileStats: Record<string, ParseResult | undefined>
+	selectedFileStats?: ParseResult
+	pieceTables: Record<string, PieceTableSnapshot | undefined>
+	selectedFilePieceTable?: PieceTableSnapshot
+	selectedNode?: FsTreeNode | undefined
+	lastKnownFileNode?: FsTreeNode | undefined
+	lastKnownFilePath?: string
 }
