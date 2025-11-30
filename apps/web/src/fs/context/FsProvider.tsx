@@ -1,6 +1,11 @@
 import { batch, type JSX, onMount } from 'solid-js'
 import { webLogger } from '~/logger'
-import { parseFileBuffer } from '~/utils/parse'
+import {
+	createMinimalBinaryParseResult,
+	detectBinaryFromPreview,
+	parseFileBuffer
+} from '~/utils/parse'
+import { createTimingTracker } from '~/utils/timing'
 import { createPieceTableSnapshot } from '~/utils/pieceTable'
 import { DEFAULT_SOURCE } from '../config/constants'
 import { createFsMutations } from '../fsMutations'
@@ -15,8 +20,8 @@ import { findNode } from '../runtime/tree'
 import { createFsState } from '../state/fsState'
 import type { FsSource } from '../types'
 import { FsContext, type FsContextValue } from './FsContext'
-
-type TimingEntry = { label: string; duration: number }
+import { logger } from '@repo/logger'
+import { formatBytes } from '~/utils/bytes'
 
 export function FsProvider(props: { children: JSX.Element }) {
 	const {
@@ -27,6 +32,7 @@ export function FsProvider(props: { children: JSX.Element }) {
 		setSelectedPath,
 		setActiveSource,
 		setSelectedFileSize,
+		setSelectedFilePreviewBytes,
 		setSelectedFileContent,
 		setError,
 		setLoading,
@@ -92,73 +98,15 @@ export function FsProvider(props: { children: JSX.Element }) {
 	}
 
 	const selectPath = async (path: string) => {
-		const start = performance.now()
-		const timings: TimingEntry[] = []
-		const recordTiming = (label: string, duration: number) => {
-			timings.push({ label, duration })
-		}
-		const formatBreakdownTable = () => {
-			if (timings.length === 0) return ''
-			const labelHeader = 'step'
-			const durationHeader = 'duration'
-			const labelWidth = Math.max(
-				labelHeader.length,
-				...timings.map(entry => entry.label.length)
+		const timings = createTimingTracker({
+			logger: message => webLogger.debug(message)
+		})
+		const { timeSync, timeAsync } = timings
+		const logDuration = (status: string) =>
+			timings.log(
+				status,
+				total => `selectPath ${status} for ${path} in ${total.toFixed(2)}ms`
 			)
-			const formatDuration = (value: number) => `${value.toFixed(2)}ms`
-			const durationWidth = Math.max(
-				durationHeader.length,
-				...timings.map(entry => formatDuration(entry.duration).length)
-			)
-			const divider = `+-${'-'.repeat(labelWidth)}-+-${'-'.repeat(durationWidth)}-+`
-			const header = `| ${labelHeader.padEnd(labelWidth)} | ${durationHeader.padEnd(durationWidth)} |`
-			const rows = timings.map(
-				entry =>
-					`| ${entry.label.padEnd(labelWidth)} | ${formatDuration(entry.duration).padStart(durationWidth)} |`
-			)
-			const totalCaptured = timings.reduce(
-				(sum, entry) => sum + entry.duration,
-				0
-			)
-			const totalRow = `| ${'total'.padEnd(labelWidth)} | ${formatDuration(totalCaptured).padStart(durationWidth)} |`
-			return [
-				'timing breakdown:',
-				divider,
-				header,
-				divider,
-				...rows,
-				divider,
-				totalRow,
-				divider
-			].join('\n')
-		}
-		const logDuration = (status: string) => {
-			const total = performance.now() - start
-			const breakdownTable = formatBreakdownTable()
-			const summary = `selectPath ${status} for ${path} in ${total.toFixed(2)}ms`
-			webLogger.debug(
-				breakdownTable ? `${summary}\n${breakdownTable}` : summary
-			)
-		}
-		const timeSync = <T,>(label: string, fn: () => T): T => {
-			const stepStart = performance.now()
-			try {
-				return fn()
-			} finally {
-				recordTiming(label, performance.now() - stepStart)
-			}
-		}
-		const timeAsync = async <T,>(
-			label: string,
-			fn: () => Promise<T>
-		): Promise<T> => {
-			const stepStart = performance.now()
-			try {
-				return await fn()
-			} finally {
-				recordTiming(label, performance.now() - stepStart)
-			}
-		}
 
 		const tree = state.tree
 		if (!tree) {
@@ -202,12 +150,17 @@ export function FsProvider(props: { children: JSX.Element }) {
 			let pieceTableSnapshot:
 				| ReturnType<typeof createPieceTableSnapshot>
 				| undefined
-			let fileStatsResult: ReturnType<typeof parseFileBuffer> | undefined
+			let fileStatsResult:
+				| ReturnType<typeof parseFileBuffer>
+				| ReturnType<typeof createMinimalBinaryParseResult>
+				| undefined
+
+			let previewBytes: Uint8Array | undefined
 
 			if (fileSize > MAX_FILE_SIZE_BYTES) {
 				completionStatus = 'skipped:file-too-large'
 			} else {
-				const previewBytes = await timeAsync('read-preview-bytes', () =>
+				previewBytes = await timeAsync('read-preview-bytes', () =>
 					readFilePreviewBytes(source, path)
 				)
 				if (requestId !== selectRequestId) {
@@ -215,45 +168,70 @@ export function FsProvider(props: { children: JSX.Element }) {
 					return
 				}
 
-				const text = await timeAsync('read-file-text', () =>
-					readFileText(source, path)
-				)
-				if (requestId !== selectRequestId) {
-					completionStatus = 'cancelled:stale-after-read'
-					return
-				}
+				const detection = detectBinaryFromPreview(path, previewBytes)
+				const isBinary = !detection.isText
 
-				selectedFileContentValue = text
-
-				fileStatsResult = timeSync('parse-file-buffer', () =>
-					parseFileBuffer(text, {
-						path,
-						previewBytes
-					})
-				)
-
-				if (fileStatsResult.contentKind === 'text') {
-					pieceTableSnapshot = timeSync('create-piece-table', () =>
-						createPieceTableSnapshot(text)
+				if (isBinary) {
+					fileStatsResult = timeSync('binary-file-metadata', () =>
+						createMinimalBinaryParseResult('', detection)
 					)
+				} else {
+					const text = await timeAsync('read-file-text', () =>
+						readFileText(source, path)
+					)
+					if (requestId !== selectRequestId) {
+						completionStatus = 'cancelled:stale-after-read'
+						return
+					}
+
+					selectedFileContentValue = text
+
+					fileStatsResult = timeSync('parse-file-buffer', () =>
+						parseFileBuffer(text, {
+							path,
+							previewBytes,
+							textHeuristic: detection
+						})
+					)
+
+					if (fileStatsResult.contentKind === 'text') {
+						const existingSnapshot = (state.pieceTables as Record<
+							string,
+							ReturnType<typeof createPieceTableSnapshot> | undefined
+						>)[path]
+
+						pieceTableSnapshot =
+							existingSnapshot ??
+							timeSync('create-piece-table', () =>
+								createPieceTableSnapshot(text)
+							)
+					}
 				}
 			}
-
-			batch(() => {
-				timeSync('set-selected-path', () => setSelectedPath(path))
-				timeSync('clear-error', () => setError(undefined))
-				timeSync('set-selected-file-size', () => setSelectedFileSize(fileSize))
-				timeSync('set-selected-file-content', () =>
-					setSelectedFileContent(selectedFileContentValue)
-				)
-				if (pieceTableSnapshot) {
-					timeSync('set-piece-table', () =>
-						setPieceTable(path, pieceTableSnapshot)
+			timeSync('apply-selection-state', ({ timeSync }) => {
+				batch(() => {
+					timeSync('set-selected-path', () => setSelectedPath(path))
+					timeSync('clear-error', () => setError(undefined))
+					timeSync('set-selected-file-size', () =>
+						setSelectedFileSize(fileSize)
 					)
-				}
-				if (fileStatsResult) {
-					timeSync('set-file-stats', () => setFileStats(path, fileStatsResult))
-				}
+					timeSync('set-selected-file-preview-bytes', () =>
+						setSelectedFilePreviewBytes(previewBytes)
+					)
+					timeSync('set-selected-file-content', () =>
+						setSelectedFileContent(selectedFileContentValue)
+					)
+					if (pieceTableSnapshot) {
+						timeSync('set-piece-table', () =>
+							setPieceTable(path, pieceTableSnapshot)
+						)
+					}
+					if (fileStatsResult) {
+						timeSync('set-file-stats', () =>
+							setFileStats(path, fileStatsResult)
+						)
+					}
+				})
 			})
 		} catch (error) {
 			if (requestId !== selectRequestId) {
@@ -264,6 +242,7 @@ export function FsProvider(props: { children: JSX.Element }) {
 			handleReadError(error)
 		} finally {
 			logDuration(completionStatus)
+			logger.info(`File size: ${formatBytes(state.selectedFileSize ?? 0)}`)
 		}
 	}
 
@@ -278,6 +257,18 @@ export function FsProvider(props: { children: JSX.Element }) {
 	})
 
 	const setSource = (source: FsSource) => refresh(source)
+
+	const updateSelectedFilePieceTable: FsContextValue[1]['updateSelectedFilePieceTable'] =
+		updater => {
+			const path = state.lastKnownFilePath
+			if (!path) return
+
+			const current = state.selectedFilePieceTable
+			const next = updater(current)
+			if (!next) return
+
+			setPieceTable(path, next)
+		}
 
 	onMount(() => {
 		void hydration.then(() => {
@@ -295,7 +286,8 @@ export function FsProvider(props: { children: JSX.Element }) {
 			selectPath,
 			createDir,
 			createFile,
-			deleteNode
+			deleteNode,
+			updateSelectedFilePieceTable
 		}
 	]
 

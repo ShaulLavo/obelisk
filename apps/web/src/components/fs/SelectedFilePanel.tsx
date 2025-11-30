@@ -1,7 +1,7 @@
 import type { JSX } from 'solid-js'
 import { Accessor, For, createMemo, createSignal } from 'solid-js'
 import { useFs } from '../../fs/context/FsContext'
-import { SelectedFileCodeView } from './SelectedFileCodeView'
+import { Editor } from './Editor'
 
 const FONT_OPTIONS = [
 	{
@@ -92,11 +92,12 @@ export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
 				</button>
 			</div>
 
-			<SelectedFileCodeView
+			<Editor
 				isFileSelected={props.isFileSelected}
 				stats={() => state.selectedFileStats}
 				fontSize={fontSize}
 				fontFamily={fontFamily}
+				previewBytes={() => state.selectedFilePreviewBytes}
 			/>
 		</div>
 	)

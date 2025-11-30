@@ -5,7 +5,10 @@ import localforage from 'localforage'
 import { createMemo, createSignal } from 'solid-js'
 import { createStore, unwrap } from 'solid-js/store'
 import type { ParseResult } from '~/utils/parse'
-import type { PieceTableSnapshot } from '~/utils/pieceTable'
+import {
+	type PieceTableSnapshot,
+	getPieceTableText
+} from '~/utils/pieceTable'
 import { DEFAULT_SOURCE } from '../config/constants'
 import type { FsState } from '../types'
 import { findNode } from '../runtime/tree'
@@ -42,6 +45,9 @@ export const createFsState = () => {
 	)
 	const [selectedFileSize, setSelectedFileSize] = createSignal<
 		number | undefined
+	>(undefined)
+	const [selectedFilePreviewBytes, setSelectedFilePreviewBytes] = createSignal<
+		Uint8Array | undefined
 	>(undefined)
 	const [selectedFileContent, setSelectedFileContent] = createSignal('')
 	const [error, setError] = createSignal<string | undefined>(undefined)
@@ -96,13 +102,22 @@ export const createFsState = () => {
 		},
 		get selectedFileContent() {
 			const path = lastKnownFilePath()
-			if (path) {
-				return fileStats[path]?.text ?? selectedFileContent()
+			if (!path) {
+				return selectedFileContent()
 			}
-			return selectedFileContent()
+
+			const snapshot = pieceTables[path]
+			if (snapshot) {
+				return getPieceTableText(snapshot)
+			}
+
+			return fileStats[path]?.text ?? selectedFileContent()
 		},
 		get selectedFileSize() {
 			return selectedFileSize()
+		},
+		get selectedFilePreviewBytes() {
+			return selectedFilePreviewBytes()
 		},
 		get error() {
 			return error()
@@ -137,6 +152,7 @@ export const createFsState = () => {
 		setSelectedPath,
 		setActiveSource,
 		setSelectedFileSize,
+		setSelectedFilePreviewBytes,
 		setSelectedFileContent,
 		setError,
 		setLoading,

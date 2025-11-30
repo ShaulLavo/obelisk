@@ -140,6 +140,7 @@ export type ParseOptions = {
 	languageHint?: LanguageId
 	enableAngleBracketScan?: boolean
 	previewBytes?: Uint8Array
+	textHeuristic?: TextHeuristicDecision
 }
 
 export type ParseResult = {
@@ -307,9 +308,11 @@ export function parseFileBuffer(
 	options: ParseOptions = {}
 ): ParseResult {
 	const rawText = text ?? ''
-	const detection = options.previewBytes
-		? analyzeFileBytes(options.path, options.previewBytes)
-		: undefined
+	const detection =
+		options.textHeuristic ??
+		(options.previewBytes
+			? analyzeFileBytes(options.path, options.previewBytes)
+			: undefined)
 	const isBinaryByDetection = Boolean(detection && !detection.isText)
 
 	if (isBinaryByDetection) {
@@ -638,7 +641,7 @@ export function parseFileBuffer(
 	}
 }
 
-const createMinimalBinaryParseResult = (
+export const createMinimalBinaryParseResult = (
 	text: string,
 	detection?: TextHeuristicDecision
 ): ParseResult => {
@@ -751,6 +754,11 @@ const createMinimalBinaryParseResult = (
 		textHeuristic: detection
 	}
 }
+
+export const detectBinaryFromPreview = (
+	path: string | undefined,
+	previewBytes: Uint8Array
+): TextHeuristicDecision => analyzeFileBytes(path, previewBytes)
 
 const formatBinaryDetectionReason = (
 	detection: TextHeuristicDecision
