@@ -14,6 +14,49 @@ type NormalizeResult = {
 	hadBom: boolean
 }
 
+type NewlineCounts = Record<Exclude<NewlineKind, 'mixed'>, number>
+
+type NewlineScanHandler = (info: {
+	index: number
+	length: number
+	kind: Exclude<NewlineKind, 'mixed' | 'none'>
+}) => void
+
+const scanNewlines = (
+	text: string,
+	onNewline?: NewlineScanHandler
+): NewlineCounts => {
+	const counts: NewlineCounts = {
+		lf: 0,
+		crlf: 0,
+		cr: 0,
+		none: 0
+	}
+
+	for (let i = 0; i < text.length; i++) {
+		const code = text.charCodeAt(i)
+		if (code === 13) {
+			if (text.charCodeAt(i + 1) === 10) {
+				counts.crlf++
+				onNewline?.({ index: i, length: 2, kind: 'crlf' })
+				i++
+			} else {
+				counts.cr++
+				onNewline?.({ index: i, length: 1, kind: 'cr' })
+			}
+		} else if (code === 10) {
+			counts.lf++
+			onNewline?.({ index: i, length: 1, kind: 'lf' })
+		}
+	}
+
+	if (counts.lf + counts.crlf + counts.cr === 0) {
+		counts.none = 1
+	}
+
+	return counts
+}
+
 export type LineInfo = {
 	index: number
 	start: number
@@ -626,7 +669,7 @@ export function parseFileBuffer(
 			depthByIndex: bracketDepth
 		},
 		language: languageDetection,
-		contentKind: isBinaryByDetection ? 'binary' : 'text',
+		contentKind: 'text',
 		textHeuristic: detection
 	}
 }
@@ -653,39 +696,13 @@ export const createMinimalBinaryParseResult = (
 		lineInfo.push(info)
 	}
 
-	const newlineCounts: Record<Exclude<NewlineKind, 'mixed'>, number> = {
-		lf: 0,
-		crlf: 0,
-		cr: 0,
-		none: 0
-	}
-
-	for (let i = 0; i < length; i++) {
-		const code = text.charCodeAt(i)
-		if (code === 10) {
-			newlineCounts.lf++
-			pushLine(i)
-			lineStart = i + 1
-			lineStarts.push(lineStart)
-		} else if (code === 13) {
-			pushLine(i)
-			if (text.charCodeAt(i + 1) === 10) {
-				newlineCounts.crlf++
-				lineStart = i + 2
-				i++
-			} else {
-				newlineCounts.cr++
-				lineStart = i + 1
-			}
-			lineStarts.push(lineStart)
-		}
-	}
+	const newlineCounts = scanNewlines(text, ({ index, length }) => {
+		pushLine(index)
+		lineStart = index + length
+		lineStarts.push(lineStart)
+	})
 
 	pushLine(length)
-
-	if (newlineCounts.lf + newlineCounts.crlf + newlineCounts.cr === 0) {
-		newlineCounts.none = 1
-	}
 
 	const newlineInfo: NewlineInfo = {
 		kinds: newlineCounts,
@@ -801,43 +818,23 @@ const normalizeNewlines = (rawText: string): NormalizeResult => {
 		hadBom = true
 	}
 
-	const counts: Record<Exclude<NewlineKind, 'mixed'>, number> = {
-		lf: 0,
-		crlf: 0,
-		cr: 0,
-		none: 0
-	}
-
 	let normalized = ''
 	let needsNormalization = false
 	let lastIdx = 0
 
-	for (let i = 0; i < text.length; i++) {
-		const char = text.charCodeAt(i)
-		if (char === 13) {
+	const counts = scanNewlines(text, ({ index, length, kind }) => {
+		if (kind === 'cr' || kind === 'crlf') {
 			needsNormalization = true
-			normalized += text.slice(lastIdx, i)
-			if (text.charCodeAt(i + 1) === 10) {
-				counts.crlf++
-				i++
-			} else {
-				counts.cr++
-			}
+			normalized += text.slice(lastIdx, index)
 			normalized += '\n'
-			lastIdx = i + 1
-		} else if (char === 10) {
-			counts.lf++
+			lastIdx = index + length
 		}
-	}
+	})
 
 	if (needsNormalization) {
 		normalized += text.slice(lastIdx)
 	} else {
 		normalized = text
-	}
-
-	if (counts.lf + counts.crlf + counts.cr === 0) {
-		counts.none = 1
 	}
 
 	const kind = determineNewlineKind(counts)

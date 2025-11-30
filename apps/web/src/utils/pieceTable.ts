@@ -43,9 +43,11 @@ const bufferFor = (snapshot: PieceTableSnapshot, piece: Piece): string =>
 export const getPieceTableText = (
 	snapshot: PieceTableSnapshot,
 	start = 0,
-	end = getPieceTableLength(snapshot)
+	end?: number
 ): string => {
-	if (start < 0 || end < start || end > getPieceTableLength(snapshot)) {
+	const length = getPieceTableLength(snapshot)
+	const effectiveEnd = end ?? length
+	if (start < 0 || effectiveEnd < start || effectiveEnd > length) {
 		throw new RangeError('invalid range')
 	}
 
@@ -60,10 +62,10 @@ export const getPieceTableText = (
 			continue
 		}
 
-		if (pos >= end) break
+		if (pos >= effectiveEnd) break
 
 		const pieceLocalStart = Math.max(0, start - pos)
-		const pieceLocalEnd = Math.min(piece.length, end - pos)
+		const pieceLocalEnd = Math.min(piece.length, effectiveEnd - pos)
 		const buf = bufferFor(snapshot, piece)
 
 		result += buf.slice(

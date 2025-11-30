@@ -37,6 +37,12 @@ const BinaryRow = (props: BinaryRowProps) => {
 	const asciiForByte = (byte: number) =>
 		byte >= 32 && byte <= 126 ? String.fromCharCode(byte) : '.'
 
+	const getHoverStyle = (isHovered: boolean) => ({
+		'background-color': isHovered ? 'rgb(52 211 153)' : 'transparent',
+		color: isHovered ? 'rgb(24 24 27)' : 'rgb(228 228 231)',
+		'font-weight': isHovered ? 600 : 400
+	})
+
 	return (
 		<div
 			data-index={props.virtualRow.index}
@@ -64,15 +70,7 @@ const BinaryRow = (props: BinaryRowProps) => {
 										<>
 											<span
 												class="cursor-default rounded px-1 tabular-nums"
-												style={{
-													'background-color': isHovered()
-														? 'rgb(52 211 153)'
-														: 'transparent',
-													color: isHovered()
-														? 'rgb(24 24 27)'
-														: 'rgb(228 228 231)',
-													'font-weight': isHovered() ? 600 : 400
-												}}
+												style={getHoverStyle(isHovered())}
 												onMouseEnter={() =>
 													props.setHoveredIndex(globalIndex())
 												}
@@ -98,15 +96,7 @@ const BinaryRow = (props: BinaryRowProps) => {
 									return (
 										<span
 											class="cursor-default rounded px-1"
-											style={{
-												'background-color': isHovered()
-													? 'rgb(52 211 153)'
-													: 'transparent',
-												color: isHovered()
-													? 'rgb(24 24 27)'
-													: 'rgb(228 228 231)',
-												'font-weight': isHovered() ? 600 : 400
-											}}
+											style={getHoverStyle(isHovered())}
 											onMouseEnter={() => props.setHoveredIndex(globalIndex())}
 											onMouseLeave={() => props.setHoveredIndex(null)}
 										>

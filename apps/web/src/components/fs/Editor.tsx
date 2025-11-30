@@ -357,7 +357,22 @@ const TextFileEditor = (props: TextFileEditorProps) => {
 		if (length <= 0 || offset < 0) return
 		updateSelectedFilePieceTable(current => {
 			const baseSnapshot = current ?? createPieceTableSnapshot(pieceTableText())
-			return deleteFromPieceTable(baseSnapshot, offset, length)
+			const totalLength = getPieceTableLength(baseSnapshot)
+
+			if (offset < 0 || offset >= totalLength) {
+				return baseSnapshot
+			}
+
+			const clampedLength = Math.max(
+				0,
+				Math.min(length, totalLength - offset)
+			)
+
+			if (clampedLength === 0) {
+				return baseSnapshot
+			}
+
+			return deleteFromPieceTable(baseSnapshot, offset, clampedLength)
 		})
 	}
 
