@@ -3,11 +3,7 @@ import { z } from 'zod'
 const envSchema = z.object({
 	VITE_API_ORIGIN: z.url().optional(),
 	VITE_SERVER_PORT: z.coerce.number().int().positive(),
-	VITE_PERF_TRACKING: z
-		.enum(['true', 'false'])
-		.optional()
-		.default('true')
-		.transform(v => v === 'true')
+	VITE_PERF_TRACKING: z.coerce.boolean().optional().default(true)
 })
 
 const envData = envSchema.parse(import.meta.env)

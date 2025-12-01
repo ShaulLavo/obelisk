@@ -341,7 +341,7 @@ export const TextFileEditorInner = (props: TextFileEditorProps) => {
 					'font-size': `${props.fontSize()}px`,
 					'font-family': props.fontFamily()
 				}}
-				onClick={() => focusInput()}
+				onMouseDown={() => focusInput()}
 			>
 				<textarea
 					ref={element => {

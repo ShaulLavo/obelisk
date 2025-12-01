@@ -86,7 +86,7 @@ export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
 				<button
 					type="button"
 					class="rounded border border-zinc-700/70 bg-zinc-800 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-100 hover:bg-zinc-700"
-					onClick={resetFontControls}
+					onMouseDown={resetFontControls}
 				>
 					Reset
 				</button>

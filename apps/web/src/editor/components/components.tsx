@@ -7,6 +7,27 @@ import type {
 	VirtualizedRowsProps
 } from '../types'
 
+interface GutterProps {
+	lineNumber: number
+	lineHeight: number
+	isActive: boolean
+}
+
+const Gutter = (props: GutterProps) => {
+	return (
+		<span
+			class="w-10 shrink-0 select-none text-right text-[11px] font-semibold tracking-[0.08em] tabular-nums flex items-center justify-end"
+			classList={{
+				'text-white': props.isActive,
+				'text-zinc-500': !props.isActive
+			}}
+			style={{ height: `${props.lineHeight}px` }}
+		>
+			{props.lineNumber}
+		</span>
+	)
+}
+
 /**
  * Calculate the column from a click X position within the text area
  */
@@ -82,11 +103,13 @@ export const VirtualizedRow = (props: VirtualizedRowProps) => {
 			<div
 				class="flex items-start gap-4 px-3 text-zinc-100"
 				classList={{ 'bg-zinc-900/60': props.isActive }}
-				onClick={handleClick}
+				onMouseDown={handleClick}
 			>
-				<span class="w-10 shrink-0 text-right text-[11px] font-semibold tracking-[0.08em] text-zinc-500 tabular-nums">
-					{props.entry.index + 1}
-				</span>
+				<Gutter
+					lineNumber={props.entry.index + 1}
+					lineHeight={props.virtualRow.size || props.lineHeight}
+					isActive={props.isActive}
+				/>
 				<div
 					ref={el => {
 						textContentElement = el
