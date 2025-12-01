@@ -81,9 +81,17 @@ const VirtualizedRow = (props: VirtualizedRowProps) => {
 			<div
 				class="flex items-start gap-4 px-3 py-1 text-zinc-100"
 				classList={{ 'bg-zinc-900/60': props.isActive }}
-				onMouseUp={() => {
+				onClick={event => {
+					// Only treat as a caret move on a plain left-click with no modifiers and no active text selection.
+					if (
+						event.button !== 0 ||
+						event.shiftKey ||
+						event.ctrlKey ||
+						event.metaKey
+					) {
+						return
+					}
 					const selection = window.getSelection()
-					// Only treat as a caret move when there is no text selection.
 					if (!selection || selection.isCollapsed) {
 						props.onRowClick(props.entry)
 					}
@@ -285,14 +293,11 @@ const TextFileEditor = (props: TextFileEditorProps) => {
 	createEffect(() => {
 		props.fontSize()
 		props.fontFamily()
-		rowVirtualizer.measure()
-		columnVirtualizer.measure()
-	})
-
-	createEffect(() => {
 		lineEntries()
-		rowVirtualizer.measure()
-		columnVirtualizer.measure()
+		queueMicrotask(() => {
+			rowVirtualizer.measure()
+			columnVirtualizer.measure()
+		})
 	})
 
 	createEffect(() => {
