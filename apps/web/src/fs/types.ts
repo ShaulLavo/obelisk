@@ -10,6 +10,7 @@ export type FsState = {
 	selectedPath?: string
 	activeSource: FsSource
 	selectedFileContent: string
+	selectedFilePreviewBytes?: Uint8Array
 	selectedFileSize?: number
 	error?: string
 	loading: boolean

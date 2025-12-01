@@ -1,7 +1,7 @@
 import type { JSX } from 'solid-js'
-import { Accessor, For, Show, createMemo, createSignal } from 'solid-js'
+import { Accessor, For, createMemo, createSignal } from 'solid-js'
 import { useFs } from '../../fs/context/FsContext'
-import type { LineInfo } from '~/utils/parse'
+import { Editor } from './Editor'
 
 const FONT_OPTIONS = [
 	{
@@ -38,28 +38,6 @@ export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
 		setFontSize(DEFAULT_FONT_SIZE)
 		setFontFamily(DEFAULT_FONT_FAMILY)
 	}
-
-	type LineEntry = {
-		info: LineInfo
-		text: string
-	}
-
-	const lineEntries = createMemo<LineEntry[]>(() => {
-		if (!props.isFileSelected()) return []
-		const stats = state.selectedFileStats
-		if (!stats?.lineInfo?.length || stats.text == null) return []
-		const content = stats.text
-
-		return stats.lineInfo.map(info => {
-			const sliceStart = info.start
-			const sliceEnd = sliceStart + info.length
-			const rawLine = content.slice(sliceStart, sliceEnd)
-			const text = rawLine.replace(/\r?\n$/, '')
-
-			return { info, text }
-		})
-	})
-	const hasLineEntries = () => lineEntries().length > 0
 
 	const currentFileLabel = createMemo(() => {
 		const path = props.currentPath
@@ -114,47 +92,13 @@ export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
 				</button>
 			</div>
 
-			<Show
-				when={props.isFileSelected()}
-				fallback={
-					<p class="mt-2 text-sm text-zinc-500">
-						Select a file to view its contents. Click folders to toggle
-						visibility.
-					</p>
-				}
-			>
-				<Show
-					when={hasLineEntries()}
-					fallback={
-						<p class="mt-4 text-sm text-zinc-500">
-							Line information is not available for this file yet.
-						</p>
-					}
-				>
-					<div
-						class="mt-4 flex-1 overflow-auto rounded border border-zinc-800/70 bg-zinc-950/30"
-						style={{
-							'font-size': `${fontSize()}px`,
-							'font-family': fontFamily()
-						}}
-					>
-						<div class="divide-y divide-zinc-800/60">
-							<For each={lineEntries()}>
-								{entry => (
-									<div class="flex items-start gap-4 px-3 py-1 text-zinc-100">
-										<span class="w-10 shrink-0 text-right text-[11px] font-semibold tracking-[0.08em] text-zinc-500 tabular-nums">
-											{entry.info.index + 1}
-										</span>
-										<div class="flex-1 min-w-0 overflow-x-auto whitespace-pre">
-											{entry.text}
-										</div>
-									</div>
-								)}
-							</For>
-						</div>
-					</div>
-				</Show>
-			</Show>
+			<Editor
+				isFileSelected={props.isFileSelected}
+				stats={() => state.selectedFileStats}
+				fontSize={fontSize}
+				fontFamily={fontFamily}
+				previewBytes={() => state.selectedFilePreviewBytes}
+			/>
 		</div>
 	)
 }

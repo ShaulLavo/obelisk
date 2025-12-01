@@ -37,6 +37,7 @@
     "@solid-primitives/event-listener": "^2.4.3",
     "@solid-primitives/storage": "^4.3.3",
     "@tailwindcss/vite": "^4.1.17",
+    "@tanstack/solid-virtual": "^3.13.12",
     "@xterm/xterm": "^5.5.0",
     "local-echo": "wavesoft/local-echo",
     "localforage": "^1.10.0",

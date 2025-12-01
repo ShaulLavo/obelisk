@@ -1,4 +1,5 @@
 import { createContext, useContext } from 'solid-js'
+import type { PieceTableSnapshot } from '~/utils/pieceTable'
 import type { FsState, FsSource } from '../types'
 
 export type FsActions = {
@@ -9,6 +10,11 @@ export type FsActions = {
 	createDir: (parentPath: string, name: string) => Promise<void>
 	createFile: (parentPath: string, name: string, content?: string) => Promise<void>
 	deleteNode: (path: string) => Promise<void>
+	updateSelectedFilePieceTable: (
+		updater: (
+			current: PieceTableSnapshot | undefined
+		) => PieceTableSnapshot | undefined
+	) => void
 }
 
 export type FsContextValue = [FsState, FsActions]

@@ -46,6 +46,7 @@
         "@solid-primitives/event-listener": "^2.4.3",
         "@solid-primitives/storage": "^4.3.3",
         "@tailwindcss/vite": "^4.1.17",
+        "@tanstack/solid-virtual": "^3.13.12",
         "@xterm/xterm": "^5.5.0",
         "local-echo": "wavesoft/local-echo",
         "localforage": "^1.10.0",
@@ -448,6 +449,10 @@
     "@tailwindcss/oxide-win32-x64-msvc": ["@tailwindcss/oxide-win32-x64-msvc@4.1.17", "", { "os": "win32", "cpu": "x64" }, "sha512-SKWM4waLuqx0IH+FMDUw6R66Hu4OuTALFgnleKbqhgGU30DY20NORZMZUKgLRjQXNN2TLzKvh48QXTig4h4bGw=="],
 
     "@tailwindcss/vite": ["@tailwindcss/vite@4.1.17", "", { "dependencies": { "@tailwindcss/node": "4.1.17", "@tailwindcss/oxide": "4.1.17", "tailwindcss": "4.1.17" }, "peerDependencies": { "vite": "^5.2.0 || ^6 || ^7" } }, "sha512-4+9w8ZHOiGnpcGI6z1TVVfWaX/koK7fKeSYF3qlYg2xpBtbteP2ddBxiarL+HVgfSJGeK5RIxRQmKm4rTJJAwA=="],
+
+    "@tanstack/solid-virtual": ["@tanstack/solid-virtual@3.13.12", "", { "dependencies": { "@tanstack/virtual-core": "3.13.12" }, "peerDependencies": { "solid-js": "^1.3.0" } }, "sha512-0dS8GkBTmbuM9cUR6Jni0a45eJbd32CAEbZj8HrZMWIj3lu974NpGz5ywcomOGJ9GdeHuDaRzlwtonBbKV1ihQ=="],
+
+    "@tanstack/virtual-core": ["@tanstack/virtual-core@3.13.12", "", {}, "sha512-1YBOJfRHV4sXUmWsFSf5rQor4Ss82G8dQWLRbnk3GA4jeP8hQt1hxXh0tmflpC0dz3VgEv/1+qwPyLeWkQuPFA=="],
 
     "@tauri-apps/cli": ["@tauri-apps/cli@2.9.4", "", { "optionalDependencies": { "@tauri-apps/cli-darwin-arm64": "2.9.4", "@tauri-apps/cli-darwin-x64": "2.9.4", "@tauri-apps/cli-linux-arm-gnueabihf": "2.9.4", "@tauri-apps/cli-linux-arm64-gnu": "2.9.4", "@tauri-apps/cli-linux-arm64-musl": "2.9.4", "@tauri-apps/cli-linux-riscv64-gnu": "2.9.4", "@tauri-apps/cli-linux-x64-gnu": "2.9.4", "@tauri-apps/cli-linux-x64-musl": "2.9.4", "@tauri-apps/cli-win32-arm64-msvc": "2.9.4", "@tauri-apps/cli-win32-ia32-msvc": "2.9.4", "@tauri-apps/cli-win32-x64-msvc": "2.9.4" }, "bin": { "tauri": "tauri.js" } }, "sha512-pvylWC9QckrOS9ATWXIXcgu7g2hKK5xTL5ZQyZU/U0n9l88SEFGcWgLQNa8WZmd+wWIOWhkxOFcOl3i6ubDNNw=="],
 

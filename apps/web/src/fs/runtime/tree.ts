@@ -6,13 +6,21 @@ export function findNode(
 ): FsTreeNode | undefined {
 	if (!root || path === undefined) return undefined
 	if (root.path === path) return root
-	const children = Array.isArray(root.children) ? root.children : []
-	for (const child of children) {
-		if (child.path === path) return child
-		if (child.kind === 'dir') {
-			const match = findNode(child as FsDirTreeNode, path)
-			if (match) return match
+
+	const stack: FsDirTreeNode[] = [root]
+
+	while (stack.length) {
+		const dir = stack.pop()!
+		const children = dir.children
+		if (!children || children.length === 0) continue
+
+		for (const child of children) {
+			if (child.path === path) return child
+			if (child.kind === 'dir') {
+				stack.push(child)
+			}
 		}
 	}
+
 	return undefined
 }
