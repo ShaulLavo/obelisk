@@ -256,7 +256,7 @@ export function FsProvider(props: { children: JSX.Element }) {
 			handleReadError(error)
 		} finally {
 			logDuration(completionStatus)
-			logger.info(`File size: ${formatBytes(state.selectedFileSize ?? 0)}`)
+			logger.debug(`File size: ${formatBytes(state.selectedFileSize ?? 0)}`)
 		}
 	}
 
