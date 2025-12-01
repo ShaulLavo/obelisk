@@ -55,7 +55,7 @@
 
 ## create* — Reactive Primitive (official Solid pattern)
 - Indicates the function **creates a reactive primitive**.
-- Runs once and returns something that integrates with Solid’s tracking.
+- Runs once and returns something that integrates with Solid's tracking.
 - Examples: `createSignal`, `createMemo`, `createEffect`.
 - Use this when the primitive:
   - Sets up reactivity.
@@ -77,23 +77,23 @@
 **Used to improve composability**: the reactive version composes the non-reactive base.
 
 
-## use* — “Use an existing thing,” don’t create a new one
+## use* — "Use an existing thing," don't create a new one
 - Used **sparingly** in Solid.
-- Indicates you’re **using** an already-created resource instead of creating a new one.
+- Indicates you're **using** an already-created resource instead of creating a new one.
 - Examples straight from Ryan:
   - `useContext()` — because `createContext()` already *creates* the context; `use*` just retrieves it.
   - `useTransition()` — debatable naming; does not *create* the transition, but returns something that will.
 
 **Rule:** `use*` = consumes or accesses something already created, not constructing new reactive machinery.
 
-Ryan’s rationale (compressed):
+Ryan's rationale (compressed):
 - Solid uses `create*` because primitives are created *once*, unlike React hooks which re-run.
 - `use*` is reserved for cases where the primitive does **not** create the underlying mechanism.
 - Naming is still evolving; could form a future lint rule.
 
 
 
-- **create*** → reactive primitive creator
-- **make*** → non-reactive foundation utility
-- **use*** → access an existing resource
+- **create\*** → reactive primitive creator
+- **make\*** → non-reactive foundation utility
+- **use\*** → access an existing resource
 - Prefer consistency with Solid core + Solid Primitives conventions
