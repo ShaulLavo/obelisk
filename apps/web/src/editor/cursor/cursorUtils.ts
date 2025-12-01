@@ -94,6 +94,41 @@ export const moveVertically = (
 }
 
 /**
+ * Move cursor by multiple lines at once (for PageUp/PageDown)
+ * Positive delta moves down, negative moves up
+ */
+export const moveByLines = (
+	position: CursorPosition,
+	delta: number,
+	preferredColumn: number,
+	lineEntries: LineEntry[]
+): { position: CursorPosition; preferredColumn: number } => {
+	if (lineEntries.length === 0 || delta === 0) {
+		return { position, preferredColumn }
+	}
+
+	const targetLine = Math.max(
+		0,
+		Math.min(lineEntries.length - 1, position.line + delta)
+	)
+
+	// If we can't move (at top/bottom), return unchanged
+	if (targetLine === position.line) {
+		return { position, preferredColumn }
+	}
+
+	const targetEntry = lineEntries[targetLine]!
+	// Use preferredColumn to determine actual column (clamped to line length)
+	const targetColumn = Math.min(preferredColumn, targetEntry.text.length)
+	const newOffset = targetEntry.start + targetColumn
+
+	return {
+		position: createCursorPosition(newOffset, targetLine, targetColumn),
+		preferredColumn // Keep the same preferred column
+	}
+}
+
+/**
  * Move cursor to the start of the current line
  */
 export const moveToLineStart = (

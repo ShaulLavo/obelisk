@@ -5,6 +5,9 @@ import {
 	EDITOR_PADDING_LEFT
 } from '../consts'
 
+const HORIZONTAL_SCROLL_PADDING = 20
+const HORIZONTAL_SCROLL_BUFFER = 40
+
 export type CursorScrollSyncOptions = {
 	scrollElement: () => HTMLElement | null
 	lineHeight: () => number
@@ -69,15 +72,15 @@ export function createCursorScrollSync(
 		const viewportWidth = scrollEl.clientWidth
 		const absoluteCursorX = lineNumberWidth + paddingLeft + cursorX
 
-		// Check if cursor is outside horizontal viewport
-		if (absoluteCursorX < scrollLeft + lineNumberWidth + paddingLeft) {
-			scrollEl.scrollLeft = Math.max(
-				0,
-				absoluteCursorX - lineNumberWidth - paddingLeft - 20
-			)
-		} else if (absoluteCursorX > scrollLeft + viewportWidth - 20) {
-			scrollEl.scrollLeft = absoluteCursorX - viewportWidth + 40
-		}
+	// Check if cursor is outside horizontal viewport
+	if (absoluteCursorX < scrollLeft + lineNumberWidth + paddingLeft) {
+		scrollEl.scrollLeft = Math.max(
+			0,
+			absoluteCursorX - lineNumberWidth - paddingLeft - HORIZONTAL_SCROLL_PADDING
+		)
+	} else if (absoluteCursorX > scrollLeft + viewportWidth - HORIZONTAL_SCROLL_PADDING) {
+		scrollEl.scrollLeft = absoluteCursorX - viewportWidth + HORIZONTAL_SCROLL_BUFFER
+	}
 	}
 
 	const scrollToCursor = (line: number, column: number) => {

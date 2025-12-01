@@ -6,7 +6,6 @@ import {
 	createPieceTableSnapshot,
 	deleteFromPieceTable,
 	getPieceTableLength,
-	getPieceTableText,
 	insertIntoPieceTable
 } from '~/utils/pieceTable'
 import { VirtualizedRows } from './components'
@@ -22,8 +21,7 @@ import {
 import {
 	estimateColumnWidth,
 	estimateLineHeight,
-	measureCharWidth,
-	textToLineEntries
+	measureCharWidth
 } from '../utils'
 import { useCursor } from '../cursor'
 import { createKeyRepeat, createCursorScrollSync } from '../hooks'
@@ -36,20 +34,8 @@ export const TextFileEditorInner = (props: TextFileEditorProps) => {
 	const cursorCtx = useCursor()
 	const cursorState = () => cursorCtx.state
 	const cursorActions = cursorCtx.actions
-
-	const pieceTableText = createMemo(() => {
-		const snapshot = state.selectedFilePieceTable
-		if (snapshot) {
-			return getPieceTableText(snapshot)
-		}
-		const stats = props.stats()
-		return stats?.text ?? ''
-	})
-
-	const lineEntries = createMemo<LineEntry[]>(() => {
-		if (!props.isFileSelected()) return []
-		return textToLineEntries(pieceTableText())
-	})
+	const lineEntries = cursorCtx.lineEntries
+	const pieceTableText = cursorCtx.documentText
 
 	const hasLineEntries = () => lineEntries().length > 0
 
@@ -307,11 +293,8 @@ export const TextFileEditorInner = (props: TextFileEditorProps) => {
 		// Page Up
 		if (event.key === 'PageUp') {
 			event.preventDefault()
-			// Move cursor up by visible page height
 			const visibleLines = visibleLineRange().end - visibleLineRange().start
-			for (let i = 0; i < visibleLines; i++) {
-				cursorActions.moveCursor('up')
-			}
+			cursorActions.moveCursorByLines(-visibleLines)
 			scrollCursorIntoView()
 			return
 		}
@@ -319,11 +302,8 @@ export const TextFileEditorInner = (props: TextFileEditorProps) => {
 		// Page Down
 		if (event.key === 'PageDown') {
 			event.preventDefault()
-			// Move cursor down by visible page height
 			const visibleLines = visibleLineRange().end - visibleLineRange().start
-			for (let i = 0; i < visibleLines; i++) {
-				cursorActions.moveCursor('down')
-			}
+			cursorActions.moveCursorByLines(visibleLines)
 			scrollCursorIntoView()
 			return
 		}
@@ -410,4 +390,3 @@ export const TextFileEditorInner = (props: TextFileEditorProps) => {
 		</Show>
 	)
 }
-

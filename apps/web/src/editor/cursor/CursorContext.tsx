@@ -16,6 +16,7 @@ import {
 	moveCursorLeft,
 	moveCursorRight,
 	moveVertically,
+	moveByLines,
 	moveToLineStart,
 	moveToLineEnd,
 	moveToDocStart,
@@ -27,6 +28,7 @@ export type CursorActions = {
 	setCursor: (position: CursorPosition) => void
 	setCursorOffset: (offset: number) => void
 	moveCursor: (direction: CursorDirection, ctrlKey?: boolean) => void
+	moveCursorByLines: (delta: number) => void
 	moveCursorHome: (ctrlKey?: boolean) => void
 	moveCursorEnd: (ctrlKey?: boolean) => void
 	setCursorFromClick: (lineIndex: number, column: number) => void
@@ -172,6 +174,22 @@ export function CursorProvider(props: CursorProviderProps) {
 					preferredColumn: result.preferredColumn
 				}))
 			}
+		},
+
+		moveCursorByLines: (delta: number) => {
+			const state = currentState()
+			const entries = props.lineEntries()
+
+			const result = moveByLines(
+				state.position,
+				delta,
+				state.preferredColumn,
+				entries
+			)
+			updateCurrentState(() => ({
+				position: result.position,
+				preferredColumn: result.preferredColumn
+			}))
 		},
 
 		moveCursorHome: (ctrlKey = false) => {
