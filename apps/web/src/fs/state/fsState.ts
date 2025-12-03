@@ -5,13 +5,10 @@ import localforage from 'localforage'
 import { createMemo, createSignal } from 'solid-js'
 import { createStore, unwrap } from 'solid-js/store'
 import type { ParseResult } from '~/utils/parse'
-import {
-	type PieceTableSnapshot,
-	getPieceTableText
-} from '~/utils/pieceTable'
+import { type PieceTableSnapshot, getPieceTableText } from '~/utils/pieceTable'
 import { DEFAULT_SOURCE } from '../config/constants'
-import type { FsState } from '../types'
 import { findNode } from '../runtime/tree'
+import type { FsState } from '../types'
 
 export const createFsState = () => {
 	const [tree, setTree, isTreeReady] = makePersisted(
@@ -50,6 +47,7 @@ export const createFsState = () => {
 		Uint8Array | undefined
 	>(undefined)
 	const [selectedFileContent, setSelectedFileContent] = createSignal('')
+	const [selectedFileLoading, setSelectedFileLoading] = createSignal(false)
 	const [error, setError] = createSignal<string | undefined>(undefined)
 	const [loading, setLoading] = createSignal(false)
 	const [fileStats, setFileStats] = createStore<
@@ -68,6 +66,7 @@ export const createFsState = () => {
 		}
 		return prev
 	})
+
 	const lastKnownFilePath = () => lastKnownFileNode()?.path
 	const hydration = Promise.allSettled([isTreeReady]).then(() => undefined)
 
@@ -96,6 +95,9 @@ export const createFsState = () => {
 		pieceTables,
 		get selectedPath() {
 			return selectedPath()
+		},
+		get selectedFileLoading() {
+			return selectedFileLoading()
 		},
 		get activeSource() {
 			return activeSource()
@@ -154,6 +156,7 @@ export const createFsState = () => {
 		setSelectedFileSize,
 		setSelectedFilePreviewBytes,
 		setSelectedFileContent,
+		setSelectedFileLoading,
 		setError,
 		setLoading,
 		setFileStats: updateFileStats,

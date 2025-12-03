@@ -16,9 +16,7 @@ export type PieceTableSnapshot = {
 	pieces: Piece[]
 }
 
-export const createPieceTableSnapshot = (
-	original: string
-): PieceTableSnapshot => ({
+const _createPieceTableSnapshot = (original: string): PieceTableSnapshot => ({
 	buffers: {
 		original,
 		add: ''
@@ -38,11 +36,9 @@ export const getPieceTableLength = (snapshot: PieceTableSnapshot): number =>
 	snapshot.pieces.reduce((sum, piece) => sum + piece.length, 0)
 
 const bufferFor = (snapshot: PieceTableSnapshot, piece: Piece): string =>
-	piece.buffer === 'original'
-		? snapshot.buffers.original
-		: snapshot.buffers.add
+	piece.buffer === 'original' ? snapshot.buffers.original : snapshot.buffers.add
 
-export const getPieceTableText = (
+const _getPieceTableText = (
 	snapshot: PieceTableSnapshot,
 	start = 0,
 	end?: number
@@ -97,11 +93,10 @@ const findPiece = (
 		pos += piece.length
 	}
 
-	// if offset == length, we return just after last piece
 	return { index: snapshot.pieces.length, innerOffset: 0 }
 }
 
-export const insertIntoPieceTable = (
+const _insertIntoPieceTable = (
 	snapshot: PieceTableSnapshot,
 	offset: number,
 	text: string
@@ -122,7 +117,6 @@ export const insertIntoPieceTable = (
 		length: text.length
 	}
 
-	// empty doc
 	if (snapshot.pieces.length === 0) {
 		return {
 			buffers: {
@@ -133,7 +127,6 @@ export const insertIntoPieceTable = (
 		}
 	}
 
-	// append at end
 	if (offset === length) {
 		return {
 			buffers: {
@@ -149,13 +142,11 @@ export const insertIntoPieceTable = (
 
 	const newPieces: Piece[] = []
 
-	// pieces before target
 	for (let i = 0; i < index; i++) {
 		newPieces.push(snapshot.pieces[i]!)
 	}
 
 	if (target) {
-		// left part of split target (if we insert in the middle)
 		if (innerOffset > 0) {
 			newPieces.push({
 				buffer: target.buffer,
@@ -164,10 +155,8 @@ export const insertIntoPieceTable = (
 			})
 		}
 
-		// the inserted piece
 		newPieces.push(newPiece)
 
-		// right part of split target
 		const rightLen = target.length - innerOffset
 		if (rightLen > 0) {
 			newPieces.push({
@@ -177,12 +166,10 @@ export const insertIntoPieceTable = (
 			})
 		}
 
-		// rest of the original pieces
 		for (let i = index + 1; i < snapshot.pieces.length; i++) {
 			newPieces.push(snapshot.pieces[i]!)
 		}
 	} else {
-		// no target piece (offset at or after end) – just append
 		newPieces.push(newPiece)
 	}
 
@@ -195,7 +182,7 @@ export const insertIntoPieceTable = (
 	}
 }
 
-export const deleteFromPieceTable = (
+const _deleteFromPieceTable = (
 	snapshot: PieceTableSnapshot,
 	offset: number,
 	length: number
@@ -216,11 +203,9 @@ export const deleteFromPieceTable = (
 		const pieceStart = pos
 		const pieceEnd = pos + piece.length
 
-		// no overlap
 		if (pieceEnd <= delStart || pieceStart >= delEnd) {
 			newPieces.push(piece)
 		} else {
-			// some overlap, maybe keep left and/or right fragment
 			const leftKeep = Math.max(0, delStart - pieceStart)
 			const rightKeep = Math.max(0, pieceEnd - delEnd)
 
@@ -256,51 +241,54 @@ export const deleteFromPieceTable = (
 export const debugPieceTable = (snapshot: PieceTableSnapshot) =>
 	snapshot.pieces.map(piece => ({ ...piece }))
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Tracked versions for performance monitoring
-// These only log when operations exceed threshold (default 1ms)
-// ─────────────────────────────────────────────────────────────────────────────
+const PIECE_TABLE_TIMING_THRESHOLD = 1
 
-const PIECE_TABLE_TIMING_THRESHOLD = 1 // ms
-
-export const createPieceTableSnapshotTracked = (
+export const createPieceTableSnapshot = (
 	original: string
 ): PieceTableSnapshot =>
-	trackMicro(
-		'pieceTable:create',
-		() => createPieceTableSnapshot(original),
-		{ metadata: { length: original.length }, threshold: PIECE_TABLE_TIMING_THRESHOLD }
-	)
+	trackMicro('pieceTable:create', () => _createPieceTableSnapshot(original), {
+		metadata: { length: original.length },
+		threshold: PIECE_TABLE_TIMING_THRESHOLD
+	})
 
-export const getPieceTableTextTracked = (
+export const getPieceTableText = (
 	snapshot: PieceTableSnapshot,
 	start = 0,
 	end?: number
 ): string =>
 	trackMicro(
 		'pieceTable:getText',
-		() => getPieceTableText(snapshot, start, end),
-		{ metadata: { pieces: snapshot.pieces.length }, threshold: PIECE_TABLE_TIMING_THRESHOLD }
+		() => _getPieceTableText(snapshot, start, end),
+		{
+			metadata: { pieces: snapshot.pieces.length },
+			threshold: PIECE_TABLE_TIMING_THRESHOLD
+		}
 	)
 
-export const insertIntoPieceTableTracked = (
+export const insertIntoPieceTable = (
 	snapshot: PieceTableSnapshot,
 	offset: number,
 	text: string
 ): PieceTableSnapshot =>
 	trackMicro(
 		'pieceTable:insert',
-		() => insertIntoPieceTable(snapshot, offset, text),
-		{ metadata: { insertLength: text.length }, threshold: PIECE_TABLE_TIMING_THRESHOLD }
+		() => _insertIntoPieceTable(snapshot, offset, text),
+		{
+			metadata: { insertLength: text.length },
+			threshold: PIECE_TABLE_TIMING_THRESHOLD
+		}
 	)
 
-export const deleteFromPieceTableTracked = (
+export const deleteFromPieceTable = (
 	snapshot: PieceTableSnapshot,
 	offset: number,
 	length: number
 ): PieceTableSnapshot =>
 	trackMicro(
 		'pieceTable:delete',
-		() => deleteFromPieceTable(snapshot, offset, length),
-		{ metadata: { deleteLength: length }, threshold: PIECE_TABLE_TIMING_THRESHOLD }
+		() => _deleteFromPieceTable(snapshot, offset, length),
+		{
+			metadata: { deleteLength: length },
+			threshold: PIECE_TABLE_TIMING_THRESHOLD
+		}
 	)

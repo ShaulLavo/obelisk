@@ -21,4 +21,9 @@ export const config = [
       },
     },
   },
+  {
+    rules: {
+      "prefer-const": "off",
+    },
+  },
 ];

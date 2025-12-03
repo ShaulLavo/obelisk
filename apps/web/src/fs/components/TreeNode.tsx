@@ -6,7 +6,7 @@ export const TreeNode = (props: { node: FsTreeNode }) => {
 	const [state, actions] = useFs()
 	const isDir = () => props.node.kind === 'dir'
 	const isSelected = () => state.selectedPath === props.node.path
-	const isOpen = () => (isDir() ? state.expanded[props.node.path] : false)
+	const isOpen = () => isDir() && state.expanded[props.node.path]
 
 	const handleDirClick = () => {
 		actions.toggleDir(props.node.path)

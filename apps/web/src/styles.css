@@ -35,3 +35,47 @@
 	scrollbar-width: thin;
 	scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
 }
+
+/* Terminal-style cursor blink
+   - Instant on/off (no fade), like most Linux/macOS terminals.
+   - Timing reference:
+     * 530–630ms: terminals & editors (natural feel)
+     * ~1s: browser default caret blink
+   TODO: Adjust blink speed if your UI feels too "fast" or "slow".
+*/
+@keyframes cursor-blink-hard {
+	from,
+	to {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0;
+	}
+}
+
+.cursor-blink-hard {
+	animation: cursor-blink-hard 0.9s steps(1) infinite;
+}
+
+/* VS Code-style cursor blink
+   - Smooth fade-out & fade-in (not a hard jump).
+   - Timing reference:
+     * 530–630ms: typical editor blink speeds
+     * ~1s: web/CSS default blink
+   TODO: Play with easing & duration to match your preferred feel.
+*/
+@keyframes cursor-blink-soft {
+	0% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0;
+	}
+	100% {
+		opacity: 1;
+	}
+}
+
+.cursor-blink-soft {
+	animation: cursor-blink-soft 1s linear infinite;
+}

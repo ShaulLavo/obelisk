@@ -1,9 +1,6 @@
-import { trackMicro } from '~/perf'
 import type { LineEntry } from '../types'
 import type { CursorPosition, CursorNavigationContext } from './types'
 import { createCursorPosition } from './types'
-
-const CURSOR_TIMING_THRESHOLD = 1 // ms
 
 /**
  * Convert an absolute offset to a line/column position
@@ -336,35 +333,3 @@ export const calculateColumnFromX = (
 	const column = Math.round(x / charWidth)
 	return Math.max(0, Math.min(column, maxColumn))
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Tracked versions for performance monitoring
-// These only log when operations exceed threshold (default 1ms)
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Tracked version of offsetToPosition that logs slow lookups
- */
-export const offsetToPositionTracked = (
-	offset: number,
-	lineEntries: LineEntry[]
-): CursorPosition =>
-	trackMicro(
-		'cursor:offsetToPosition',
-		() => offsetToPosition(offset, lineEntries),
-		{ metadata: { offset, lineCount: lineEntries.length }, threshold: CURSOR_TIMING_THRESHOLD }
-	)
-
-/**
- * Tracked version of positionToOffset that logs slow conversions
- */
-export const positionToOffsetTracked = (
-	line: number,
-	column: number,
-	lineEntries: LineEntry[]
-): number =>
-	trackMicro(
-		'cursor:positionToOffset',
-		() => positionToOffset(line, column, lineEntries),
-		{ metadata: { line, column, lineCount: lineEntries.length }, threshold: CURSOR_TIMING_THRESHOLD }
-	)

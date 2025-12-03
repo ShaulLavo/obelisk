@@ -1,28 +1,17 @@
-import type { FsTreeNode } from '@repo/fs'
-import { trackMicro } from '~/perf'
+import type { FsContext } from '@repo/fs'
 import { fileHandleCache } from './fsRuntime'
 
-const FILE_HANDLES_TIMING_THRESHOLD = 1 // ms
+export const getCachedFileHandle = (path: string) =>
+	fileHandleCache.get(path)
 
-export function collectFileHandles(node: FsTreeNode) {
-	if (node.kind === 'file' && node.handle) {
-		fileHandleCache.set(node.path, node.handle)
-	}
+export async function getOrCreateFileHandle(
+	ctx: FsContext,
+	path: string
+): Promise<FileSystemFileHandle> {
+	const cached = fileHandleCache.get(path)
+	if (cached) return cached
 
-	if (node.kind === 'dir') {
-		for (const child of node.children) {
-			collectFileHandles(child)
-		}
-	}
-}
-
-/**
- * Tracked version of collectFileHandles that logs slow traversals
- */
-export function collectFileHandlesTracked(node: FsTreeNode) {
-	return trackMicro(
-		'tree:collectFileHandles',
-		() => collectFileHandles(node),
-		{ threshold: FILE_HANDLES_TIMING_THRESHOLD }
-	)
+	const handle = await ctx.getFileHandleForRelative(path, false)
+	fileHandleCache.set(path, handle)
+	return handle
 }

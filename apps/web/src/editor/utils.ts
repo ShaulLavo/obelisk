@@ -110,3 +110,12 @@ export const textToLineEntries = (text: string): LineEntry[] => {
 
 	return entries
 }
+
+export const calculateColumnFromClick = (
+	clickX: number,
+	charWidth: number,
+	maxColumn: number
+): number => {
+	const column = Math.round(clickX / charWidth)
+	return Math.max(0, Math.min(column, maxColumn))
+}

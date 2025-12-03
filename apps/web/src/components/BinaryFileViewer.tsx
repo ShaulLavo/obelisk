@@ -17,6 +17,7 @@ const byteToHex = (byte: number): string =>
 type BinaryFileViewerProps = {
 	data: Accessor<Uint8Array | undefined>
 	stats: Accessor<ParseResult | undefined>
+	fileSize: Accessor<number | undefined>
 	fontSize: Accessor<number>
 	fontFamily: Accessor<string>
 }
@@ -119,6 +120,7 @@ export const BinaryFileViewer = (props: BinaryFileViewerProps) => {
 
 	const bytes = () => props.data()
 	const byteLength = () => bytes()?.byteLength ?? 0
+	const fileSize = () => props.fileSize()
 	const totalRows = () =>
 		byteLength() > 0 ? Math.ceil(byteLength() / BYTES_PER_ROW) : 0
 
@@ -158,15 +160,23 @@ export const BinaryFileViewer = (props: BinaryFileViewerProps) => {
 			}
 		}
 
-		if (byteLength() > 0) {
-			parts.push(`${byteLength().toLocaleString()} bytes (preview)`)
+		const size = fileSize()
+		const previewBytes = byteLength()
+
+		if (typeof size === 'number' && size >= 0) {
+			parts.push(`${size.toLocaleString()} bytes total`)
+			if (previewBytes > 0 && size > previewBytes) {
+				parts.push(`${previewBytes.toLocaleString()} bytes shown (preview)`)
+			}
+		} else if (previewBytes > 0) {
+			parts.push(`${previewBytes.toLocaleString()} bytes (preview)`)
 		}
 
 		return parts.join(' • ')
 	})
 
 	return (
-		<div class="mt-4 flex-1 overflow-auto rounded border border-zinc-800/70 bg-zinc-950/30">
+		<div class="mt-4 flex-1 overflow-hidden rounded border border-zinc-800/70 bg-zinc-950/30 flex flex-col">
 			<div
 				class="border-b border-zinc-800/70 bg-zinc-900/60 px-3 py-2 text-[11px] uppercase tracking-[0.08em] text-zinc-400"
 				style={{

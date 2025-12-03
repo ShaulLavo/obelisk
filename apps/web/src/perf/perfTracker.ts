@@ -28,9 +28,9 @@ const convertBreakdown = (tableOutput: string): PerfBreakdownEntry[] => {
 		if (!line.startsWith('|') || line.startsWith('+-')) continue
 		if (line.includes('| step') && line.includes('| duration')) continue
 
-		// Match table rows: | label | 123.45ms |
-		// Using a more lenient regex that handles variable spacing
-		const match = line.match(/^\|\s*(.+?)\s*\|\s*([\d.]+)ms\s*\|$/)
+		// Match table rows: "| label | 123.45ms |"
+		// Keep leading spaces inside the label so we preserve indentation
+		const match = line.match(/^\|\s(.+?)\s*\|\s*([\d.]+)ms\s*\|$/)
 		if (match) {
 			const rawLabel = match[1]!
 			// Skip total and untracked rows - they'll be recalculated

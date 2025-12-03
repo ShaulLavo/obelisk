@@ -1,9 +1,13 @@
+import { logger } from '~/logger'
+import { formatBytes } from '~/utils/bytes'
 import type { PerfBreakdownEntry, PerfRecord, PerfSummary } from './perfStore'
 import { getSummary, getRecentForOperation } from './perfStore'
 
 type LogLevel = 'debug' | 'info' | 'warn'
 
 let currentLogLevel: LogLevel = 'debug'
+
+const perfLogger = logger.withTag('perf')
 
 export const setLogLevel = (level: LogLevel): void => {
 	currentLogLevel = level
@@ -90,32 +94,46 @@ const formatBreakdownTable = (
 	].join('\n')
 }
 
+const logLevelMethods: Record<LogLevel, (msg: string) => void> = {
+	debug: msg => perfLogger.debug(msg),
+	info: msg => perfLogger.info(msg),
+	warn: msg => perfLogger.warn(msg)
+}
+
+const logWithLevel = (level: LogLevel, message: string): void => {
+	logLevelMethods[level](message)
+}
+
 export const logOperation = (
 	record: PerfRecord,
 	options: { showBreakdown?: boolean; level?: LogLevel } = {}
 ): void => {
 	const { showBreakdown = true, level = 'debug' } = options
-
 	if (!shouldLog(level)) return
 
 	const metaStr = record.metadata
-		? ` | ${Object.entries(record.metadata)
+		? `\n${Object.entries(record.metadata)
 				.map(([k, v]) => `${k}: ${v}`)
 				.join(', ')}`
 		: ''
 
-	console.groupCollapsed(
-		`%c⏱ ${record.name}%c ${formatDuration(record.duration)}${metaStr}`,
-		'color: #60a5fa; font-weight: bold',
-		'color: #a1a1aa'
-	)
+	const header = `\n⏱ ${record.name} ${formatDuration(record.duration)}${metaStr}`
+	let message = header
 
 	if (showBreakdown && record.breakdown.length > 0) {
 		const table = formatBreakdownTable(record.breakdown, record.duration)
-		console.log(`%c${table}`, 'color: #71717a; font-family: monospace')
+		if (table) {
+			message = `${header}\n${table}`
+		}
 	}
 
-	console.groupEnd()
+	const fileSizeMeta = record.metadata?.fileSize
+	if (typeof fileSizeMeta === 'number' && fileSizeMeta >= 0) {
+		const sizeLine = `file size: ${formatBytes(fileSizeMeta)}`
+		message = `${message}\n${sizeLine}`
+	}
+
+	logWithLevel(level, message)
 }
 
 export const logOperationSimple = (
@@ -131,11 +149,7 @@ export const logOperationSimple = (
 				.join(', ')}`
 		: ''
 
-	console.log(
-		`%c⏱ ${name}%c ${formatDuration(duration)}${metaStr}`,
-		'color: #60a5fa',
-		'color: #a1a1aa'
-	)
+	perfLogger.debug(`⏱ ${name} ${formatDuration(duration)}${metaStr}`)
 }
 
 const formatSummaryTable = (summaries: PerfSummary[]): string => {
@@ -173,9 +187,8 @@ export const logSummary = async (filter?: {
 }): Promise<void> => {
 	const summaries = await getSummary(filter)
 
-	console.group('%c📊 Performance Summary', 'color: #22c55e; font-weight: bold')
-	console.log(formatSummaryTable(summaries))
-	console.groupEnd()
+	perfLogger.info('📊 Performance Summary')
+	perfLogger.info(formatSummaryTable(summaries))
 }
 
 export const logRecentOperations = async (
@@ -184,26 +197,27 @@ export const logRecentOperations = async (
 ): Promise<void> => {
 	const records = await getRecentForOperation(name, limit)
 
-	console.group(
-		`%c📈 Recent "${name}" operations (${records.length})`,
-		'color: #f59e0b; font-weight: bold'
-	)
+	perfLogger.info(`📈 Recent "${name}" operations (${records.length})`)
 
 	for (const record of records) {
 		const time = new Date(record.timestamp).toLocaleTimeString()
-		console.log(
-			`%c${time}%c ${formatDuration(record.duration)}`,
-			'color: #71717a',
-			'color: #e5e5e5'
-		)
+		perfLogger.debug(`${time} ${formatDuration(record.duration)}`)
 	}
+}
 
-	console.groupEnd()
+declare global {
+	interface Window {
+		perfLogger?: {
+			logSummary: typeof logSummary
+			logRecentOperations: typeof logRecentOperations
+			setLogLevel: typeof setLogLevel
+		}
+	}
 }
 
 // Expose for dev console usage
 if (typeof window !== 'undefined') {
-	;(window as unknown as Record<string, unknown>).perfLogger = {
+	window.perfLogger = {
 		logSummary,
 		logRecentOperations,
 		setLogLevel

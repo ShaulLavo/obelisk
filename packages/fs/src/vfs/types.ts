@@ -30,6 +30,7 @@ export interface FsDirTreeNode extends FsTreeBase {
 	kind: 'dir'
 	children: FsTreeNode[]
 	handle?: FileSystemDirectoryHandle
+	isLoaded?: boolean
 }
 
 export type FsTreeNode = FsFileTreeNode | FsDirTreeNode
@@ -41,6 +42,7 @@ export interface FsTreeOptions {
 	filter?(node: FsTreeNode): boolean | Promise<boolean>
 	withHandles?: boolean
 	withFileMeta?: boolean
+	shouldDescend?(node: FsDirTreeNode): boolean | Promise<boolean>
 }
 
 export type VfsReadableStream = ReadableStream<

@@ -1,99 +1,86 @@
-import {
-	Show,
-	createEffect,
-	createMemo,
-	createSignal,
-	on,
-	onCleanup,
-	onMount
-} from 'solid-js'
+import { Show, createMemo } from 'solid-js'
 import type { Accessor } from 'solid-js'
 import { estimateLineHeight } from '../utils'
 import type { CursorState } from '../cursor'
+import type { CursorMode } from '../types'
 
-// Cursor visual constants
-const CURSOR_WIDTH = 2 // pixels
-const CURSOR_HEIGHT_SHRINK = 2 // shrink cursor height slightly to not touch edges
+const CURSOR_WIDTH = 2
+const CURSOR_HEIGHT_SHRINK = 2
 
 export type CursorProps = {
 	cursorState: Accessor<CursorState>
 	fontSize: number
 	fontFamily: string
-	charWidth: number // measured character width
-	lineNumberWidth: number // Width of the line number gutter
-	paddingLeft: number // Padding before text content
-	visibleLineStart: number // First visible line index
-	visibleLineEnd: number // Last visible line index
-	getLineY: (lineIndex: number) => number // Get Y position for a line
+	charWidth: number
+	lineNumberWidth: number
+	paddingLeft: number
+	visibleLineStart: number
+	visibleLineEnd: number
+	getLineY: (lineIndex: number) => number
+	cursorMode: Accessor<CursorMode>
 }
 
 export const Cursor = (props: CursorProps) => {
-	const [visible, setVisible] = createSignal(true)
-
-	// Blink timer
-	let blinkInterval: ReturnType<typeof setInterval> | null = null
-
-	onMount(() => {
-		// Start blinking
-		blinkInterval = setInterval(() => {
-			if (props.cursorState().isBlinking) {
-				setVisible(v => !v)
-			} else {
-				setVisible(true)
-			}
-		}, 530) // Standard cursor blink rate
-	})
-
-	onCleanup(() => {
-		if (blinkInterval) {
-			clearInterval(blinkInterval)
-		}
-	})
-
-	// Reset visibility when cursor moves (show cursor immediately after movement)
-	createEffect(
-		on(
-			() => props.cursorState().position.offset,
-			() => {
-				setVisible(true)
-			}
-		)
-	)
-
-	// Check if cursor line is visible
 	const isVisible = createMemo(() => {
 		const line = props.cursorState().position.line
 		return line >= props.visibleLineStart && line <= props.visibleLineEnd
 	})
 
-	// Calculate cursor X position based on column
+	const shouldBlink = createMemo(() => props.cursorState().isBlinking)
+
 	const cursorX = createMemo(() => {
 		const column = props.cursorState().position.column
 		return props.lineNumberWidth + props.paddingLeft + column * props.charWidth
 	})
 
-	// Calculate cursor Y position
+	const cursorYOffset = createMemo(() =>
+		props.cursorMode() === 'terminal' ? 0 : CURSOR_HEIGHT_SHRINK / 2
+	)
+
 	const cursorY = createMemo(() => {
 		const line = props.cursorState().position.line
-		return props.getLineY(line) + CURSOR_HEIGHT_SHRINK / 2
+		return props.getLineY(line) + cursorYOffset()
 	})
 
-	// Cursor height - slightly smaller than line height
 	const cursorHeight = createMemo(() => {
-		return estimateLineHeight(props.fontSize) - CURSOR_HEIGHT_SHRINK
+		const base = estimateLineHeight(props.fontSize)
+		return props.cursorMode() === 'terminal'
+			? base
+			: Math.max(1, base - CURSOR_HEIGHT_SHRINK)
 	})
+
+	const cursorWidth = createMemo(() =>
+		props.cursorMode() === 'terminal' ? props.charWidth : CURSOR_WIDTH
+	)
+
+	const cursorBorderRadius = createMemo(() =>
+		props.cursorMode() === 'terminal' ? '0px' : '1px'
+	)
+
+	const cursorOpacity = createMemo(() =>
+		props.cursorMode() === 'terminal' ? 0.9 : 1
+	)
 
 	return (
-		<Show when={isVisible() && visible()}>
+		<Show when={isVisible()}>
 			<div
 				class="pointer-events-none absolute z-10"
+				classList={{
+					[props.cursorMode() === 'regular'
+						? 'cursor-blink-soft'
+						: 'cursor-blink-hard']: shouldBlink()
+				}}
 				style={{
 					left: `${cursorX()}px`,
 					top: `${cursorY()}px`,
-					width: `${CURSOR_WIDTH}px`,
+					width: `${cursorWidth()}px`,
 					height: `${cursorHeight()}px`,
-					'background-color': '#e4e4e7', // zinc-200
-					'border-radius': '1px'
+					'background-color':
+						props.cursorMode() === 'terminal' ? '#f4f4f5' : '#e4e4e7',
+					'border-radius': cursorBorderRadius(),
+					'mix-blend-mode':
+						props.cursorMode() === 'terminal' ? 'difference' : 'normal',
+					opacity: cursorOpacity()
 				}}
 			/>
 		</Show>

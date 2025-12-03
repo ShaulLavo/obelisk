@@ -1,4 +1,5 @@
-import { batch, type JSX, onMount } from 'solid-js'
+import type { FsDirTreeNode } from '@repo/fs'
+import { batch, createEffect, type JSX, onMount } from 'solid-js'
 import {
 	createMinimalBinaryParseResult,
 	detectBinaryFromPreview,
@@ -8,17 +9,21 @@ import { trackOperation } from '~/perf'
 import { createPieceTableSnapshot } from '~/utils/pieceTable'
 import { DEFAULT_SOURCE } from '../config/constants'
 import { createFsMutations } from '../fsMutations'
-import { collectFileHandles } from '../runtime/fileHandles'
-import { buildTree, fileHandleCache, primeFsCache } from '../runtime/fsRuntime'
+import { buildTree } from '../runtime/fsRuntime'
 import {
 	getFileSize,
 	readFilePreviewBytes,
 	readFileText
 } from '../runtime/streaming'
+import { restoreHandleCache } from '../runtime/handleCache'
 import { findNode } from '../runtime/tree'
 import { createFsState } from '../state/fsState'
 import type { FsSource } from '../types'
-import { FsContext, type FsContextValue } from './FsContext'
+import {
+	FsContext,
+	type FsContextValue,
+	type SelectPathOptions
+} from './FsContext'
 
 export function FsProvider(props: { children: JSX.Element }) {
 	const {
@@ -31,6 +36,7 @@ export function FsProvider(props: { children: JSX.Element }) {
 		setSelectedFileSize,
 		setSelectedFilePreviewBytes,
 		setSelectedFileContent,
+		setSelectedFileLoading,
 		setError,
 		setLoading,
 		setFileStats,
@@ -42,27 +48,19 @@ export function FsProvider(props: { children: JSX.Element }) {
 	let selectRequestId = 0
 	const MAX_FILE_SIZE_BYTES = 1024 * 1024 * 100 // 100 MB
 
-	const isValidHandle = (
-		handle: unknown
-	): handle is FileSystemDirectoryHandle => {
-		if (!handle || typeof handle !== 'object') return false
-		// Memory handles lose their methods after IndexedDB serialization
-		const h = handle as { entries?: unknown; [Symbol.asyncIterator]?: unknown }
-		return (
-			typeof h.entries === 'function' ||
-			typeof h[Symbol.asyncIterator] === 'function'
+	const getRestorableFilePath = (tree: FsDirTreeNode) => {
+		const candidates = [state.selectedPath, state.lastKnownFilePath].filter(
+			(path): path is string => typeof path === 'string'
 		)
-	}
 
-	const restoreHandleCache = () => {
-		if (!state.tree) return
-
-		if (state.tree.kind === 'dir' && isValidHandle(state.tree.handle)) {
-			primeFsCache(state.activeSource ?? DEFAULT_SOURCE, state.tree.handle)
+		for (const candidate of candidates) {
+			const node = findNode(tree, candidate)
+			if (node?.kind === 'file') {
+				return node.path
+			}
 		}
 
-		fileHandleCache.clear()
-		collectFileHandles(state.tree)
+		return undefined
 	}
 
 	const refresh = async (
@@ -73,25 +71,22 @@ export function FsProvider(props: { children: JSX.Element }) {
 		clearPieceTables()
 
 		try {
-			await trackOperation(
-				'fs:refresh',
-				async ({ timeAsync, timeSync }) => {
-					const built = await timeAsync('build-tree', () => buildTree(source))
+			const built = await buildTree(source)
+			const restorablePath = getRestorableFilePath(built)
 
-					timeSync('apply-state', () => {
-						batch(() => {
-							setTree(built)
-							setActiveSource(source)
-							setExpanded(expanded => ({
-								...expanded,
-								[built.path]: expanded[built.path] ?? true
-							}))
-							setError(undefined)
-						})
-					})
-				},
-				{ metadata: { source } }
-			)
+			batch(() => {
+				setTree(built)
+				setActiveSource(source)
+				setExpanded(expanded => ({
+					...expanded,
+					[built.path]: expanded[built.path] ?? true
+				}))
+				setError(undefined)
+			})
+
+			if (restorablePath) {
+				await selectPath(restorablePath, { forceReload: true })
+			}
 		} catch (error) {
 			setError(
 				error instanceof Error ? error.message : 'Failed to load filesystem'
@@ -114,10 +109,10 @@ export function FsProvider(props: { children: JSX.Element }) {
 		setError(error instanceof Error ? error.message : 'Failed to read file')
 	}
 
-	const selectPath = async (path: string) => {
+	const selectPath = async (path: string, options?: SelectPathOptions) => {
 		const tree = state.tree
 		if (!tree) return
-		if (state.selectedPath === path) return
+		if (state.selectedPath === path && !options?.forceReload) return
 
 		const node = findNode(tree, path)
 		if (!node) return
@@ -125,19 +120,23 @@ export function FsProvider(props: { children: JSX.Element }) {
 		if (node.kind === 'dir') {
 			setSelectedPath(path)
 			setSelectedFileSize(undefined)
+			setSelectedFileLoading(false)
 			return
 		}
 
 		const requestId = ++selectRequestId
+		setSelectedFileLoading(true)
+		const source = state.activeSource ?? DEFAULT_SOURCE
+		const perfMetadata: Record<string, unknown> = { path, source }
 
-		await trackOperation(
-			'fs:selectPath',
-			async ({ timeSync, timeAsync }) => {
-				const source = state.activeSource ?? DEFAULT_SOURCE
-
+		try {
+			await trackOperation(
+				'fs:selectPath',
+				async ({ timeSync, timeAsync }) => {
 				const fileSize = await timeAsync('get-file-size', () =>
 					getFileSize(source, path)
 				)
+				perfMetadata.fileSize = fileSize
 				if (requestId !== selectRequestId) return
 
 				let selectedFileContentValue = ''
@@ -224,14 +223,19 @@ export function FsProvider(props: { children: JSX.Element }) {
 						}
 					})
 				})
-			},
-			{
-				metadata: { path, source: state.activeSource ?? DEFAULT_SOURCE }
+				},
+				{
+					metadata: perfMetadata
+				}
+			).catch(error => {
+				if (requestId !== selectRequestId) return
+				handleReadError(error)
+			})
+		} finally {
+			if (requestId === selectRequestId) {
+				setSelectedFileLoading(false)
 			}
-		).catch(error => {
-			if (requestId !== selectRequestId) return
-			handleReadError(error)
-		})
+		}
 	}
 
 	const { createDir, createFile, deleteNode } = createFsMutations({
@@ -260,9 +264,24 @@ export function FsProvider(props: { children: JSX.Element }) {
 
 	onMount(() => {
 		void hydration.then(() => {
-			restoreHandleCache()
+			restoreHandleCache({
+				tree: state.tree,
+				activeSource: state.activeSource
+			})
 			return refresh(state.activeSource ?? DEFAULT_SOURCE)
 		})
+	})
+	// sync file content onMount
+	// TODO there is a way better way 100% to do this
+	createEffect(() => {
+		const node = state.selectedNode
+		if (node?.kind === 'file')
+			localStorage.setItem('fs-last-known-file-path', node.path)
+	})
+	onMount(() => {
+		const lastFilePath =
+			localStorage.getItem('fs-last-known-file-path') ?? undefined
+		setSelectedPath(lastFilePath)
 	})
 
 	const value: FsContextValue = [

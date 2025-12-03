@@ -2,11 +2,14 @@ import type { VirtualItem, Virtualizer } from '@tanstack/virtual-core'
 import type { Accessor } from 'solid-js'
 import type { ParseResult } from '~/utils/parse'
 
+export type CursorMode = 'regular' | 'terminal'
+
 export type EditorProps = {
 	isFileSelected: Accessor<boolean>
 	stats: Accessor<ParseResult | undefined>
 	fontSize: Accessor<number>
 	fontFamily: Accessor<string>
+	cursorMode: Accessor<CursorMode>
 	previewBytes?: Accessor<Uint8Array | undefined>
 }
 
@@ -17,7 +20,7 @@ export type LineEntry = {
 	text: string
 }
 
-export type VirtualizedRowProps = {
+export type LineProps = {
 	rowVirtualizer: Virtualizer<HTMLDivElement, HTMLDivElement>
 	virtualRow: VirtualItem
 	entry: LineEntry
@@ -31,7 +34,7 @@ export type VirtualizedRowProps = {
 	isActive: boolean
 }
 
-export type VirtualizedRowsProps = {
+export type LinesProps = {
 	rows: Accessor<VirtualItem[]>
 	columns: Accessor<VirtualItem[]>
 	entries: Accessor<LineEntry[]>
@@ -42,6 +45,14 @@ export type VirtualizedRowsProps = {
 	fontFamily: Accessor<string>
 	onRowClick: (entry: LineEntry) => void
 	onPreciseClick: (lineIndex: number, column: number) => void
+	activeLineIndex: Accessor<number | null>
+}
+
+export type LineGuttersProps = {
+	rows: Accessor<VirtualItem[]>
+	entries: Accessor<LineEntry[]>
+	lineHeight: Accessor<number>
+	onRowClick: (entry: LineEntry) => void
 	activeLineIndex: Accessor<number | null>
 }
 

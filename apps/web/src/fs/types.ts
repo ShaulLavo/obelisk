@@ -9,6 +9,7 @@ export type FsState = {
 	expanded: Record<string, boolean>
 	selectedPath?: string
 	activeSource: FsSource
+	selectedFileLoading: boolean
 	selectedFileContent: string
 	selectedFilePreviewBytes?: Uint8Array
 	selectedFileSize?: number

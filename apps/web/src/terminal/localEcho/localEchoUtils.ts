@@ -1,4 +1,5 @@
 import { parse } from 'shell-quote'
+import { logger } from '~/logger'
 import type { TerminalPosition, AutocompleteHandler } from './types'
 
 /**
@@ -172,7 +173,9 @@ export function collectAutocompleteCandidates(
 			const results = fn(index, tokens, ...args)
 			return candidates.concat(results)
 		} catch (err) {
-			console.error('Autocomplete error:', err)
+			logger
+				.withTag('terminal')
+				.warn('Autocomplete error', { error: err })
 			return candidates
 		}
 	}, [])
@@ -203,4 +206,3 @@ export function getSharedFragment(fragment: string, candidates: string[]): strin
 
 	return getSharedFragment(newFragment, candidates)
 }
-

@@ -1,4 +1,5 @@
 import type { FsSource } from '../types'
+import { getOrCreateFileHandle } from './fileHandles'
 import { ensureFs } from './fsRuntime'
 
 const pendingFileTextReads = new Map<string, Promise<string>>()
@@ -82,7 +83,8 @@ export async function readFileText(
 ): Promise<string> {
 	return trackPendingRead(pendingFileTextReads, path, async () => {
 		const ctx = await ensureFs(source)
-		const file = ctx.file(path, 'r')
+		const handle = await getOrCreateFileHandle(ctx, path)
+		const file = await handle.getFile()
 		return file.text()
 	})
 }
@@ -92,28 +94,24 @@ export async function getFileSize(
 	path: string
 ): Promise<number> {
 	const ctx = await ensureFs(source)
-	const file = ctx.file(path, 'r')
-	return file.getSize()
+	const handle = await getOrCreateFileHandle(ctx, path)
+	const file = await handle.getFile()
+	return file.size
 }
 
 export async function readFilePreviewBytes(
 	source: FsSource,
 	path: string,
-	maxBytes = 8192
+	maxBytes = Infinity
 ): Promise<Uint8Array> {
 	const ctx = await ensureFs(source)
-	const file = ctx.file(path, 'r')
-	const reader = await file.createReader()
-
-	try {
-		const fileSize = await reader.getSize()
-		if (fileSize === 0) return new Uint8Array()
-		const toRead = Math.min(Math.max(maxBytes, 0), fileSize)
-		const buffer = await reader.read(toRead, { at: 0 })
-		return new Uint8Array(buffer)
-	} finally {
-		await reader.close().catch(() => undefined)
-	}
+	const handle = await getOrCreateFileHandle(ctx, path)
+	const file = await handle.getFile()
+	const fileSize = file.size
+	if (fileSize === 0) return new Uint8Array()
+	const toRead = Math.min(Math.max(maxBytes, 0), fileSize)
+	const buffer = await file.slice(0, toRead).arrayBuffer()
+	return new Uint8Array(buffer)
 }
 
 export async function safeReadFileText(
@@ -126,9 +124,9 @@ export async function safeReadFileText(
 
 	return trackPendingRead(pendingSafeFileTextReads, path, async () => {
 		const ctx = await ensureFs(source)
-		const file = ctx.file(path, 'r')
-		const reader = await file.createReader()
-		const fileSize = await reader.getSize()
+		const handle = await getOrCreateFileHandle(ctx, path)
+		const file = await handle.getFile()
+		const fileSize = file.size
 
 		let offset = 0
 		let loadedBytes = 0
@@ -136,59 +134,55 @@ export async function safeReadFileText(
 		const decoder = new TextDecoder()
 		const segments: string[] = []
 
-		try {
-			while (offset < fileSize) {
-				const remainingBytes = fileSize - offset
-				let toRead = Math.min(chunkSize, remainingBytes)
+		while (offset < fileSize) {
+			const remainingBytes = fileSize - offset
+			let toRead = Math.min(chunkSize, remainingBytes)
 
-				if (sizeLimit !== undefined) {
-					if (loadedBytes >= sizeLimit) {
-						truncated = true
-						break
-					}
-
-					if (loadedBytes + toRead > sizeLimit) {
-						toRead = sizeLimit - loadedBytes
-						truncated = true
-					}
-				}
-
-				if (toRead <= 0) {
-					truncated = sizeLimit !== undefined
+			if (sizeLimit !== undefined) {
+				if (loadedBytes >= sizeLimit) {
+					truncated = true
 					break
 				}
 
-				const buffer = await reader.read(toRead, { at: offset })
-				const bytes = new Uint8Array(buffer)
-				const bytesRead = bytes.byteLength
-
-				if (bytesRead === 0) break
-
-				const chunk = decoder.decode(bytes, {
-					stream: offset + bytesRead < fileSize
-				})
-				if (chunk) {
-					segments.push(chunk)
+				if (loadedBytes + toRead > sizeLimit) {
+					toRead = sizeLimit - loadedBytes
+					truncated = true
 				}
-
-				offset += bytesRead
-				loadedBytes += bytesRead
-
-				if (truncated) break
 			}
 
-			const flushed = decoder.decode()
-			if (flushed) {
-				segments.push(flushed)
+			if (toRead <= 0) {
+				truncated = sizeLimit !== undefined
+				break
 			}
 
-			return {
-				text: segments.join(''),
-				truncated,
-				totalSize: fileSize
+			const buffer = await file.slice(offset, offset + toRead).arrayBuffer()
+			const bytes = new Uint8Array(buffer)
+			const bytesRead = bytes.byteLength
+
+			if (bytesRead === 0) break
+
+			const chunk = decoder.decode(bytes, {
+				stream: offset + bytesRead < fileSize
+			})
+			if (chunk) {
+				segments.push(chunk)
 			}
-		} finally {
-			await reader.close().catch(() => undefined)
+
+			offset += bytesRead
+			loadedBytes += bytesRead
+
+			if (truncated) break
+		}
+
+		const flushed = decoder.decode()
+		if (flushed) {
+			segments.push(flushed)
+		}
+
+		return {
+			text: segments.join(''),
+			truncated,
+			totalSize: fileSize
 		}
 	})
 }
@@ -200,9 +194,9 @@ export async function createFileTextStream(
 ): Promise<FileTextStream> {
 	const chunkSize = resolveChunkSize(options?.chunkSize)
 	const ctx = await ensureFs(source)
-	const file = ctx.file(path, 'r')
-	const reader = await file.createReader()
-	const fileSize = await reader.getSize()
+	const handle = await getOrCreateFileHandle(ctx, path)
+	const file = await handle.getFile()
+	const fileSize = file.size
 
 	let position = 0
 	let closed = false
@@ -226,7 +220,7 @@ export async function createFileTextStream(
 
 		const remaining = fileSize - offset
 		const toRead = Math.min(chunkSize, remaining)
-		const buffer = await reader.read(toRead, { at: offset })
+		const buffer = await file.slice(offset, offset + toRead).arrayBuffer()
 		const bytes = new Uint8Array(buffer)
 		const bytesRead = bytes.byteLength
 
@@ -263,7 +257,7 @@ export async function createFileTextStream(
 		const offset = position
 		const remaining = fileSize - position
 		const toRead = Math.min(chunkSize, remaining)
-		const buffer = await reader.read(toRead, { at: offset })
+		const buffer = await file.slice(offset, offset + toRead).arrayBuffer()
 		const bytes = new Uint8Array(buffer)
 		const bytesRead = bytes.byteLength
 
@@ -293,7 +287,6 @@ export async function createFileTextStream(
 		if (closed) return
 		closed = true
 		sequentialDecoder.decode()
-		await reader.close().catch(() => undefined)
 	}
 
 	return {
