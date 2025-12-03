@@ -3,7 +3,7 @@ import { useFs } from '../../fs/context/FsContext'
 import { Lines } from './Lines'
 import { Cursor } from './Cursor'
 import { LineGutters } from './LineGutters'
-import { LINE_NUMBER_WIDTH, CONTENT_GAP, EDITOR_PADDING_LEFT } from '../consts'
+import { LINE_NUMBER_WIDTH, EDITOR_PADDING_LEFT } from '../consts'
 import { useCursor } from '../cursor'
 import {
 	createCursorScrollSync,
@@ -146,8 +146,8 @@ export const TextFileEditorInner = (props: TextFileEditorProps) => {
 							fontSize={props.fontSize()}
 							fontFamily={props.fontFamily()}
 							charWidth={layout.charWidth()}
-							lineNumberWidth={LINE_NUMBER_WIDTH + CONTENT_GAP}
-							paddingLeft={EDITOR_PADDING_LEFT}
+							lineNumberWidth={LINE_NUMBER_WIDTH}
+							paddingLeft={0}
 							visibleLineStart={layout.visibleLineRange().start}
 							visibleLineEnd={layout.visibleLineRange().end}
 							getLineY={layout.getLineY}

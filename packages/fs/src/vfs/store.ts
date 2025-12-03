@@ -255,24 +255,33 @@ class VfsStoreImpl implements VfsStore {
 		const writer = await this.#dataFile.createWriter()
 		const nextIndex = new Map<string, ItemPointer>()
 		let offset = 0
+		let rewriteSucceeded = false
 
-		for (const [key, pointer] of index.entries()) {
-			const chunk = await this.#readRawBytes(pointer)
-			if (chunk.byteLength > 0) {
-				await writer.write(chunk as unknown as BufferSource, {
-					at: offset
-				})
+		try {
+			for (const [key, pointer] of index.entries()) {
+				const chunk = await this.#readRawBytes(pointer)
+				if (chunk.byteLength > 0) {
+					await writer.write(chunk as unknown as BufferSource, {
+						at: offset
+					})
+				}
+				nextIndex.set(key, { start: offset, length: chunk.byteLength })
+				offset += chunk.byteLength
 			}
-			nextIndex.set(key, { start: offset, length: chunk.byteLength })
-			offset += chunk.byteLength
+
+			await writer.truncate(offset)
+			// NOTE: Deletion rewrites the whole data file, which is intentionally slow but predictable.
+			await writer.flush()
+			rewriteSucceeded = true
+		} finally {
+			await writer.close().catch(error => {
+				console.error('Failed to close VFS data file writer', error)
+			})
 		}
 
-		await writer.truncate(offset)
-		// NOTE: Deletion rewrites the whole data file, which is intentionally slow but predictable.
-		await writer.flush()
-		await writer.close()
-
-		await this.#persistIndex(nextIndex)
+		if (rewriteSucceeded) {
+			await this.#persistIndex(nextIndex)
+		}
 	}
 
 	async #readRawBytes(pointer: ItemPointer): Promise<Uint8Array> {

@@ -104,9 +104,7 @@ export const record = async (
 	return newRecord
 }
 
-export const getHistory = async (
-	filter?: PerfFilter
-): Promise<PerfRecord[]> => {
+export const getHistory = async (filter?: PerfFilter) => {
 	let { records } = await loadData()
 
 	if (filter?.name) {
@@ -118,7 +116,7 @@ export const getHistory = async (
 		records = records.filter(r => r.timestamp >= since)
 	}
 
-	return records
+	return records as ReadonlyArray<PerfRecord>
 }
 
 export const clear = async (): Promise<void> => {

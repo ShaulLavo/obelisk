@@ -5,9 +5,7 @@ import {
 	COLUMN_CHARS_PER_ITEM,
 	HORIZONTAL_VIRTUALIZER_OVERSCAN,
 	VERTICAL_VIRTUALIZER_OVERSCAN,
-	LINE_NUMBER_WIDTH,
-	CONTENT_GAP,
-	EDITOR_PADDING_LEFT
+	LINE_NUMBER_WIDTH
 } from '../consts'
 import { estimateColumnWidth, estimateLineHeight, measureCharWidth } from '../utils'
 import type { LineEntry } from '../types'
@@ -117,11 +115,7 @@ export function createTextEditorLayout(
 	const lineHeight = createMemo(() => estimateLineHeight(options.fontSize()))
 
 	const inputX = createMemo(
-		() =>
-			LINE_NUMBER_WIDTH +
-			CONTENT_GAP +
-			EDITOR_PADDING_LEFT +
-			cursorColumnIndex() * charWidth()
+		() => LINE_NUMBER_WIDTH + cursorColumnIndex() * charWidth()
 	)
 
 	const inputY = createMemo(() => cursorLineIndex() * lineHeight())
@@ -156,4 +150,3 @@ export function createTextEditorLayout(
 		columnTotalSize
 	}
 }
-

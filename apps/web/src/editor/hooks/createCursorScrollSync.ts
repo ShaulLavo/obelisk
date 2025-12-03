@@ -1,9 +1,4 @@
-import {
-	SCROLL_CONTEXT_ROWS,
-	LINE_NUMBER_WIDTH,
-	CONTENT_GAP,
-	EDITOR_PADDING_LEFT
-} from '../consts'
+import { SCROLL_CONTEXT_ROWS, LINE_NUMBER_WIDTH } from '../consts'
 
 const HORIZONTAL_SCROLL_PADDING = 20
 const HORIZONTAL_SCROLL_BUFFER = 40
@@ -65,22 +60,24 @@ export function createCursorScrollSync(
 
 		const cw = options.charWidth()
 		const cursorX = column * cw
-		const lineNumberWidth = LINE_NUMBER_WIDTH + CONTENT_GAP
-		const paddingLeft = EDITOR_PADDING_LEFT
+		const gutterWidth = LINE_NUMBER_WIDTH
 
 		const scrollLeft = scrollEl.scrollLeft
 		const viewportWidth = scrollEl.clientWidth
-		const absoluteCursorX = lineNumberWidth + paddingLeft + cursorX
+		const absoluteCursorX = gutterWidth + cursorX
 
-	// Check if cursor is outside horizontal viewport
-	if (absoluteCursorX < scrollLeft + lineNumberWidth + paddingLeft) {
-		scrollEl.scrollLeft = Math.max(
-			0,
-			absoluteCursorX - lineNumberWidth - paddingLeft - HORIZONTAL_SCROLL_PADDING
-		)
-	} else if (absoluteCursorX > scrollLeft + viewportWidth - HORIZONTAL_SCROLL_PADDING) {
-		scrollEl.scrollLeft = absoluteCursorX - viewportWidth + HORIZONTAL_SCROLL_BUFFER
-	}
+		// Check if cursor is outside horizontal viewport
+		if (absoluteCursorX < scrollLeft + gutterWidth) {
+			scrollEl.scrollLeft = Math.max(
+				0,
+				absoluteCursorX - gutterWidth - HORIZONTAL_SCROLL_PADDING
+			)
+		} else if (
+			absoluteCursorX >
+			scrollLeft + viewportWidth - HORIZONTAL_SCROLL_PADDING
+		) {
+			scrollEl.scrollLeft = absoluteCursorX - viewportWidth + HORIZONTAL_SCROLL_BUFFER
+		}
 	}
 
 	const scrollToCursor = (line: number, column: number) => {
@@ -90,4 +87,3 @@ export function createCursorScrollSync(
 
 	return { scrollToLine, scrollToColumn, scrollToCursor }
 }
-
