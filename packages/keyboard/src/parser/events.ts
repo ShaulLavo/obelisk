@@ -1,10 +1,11 @@
 import { normalizeCombo } from './combo'
 import { contentKeyMapper } from './keyUtils'
+import type { EqualPreference } from './keyUtils'
 import type { KeyCombo, Modifier } from './types'
 
 export function fromEvent(
 	e: KeyboardEvent,
-	opts: { treatEqualAsDistinct?: boolean } = {}
+	opts: EqualPreference = {}
 ): KeyCombo {
 	const treatEqualAsDistinct = opts.treatEqualAsDistinct ?? true
 	const modifiers = new Set<Modifier>()

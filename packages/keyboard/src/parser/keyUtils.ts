@@ -1,7 +1,7 @@
 import { specialKeyMap, symbolToDigit } from './constants'
 import type { ContentKey, DigitKey, LetterKey } from './types'
 
-type EqualPreference = {
+export type EqualPreference = {
 	treatEqualAsDistinct?: boolean
 }
 

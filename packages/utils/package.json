@@ -2,7 +2,6 @@
   "name": "@repo/utils",
   "version": "0.0.0",
   "private": true,
-  "private": true,
   "exports": {
     ".": "./src/index.ts",
     "./bytes": "./src/bytes.ts",
