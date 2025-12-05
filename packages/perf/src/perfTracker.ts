@@ -2,8 +2,8 @@ import {
 	createTimingTracker,
 	type TimingControls,
 	type TimingTracker
-} from '~/utils/timing'
-import { PERF_TRACKING_ENABLED } from '~/env'
+} from './timing'
+import { PERF_TRACKING_ENABLED } from '@repo/env'
 import { record, type PerfBreakdownEntry, type PerfRecord } from './perfStore'
 import { logOperation, logOperationSimple } from './perfLogger'
 

@@ -35,11 +35,7 @@ export interface VfsStore {
 	key(index: number): Promise<string | null>
 	keys(): Promise<string[]>
 	iterate<T, U>(
-		iteratee: (
-			value: T,
-			key: string,
-			iterationNumber: number
-		) => U | Promise<U>
+		iteratee: (value: T, key: string, iterationNumber: number) => U | Promise<U>
 	): Promise<U | undefined>
 }
 
@@ -54,6 +50,7 @@ class VfsStoreImpl implements VfsStore {
 	#indexCache: Map<string, ItemPointer> | null = null
 	#loadingIndex: Promise<Map<string, ItemPointer>> | null = null
 	#queue: Promise<void> = Promise.resolve()
+	#isRunning = false
 
 	constructor(indexFile: VFile, dataFile: VFile) {
 		this.#indexFile = indexFile
@@ -125,16 +122,16 @@ class VfsStoreImpl implements VfsStore {
 	}
 
 	async iterate<T, U>(
-		iteratee: (
-			value: T,
-			key: string,
-			iterationNumber: number
-		) => U | Promise<U>
+		iteratee: (value: T, key: string, iterationNumber: number) => U | Promise<U>
 	): Promise<U | undefined> {
 		return this.#enqueue(async () => {
 			const index = await this.#ensureIndex()
+			const entries = Array.from(index.entries())
 			let iterationNumber = 1
-			for (const [key, pointer] of index.entries()) {
+			for (const [key] of entries) {
+				// Refresh pointer so removeItem inside iteratee doesn't leave stale offsets.
+				const pointer = index.get(key)
+				if (!pointer) continue
 				const value = (await this.#readValueAt(pointer)) as T
 				const result = await iteratee(value, key, iterationNumber++)
 				if (result !== undefined) {
@@ -145,12 +142,26 @@ class VfsStoreImpl implements VfsStore {
 		})
 	}
 
+	// Serialized but re-entrant queue so nested store calls run inline to avoid deadlocks.
 	#enqueue<T>(operation: () => Promise<T>): Promise<T> {
-		const run = this.#queue.then(() => operation())
+		if (this.#isRunning) {
+			return operation()
+		}
+
+		const run = this.#queue.then(async () => {
+			this.#isRunning = true
+			try {
+				return await operation()
+			} finally {
+				this.#isRunning = false
+			}
+		})
+
 		this.#queue = run.then(
 			() => undefined,
 			() => undefined
 		)
+
 		return run
 	}
 
@@ -310,9 +321,7 @@ export function createStore(
 	const ctx = isFsContext(source)
 		? source
 		: createFs(source, options?.fsOptions)
-	const indexPath = sanitizePath(
-		options?.filePath ?? DEFAULT_STORE_INDEX_PATH
-	)
+	const indexPath = sanitizePath(options?.filePath ?? DEFAULT_STORE_INDEX_PATH)
 	const dataPath = sanitizePath(`${indexPath}${STORE_DATA_SUFFIX}`)
 	const indexFile = ctx.file(indexPath, 'rw')
 	const dataFile = ctx.file(dataPath, 'rw')

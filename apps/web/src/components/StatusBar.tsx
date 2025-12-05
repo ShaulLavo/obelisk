@@ -1,7 +1,7 @@
 import { createMemo } from 'solid-js'
 import { useFs } from '~/fs/context/FsContext'
 import type { FsSource } from '~/fs/types'
-import { formatBytes } from '~/utils/bytes'
+import { formatBytes } from '@repo/utils'
 
 const SOURCE_LABELS: Record<FsSource, string> = {
 	local: 'Local Folder',

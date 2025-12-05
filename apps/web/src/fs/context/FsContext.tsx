@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'solid-js'
-import type { PieceTableSnapshot } from '~/utils/pieceTable'
+import type { PieceTableSnapshot } from '@repo/utils/pieceTable'
 import type { FsState, FsSource } from '../types'
 
 export type SelectPathOptions = {

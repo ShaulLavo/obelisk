@@ -1,6 +1,6 @@
 import type { FsDirTreeNode, FsTreeNode } from '@repo/fs'
-import type { ParseResult } from '~/utils/parse'
-import type { PieceTableSnapshot } from '~/utils/pieceTable'
+import type { ParseResult } from '@repo/utils/parse'
+import type { PieceTableSnapshot } from '@repo/utils/pieceTable'
 
 export type FsSource = 'memory' | 'local' | 'opfs'
 

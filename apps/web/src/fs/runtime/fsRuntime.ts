@@ -5,11 +5,12 @@ import {
 	getRootDirectory,
 	type FsContext as VfsContext
 } from '@repo/fs'
-import logger from '~/logger'
-import { trackOperation } from '~/perf'
+import { logger as baseLogger } from '~/logger'
+import { trackOperation } from '@repo/perf'
 import { OPFS_ROOT_NAME } from '../config/constants'
 import type { FsSource } from '../types'
 
+const logger = baseLogger.withTag('fs:runtime')
 const fsCache: Partial<Record<FsSource, VfsContext>> = {}
 const initPromises: Partial<Record<FsSource, Promise<void>>> = {}
 

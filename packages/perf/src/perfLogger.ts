@@ -1,5 +1,4 @@
-import { logger } from '~/logger'
-import { formatBytes } from '~/utils/bytes'
+import { createLogger } from '@repo/logger'
 import type { PerfBreakdownEntry, PerfRecord, PerfSummary } from './perfStore'
 import { getSummary, getRecentForOperation } from './perfStore'
 
@@ -7,7 +6,7 @@ type LogLevel = 'debug' | 'info' | 'warn'
 
 let currentLogLevel: LogLevel = 'debug'
 
-const perfLogger = logger.withTag('perf')
+const perfLogger = createLogger('perf')
 
 export const setLogLevel = (level: LogLevel): void => {
 	currentLogLevel = level
@@ -22,6 +21,18 @@ const formatDuration = (ms: number): string => {
 	if (ms < 1) return `${(ms * 1000).toFixed(0)}µs`
 	if (ms < 1000) return `${ms.toFixed(2)}ms`
 	return `${(ms / 1000).toFixed(2)}s`
+}
+
+const formatBytes = (bytes: number): string => {
+	if (!Number.isFinite(bytes) || bytes <= 0) return '0 Bytes'
+
+	const units = ['Bytes', 'KB', 'MB', 'GB', 'TB'] as const
+	const maxIndex = units.length - 1
+	const unclampedIndex = Math.floor(Math.log(bytes) / Math.log(1024))
+	const index = Math.min(Math.max(unclampedIndex, 0), maxIndex)
+	const value = bytes / 1024 ** index
+	const formattedValue = Number.isInteger(value) ? value.toString() : value.toFixed(2)
+	return `${formattedValue} ${units[index]}`
 }
 
 const formatDurationTable = (ms: number): string => `${ms.toFixed(2)}ms`

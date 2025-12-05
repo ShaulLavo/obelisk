@@ -1,6 +1,6 @@
 import { createMemo } from 'solid-js'
 import { useFs } from '../../fs/context/FsContext'
-import { getPieceTableText } from '~/utils/pieceTable'
+import { getPieceTableText } from '@repo/utils/pieceTable'
 import { textToLineEntries } from '../utils'
 import { CursorProvider } from '../cursor'
 import { TextFileEditorInner } from './TextFileEditorInner'
@@ -36,4 +36,3 @@ export const TextFileEditor = (props: TextFileEditorProps) => {
 		</CursorProvider>
 	)
 }
-

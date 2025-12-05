@@ -1,4 +1,4 @@
-import { trackMicro } from '~/perf'
+import { trackMicro } from '@repo/perf'
 
 export type PieceBufferId = 'original' | 'add'
 

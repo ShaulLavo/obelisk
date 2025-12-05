@@ -1,11 +1,11 @@
 import { createEffect, type Accessor } from 'solid-js'
-import type { PieceTableSnapshot } from '~/utils/pieceTable'
+import type { PieceTableSnapshot } from '@repo/utils/pieceTable'
 import {
 	createPieceTableSnapshot,
 	deleteFromPieceTable,
 	getPieceTableLength,
 	insertIntoPieceTable
-} from '~/utils/pieceTable'
+} from '@repo/utils/pieceTable'
 import type { LineEntry } from '../types'
 import type { CursorState, CursorActions } from '../cursor'
 import { createKeyRepeat } from './createKeyRepeat'

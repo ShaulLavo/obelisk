@@ -4,9 +4,9 @@ import {
 	createMinimalBinaryParseResult,
 	detectBinaryFromPreview,
 	parseFileBuffer
-} from '~/utils/parse'
-import { trackOperation } from '~/perf'
-import { createPieceTableSnapshot } from '~/utils/pieceTable'
+} from '@repo/utils/parse'
+import { trackOperation } from '@repo/perf'
+import { createPieceTableSnapshot } from '@repo/utils/pieceTable'
 import { DEFAULT_SOURCE } from '../config/constants'
 import { createFsMutations } from '../fsMutations'
 import { buildTree } from '../runtime/fsRuntime'

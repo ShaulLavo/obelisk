@@ -1,4 +1,4 @@
-import { trackSync } from '~/perf'
+import { trackSync } from '@repo/perf'
 import { analyzeFileBytes, type TextHeuristicDecision } from './textHeuristics'
 
 type NewlineKind = 'lf' | 'crlf' | 'cr' | 'mixed' | 'none'

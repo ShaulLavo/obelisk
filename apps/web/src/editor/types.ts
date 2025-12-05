@@ -1,6 +1,6 @@
 import type { VirtualItem, Virtualizer } from '@tanstack/virtual-core'
 import type { Accessor } from 'solid-js'
-import type { ParseResult } from '~/utils/parse'
+import type { ParseResult } from '@repo/utils/parse'
 
 export type CursorMode = 'regular' | 'terminal'
 

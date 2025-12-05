@@ -1,5 +1,5 @@
 import type { FsDirTreeNode, FsTreeNode } from '@repo/fs'
-import { trackMicro } from '~/perf'
+import { trackMicro } from '@repo/perf'
 
 const TREE_TIMING_THRESHOLD = 1 // ms
 

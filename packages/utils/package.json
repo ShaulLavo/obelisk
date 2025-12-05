@@ -1,16 +1,16 @@
 {
-  "name": "@repo/fs",
+  "name": "@repo/utils",
   "version": "0.0.0",
   "private": true,
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./bytes": "./src/bytes.ts",
+    "./parse": "./src/parse.ts",
+    "./pieceTable": "./src/pieceTable.ts",
+    "./textHeuristics": "./src/textHeuristics.ts"
   },
   "dependencies": {
-    "@repo/env": "*",
-    "@repo/logger": "*",
-    "@repo/perf": "*",
-    "@repo/utils": "*",
-    "localforage": "^1.10.0"
+    "@repo/perf": "*"
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",
@@ -19,7 +19,7 @@
   "devDependencies": {
     "@repo/eslint-config": "*",
     "@repo/typescript-config": "*",
-    "@types/node": "^22.15.3",
+    "@types/node": "^24.10.1",
     "eslint": "^9.39.1",
     "typescript": "5.9.2"
   }
