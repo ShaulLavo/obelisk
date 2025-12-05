@@ -1,8 +1,10 @@
 import { Show, createEffect, on, onCleanup, onMount } from 'solid-js'
+import type { JSX } from 'solid-js'
 import { useFs } from '../../fs/context/FsContext'
 import { Lines } from './Lines'
 import { Cursor } from './Cursor'
 import { LineGutters } from './LineGutters'
+import { Input } from './Input'
 import { LINE_NUMBER_WIDTH, EDITOR_PADDING_LEFT } from '../consts'
 import { useCursor } from '../cursor'
 import {
@@ -71,19 +73,23 @@ export const TextFileEditorInner = (props: TextFileEditorProps) => {
 		scrollCursorIntoView
 	})
 
-	const handleInput = (event: InputEvent) => {
+	const handleInput: JSX.EventHandlerUnion<HTMLTextAreaElement, InputEvent> = event => {
 		if (!isEditable()) return
 		input.handleInput(event)
 	}
 
-	const handleKeyDown = (event: KeyboardEvent) => {
+	const handleKeyDown: JSX.EventHandlerUnion<
+		HTMLTextAreaElement,
+		KeyboardEvent
+	> = event => {
 		if (!isEditable()) return
 		input.handleKeyDown(event)
 	}
 
-	const handleKeyUp = (event: KeyboardEvent) => {
-		if (!isEditable()) return
-		input.handleKeyUp(event)
+	const handleKeyUp: JSX.EventHandlerUnion<HTMLTextAreaElement, KeyboardEvent> =
+		event => {
+			if (!isEditable()) return
+			input.handleKeyUp(event)
 	}
 
 	const handleRowClick = (entry: LineEntry) => {
@@ -125,19 +131,12 @@ export const TextFileEditorInner = (props: TextFileEditorProps) => {
 				}}
 				onClick={() => focusInput()}
 			>
-				<textarea
-					ref={inputElement}
-					class="absolute opacity-0"
-					style={{
-						left: `${layout.inputX()}px`,
-						top: `${layout.inputY()}px`,
-						width: `${layout.charWidth()}px`,
-						height: `${layout.lineHeight()}px`
+				<Input
+					inputRef={element => {
+						inputElement = element
 					}}
-					autocomplete="off"
-					autocorrect="off"
-					spellcheck={false}
-					disabled={!isEditable()}
+					layout={layout}
+					isEditable={isEditable}
 					onInput={handleInput}
 					onKeyDown={handleKeyDown}
 					onKeyUp={handleKeyUp}
@@ -163,42 +162,27 @@ export const TextFileEditorInner = (props: TextFileEditorProps) => {
 						/>
 					</Show>
 					<div class="flex h-full">
-						<div
-							class="sticky left-0 z-10 bg-zinc-950"
-							style={{
-								width: `${LINE_NUMBER_WIDTH}px`
-							}}
-						>
-							<div
-								class="relative h-full"
-								style={{
-									'padding-left': `${EDITOR_PADDING_LEFT}px`
-								}}
-							>
-								<LineGutters
-									rows={layout.virtualItems}
-									entries={lineEntries}
-									lineHeight={layout.lineHeight}
-									onRowClick={handleRowClick}
-									activeLineIndex={layout.activeLineIndex}
-								/>
-							</div>
-						</div>
-						<div class="relative flex-1">
-							<Lines
-								rows={layout.virtualItems}
-								columns={layout.columnItems}
-								entries={lineEntries}
-								totalColumnWidth={layout.columnTotalSize}
-								rowVirtualizer={layout.rowVirtualizer}
-								lineHeight={layout.lineHeight}
-								fontSize={props.fontSize}
-								fontFamily={props.fontFamily}
-								onRowClick={handleRowClick}
-								onPreciseClick={handlePreciseClick}
-								activeLineIndex={layout.activeLineIndex}
-							/>
-						</div>
+						<LineGutters
+							rows={layout.virtualItems}
+							entries={lineEntries}
+							lineHeight={layout.lineHeight}
+							onRowClick={handleRowClick}
+							activeLineIndex={layout.activeLineIndex}
+						/>
+
+						<Lines
+							rows={layout.virtualItems}
+							columns={layout.columnItems}
+							entries={lineEntries}
+							totalColumnWidth={layout.columnTotalSize}
+							rowVirtualizer={layout.rowVirtualizer}
+							lineHeight={layout.lineHeight}
+							fontSize={props.fontSize}
+							fontFamily={props.fontFamily}
+							onRowClick={handleRowClick}
+							onPreciseClick={handlePreciseClick}
+							activeLineIndex={layout.activeLineIndex}
+						/>
 					</div>
 				</div>
 			</div>

@@ -4,7 +4,7 @@ import { Line } from './Line'
 
 export const Lines = (props: LinesProps) => {
 	return (
-		<>
+		<div class="relative flex-1">
 			{props.rows().map(virtualRow => {
 				const entry: LineEntry | undefined = props.entries()[virtualRow.index]
 				if (!entry) return null
@@ -25,6 +25,6 @@ export const Lines = (props: LinesProps) => {
 					/>
 				)
 			})}
-		</>
+		</div>
 	)
 }
