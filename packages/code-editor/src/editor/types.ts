@@ -31,6 +31,7 @@ export type EditorProps = {
 	tabSize?: Accessor<number>
 	registerEditorArea?: EditorAreaRegistration
 	previewBytes?: Accessor<Uint8Array | undefined>
+	activeScopes?: Accessor<string[]>
 }
 
 export type LineEntry = {

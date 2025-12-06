@@ -111,6 +111,11 @@ export const specialKeyMap: Record<string, SpecialKey> = {
 	right: '→',
 	'→': '→',
 
+	home: 'home',
+	end: 'end',
+	pageup: 'pageUp',
+	pagedown: 'pageDown',
+
 	capslock: 'capsLock',
 	caps: 'capsLock',
 	cap: 'capsLock',

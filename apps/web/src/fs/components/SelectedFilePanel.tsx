@@ -1,18 +1,9 @@
-import type { JSX } from 'solid-js'
-import {
-	Accessor,
-	For,
-	Match,
-	Switch,
-	createMemo,
-	createSignal
-} from 'solid-js'
-import { useFs } from '../../fs/context/FsContext'
+import type { TextEditorDocument } from '@repo/code-editor'
 import { Editor } from '@repo/code-editor'
-import type { CursorMode, TextEditorDocument } from '@repo/code-editor'
-import { BinaryFileViewer } from '../../components/BinaryFileViewer'
-import { makePersisted } from '@solid-primitives/storage'
+import { Accessor, Match, Switch, createMemo } from 'solid-js'
 import { useFocusManager } from '~/focus/focusManager'
+import { BinaryFileViewer } from '../../components/BinaryFileViewer'
+import { useFs } from '../../fs/context/FsContext'
 
 const FONT_OPTIONS = [
 	{
@@ -35,36 +26,36 @@ type SelectedFilePanelProps = {
 export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
 	const [state, { updateSelectedFilePieceTable }] = useFs()
 	const focus = useFocusManager()
-	const [fontSize, setFontSize] = createSignal(DEFAULT_FONT_SIZE)
-	const [fontFamily, setFontFamily] = createSignal(DEFAULT_FONT_FAMILY)
-	const [cursorMode, setCursorMode] = makePersisted(
-		// eslint-disable-next-line solid/reactivity
-		createSignal<CursorMode>('regular'),
-		{ name: 'editor-cursor-mode' }
-	)
+	// const [fontSize, setFontSize] = createSignal(DEFAULT_FONT_SIZE)
+	// const [fontFamily, setFontFamily] = createSignal(DEFAULT_FONT_FAMILY)
+	// const [cursorMode, setCursorMode] = makePersisted(
+	// 	// eslint-disable-next-line solid/reactivity
+	// 	createSignal<CursorMode>('regular'),
+	// 	{ name: 'editor-cursor-mode' }
+	// )
 
 	const isBinary = () => state.selectedFileStats?.contentKind === 'binary'
 
-	const handleFontSizeInput: JSX.EventHandlerUnion<
-		HTMLInputElement,
-		InputEvent
-	> = event => {
-		const next = event.currentTarget.valueAsNumber
-		setFontSize(Number.isNaN(next) ? DEFAULT_FONT_SIZE : next)
-	}
+	// const handleFontSizeInput: JSX.EventHandlerUnion<
+	// 	HTMLInputElement,
+	// 	InputEvent
+	// > = event => {
+	// 	const next = event.currentTarget.valueAsNumber
+	// 	setFontSize(Number.isNaN(next) ? DEFAULT_FONT_SIZE : next)
+	// }
 
-	const resetFontControls = () => {
-		setFontSize(DEFAULT_FONT_SIZE)
-		setFontFamily(DEFAULT_FONT_FAMILY)
-	}
+	// const resetFontControls = () => {
+	// 	setFontSize(DEFAULT_FONT_SIZE)
+	// 	setFontFamily(DEFAULT_FONT_FAMILY)
+	// }
 
-	const toggleCursorMode = () => {
-		setCursorMode(mode => (mode === 'regular' ? 'terminal' : 'regular'))
-	}
+	// const toggleCursorMode = () => {
+	// 	setCursorMode(mode => (mode === 'regular' ? 'terminal' : 'regular'))
+	// }
 
-	const cursorModeLabel = createMemo(() =>
-		cursorMode() === 'terminal' ? 'Terminal' : 'Regular'
-	)
+	// const cursorModeLabel = createMemo(() =>
+	// 	cursorMode() === 'terminal' ? 'Terminal' : 'Regular'
+	// )
 
 	const isEditable = () =>
 		props.isFileSelected() && !state.selectedFileLoading && !state.loading
@@ -95,12 +86,13 @@ export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
 						document={editorDocument}
 						isFileSelected={props.isFileSelected}
 						stats={() => state.selectedFileStats}
-						fontSize={fontSize}
-						fontFamily={fontFamily}
-						cursorMode={cursorMode}
+						fontSize={() => DEFAULT_FONT_SIZE}
+						fontFamily={() => DEFAULT_FONT_FAMILY}
+						cursorMode={() => 'regular'}
 						registerEditorArea={resolver =>
 							focus.registerArea('editor', resolver)
 						}
+						activeScopes={focus.activeScopes}
 						previewBytes={() => state.selectedFilePreviewBytes}
 					/>
 				}
@@ -117,8 +109,8 @@ export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
 						data={() => state.selectedFilePreviewBytes}
 						stats={() => state.selectedFileStats}
 						fileSize={() => state.selectedFileSize}
-						fontSize={fontSize}
-						fontFamily={fontFamily}
+						fontSize={() => DEFAULT_FONT_SIZE}
+						fontFamily={() => DEFAULT_FONT_FAMILY}
 					/>
 				</Match>
 			</Switch>

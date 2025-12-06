@@ -35,6 +35,7 @@
     "@repo/utils": "*",
     "@repo/logger": "*",
     "@repo/ui": "*",
+    "@repo/keyboard": "*",
     "@solid-primitives/bounds": "^0.1.3",
     "@solid-primitives/deep": "^0.3.3",
     "@solid-primitives/event-listener": "^2.4.3",

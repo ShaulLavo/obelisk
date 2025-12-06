@@ -10,12 +10,13 @@
     "lint": "eslint . --max-warnings 0",
     "check-types": "tsc --noEmit"
   },
-  "dependencies": {
-    "@repo/logger": "*",
-    "@repo/utils": "*",
-    "@tanstack/solid-virtual": "^3.13.12",
-    "@tanstack/virtual-core": "^3.13.12",
-    "solid-js": "^1.9.5"
+	"dependencies": {
+		"@repo/keyboard": "*",
+		"@repo/logger": "*",
+		"@repo/utils": "*",
+		"@tanstack/solid-virtual": "^3.13.12",
+		"@tanstack/virtual-core": "^3.13.12",
+		"solid-js": "^1.9.5"
   },
   "devDependencies": {
     "@repo/eslint-config": "*",

@@ -1,4 +1,4 @@
-import { createEffect, type Accessor } from 'solid-js'
+import { createEffect, onCleanup, type Accessor } from 'solid-js'
 import type { PieceTableSnapshot } from '@repo/utils'
 import {
 	createPieceTableSnapshot,
@@ -6,6 +6,11 @@ import {
 	getPieceTableLength,
 	insertIntoPieceTable
 } from '@repo/utils'
+import {
+	createKeymapController,
+	type CommandDescriptor,
+	type KeybindingOptions
+} from '@repo/keyboard'
 import type { LineEntry } from '../types'
 import type { CursorState, CursorActions } from '../cursor'
 import { getSelectionBounds, hasSelection } from '../cursor'
@@ -13,11 +18,19 @@ import { clipboard } from '../utils/clipboard'
 import { createKeyRepeat } from './createKeyRepeat'
 
 type ArrowKey = 'ArrowLeft' | 'ArrowRight' | 'ArrowUp' | 'ArrowDown'
+type RepeatableDeleteKey = 'Backspace'
 
 type VisibleLineRange = {
 	start: number
 	end: number
 }
+
+type ShortcutConfig = {
+	shortcut: string
+	options?: KeybindingOptions
+}
+
+const KEYMAP_SCOPE = 'editor' as const
 
 export type TextEditorInputOptions = {
 	cursorState: Accessor<CursorState>
@@ -32,6 +45,7 @@ export type TextEditorInputOptions = {
 	isFileSelected: Accessor<boolean>
 	getInputElement: () => HTMLTextAreaElement | null
 	scrollCursorIntoView: () => void
+	activeScopes?: Accessor<string[]>
 }
 
 export type TextEditorInputHandlers = {
@@ -39,7 +53,11 @@ export type TextEditorInputHandlers = {
 	handleKeyDown: (event: KeyboardEvent) => void
 	handleKeyUp: (event: KeyboardEvent) => void
 	handleRowClick: (entry: LineEntry) => void
-	handlePreciseClick: (lineIndex: number, column: number, shiftKey?: boolean) => void
+	handlePreciseClick: (
+		lineIndex: number,
+		column: number,
+		shiftKey?: boolean
+	) => void
 	focusInput: () => void
 	deleteSelection: () => boolean
 }
@@ -96,7 +114,6 @@ export function createTextEditorInput(
 		})
 	}
 
-	// Delete selected text and return true if there was a selection
 	const deleteSelection = (): boolean => {
 		const state = options.cursorState()
 		if (!hasSelection(state)) return false
@@ -112,18 +129,227 @@ export function createTextEditorInput(
 		return true
 	}
 
+	function performDelete(key: 'Backspace' | 'Delete') {
+		if (deleteSelection()) {
+			options.scrollCursorIntoView()
+			return
+		}
+
+		const offset = options.cursorState().position.offset
+
+		if (key === 'Backspace') {
+			if (offset === 0) return
+			applyDelete(offset - 1, 1)
+			options.cursorActions.setCursorOffset(offset - 1)
+		} else {
+			applyDelete(offset, 1)
+		}
+
+		options.scrollCursorIntoView()
+	}
+
 	const handleInput = (event: InputEvent) => {
 		const target = event.target as HTMLTextAreaElement | null
 		if (!target) return
 		const value = target.value
 		if (!value) return
 
-		// Delete selection first if any exists
 		deleteSelection()
 
 		applyInsert(value)
 		target.value = ''
 	}
+
+	const keymap = createKeymapController()
+	const keymapDisposers: Array<() => void> = []
+
+	const registerCommandWithShortcuts = (
+		command: Pick<CommandDescriptor<unknown>, 'id' | 'run'>,
+		shortcuts: ShortcutConfig[]
+	) => {
+		const disposeCommand = keymap.registerCommand(command)
+		keymapDisposers.push(disposeCommand)
+
+		for (const shortcut of shortcuts) {
+			const binding = keymap.registerKeybinding({
+				shortcut: shortcut.shortcut,
+				options: {
+					preventDefault: true,
+					...shortcut.options
+				}
+			})
+			keymapDisposers.push(binding.dispose)
+
+			const disposeBinding = keymap.bindCommand({
+				scope: KEYMAP_SCOPE,
+				bindingId: binding.id,
+				commandId: command.id
+			})
+			keymapDisposers.push(disposeBinding)
+		}
+	}
+
+	createEffect(() => {
+		const scopes = options.activeScopes?.()
+		if (scopes && scopes.length > 0) {
+			keymap.setActiveScopes(scopes)
+			return
+		}
+		keymap.setActiveScopes([KEYMAP_SCOPE])
+	})
+
+	onCleanup(() => {
+		for (const dispose of keymapDisposers) {
+			dispose()
+		}
+	})
+
+	registerCommandWithShortcuts(
+		{
+			id: 'editor.selectAll',
+			run: () => {
+				options.cursorActions.selectAll()
+			}
+		},
+		[{ shortcut: 'primary+a' }]
+	)
+
+	registerCommandWithShortcuts(
+		{
+			id: 'editor.copySelection',
+			run: () => {
+				const selectedText = options.cursorActions.getSelectedText()
+				if (selectedText) {
+					void clipboard.writeText(selectedText)
+				}
+			}
+		},
+		[{ shortcut: 'primary+c' }]
+	)
+
+	registerCommandWithShortcuts(
+		{
+			id: 'editor.cutSelection',
+			run: () => {
+				const selectedText = options.cursorActions.getSelectedText()
+				if (selectedText) {
+					void clipboard.writeText(selectedText)
+				}
+				if (deleteSelection()) {
+					options.scrollCursorIntoView()
+				}
+			}
+		},
+		[{ shortcut: 'primary+x' }]
+	)
+
+	registerCommandWithShortcuts(
+		{
+			id: 'editor.paste',
+			run: () =>
+				clipboard.readText().then(text => {
+					if (text) {
+						deleteSelection()
+						applyInsert(text)
+					}
+				})
+		},
+		[{ shortcut: 'primary+v' }]
+	)
+
+	registerCommandWithShortcuts(
+		{
+			id: 'editor.tab',
+			run: () => {
+				deleteSelection()
+				applyInsert('\t')
+			}
+		},
+		[{ shortcut: 'tab' }]
+	)
+
+	registerCommandWithShortcuts(
+		{
+			id: 'editor.deleteKey',
+			run: context => {
+				const key = context.event.key === 'Backspace' ? 'Backspace' : 'Delete'
+				performDelete(key)
+			}
+		},
+		[{ shortcut: 'delete' }]
+	)
+
+	registerCommandWithShortcuts(
+		{
+			id: 'editor.cursor.home',
+			run: context => {
+				const ctrlOrMeta = context.event.ctrlKey || context.event.metaKey
+				options.cursorActions.moveCursorHome(
+					ctrlOrMeta,
+					context.event.shiftKey
+				)
+				options.scrollCursorIntoView()
+			}
+		},
+		[
+			{ shortcut: 'home' },
+			{ shortcut: 'primary+home' }
+		]
+	)
+
+	registerCommandWithShortcuts(
+		{
+			id: 'editor.cursor.end',
+			run: context => {
+				const ctrlOrMeta = context.event.ctrlKey || context.event.metaKey
+				options.cursorActions.moveCursorEnd(
+					ctrlOrMeta,
+					context.event.shiftKey
+				)
+				options.scrollCursorIntoView()
+			}
+		},
+		[
+			{ shortcut: 'end' },
+			{ shortcut: 'primary+end' }
+		]
+	)
+
+	registerCommandWithShortcuts(
+		{
+			id: 'editor.cursor.pageUp',
+			run: context => {
+				const range = options.visibleLineRange()
+				const visibleLines = range.end - range.start
+				options.cursorActions.moveCursorByLines(
+					-visibleLines,
+					context.event.shiftKey
+				)
+				options.scrollCursorIntoView()
+			}
+		},
+		[{ shortcut: 'pageup' }]
+	)
+
+	registerCommandWithShortcuts(
+		{
+			id: 'editor.cursor.pageDown',
+			run: context => {
+				const range = options.visibleLineRange()
+				const visibleLines = range.end - range.start
+				options.cursorActions.moveCursorByLines(
+					visibleLines,
+					context.event.shiftKey
+				)
+				options.scrollCursorIntoView()
+			}
+		},
+		[{ shortcut: 'pagedown' }]
+	)
+
+	const deleteKeyRepeat = createKeyRepeat<RepeatableDeleteKey>(() => {
+		performDelete('Backspace')
+	})
 
 	const keyRepeat = createKeyRepeat<ArrowKey>((key, ctrlOrMeta, shiftKey) => {
 		switch (key) {
@@ -147,80 +373,11 @@ export function createTextEditorInput(
 		const ctrlOrMeta = event.ctrlKey || event.metaKey
 		const shiftKey = event.shiftKey
 
-		// Select All (Ctrl+A)
-		if (ctrlOrMeta && event.key === 'a') {
-			event.preventDefault()
-			options.cursorActions.selectAll()
-			return
-		}
-
-		// Copy (Ctrl+C)
-		if (ctrlOrMeta && event.key === 'c') {
-			const selectedText = options.cursorActions.getSelectedText()
-			if (selectedText) {
-				void clipboard.writeText(selectedText)
-			}
-			return
-		}
-
-		// Cut (Ctrl+X)
-		if (ctrlOrMeta && event.key === 'x') {
-			const selectedText = options.cursorActions.getSelectedText()
-			if (selectedText) {
-				void clipboard.writeText(selectedText)
-				deleteSelection()
-				options.scrollCursorIntoView()
-			}
-			return
-		}
-
-		// Paste (Ctrl+V)
-		if (ctrlOrMeta && event.key === 'v') {
-			event.preventDefault()
-			clipboard.readText().then(text => {
-				if (text) {
-					deleteSelection()
-					applyInsert(text)
-				}
-			})
-			return
-		}
-
 		if (event.key === 'Backspace') {
 			event.preventDefault()
-			// If there's a selection, delete it
-			if (deleteSelection()) {
-				options.scrollCursorIntoView()
-				return
+			if (!event.repeat && !deleteKeyRepeat.isActive('Backspace')) {
+				deleteKeyRepeat.start('Backspace', false, false)
 			}
-			// Otherwise delete single character
-			const offset = options.cursorState().position.offset
-			if (offset === 0) return
-			applyDelete(offset - 1, 1)
-			options.cursorActions.setCursorOffset(offset - 1)
-			options.scrollCursorIntoView()
-			return
-		}
-
-		if (event.key === 'Delete') {
-			event.preventDefault()
-			// If there's a selection, delete it
-			if (deleteSelection()) {
-				options.scrollCursorIntoView()
-				return
-			}
-			// Otherwise delete single character
-			const offset = options.cursorState().position.offset
-			applyDelete(offset, 1)
-			options.scrollCursorIntoView()
-			return
-		}
-
-		if (event.key === 'Tab') {
-			event.preventDefault()
-			// Replace any active selection before inserting the tab character
-			deleteSelection()
-			applyInsert('\t')
 			return
 		}
 
@@ -237,40 +394,16 @@ export function createTextEditorInput(
 			return
 		}
 
-		if (event.key === 'Home') {
-			event.preventDefault()
-			options.cursorActions.moveCursorHome(ctrlOrMeta, shiftKey)
-			options.scrollCursorIntoView()
-			return
-		}
-
-		if (event.key === 'End') {
-			event.preventDefault()
-			options.cursorActions.moveCursorEnd(ctrlOrMeta, shiftKey)
-			options.scrollCursorIntoView()
-			return
-		}
-
-		if (event.key === 'PageUp') {
-			event.preventDefault()
-			const range = options.visibleLineRange()
-			const visibleLines = range.end - range.start
-			options.cursorActions.moveCursorByLines(-visibleLines, shiftKey)
-			options.scrollCursorIntoView()
-			return
-		}
-
-		if (event.key === 'PageDown') {
-			event.preventDefault()
-			const range = options.visibleLineRange()
-			const visibleLines = range.end - range.start
-			options.cursorActions.moveCursorByLines(visibleLines, shiftKey)
-			options.scrollCursorIntoView()
+		if (keymap.handleKeydown(event)) {
 			return
 		}
 	}
 
 	const handleKeyUp = (event: KeyboardEvent) => {
+		if (event.key === 'Backspace' && deleteKeyRepeat.isActive('Backspace')) {
+			deleteKeyRepeat.stop()
+		}
+
 		if (
 			event.key === 'ArrowLeft' ||
 			event.key === 'ArrowRight' ||

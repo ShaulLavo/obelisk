@@ -31,6 +31,10 @@ describe('normalizeKey', () => {
 	it('maps raw strings into normalized content keys', () => {
 		expect(normalizeKey('ArrowLeft')).toBe('←')
 		expect(normalizeKey('A')).toBe('a')
+		expect(normalizeKey('Home')).toBe('home')
+		expect(normalizeKey('End')).toBe('end')
+		expect(normalizeKey('PageUp')).toBe('pageUp')
+		expect(normalizeKey('PageDown')).toBe('pageDown')
 	})
 
 	it('honors equal preference when collapsing +=', () => {

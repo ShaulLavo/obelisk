@@ -70,7 +70,8 @@ export const TextFileEditorInner = (props: TextFileEditorProps) => {
 		pieceTableText,
 		isFileSelected: () => props.isFileSelected(),
 		getInputElement: () => inputElement,
-		scrollCursorIntoView
+		scrollCursorIntoView,
+		activeScopes: () => props.activeScopes?.() ?? ['global']
 	})
 
 	const handleInput: JSX.EventHandlerUnion<
