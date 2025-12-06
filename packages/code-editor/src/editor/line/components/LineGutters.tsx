@@ -1,6 +1,6 @@
 /* eslint-disable solid/prefer-for */
-import { EDITOR_PADDING_LEFT, LINE_NUMBER_WIDTH } from '../consts'
-import type { LineEntry, LineGuttersProps } from '../types'
+import { EDITOR_PADDING_LEFT, LINE_NUMBER_WIDTH } from '../../consts'
+import type { LineEntry, LineGuttersProps } from '../../types'
 import { LineGutter } from './LineGutter'
 
 export const LineGutters = (props: LineGuttersProps) => {

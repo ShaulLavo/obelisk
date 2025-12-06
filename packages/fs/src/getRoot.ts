@@ -55,8 +55,8 @@ export async function getOpfsRoot(
 ): Promise<FileSystemDirectoryHandle> {
 	const restored = await restoreHandle<FileSystemDirectoryHandle>(OPFS_ROOT_KEY)
 	if (restored) {
-		const permission = await queryHandlePermission(restored, 'readwrite')
-		if (permission === 'granted' || permission === 'prompt') return restored
+		// TODO: measure whether re-checking OPFS permissions here is fast or expensive before re-adding it
+		return restored
 	}
 
 	const root = await navigator.storage.getDirectory()

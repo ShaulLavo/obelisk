@@ -1,9 +1,8 @@
 export * from './types'
-export * from './cursorUtils'
+export * from './utils'
+export { CursorProvider, useCursor } from './context/CursorContext'
 export {
-	CursorProvider,
-	useCursor,
 	type CursorActions,
 	type CursorContextValue,
 	type CursorProviderProps
-} from './CursorContext'
+} from './context/types'

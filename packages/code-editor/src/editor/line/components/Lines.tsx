@@ -1,5 +1,5 @@
 /* eslint-disable solid/prefer-for */
-import type { LineEntry, LinesProps } from '../types'
+import type { LineEntry, LinesProps } from '../../types'
 import { Line } from './Line'
 
 export const Lines = (props: LinesProps) => {

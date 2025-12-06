@@ -1,8 +1,8 @@
 import { Show, createMemo } from 'solid-js'
 import type { Accessor } from 'solid-js'
-import { estimateLineHeight } from '../utils'
-import type { CursorState } from '../cursor'
-import type { CursorMode } from '../types'
+import { estimateLineHeight } from '../../utils'
+import type { CursorState } from '../../cursor'
+import type { CursorMode } from '../../types'
 
 const CURSOR_WIDTH = 2
 const CURSOR_HEIGHT_SHRINK = 2

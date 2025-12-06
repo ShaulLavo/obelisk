@@ -43,6 +43,7 @@ export type TextEditorInputOptions = {
 	) => void
 	pieceTableText: () => string
 	isFileSelected: Accessor<boolean>
+	isEditable: Accessor<boolean>
 	getInputElement: () => HTMLTextAreaElement | null
 	scrollCursorIntoView: () => void
 	activeScopes?: Accessor<string[]>
@@ -66,6 +67,7 @@ export function createTextEditorInput(
 	options: TextEditorInputOptions
 ): TextEditorInputHandlers {
 	const focusInput = () => {
+		if (!options.isEditable()) return
 		const element = options.getInputElement()
 		if (!element) return
 		try {
@@ -76,7 +78,7 @@ export function createTextEditorInput(
 	}
 
 	createEffect(() => {
-		if (options.isFileSelected()) {
+		if (options.isFileSelected() && options.isEditable()) {
 			focusInput()
 		}
 	})
@@ -115,6 +117,7 @@ export function createTextEditorInput(
 	}
 
 	const deleteSelection = (): boolean => {
+		if (!options.isEditable()) return false
 		const state = options.cursorState()
 		if (!hasSelection(state)) return false
 
@@ -161,6 +164,7 @@ export function createTextEditorInput(
 	}
 
 	const handleInput = (event: InputEvent) => {
+		if (!options.isEditable()) return
 		const target = event.target as HTMLTextAreaElement | null
 		if (!target) return
 		const value = target.value
@@ -385,6 +389,7 @@ export function createTextEditorInput(
 	})
 
 	const handleKeyDown = (event: KeyboardEvent) => {
+		if (!options.isEditable()) return
 		const ctrlOrMeta = event.ctrlKey || event.metaKey
 		const shiftKey = event.shiftKey
 
@@ -415,6 +420,7 @@ export function createTextEditorInput(
 	}
 
 	const handleKeyUp = (event: KeyboardEvent) => {
+		if (!options.isEditable()) return
 		if (event.key === 'Backspace' && deleteKeyRepeat.isActive('Backspace')) {
 			deleteKeyRepeat.stop()
 		}
@@ -432,6 +438,7 @@ export function createTextEditorInput(
 	}
 
 	const handleRowClick = (entry: LineEntry) => {
+		if (!options.isEditable()) return
 		options.cursorActions.setCursorFromClick(entry.index, entry.text.length)
 		focusInput()
 	}
@@ -441,6 +448,7 @@ export function createTextEditorInput(
 		column: number,
 		shiftKey = false
 	) => {
+		if (!options.isEditable()) return
 		options.cursorActions.setCursorFromClick(lineIndex, column, shiftKey)
 		focusInput()
 	}

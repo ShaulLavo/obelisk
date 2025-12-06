@@ -1,6 +1,6 @@
 /* eslint-disable solid/prefer-for */
-import { calculateColumnFromClick } from '../utils'
-import type { LineProps } from '../types'
+import { calculateColumnFromClick } from '../../utils'
+import type { LineProps } from '../../types'
 
 export const Line = (props: LineProps) => {
 	let rowElement: HTMLDivElement | null = null

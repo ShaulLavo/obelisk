@@ -1,9 +1,8 @@
 import { Show, createEffect, on, onCleanup, onMount } from 'solid-js'
-import type { JSX } from 'solid-js'
-import { Lines } from './Lines'
-import { Cursor } from './Cursor'
-import { SelectionLayer } from './SelectionLayer'
-import { LineGutters } from './LineGutters'
+import { Lines } from '../line/components/Lines'
+import { Cursor } from '../cursor/components/Cursor'
+import { SelectionLayer } from '../selection/components/SelectionLayer'
+import { LineGutters } from '../line/components/LineGutters'
 import { Input } from './Input'
 import { DEFAULT_TAB_SIZE, LINE_NUMBER_WIDTH } from '../consts'
 import { useCursor } from '../cursor'
@@ -13,7 +12,7 @@ import {
 	createTextEditorLayout,
 	createMouseSelection
 } from '../hooks'
-import type { LineEntry, TextFileEditorProps } from '../types'
+import type { TextFileEditorProps } from '../types'
 
 export const TextFileEditorInner = (props: TextFileEditorProps) => {
 	const cursor = useCursor()
@@ -69,53 +68,11 @@ export const TextFileEditorInner = (props: TextFileEditorProps) => {
 		updatePieceTable: updater => props.document.updatePieceTable(updater),
 		pieceTableText,
 		isFileSelected: () => props.isFileSelected(),
+		isEditable,
 		getInputElement: () => inputElement,
 		scrollCursorIntoView,
 		activeScopes: () => props.activeScopes?.() ?? ['editor', 'global']
 	})
-
-	const handleInput: JSX.EventHandlerUnion<
-		HTMLTextAreaElement,
-		InputEvent
-	> = event => {
-		if (!isEditable()) return
-		input.handleInput(event)
-	}
-
-	const handleKeyDown: JSX.EventHandlerUnion<
-		HTMLTextAreaElement,
-		KeyboardEvent
-	> = event => {
-		if (!isEditable()) return
-		input.handleKeyDown(event)
-	}
-
-	const handleKeyUp: JSX.EventHandlerUnion<
-		HTMLTextAreaElement,
-		KeyboardEvent
-	> = event => {
-		if (!isEditable()) return
-		input.handleKeyUp(event)
-	}
-
-	const handleRowClick = (entry: LineEntry) => {
-		if (!isEditable()) return
-		input.handleRowClick(entry)
-	}
-
-	const handlePreciseClick = (
-		lineIndex: number,
-		column: number,
-		shiftKey = false
-	) => {
-		if (!isEditable()) return
-		input.handlePreciseClick(lineIndex, column, shiftKey)
-	}
-
-	const focusInput = () => {
-		if (!isEditable()) return
-		input.focusInput()
-	}
 
 	// Mouse selection for drag, double-click (word), triple-click (line)
 	const mouseSelection = createMouseSelection({
@@ -135,7 +92,7 @@ export const TextFileEditorInner = (props: TextFileEditorProps) => {
 	) => {
 		if (!isEditable()) return
 		mouseSelection.handleMouseDown(event, lineIndex, column, textElement)
-		focusInput()
+		input.focusInput()
 	}
 
 	onMount(() => {
@@ -163,7 +120,7 @@ export const TextFileEditorInner = (props: TextFileEditorProps) => {
 					'font-family': props.fontFamily(),
 					'user-select': 'none' // Disable browser text selection
 				}}
-				onClick={() => focusInput()}
+				onClick={() => input.focusInput()}
 			>
 				<Input
 					inputRef={element => {
@@ -171,9 +128,9 @@ export const TextFileEditorInner = (props: TextFileEditorProps) => {
 					}}
 					layout={layout}
 					isEditable={isEditable}
-					onInput={handleInput}
-					onKeyDown={handleKeyDown}
-					onKeyUp={handleKeyUp}
+					onInput={input.handleInput}
+					onKeyDown={input.handleKeyDown}
+					onKeyUp={input.handleKeyUp}
 				/>
 				<div
 					style={{
@@ -213,7 +170,7 @@ export const TextFileEditorInner = (props: TextFileEditorProps) => {
 							rows={layout.virtualItems}
 							entries={lineEntries}
 							lineHeight={layout.lineHeight}
-							onRowClick={handleRowClick}
+							onRowClick={input.handleRowClick}
 							activeLineIndex={layout.activeLineIndex}
 						/>
 
@@ -225,8 +182,8 @@ export const TextFileEditorInner = (props: TextFileEditorProps) => {
 							lineHeight={layout.lineHeight}
 							charWidth={layout.charWidth}
 							tabSize={tabSize}
-							onRowClick={handleRowClick}
-							onPreciseClick={handlePreciseClick}
+							onRowClick={input.handleRowClick}
+							onPreciseClick={input.handlePreciseClick}
 							onMouseDown={handleLineMouseDown}
 							activeLineIndex={layout.activeLineIndex}
 						/>
