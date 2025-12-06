@@ -24,6 +24,11 @@ type StoreIndexData = {
 	deadBytes: number
 }
 
+type DataSwapGuards = {
+	commit: () => Promise<void>
+	rollback: () => Promise<void>
+}
+
 type MoveCapableFileHandle = FileSystemFileHandle & {
 	move?: (
 		newParent: FileSystemDirectoryHandle,
@@ -293,8 +298,12 @@ class VfsStoreImpl implements VfsStore {
 		const tempFile = this.#createTempDataFile()
 		const writer = await tempFile.createWriter()
 		const nextEntries = new Map<string, ItemPointer>()
+		const previousEntries = indexData.entries
+		const previousDeadBytes = indexData.deadBytes
 		let offset = 0
 		let writeFailed = false
+		let swapGuards: DataSwapGuards | null = null
+		let indexUpdated = false
 
 		try {
 			for (const [key, pointer] of indexData.entries.entries()) {
@@ -323,10 +332,21 @@ class VfsStoreImpl implements VfsStore {
 		}
 
 		try {
-			await this.#atomicallySwapDataFile(tempFile)
+			swapGuards = await this.#atomicallySwapDataFile(tempFile)
+			indexData.entries = nextEntries
+			indexData.deadBytes = 0
+			indexUpdated = true
+			await this.#persistIndex(indexData)
+			await swapGuards.commit()
 		} catch (error) {
+			if (indexUpdated) {
+				indexData.entries = previousEntries
+				indexData.deadBytes = previousDeadBytes
+			}
 			await this.#safeRemoveFile(tempFile)
-			if (
+			if (swapGuards) {
+				await swapGuards.rollback()
+			} else if (
 				error instanceof Error &&
 				error.message.includes('Atomic rename is not supported')
 			) {
@@ -337,10 +357,6 @@ class VfsStoreImpl implements VfsStore {
 			}
 			throw error
 		}
-
-		indexData.entries = nextEntries
-		indexData.deadBytes = 0
-		await this.#persistIndex(indexData)
 	}
 
 	#createTempDataFile(): VFile {
@@ -380,12 +396,14 @@ class VfsStoreImpl implements VfsStore {
 		await candidate.move.call(handle, parent, name)
 	}
 
-	async #atomicallySwapDataFile(tempFile: VFile): Promise<void> {
+	async #atomicallySwapDataFile(tempFile: VFile): Promise<DataSwapGuards> {
 		const { dir: destDirPath, name: destName } = this.#splitPath(
 			this.#dataFile.path
 		)
-		const destDirHandle =
-			await this.#ctx.getDirectoryHandleForRelative(destDirPath, true)
+		const destDirHandle = await this.#ctx.getDirectoryHandleForRelative(
+			destDirPath,
+			true
+		)
 		const tempHandle = await this.#ctx.getFileHandleForRelative(
 			tempFile.path,
 			false
@@ -404,14 +422,34 @@ class VfsStoreImpl implements VfsStore {
 
 		try {
 			await this.#moveHandle(tempHandle, destDirHandle, destName)
-			if (backupName) {
-				await destDirHandle.removeEntry(backupName).catch(() => undefined)
-			}
 		} catch (error) {
 			if (backupName) {
 				await this.#restoreBackup(destDirHandle, backupName, destName)
 			}
 			throw error
+		}
+
+		return {
+			commit: async () => {
+				if (!backupName) {
+					return
+				}
+				try {
+					await destDirHandle.removeEntry(backupName)
+				} catch (error) {
+					console.error('Failed to remove VFS data file backup', error)
+				}
+			},
+			rollback: async () => {
+				try {
+					await destDirHandle.removeEntry(destName)
+				} catch {
+					// ignore best-effort removal
+				}
+				if (backupName) {
+					await this.#restoreBackup(destDirHandle, backupName, destName)
+				}
+			}
 		}
 	}
 
@@ -461,16 +499,16 @@ class VfsStoreImpl implements VfsStore {
 		}
 	}
 
-	async #readRawBytes(pointer: ItemPointer): Promise<Uint8Array> {
+	async #readRawBytes(pointer: ItemPointer): Promise<Uint8Array<ArrayBuffer>> {
 		if (pointer.length === 0) {
-			return new Uint8Array()
+			return new Uint8Array(new ArrayBuffer(0))
 		}
 
 		const reader = await this.#dataFile.createReader()
 		try {
-			const buffer = await reader.read(pointer.length, {
+			const buffer = (await reader.read(pointer.length, {
 				at: pointer.start
-			})
+			})) as ArrayBuffer
 			return new Uint8Array(buffer)
 		} finally {
 			await reader.close()

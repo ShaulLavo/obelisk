@@ -52,7 +52,6 @@ function toSequenceKey(sequence: ShortcutSequence): string {
 export function createKeybindingRegistry() {
 	const bindings = new Map<string, InternalKeybinding>()
 	const shortcutIndex = new Map<string, Set<string>>()
-	const firstComboIndex = new Map<string, Set<string>>()
 	let autoIdCounter = 0
 
 	function ensureSequence(
@@ -111,33 +110,6 @@ export function createKeybindingRegistry() {
 		}
 	}
 
-	function addToFirstComboIndex(sequence: ShortcutSequence, bindingId: string) {
-		const firstCombo = sequence[0]
-		if (!firstCombo) return
-		const firstComboKey = serializeCombo(firstCombo)
-		const existing = firstComboIndex.get(firstComboKey)
-		if (existing) {
-			existing.add(bindingId)
-			return
-		}
-		firstComboIndex.set(firstComboKey, new Set([bindingId]))
-	}
-
-	function removeFromFirstComboIndex(
-		sequence: ShortcutSequence,
-		bindingId: string
-	) {
-		const firstCombo = sequence[0]
-		if (!firstCombo) return
-		const firstComboKey = serializeCombo(firstCombo)
-		const set = firstComboIndex.get(firstComboKey)
-		if (!set) return
-		set.delete(bindingId)
-		if (set.size === 0) {
-			firstComboIndex.delete(firstComboKey)
-		}
-	}
-
 	function register(binding: KeybindingDescriptor): KeybindingRegistration {
 		const parts = splitOptions(binding.options)
 		const sequence = ensureSequence(binding.shortcut, parts.matcherOptions)
@@ -166,14 +138,12 @@ export function createKeybindingRegistry() {
 
 		bindings.set(bindingId, record)
 		addToIndex(seqKey, bindingId)
-		addToFirstComboIndex(sequence, bindingId)
 
 		return {
 			id: bindingId,
 			dispose: () => {
 				bindings.delete(bindingId)
 				removeFromIndex(seqKey, bindingId)
-				removeFromFirstComboIndex(sequence, bindingId)
 			}
 		}
 	}

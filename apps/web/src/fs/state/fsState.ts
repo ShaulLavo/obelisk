@@ -15,8 +15,7 @@ import {
 	touchCacheEntry
 } from '../../utils/cache'
 
-const MAX_FILE_STATS_CACHE = 20
-const MAX_PIECE_TABLE_CACHE = 5
+const MAX_FILE_STATS_CACHE = 100
 
 export const createFsState = () => {
 	const [tree, setTree, isTreeReady] = makePersisted(
@@ -65,7 +64,6 @@ export const createFsState = () => {
 		Record<string, PieceTableSnapshot | undefined>
 	>({})
 	const fileStatsOrder: string[] = []
-	const pieceTableOrder: string[] = []
 	const selectedNode = createMemo<FsTreeNode | undefined>(() =>
 		tree ? findNode(tree, selectedPath()) : undefined
 	)
@@ -111,22 +109,14 @@ export const createFsState = () => {
 	const setPieceTable = (path: string, snapshot?: PieceTableSnapshot) => {
 		if (!path) return
 		if (!snapshot) {
-			removeCacheEntry(pieceTableOrder, path)
 			evictPieceTableEntry(path)
 			return
 		}
 
 		setPieceTablesStore(path, snapshot)
-		touchCacheEntry(pieceTableOrder, path)
-		evictCacheEntries(
-			pieceTableOrder,
-			MAX_PIECE_TABLE_CACHE,
-			evictPieceTableEntry
-		)
 	}
 
 	const clearPieceTables = () => {
-		pieceTableOrder.length = 0
 		for (const path of Object.keys(pieceTables)) {
 			evictPieceTableEntry(path)
 		}
