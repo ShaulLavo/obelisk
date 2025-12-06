@@ -59,11 +59,10 @@ export function createCursorScrollSync(
 		const scrollEl = options.scrollElement()
 		if (!scrollEl) return
 
-		const cw = options.charWidth()
 		const cursorOffset =
 			typeof options.getColumnOffset === 'function'
 				? options.getColumnOffset(line, column)
-				: column * cw
+				: column * options.charWidth()
 		const gutterWidth = LINE_NUMBER_WIDTH
 
 		const scrollLeft = scrollEl.scrollLeft

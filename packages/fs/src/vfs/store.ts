@@ -1,8 +1,9 @@
 import type { FsContext, FsContextOptions } from './types'
-import { sanitizePath } from './utils/path'
+import { getParentPath, sanitizePath } from './utils/path'
 import { VFile } from './vfile'
 import { createFs } from './fsContext'
 import { textEncoder } from './utils/streams'
+import { randomId } from './utils/random'
 
 const DEFAULT_STORE_INDEX_PATH = '.vfs-store/store.meta.json'
 const STORE_DATA_SUFFIX = '.data'
@@ -21,6 +22,13 @@ type ItemPointer = {
 type StoreIndexData = {
 	entries: Map<string, ItemPointer>
 	deadBytes: number
+}
+
+type MoveCapableFileHandle = FileSystemFileHandle & {
+	move?: (
+		newParent: FileSystemDirectoryHandle,
+		newName?: string
+	) => Promise<unknown>
 }
 
 function isFsContext(value: unknown): value is FsContext {
@@ -55,6 +63,7 @@ export interface CreateVfsStoreOptions {
 }
 
 class VfsStoreImpl implements VfsStore {
+	#ctx: FsContext
 	#indexFile: VFile
 	#dataFile: VFile
 	#indexCache: StoreIndexData | null = null
@@ -62,7 +71,8 @@ class VfsStoreImpl implements VfsStore {
 	#queue: Promise<void> = Promise.resolve()
 	#isRunning = false
 
-	constructor(indexFile: VFile, dataFile: VFile) {
+	constructor(ctx: FsContext, indexFile: VFile, dataFile: VFile) {
+		this.#ctx = ctx
 		this.#indexFile = indexFile
 		this.#dataFile = dataFile
 	}
@@ -229,7 +239,8 @@ class VfsStoreImpl implements VfsStore {
 
 		const entries: Array<[string, ItemPointer]> = []
 		const entriesObj = isPlainRecord(parsed.entries) ? parsed.entries : parsed
-		const deadBytes = typeof parsed.deadBytes === 'number' ? parsed.deadBytes : 0
+		const deadBytes =
+			typeof parsed.deadBytes === 'number' ? parsed.deadBytes : 0
 
 		for (const [key, value] of Object.entries(entriesObj)) {
 			if (
@@ -269,23 +280,27 @@ class VfsStoreImpl implements VfsStore {
 			0
 		)
 		const totalBytes = totalLiveBytes + indexData.deadBytes
-		if (totalBytes === 0 || indexData.deadBytes / totalBytes < COMPACTION_RATIO_THRESHOLD) {
+		if (
+			totalBytes === 0 ||
+			indexData.deadBytes / totalBytes < COMPACTION_RATIO_THRESHOLD
+		) {
 			return
 		}
 		await this.#compactDataFile(indexData)
 	}
 
 	async #compactDataFile(indexData: StoreIndexData): Promise<void> {
-		const writer = await this.#dataFile.createWriter()
+		const tempFile = this.#createTempDataFile()
+		const writer = await tempFile.createWriter()
 		const nextEntries = new Map<string, ItemPointer>()
 		let offset = 0
-		let compactSucceeded = false
+		let writeFailed = false
 
 		try {
 			for (const [key, pointer] of indexData.entries.entries()) {
 				const chunk = await this.#readRawBytes(pointer)
 				if (chunk.byteLength > 0) {
-					await writer.write(chunk as unknown as BufferSource, {
+					await writer.write(chunk, {
 						at: offset
 					})
 				}
@@ -295,17 +310,123 @@ class VfsStoreImpl implements VfsStore {
 
 			await writer.truncate(offset)
 			await writer.flush()
-			compactSucceeded = true
+		} catch (error) {
+			writeFailed = true
+			throw error
 		} finally {
 			await writer.close().catch(error => {
-				console.error('Failed to close VFS data file writer', error)
+				console.error('Failed to close VFS compacted temp file writer', error)
 			})
+			if (writeFailed) {
+				await this.#safeRemoveFile(tempFile)
+			}
 		}
 
-		if (compactSucceeded) {
-			indexData.entries = nextEntries
-			indexData.deadBytes = 0
-			await this.#persistIndex(indexData)
+		try {
+			await this.#atomicallySwapDataFile(tempFile)
+		} catch (error) {
+			await this.#safeRemoveFile(tempFile)
+			if (
+				error instanceof Error &&
+				error.message.includes('Atomic rename is not supported')
+			) {
+				console.warn(
+					'VFS data compaction skipped: underlying filesystem does not support atomic rename operations'
+				)
+				return
+			}
+			throw error
+		}
+
+		indexData.entries = nextEntries
+		indexData.deadBytes = 0
+		await this.#persistIndex(indexData)
+	}
+
+	#createTempDataFile(): VFile {
+		const parentDir = this.#dataFile.parent ?? this.#ctx.dir('')
+		const tempName = `${this.#dataFile.name}.${randomId()}.tmp`
+		return parentDir.getFile(tempName, 'rw')
+	}
+
+	async #safeRemoveFile(file: VFile): Promise<void> {
+		try {
+			await file.remove({ force: true })
+		} catch {
+			// best-effort cleanup
+		}
+	}
+
+	#splitPath(path: string): { dir: string; name: string } {
+		const sanitized = sanitizePath(path)
+		const segments = sanitized ? sanitized.split('/') : []
+		if (segments.length === 0) {
+			throw new Error('File path cannot be empty')
+		}
+		const name = segments[segments.length - 1]!
+		const dir = getParentPath(segments) ?? ''
+		return { dir, name }
+	}
+
+	async #moveHandle(
+		handle: FileSystemFileHandle,
+		parent: FileSystemDirectoryHandle,
+		name: string
+	): Promise<void> {
+		const candidate = handle as MoveCapableFileHandle
+		if (typeof candidate.move !== 'function') {
+			throw new Error('Atomic rename is not supported by this filesystem')
+		}
+		await candidate.move.call(handle, parent, name)
+	}
+
+	async #atomicallySwapDataFile(tempFile: VFile): Promise<void> {
+		const { dir: destDirPath, name: destName } = this.#splitPath(
+			this.#dataFile.path
+		)
+		const destDirHandle =
+			await this.#ctx.getDirectoryHandleForRelative(destDirPath, true)
+		const tempHandle = await this.#ctx.getFileHandleForRelative(
+			tempFile.path,
+			false
+		)
+		const dataExists = await this.#dataFile.exists()
+		let backupName: string | null = null
+
+		if (dataExists) {
+			backupName = `${destName}.bak-${randomId()}`
+			const currentHandle = await this.#ctx.getFileHandleForRelative(
+				this.#dataFile.path,
+				false
+			)
+			await this.#moveHandle(currentHandle, destDirHandle, backupName)
+		}
+
+		try {
+			await this.#moveHandle(tempHandle, destDirHandle, destName)
+			if (backupName) {
+				await destDirHandle.removeEntry(backupName).catch(() => undefined)
+			}
+		} catch (error) {
+			if (backupName) {
+				await this.#restoreBackup(destDirHandle, backupName, destName)
+			}
+			throw error
+		}
+	}
+
+	async #restoreBackup(
+		parentHandle: FileSystemDirectoryHandle,
+		backupName: string,
+		originalName: string
+	): Promise<void> {
+		try {
+			const backupHandle = await parentHandle.getFileHandle(backupName, {
+				create: false
+			})
+			await this.#moveHandle(backupHandle, parentHandle, originalName)
+		} catch (error) {
+			console.error('Failed to restore VFS data file from backup', error)
 		}
 	}
 
@@ -370,5 +491,5 @@ export function createStore(
 	const dataPath = sanitizePath(`${indexPath}${STORE_DATA_SUFFIX}`)
 	const indexFile = ctx.file(indexPath, 'rw')
 	const dataFile = ctx.file(dataPath, 'rw')
-	return new VfsStoreImpl(indexFile, dataFile)
+	return new VfsStoreImpl(ctx, indexFile, dataFile)
 }

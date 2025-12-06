@@ -1,6 +1,5 @@
 import { createShortcutSequenceMatcher } from '../parser/sequenceMatcher'
 import { parseShortcut, parseShortcutSequence } from '../parser/shortcut'
-import { fromEvent } from '../parser/events'
 import type {
 	KeybindingDescriptor,
 	KeybindingMatch,
@@ -182,21 +181,11 @@ export function createKeybindingRegistry() {
 	function match(event: KeyboardEvent): KeybindingMatch[] {
 		const matches: KeybindingMatch[] = []
 
-		// Convert the event to a combo and look up only bindings that start with this combo
-		const eventCombo = fromEvent(event, { treatEqualAsDistinct: true })
-		const comboKey = serializeCombo(eventCombo)
-		const candidateBindingIds = firstComboIndex.get(comboKey)
-
-		// If no bindings start with this combo, return early
-		if (!candidateBindingIds || candidateBindingIds.size === 0) {
+		if (bindings.size === 0) {
 			return matches
 		}
 
-		// Only check matchers for bindings whose first combo matches
-		for (const bindingId of candidateBindingIds) {
-			const binding = bindings.get(bindingId)
-			if (!binding) continue
-
+		for (const binding of bindings.values()) {
 			if (binding.matcher.handleEvent(event)) {
 				matches.push({
 					id: binding.snapshot.id,
