@@ -9,7 +9,8 @@
     "@repo/logger": "*",
     "@repo/perf": "*",
     "@repo/utils": "*",
-    "localforage": "^1.10.0"
+    "localforage": "^1.10.0",
+    "nanoid": "^5.0.9"
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",

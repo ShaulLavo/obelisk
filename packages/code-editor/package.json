@@ -3,13 +3,15 @@
   "version": "0.0.0",
   "private": true,
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./styles.css": "./src/styles.css"
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
+    "@repo/logger": "*",
     "@repo/utils": "*",
     "@tanstack/solid-virtual": "^3.13.12",
     "@tanstack/virtual-core": "^3.13.12",

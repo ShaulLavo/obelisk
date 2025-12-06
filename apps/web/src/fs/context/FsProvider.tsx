@@ -3,10 +3,10 @@ import { batch, createEffect, type JSX, onMount } from 'solid-js'
 import {
 	createMinimalBinaryParseResult,
 	detectBinaryFromPreview,
-	parseFileBuffer
-} from '@repo/utils/parse'
+	parseFileBuffer,
+	createPieceTableSnapshot
+} from '@repo/utils'
 import { trackOperation } from '@repo/perf'
-import { createPieceTableSnapshot } from '@repo/utils'
 import { DEFAULT_SOURCE } from '../config/constants'
 import { createFsMutations } from '../fsMutations'
 import { buildTree } from '../runtime/fsRuntime'

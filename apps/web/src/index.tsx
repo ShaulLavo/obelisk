@@ -2,6 +2,7 @@
 import { render } from 'solid-js/web'
 import 'solid-devtools'
 import './styles.css'
+import '../../../packages/code-editor/src/styles.css'
 import '@fontsource-variable/jetbrains-mono'
 import '@fontsource-variable/geist'
 

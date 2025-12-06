@@ -61,12 +61,11 @@ export const Line = (props: LineProps) => {
 				ref={el => {
 					textContentElement = el
 				}}
-				class="relative h-full"
+				class="relative h-full whitespace-pre"
 				style={{
 					width: `${props.contentWidth}px`,
 					height: `${props.virtualRow.size || props.lineHeight}px`,
-					'tab-size': Math.max(1, props.tabSize),
-					'white-space': 'pre'
+					'tab-size': Math.max(1, props.tabSize)
 				}}
 			>
 				{props.entry.text}

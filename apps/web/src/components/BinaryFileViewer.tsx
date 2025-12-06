@@ -1,7 +1,7 @@
 import { createVirtualizer } from '@tanstack/solid-virtual'
 import type { VirtualItem, Virtualizer } from '@tanstack/virtual-core'
 import { type Accessor, For, Show, createMemo, createSignal } from 'solid-js'
-import type { ParseResult } from '@repo/utils/parse'
+import type { ParseResult } from '@repo/utils'
 
 const BYTES_PER_ROW = 16
 const LINE_HEIGHT_RATIO = 1.55
