@@ -8,7 +8,7 @@ import {
 } from '../consts'
 
 export type KeyRepeatActions<T extends string> = {
-	start: (key: T, ctrlOrMeta: boolean) => void
+	start: (key: T, ctrlOrMeta: boolean, shiftKey: boolean) => void
 	stop: () => void
 	isActive: (key: T) => boolean
 }
@@ -21,7 +21,7 @@ export type KeyRepeatActions<T extends string> = {
  * @returns Object with start, stop, and isActive methods
  */
 export function createKeyRepeat<T extends string>(
-	executeAction: (key: T, ctrlOrMeta: boolean) => void
+	executeAction: (key: T, ctrlOrMeta: boolean, shiftKey: boolean) => void
 ): KeyRepeatActions<T> {
 	let activeKey: T | null = null
 	let repeatTimeout: ReturnType<typeof setTimeout> | null = null
@@ -36,12 +36,12 @@ export function createKeyRepeat<T extends string>(
 		repeatCount = 0
 	}
 
-	const start = (key: T, ctrlOrMeta: boolean) => {
+	const start = (key: T, ctrlOrMeta: boolean, shiftKey: boolean) => {
 		stop()
 		activeKey = key
 
 		// Execute immediately on first press
-		executeAction(key, ctrlOrMeta)
+		executeAction(key, ctrlOrMeta, shiftKey)
 
 		// Start repeat after initial delay
 		repeatTimeout = setTimeout(() => {
@@ -50,7 +50,7 @@ export function createKeyRepeat<T extends string>(
 			const doRepeat = () => {
 				if (activeKey !== key) return
 
-				executeAction(key, ctrlOrMeta)
+				executeAction(key, ctrlOrMeta, shiftKey)
 				repeatCount++
 
 				// Accelerate if not at max speed

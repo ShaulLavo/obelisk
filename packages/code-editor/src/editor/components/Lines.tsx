@@ -20,6 +20,7 @@ export const Lines = (props: LinesProps) => {
 						tabSize={props.tabSize()}
 						onRowClick={props.onRowClick}
 						onPreciseClick={props.onPreciseClick}
+						onMouseDown={props.onMouseDown}
 						isActive={props.activeLineIndex() === entry.index}
 					/>
 				)

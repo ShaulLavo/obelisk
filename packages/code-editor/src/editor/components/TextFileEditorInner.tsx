@@ -2,6 +2,7 @@ import { Show, createEffect, on, onCleanup, onMount } from 'solid-js'
 import type { JSX } from 'solid-js'
 import { Lines } from './Lines'
 import { Cursor } from './Cursor'
+import { SelectionLayer } from './SelectionLayer'
 import { LineGutters } from './LineGutters'
 import { Input } from './Input'
 import { DEFAULT_TAB_SIZE, LINE_NUMBER_WIDTH } from '../consts'
@@ -9,7 +10,8 @@ import { useCursor } from '../cursor'
 import {
 	createCursorScrollSync,
 	createTextEditorInput,
-	createTextEditorLayout
+	createTextEditorLayout,
+	createMouseSelection
 } from '../hooks'
 import type { LineEntry, TextFileEditorProps } from '../types'
 
@@ -92,14 +94,43 @@ export const TextFileEditorInner = (props: TextFileEditorProps) => {
 		input.handleRowClick(entry)
 	}
 
-	const handlePreciseClick = (lineIndex: number, column: number) => {
+	const handlePreciseClick = (
+		lineIndex: number,
+		column: number,
+		shiftKey = false
+	) => {
 		if (!isEditable()) return
-		input.handlePreciseClick(lineIndex, column)
+		input.handlePreciseClick(lineIndex, column, shiftKey)
 	}
 
 	const focusInput = () => {
 		if (!isEditable()) return
 		input.focusInput()
+	}
+
+	// Mouse selection for drag, double-click (word), triple-click (line)
+	const mouseSelection = createMouseSelection({
+		scrollElement: () => scrollElement,
+		lineEntries,
+		charWidth: layout.charWidth,
+		tabSize: tabSizeAccessor,
+		lineHeight: layout.lineHeight,
+		cursorActions,
+		getLineIndexFromY: (y: number) => {
+			const lineHeight = layout.lineHeight()
+			return Math.floor(y / lineHeight)
+		}
+	})
+
+	const handleLineMouseDown = (
+		event: MouseEvent,
+		lineIndex: number,
+		column: number,
+		textElement: HTMLElement | null
+	) => {
+		if (!isEditable()) return
+		mouseSelection.handleMouseDown(event, lineIndex, column, textElement)
+		focusInput()
 	}
 
 	onMount(() => {
@@ -124,7 +155,8 @@ export const TextFileEditorInner = (props: TextFileEditorProps) => {
 				class="relative mt-4 flex-1 overflow-auto rounded border border-zinc-800/70 bg-zinc-950/30"
 				style={{
 					'font-size': `${props.fontSize()}px`,
-					'font-family': props.fontFamily()
+					'font-family': props.fontFamily(),
+					'user-select': 'none' // Disable browser text selection
 				}}
 				onClick={() => focusInput()}
 			>
@@ -144,6 +176,18 @@ export const TextFileEditorInner = (props: TextFileEditorProps) => {
 						position: 'relative'
 					}}
 				>
+					<SelectionLayer
+						selections={() => cursorState().selections}
+						lineEntries={lineEntries}
+						virtualItems={layout.virtualItems}
+						lineHeight={layout.lineHeight}
+						lineNumberWidth={LINE_NUMBER_WIDTH}
+						paddingLeft={0}
+						charWidth={layout.charWidth}
+						tabSize={tabSizeAccessor}
+						getColumnOffset={layout.getColumnOffset}
+						getLineY={layout.getLineY}
+					/>
 					<Show when={isEditable()}>
 						<Cursor
 							cursorState={cursorState}
@@ -178,6 +222,7 @@ export const TextFileEditorInner = (props: TextFileEditorProps) => {
 							tabSize={tabSizeAccessor}
 							onRowClick={handleRowClick}
 							onPreciseClick={handlePreciseClick}
+							onMouseDown={handleLineMouseDown}
 							activeLineIndex={layout.activeLineIndex}
 						/>
 					</div>

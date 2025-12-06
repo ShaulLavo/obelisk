@@ -49,7 +49,13 @@ export type LineProps = {
 	charWidth: number
 	tabSize: number
 	onRowClick: (entry: LineEntry) => void
-	onPreciseClick: (lineIndex: number, column: number) => void
+	onPreciseClick: (lineIndex: number, column: number, shiftKey?: boolean) => void
+	onMouseDown?: (
+		event: MouseEvent,
+		lineIndex: number,
+		column: number,
+		textElement: HTMLElement | null
+	) => void
 	isActive: boolean
 }
 
@@ -62,7 +68,13 @@ export type LinesProps = {
 	charWidth: Accessor<number>
 	tabSize: Accessor<number>
 	onRowClick: (entry: LineEntry) => void
-	onPreciseClick: (lineIndex: number, column: number) => void
+	onPreciseClick: (lineIndex: number, column: number, shiftKey?: boolean) => void
+	onMouseDown?: (
+		event: MouseEvent,
+		lineIndex: number,
+		column: number,
+		textElement: HTMLElement | null
+	) => void
 	activeLineIndex: Accessor<number | null>
 }
 

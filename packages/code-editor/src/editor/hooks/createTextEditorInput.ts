@@ -8,6 +8,7 @@ import {
 } from '@repo/utils'
 import type { LineEntry } from '../types'
 import type { CursorState, CursorActions } from '../cursor'
+import { getSelectionBounds, hasSelection } from '../cursor'
 import { createKeyRepeat } from './createKeyRepeat'
 
 type ArrowKey = 'ArrowLeft' | 'ArrowRight' | 'ArrowUp' | 'ArrowDown'
@@ -37,8 +38,9 @@ export type TextEditorInputHandlers = {
 	handleKeyDown: (event: KeyboardEvent) => void
 	handleKeyUp: (event: KeyboardEvent) => void
 	handleRowClick: (entry: LineEntry) => void
-	handlePreciseClick: (lineIndex: number, column: number) => void
+	handlePreciseClick: (lineIndex: number, column: number, shiftKey?: boolean) => void
 	focusInput: () => void
+	deleteSelection: () => boolean
 }
 
 export function createTextEditorInput(
@@ -93,28 +95,48 @@ export function createTextEditorInput(
 		})
 	}
 
+	// Delete selected text and return true if there was a selection
+	const deleteSelection = (): boolean => {
+		const state = options.cursorState()
+		if (!hasSelection(state)) return false
+
+		const selection = state.selections[0]
+		if (!selection) return false
+
+		const { start, end } = getSelectionBounds(selection)
+		const length = end - start
+
+		applyDelete(start, length)
+		options.cursorActions.setCursorOffset(start)
+		return true
+	}
+
 	const handleInput = (event: InputEvent) => {
 		const target = event.target as HTMLTextAreaElement | null
 		if (!target) return
 		const value = target.value
 		if (!value) return
+
+		// Delete selection first if any exists
+		deleteSelection()
+
 		applyInsert(value)
 		target.value = ''
 	}
 
-	const keyRepeat = createKeyRepeat<ArrowKey>((key, ctrlOrMeta) => {
+	const keyRepeat = createKeyRepeat<ArrowKey>((key, ctrlOrMeta, shiftKey) => {
 		switch (key) {
 			case 'ArrowLeft':
-				options.cursorActions.moveCursor('left', ctrlOrMeta)
+				options.cursorActions.moveCursor('left', ctrlOrMeta, shiftKey)
 				break
 			case 'ArrowRight':
-				options.cursorActions.moveCursor('right', ctrlOrMeta)
+				options.cursorActions.moveCursor('right', ctrlOrMeta, shiftKey)
 				break
 			case 'ArrowUp':
-				options.cursorActions.moveCursor('up')
+				options.cursorActions.moveCursor('up', false, shiftKey)
 				break
 			case 'ArrowDown':
-				options.cursorActions.moveCursor('down')
+				options.cursorActions.moveCursor('down', false, shiftKey)
 				break
 		}
 		options.scrollCursorIntoView()
@@ -122,9 +144,55 @@ export function createTextEditorInput(
 
 	const handleKeyDown = (event: KeyboardEvent) => {
 		const ctrlOrMeta = event.ctrlKey || event.metaKey
+		const shiftKey = event.shiftKey
+
+		// Select All (Ctrl+A)
+		if (ctrlOrMeta && event.key === 'a') {
+			event.preventDefault()
+			options.cursorActions.selectAll()
+			return
+		}
+
+		// Copy (Ctrl+C)
+		if (ctrlOrMeta && event.key === 'c') {
+			const selectedText = options.cursorActions.getSelectedText()
+			if (selectedText) {
+				navigator.clipboard.writeText(selectedText)
+			}
+			return
+		}
+
+		// Cut (Ctrl+X)
+		if (ctrlOrMeta && event.key === 'x') {
+			const selectedText = options.cursorActions.getSelectedText()
+			if (selectedText) {
+				navigator.clipboard.writeText(selectedText)
+				deleteSelection()
+				options.scrollCursorIntoView()
+			}
+			return
+		}
+
+		// Paste (Ctrl+V)
+		if (ctrlOrMeta && event.key === 'v') {
+			event.preventDefault()
+			navigator.clipboard.readText().then(text => {
+				if (text) {
+					deleteSelection()
+					applyInsert(text)
+				}
+			})
+			return
+		}
 
 		if (event.key === 'Backspace') {
 			event.preventDefault()
+			// If there's a selection, delete it
+			if (deleteSelection()) {
+				options.scrollCursorIntoView()
+				return
+			}
+			// Otherwise delete single character
 			const offset = options.cursorState().position.offset
 			if (offset === 0) return
 			applyDelete(offset - 1, 1)
@@ -135,6 +203,12 @@ export function createTextEditorInput(
 
 		if (event.key === 'Delete') {
 			event.preventDefault()
+			// If there's a selection, delete it
+			if (deleteSelection()) {
+				options.scrollCursorIntoView()
+				return
+			}
+			// Otherwise delete single character
 			const offset = options.cursorState().position.offset
 			applyDelete(offset, 1)
 			options.scrollCursorIntoView()
@@ -149,21 +223,21 @@ export function createTextEditorInput(
 		) {
 			event.preventDefault()
 			if (!event.repeat && !keyRepeat.isActive(event.key as ArrowKey)) {
-				keyRepeat.start(event.key as ArrowKey, ctrlOrMeta)
+				keyRepeat.start(event.key as ArrowKey, ctrlOrMeta, shiftKey)
 			}
 			return
 		}
 
 		if (event.key === 'Home') {
 			event.preventDefault()
-			options.cursorActions.moveCursorHome(ctrlOrMeta)
+			options.cursorActions.moveCursorHome(ctrlOrMeta, shiftKey)
 			options.scrollCursorIntoView()
 			return
 		}
 
 		if (event.key === 'End') {
 			event.preventDefault()
-			options.cursorActions.moveCursorEnd(ctrlOrMeta)
+			options.cursorActions.moveCursorEnd(ctrlOrMeta, shiftKey)
 			options.scrollCursorIntoView()
 			return
 		}
@@ -172,7 +246,7 @@ export function createTextEditorInput(
 			event.preventDefault()
 			const range = options.visibleLineRange()
 			const visibleLines = range.end - range.start
-			options.cursorActions.moveCursorByLines(-visibleLines)
+			options.cursorActions.moveCursorByLines(-visibleLines, shiftKey)
 			options.scrollCursorIntoView()
 			return
 		}
@@ -181,7 +255,7 @@ export function createTextEditorInput(
 			event.preventDefault()
 			const range = options.visibleLineRange()
 			const visibleLines = range.end - range.start
-			options.cursorActions.moveCursorByLines(visibleLines)
+			options.cursorActions.moveCursorByLines(visibleLines, shiftKey)
 			options.scrollCursorIntoView()
 			return
 		}
@@ -205,8 +279,12 @@ export function createTextEditorInput(
 		focusInput()
 	}
 
-	const handlePreciseClick = (lineIndex: number, column: number) => {
-		options.cursorActions.setCursorFromClick(lineIndex, column)
+	const handlePreciseClick = (
+		lineIndex: number,
+		column: number,
+		shiftKey = false
+	) => {
+		options.cursorActions.setCursorFromClick(lineIndex, column, shiftKey)
 		focusInput()
 	}
 
@@ -216,6 +294,7 @@ export function createTextEditorInput(
 		handleKeyUp,
 		handleRowClick,
 		handlePreciseClick,
-		focusInput
+		focusInput,
+		deleteSelection
 	}
 }

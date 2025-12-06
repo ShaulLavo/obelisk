@@ -14,4 +14,9 @@ export {
 	type TextEditorInputOptions,
 	type TextEditorInputHandlers
 } from './createTextEditorInput'
+export {
+	createMouseSelection,
+	type MouseSelectionOptions,
+	type MouseSelectionHandlers
+} from './createMouseSelection'
 
