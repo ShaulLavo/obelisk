@@ -1,6 +1,6 @@
 export function throwIfAborted(signal?: AbortSignal) {
 	if (signal?.aborted) {
-		const reason = (signal as AbortSignal & { reason?: unknown }).reason
+		const reason = signal.reason
 		if (reason instanceof Error) {
 			throw reason
 		}

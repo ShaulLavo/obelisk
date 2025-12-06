@@ -7,11 +7,18 @@ import { VsFile } from '@repo/icons/vs/VsFile'
 import { VsFolder } from '@repo/icons/vs/VsFolder'
 import { VsFolderOpened } from '@repo/icons/vs/VsFolderOpened'
 
-export const TreeNode = (props: { node: FsTreeNode }) => {
+type TreeNodeProps = {
+	node: FsTreeNode
+	hasParent?: boolean
+}
+
+export const TreeNode = (props: TreeNodeProps) => {
 	const [state, actions] = useFs()
 	const isDir = () => props.node.kind === 'dir'
 	const isSelected = () => state.selectedPath === props.node.path
 	const isOpen = () => isDir() && state.expanded[props.node.path]
+	const hasParent = () => !!props.hasParent
+	const showBranch = () => hasParent() && !isDir()
 
 	const handleDirClick = () => {
 		actions.toggleDir(props.node.path)
@@ -31,28 +38,36 @@ export const TreeNode = (props: { node: FsTreeNode }) => {
 
 	return (
 		<div class="">
-			<button
-				type="button"
-				onMouseDown={handleClick}
-				aria-expanded={isDir() ? isOpen() : undefined}
-				class={`flex w-full items-center overflow-hidden rounded border border-transparent  text-left text-sm transition hover:border-zinc-700/60 hover:bg-zinc-800/30 ${
-					isSelected() ? 'border-zinc-700 bg-zinc-900/50' : ''
-				}`}
-			>
-				<span class="w-4 text-center text-[10px] text-zinc-500">
-					{isDir() ? isOpen() ? <VsChevronDown /> : <VsChevronRight /> : ''}
-				</span>
-				<span class="mr-2 flex items-center justify-center ">
-					<Show when={isDir()} fallback={<VsFile size={16} />}>
-						<Show when={isOpen()} fallback={<VsFolder size={16} />}>
-							<VsFolderOpened size={16} />
+			<div class="relative">
+				<Show when={showBranch()}>
+					<span
+						aria-hidden="true"
+						class="pointer-events-none absolute left-1 top-1/2 w-2.5 translate-y-1/2 border-t border-zinc-800"
+					/>
+				</Show>
+				<button
+					type="button"
+					onMouseDown={handleClick}
+					aria-expanded={isDir() ? isOpen() : undefined}
+					class={`flex w-full items-center overflow-hidden rounded border border-transparent  text-left text-sm transition hover:border-zinc-700/60 hover:bg-zinc-800/30 ${
+						isSelected() ? 'border-zinc-700 bg-zinc-900/50' : ''
+					}`}
+				>
+					<span class="w-4 text-center text-[10px] text-zinc-500">
+						{isDir() ? isOpen() ? <VsChevronDown /> : <VsChevronRight /> : ''}
+					</span>
+					<span class="mr-2 flex items-center justify-center ">
+						<Show when={isDir()} fallback={<VsFile size={16} />}>
+							<Show when={isOpen()} fallback={<VsFolder size={16} />}>
+								<VsFolderOpened size={16} />
+							</Show>
 						</Show>
-					</Show>
-				</span>
-				<span class="truncate text-zinc-200">
-					{isDir() ? props.node.name || 'root' : props.node.name}
-				</span>
-			</button>
+					</span>
+					<span class="truncate text-zinc-200">
+						{isDir() ? props.node.name || 'root' : props.node.name}
+					</span>
+				</button>
+			</div>
 			<Show when={isDir() && isOpen()}>
 				<div class="relative pl-2">
 					<span
@@ -60,15 +75,7 @@ export const TreeNode = (props: { node: FsTreeNode }) => {
 						class="pointer-events-none absolute left-1.5 top-0 bottom-0 border-l border-zinc-800"
 					/>
 					<For each={(props.node as FsDirTreeNode).children}>
-						{child => (
-							<div class="relative">
-								<span
-									aria-hidden="true"
-									class="pointer-events-none absolute left-1.5 top-1/2 w-4 -translate-y-1/2 border-t border-zinc-800"
-								/>
-								<TreeNode node={child} />
-							</div>
-						)}
+						{child => <TreeNode node={child} hasParent />}
 					</For>
 				</div>
 			</Show>

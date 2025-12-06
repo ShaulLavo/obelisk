@@ -1,4 +1,4 @@
-import { createMemo } from 'solid-js'
+import { createMemo, Show } from 'solid-js'
 import { useFs } from '~/fs/context/FsContext'
 import type { FsSource } from '~/fs/types'
 import { formatBytes } from '@repo/utils'
@@ -65,8 +65,39 @@ export const StatusBar = () => {
 		}
 	})
 
+	const backgroundIndicator = createMemo(() => {
+		if (state.prefetchError) {
+			return {
+				label: state.prefetchError,
+				class:
+					'border-red-900/60 bg-red-900/30 text-red-200 shadow-[0_0_6px_rgba(248,113,113,0.35)]',
+				showSpinner: false
+			}
+		}
+
+		const loadedCount = state.backgroundLoadedCount
+
+		if (state.backgroundPrefetching) {
+			return {
+				label: `Indexed ${loadedCount} dirs`,
+				class: 'border-blue-500/40 bg-blue-500/10 text-blue-100',
+				showSpinner: true
+			}
+		}
+
+		if (loadedCount > 0) {
+			return {
+				label: `Indexed ${loadedCount} dirs`,
+				class: 'border-zinc-700/60 bg-zinc-900 text-zinc-200/80',
+				showSpinner: false
+			}
+		}
+
+		return undefined
+	})
+
 	return (
-		<div class="rounded-lg border border-zinc-800/70 bg-zinc-950/70  text-xs text-zinc-200 shadow-inner">
+		<div class="rounded-lg border border-zinc-800/70 bg-zinc-950/70 py-1 text-xs text-zinc-200 shadow-inner">
 			<div class="flex flex-wrap items-center gap-x-4 gap-y-1">
 				<div class="flex min-w-0 flex-1 items-center gap-1.5">
 					<span class="text-[8px] uppercase tracking-[0.08em] text-zinc-500">
@@ -103,6 +134,27 @@ export const StatusBar = () => {
 						{statusIndicator().label}
 					</span>
 				</div>
+
+				<Show when={backgroundIndicator()}>
+					{indicator => (
+						<div class="flex items-center gap-1.5">
+							<span class="text-[8px] uppercase tracking-[0.08em] text-zinc-500">
+								Prefetch
+							</span>
+							<span
+								class={`flex items-center gap-1 rounded border px-1.5 py-0.5 text-[8px] font-semibold ${indicator().class}`}
+							>
+								<Show when={indicator().showSpinner}>
+									<span
+										aria-hidden="true"
+										class="mr-1 h-2 w-2 animate-spin rounded-full border border-current border-t-transparent"
+									/>
+								</Show>
+								{indicator().label}
+							</span>
+						</div>
+					)}
+				</Show>
 
 				<div class="flex items-center gap-1.5">
 					<span class="text-[8px] uppercase tracking-[0.08em] text-zinc-500">

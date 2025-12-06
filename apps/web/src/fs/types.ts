@@ -14,6 +14,10 @@ export type FsState = {
 	selectedFileSize?: number
 	error?: string
 	loading: boolean
+	backgroundPrefetching: boolean
+	backgroundLoadedCount: number
+	lastPrefetchedPath?: string
+	prefetchError?: string
 	fileStats: Record<string, ParseResult | undefined>
 	selectedFileStats?: ParseResult
 	pieceTables: Record<string, PieceTableSnapshot | undefined>

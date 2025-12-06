@@ -14,6 +14,7 @@ import {
 	removeCacheEntry,
 	touchCacheEntry
 } from '../../utils/cache'
+import { createPrefetchIndicators } from '../hooks/createPrefetchIndicators'
 
 const MAX_FILE_STATS_CACHE = 100
 
@@ -57,6 +58,16 @@ export const createFsState = () => {
 	const [selectedFileLoading, setSelectedFileLoading] = createSignal(false)
 	const [error, setError] = createSignal<string | undefined>(undefined)
 	const [loading, setLoading] = createSignal(false)
+	const {
+		backgroundPrefetching,
+		setBackgroundPrefetching,
+		backgroundLoadedCount,
+		setBackgroundLoadedCount,
+		lastPrefetchedPath,
+		setLastPrefetchedPath,
+		prefetchError,
+		setPrefetchError
+	} = createPrefetchIndicators()
 	const [fileStats, setFileStatsStore] = createStore<
 		Record<string, ParseResult | undefined>
 	>({})
@@ -161,6 +172,18 @@ export const createFsState = () => {
 		get loading() {
 			return loading()
 		},
+		get backgroundPrefetching() {
+			return backgroundPrefetching()
+		},
+		get backgroundLoadedCount() {
+			return backgroundLoadedCount()
+		},
+		get lastPrefetchedPath() {
+			return lastPrefetchedPath()
+		},
+		get prefetchError() {
+			return prefetchError()
+		},
 		get selectedFileStats() {
 			const path = lastKnownFilePath()
 			return path ? fileStats[path] : undefined
@@ -193,6 +216,10 @@ export const createFsState = () => {
 		setSelectedFileLoading,
 		setError,
 		setLoading,
+		setBackgroundPrefetching,
+		setBackgroundLoadedCount,
+		setLastPrefetchedPath,
+		setPrefetchError,
 		setFileStats: updateFileStats,
 		clearParseResults,
 		setPieceTable,

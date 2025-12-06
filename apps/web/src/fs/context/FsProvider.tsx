@@ -1,5 +1,5 @@
 import type { FsDirTreeNode } from '@repo/fs'
-import { batch, createEffect, type JSX, onMount } from 'solid-js'
+import { batch, createEffect, type JSX, onCleanup, onMount } from 'solid-js'
 import {
 	createMinimalBinaryParseResult,
 	detectBinaryFromPreview,
@@ -9,7 +9,7 @@ import {
 import { trackOperation } from '@repo/perf'
 import { DEFAULT_SOURCE } from '../config/constants'
 import { createFsMutations } from '../fsMutations'
-import { buildTree } from '../runtime/fsRuntime'
+import { buildTree, ensureFs } from '../runtime/fsRuntime'
 import {
 	getFileSize,
 	readFilePreviewBytes,
@@ -19,6 +19,7 @@ import { restoreHandleCache } from '../runtime/handleCache'
 import { findNode } from '../runtime/tree'
 import { createFsState } from '../state/fsState'
 import type { FsSource } from '../types'
+import { createTreePrefetchClient } from '../prefetch/treePrefetchClient'
 import {
 	FsContext,
 	type FsContextValue,
@@ -42,10 +43,216 @@ export function FsProvider(props: { children: JSX.Element }) {
 		setFileStats,
 		clearParseResults,
 		setPieceTable,
-		clearPieceTables
+		clearPieceTables,
+		setBackgroundPrefetching,
+		setBackgroundLoadedCount,
+		setLastPrefetchedPath,
+		setPrefetchError
 	} = createFsState()
 
 	const subtreeLoads = new Map<string, Promise<void>>()
+	const supportsWorkers =
+		typeof window !== 'undefined' && typeof Worker !== 'undefined'
+	const treePrefetchClient = supportsWorkers
+		? createTreePrefetchClient()
+		: undefined
+	const prefetchQueue = new Set<string>()
+	const loadedDirPaths = new Set<string>()
+	let prefetchProcessing = false
+	let workerInitialized = false
+	let prefetchSessionId = 0
+
+	const resetPrefetchTracking = () => {
+		prefetchQueue.clear()
+		setBackgroundPrefetching(false)
+		setLastPrefetchedPath(undefined)
+		setPrefetchError(undefined)
+	}
+
+	const seedLoadedDirSnapshot = (root?: FsDirTreeNode) => {
+		loadedDirPaths.clear()
+		if (!root) {
+			setBackgroundLoadedCount(0)
+			return
+		}
+
+		const stack: FsDirTreeNode[] = [root]
+		while (stack.length) {
+			const dir = stack.pop()!
+			if (dir.isLoaded !== false) {
+				const key = dir.path ?? ''
+				loadedDirPaths.add(key)
+			}
+			for (const child of dir.children) {
+				if (child.kind === 'dir') {
+					stack.push(child)
+				}
+			}
+		}
+		setBackgroundLoadedCount(loadedDirPaths.size)
+	}
+
+	const absorbLoadedDirs = (node: FsDirTreeNode) => {
+		const stack: FsDirTreeNode[] = [node]
+		let dirty = false
+		while (stack.length) {
+			const dir = stack.pop()!
+			if (dir.isLoaded !== false) {
+				const key = dir.path ?? ''
+				if (!loadedDirPaths.has(key)) {
+					loadedDirPaths.add(key)
+					dirty = true
+				}
+			}
+			for (const child of dir.children) {
+				if (child.kind === 'dir') {
+					stack.push(child)
+				}
+			}
+		}
+
+		if (dirty) {
+			setBackgroundLoadedCount(loadedDirPaths.size)
+		}
+	}
+
+	const removePrefetchTarget = (path: string | undefined) => {
+		if (!path) return
+		prefetchQueue.delete(path)
+	}
+
+	const collectUnloadedDirs = (root?: FsDirTreeNode) => {
+		if (!root) return []
+		const pending = new Set<string>()
+		const stack: FsDirTreeNode[] = [root]
+
+		while (stack.length) {
+			const current = stack.pop()!
+			if (current.kind !== 'dir') continue
+
+			if (current.path && current.isLoaded === false) {
+				pending.add(current.path)
+			}
+
+			for (const child of current.children) {
+				if (child.kind === 'dir') {
+					stack.push(child)
+				}
+			}
+		}
+
+		return Array.from(pending)
+	}
+
+	const queuePrefetchTargets = (paths: readonly string[]) => {
+		if (!treePrefetchClient) return
+		let added = false
+		for (const path of paths) {
+			if (!path) continue
+			if (loadedDirPaths.has(path)) continue
+			if (prefetchQueue.has(path)) continue
+			prefetchQueue.add(path)
+			added = true
+		}
+
+		if (added) {
+			kickPrefetchLoop()
+		}
+	}
+
+	const kickPrefetchLoop = () => {
+		if (prefetchProcessing) return
+		if (!workerInitialized) return
+		if (!treePrefetchClient) return
+		if (prefetchQueue.size === 0) return
+		void processPrefetchQueue(prefetchSessionId)
+	}
+
+	const processPrefetchQueue = async (session: number) => {
+		if (!treePrefetchClient) return
+		if (prefetchProcessing) return
+		if (!workerInitialized) return
+		if (prefetchQueue.size === 0) return
+		if (session !== prefetchSessionId) return
+
+		prefetchProcessing = true
+		setBackgroundPrefetching(true)
+
+		try {
+			while (session === prefetchSessionId && prefetchQueue.size > 0) {
+				const iterator = prefetchQueue.values().next()
+				if (iterator.done) break
+				const path = iterator.value as string
+				prefetchQueue.delete(path)
+				try {
+					const prefetched = await treePrefetchClient.loadDirectory(path)
+					if (session !== prefetchSessionId) break
+					if (!prefetched) continue
+					const latestTree = state.tree
+					if (!latestTree) continue
+					const latestDir = findNode(latestTree, path)
+					if (!latestDir || latestDir.kind !== 'dir') continue
+					const normalized = normalizeDirNodeMetadata(
+						prefetched,
+						latestDir.parentPath,
+						latestDir.depth
+					)
+					setDirNode(path, normalized)
+					absorbLoadedDirs(normalized)
+					setLastPrefetchedPath(path)
+					setPrefetchError(undefined)
+					const nestedTargets = collectUnloadedDirs(normalized)
+					queuePrefetchTargets(nestedTargets)
+				} catch (error) {
+					setPrefetchError(
+						error instanceof Error
+							? error.message
+							: 'Failed to prefetch directory'
+					)
+				}
+			}
+		} finally {
+			prefetchProcessing = false
+			if (session === prefetchSessionId && prefetchQueue.size === 0) {
+				setBackgroundPrefetching(false)
+			}
+			if (session === prefetchSessionId && prefetchQueue.size > 0) {
+				kickPrefetchLoop()
+			}
+		}
+	}
+
+	const startBackgroundPrefetch = async (
+		tree: FsDirTreeNode,
+		source: FsSource
+	) => {
+		prefetchSessionId += 1
+		if (!treePrefetchClient) {
+			resetPrefetchTracking()
+			return
+		}
+		workerInitialized = false
+		resetPrefetchTracking()
+		try {
+			const ctx = await ensureFs(source)
+			await treePrefetchClient.init({
+				source,
+				rootHandle: ctx.root,
+				rootPath: tree.path ?? '',
+				rootName: tree.name || 'root'
+			})
+			workerInitialized = true
+			const pending = collectUnloadedDirs(tree)
+			queuePrefetchTargets(pending)
+		} catch (error) {
+			workerInitialized = false
+			setPrefetchError(
+				error instanceof Error
+					? error.message
+					: 'Failed to start background prefetch'
+			)
+		}
+	}
 
 	const buildEnsurePaths = () => {
 		const paths = new Set<string>()
@@ -135,6 +342,7 @@ export function FsProvider(props: { children: JSX.Element }) {
 		const inflight = subtreeLoads.get(path)
 		if (inflight) return inflight
 
+		removePrefetchTarget(path)
 		const expandedSnapshot = { ...state.expanded, [path]: true }
 		const ensurePaths = buildEnsurePaths()
 		const load = (async () => {
@@ -147,13 +355,15 @@ export function FsProvider(props: { children: JSX.Element }) {
 				})
 				const latest = state.tree ? findNode(state.tree, path) : undefined
 				if (!latest || latest.kind !== 'dir') return
-				const normalized = normalizeDirNodeMetadata(
-					subtree,
-					latest.parentPath,
-					latest.depth
-				)
-				setDirNode(path, normalized)
-			} catch (error) {
+					const normalized = normalizeDirNodeMetadata(
+						subtree,
+						latest.parentPath,
+						latest.depth
+					)
+					setDirNode(path, normalized)
+					absorbLoadedDirs(normalized)
+					queuePrefetchTargets(collectUnloadedDirs(normalized))
+				} catch (error) {
 				setError(
 					error instanceof Error
 						? error.message
@@ -194,22 +404,25 @@ export function FsProvider(props: { children: JSX.Element }) {
 		clearPieceTables()
 		const ensurePaths = buildEnsurePaths()
 
-		try {
-			const built = await buildTree(source, {
-				expandedPaths: state.expanded,
-				ensurePaths
-			})
+			try {
+				const built = await buildTree(source, {
+					expandedPaths: state.expanded,
+					ensurePaths
+				})
 			const restorablePath = getRestorableFilePath(built)
 
-			batch(() => {
-				setTree(built)
-				setActiveSource(source)
-				setExpanded(expanded => ({
-					...expanded,
-					[built.path]: expanded[built.path] ?? true
-				}))
-				setError(undefined)
-			})
+				batch(() => {
+					setTree(built)
+					setActiveSource(source)
+					setExpanded(expanded => ({
+						...expanded,
+						[built.path]: expanded[built.path] ?? true
+					}))
+					setError(undefined)
+				})
+				seedLoadedDirSnapshot(built)
+
+				void startBackgroundPrefetch(built, source)
 
 			for (const [expandedPath, isOpen] of Object.entries(state.expanded)) {
 				if (isOpen) {
@@ -224,6 +437,7 @@ export function FsProvider(props: { children: JSX.Element }) {
 			setError(
 				error instanceof Error ? error.message : 'Failed to load filesystem'
 			)
+			resetPrefetchTracking()
 		} finally {
 			setLoading(false)
 		}
@@ -419,6 +633,13 @@ export function FsProvider(props: { children: JSX.Element }) {
 		const lastFilePath =
 			localStorage.getItem('fs-last-known-file-path') ?? undefined
 		setSelectedPath(lastFilePath)
+	})
+
+	onCleanup(() => {
+		resetPrefetchTracking()
+		workerInitialized = false
+		prefetchProcessing = false
+		void treePrefetchClient?.dispose()
 	})
 
 	const value: FsContextValue = [
