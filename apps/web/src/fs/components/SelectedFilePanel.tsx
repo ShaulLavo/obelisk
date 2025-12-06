@@ -8,10 +8,11 @@ import {
 	createSignal
 } from 'solid-js'
 import { useFs } from '../../fs/context/FsContext'
-import { Editor } from '../../editor'
-import type { CursorMode } from '../../editor/types'
+import { Editor } from '@repo/code-editor'
+import type { CursorMode, TextEditorDocument } from '@repo/code-editor'
 import { BinaryFileViewer } from '../../components/BinaryFileViewer'
 import { makePersisted } from '@solid-primitives/storage'
+import { useFocusManager } from '~/focus/focusManager'
 
 const FONT_OPTIONS = [
 	{
@@ -32,7 +33,8 @@ type SelectedFilePanelProps = {
 }
 
 export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
-	const [state] = useFs()
+	const [state, { updateSelectedFilePieceTable }] = useFs()
+	const focus = useFocusManager()
 	const [fontSize, setFontSize] = createSignal(DEFAULT_FONT_SIZE)
 	const [fontFamily, setFontFamily] = createSignal(DEFAULT_FONT_FAMILY)
 	const [cursorMode, setCursorMode] = makePersisted(
@@ -64,6 +66,17 @@ export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
 		cursorMode() === 'terminal' ? 'Terminal' : 'Regular'
 	)
 
+	const isEditable = () =>
+		props.isFileSelected() && !state.selectedFileLoading && !state.loading
+
+	const editorDocument: TextEditorDocument = {
+		filePath: () => state.lastKnownFilePath,
+		content: () => state.selectedFileContent,
+		pieceTable: () => state.selectedFilePieceTable,
+		updatePieceTable: updateSelectedFilePieceTable,
+		isEditable
+	}
+
 	const currentFileLabel = createMemo(() => {
 		const path = props.currentPath
 		if (!path) return 'No file selected'
@@ -76,64 +89,18 @@ export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
 				{currentFileLabel()}
 			</p>
 
-			<div class="mt-3 flex flex-wrap items-end gap-4 rounded border border-zinc-800/70 bg-zinc-900/30 p-3 text-[11px] uppercase tracking-[0.08em] text-zinc-400">
-				<label class="flex flex-col gap-1">
-					<span>Font family</span>
-					<select
-						class="rounded border border-zinc-700/80 bg-zinc-900 px-2 py-1 text-xs normal-case text-zinc-100 focus:border-emerald-500 focus:outline-none"
-						value={fontFamily()}
-						onInput={event => setFontFamily(event.currentTarget.value)}
-					>
-						<For each={FONT_OPTIONS}>
-							{option => <option value={option.value}>{option.label}</option>}
-						</For>
-					</select>
-				</label>
-
-				<label class="flex flex-col gap-1">
-					<span>Font size</span>
-					<div class="flex items-center gap-2 text-xs normal-case text-zinc-100">
-						<input
-							type="range"
-							min="10"
-							max="26"
-							step="1"
-							value={fontSize()}
-							onInput={handleFontSizeInput}
-							class="h-2 w-40 accent-emerald-400"
-						/>
-						<span class="font-mono tabular-nums text-zinc-300">
-							{fontSize()}px
-						</span>
-					</div>
-				</label>
-
-				<button
-					type="button"
-					class="rounded border border-zinc-700/70 bg-zinc-800 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-100 hover:bg-zinc-700"
-					onMouseDown={resetFontControls}
-				>
-					Reset
-				</button>
-
-				<button
-					type="button"
-					class="rounded border border-zinc-700/70 bg-zinc-800 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-100 hover:bg-zinc-700"
-					onMouseDown={toggleCursorMode}
-					aria-pressed={cursorMode() === 'terminal'}
-				>
-					Cursor: {cursorModeLabel()}
-				</button>
-			</div>
-
 			<Switch
 				fallback={
 					<Editor
+						document={editorDocument}
 						isFileSelected={props.isFileSelected}
 						stats={() => state.selectedFileStats}
 						fontSize={fontSize}
 						fontFamily={fontFamily}
 						cursorMode={cursorMode}
+						registerEditorArea={resolver =>
+							focus.registerArea('editor', resolver)
+						}
 						previewBytes={() => state.selectedFilePreviewBytes}
 					/>
 				}

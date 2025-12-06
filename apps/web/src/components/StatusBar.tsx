@@ -66,50 +66,50 @@ export const StatusBar = () => {
 	})
 
 	return (
-		<div class="rounded-lg border border-zinc-800/70 bg-zinc-950/70 px-4 py-2 text-[12px] text-zinc-200 shadow-inner">
-			<div class="flex flex-wrap items-center gap-x-6 gap-y-2">
-				<div class="flex min-w-0 flex-1 items-center gap-2">
-					<span class="text-[10px] uppercase tracking-[0.08em] text-zinc-500">
+		<div class="rounded-lg border border-zinc-800/70 bg-zinc-950/70  text-xs text-zinc-200 shadow-inner">
+			<div class="flex flex-wrap items-center gap-x-4 gap-y-1">
+				<div class="flex min-w-0 flex-1 items-center gap-1.5">
+					<span class="text-[8px] uppercase tracking-[0.08em] text-zinc-500">
 						File
 					</span>
-					<span class="truncate font-mono text-sm text-zinc-100">
+					<span class="truncate font-mono text-xs text-zinc-100">
 						{filePath()}
 					</span>
 				</div>
 
-				<div class="flex items-center gap-2 text-sm">
-					<span class="text-[10px] uppercase tracking-[0.08em] text-zinc-500">
+				<div class="flex items-center gap-1.5">
+					<span class="text-[8px] uppercase tracking-[0.08em] text-zinc-500">
 						Size
 					</span>
-					<span class="font-semibold text-zinc-100">{sizeLabel()}</span>
+					<span class="text-xs font-semibold text-zinc-100">{sizeLabel()}</span>
 				</div>
 
-				<div class="flex items-center gap-2 text-sm">
-					<span class="text-[10px] uppercase tracking-[0.08em] text-zinc-500">
+				<div class="flex items-center gap-1.5">
+					<span class="text-[8px] uppercase tracking-[0.08em] text-zinc-500">
 						Source
 					</span>
-					<span class="font-semibold text-zinc-100">
+					<span class="text-xs font-semibold text-zinc-100">
 						{SOURCE_LABELS[state.activeSource]}
 					</span>
 				</div>
 
-				<div class="flex items-center gap-2 text-sm">
-					<span class="text-[10px] uppercase tracking-[0.08em] text-zinc-500">
+				<div class="flex items-center gap-1.5">
+					<span class="text-[8px] uppercase tracking-[0.08em] text-zinc-500">
 						Status
 					</span>
 					<span
-						class={`rounded border px-2 py-0.5 text-[11px] font-semibold ${statusIndicator().class}`}
+						class={`rounded border px-1.5 py-0.5 text-[8px] font-semibold ${statusIndicator().class}`}
 					>
 						{statusIndicator().label}
 					</span>
 				</div>
 
-				<div class="flex items-center gap-2 text-sm">
-					<span class="text-[10px] uppercase tracking-[0.08em] text-zinc-500">
+				<div class="flex items-center gap-1.5">
+					<span class="text-[8px] uppercase tracking-[0.08em] text-zinc-500">
 						Focus
 					</span>
 					<span
-						class={`rounded border px-2 py-0.5 text-[11px] font-semibold transition duration-150 ${focusDescriptor().class}`}
+						class={`rounded border px-1.5 py-0.5 text-[8px] font-semibold transition duration-150 ${focusDescriptor().class}`}
 					>
 						{focusDescriptor().label}
 					</span>

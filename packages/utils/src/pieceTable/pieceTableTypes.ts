@@ -20,11 +20,6 @@ export type PieceTreeNode = {
 	subtreePieces: number
 }
 
-export type PieceTableLinearSnapshot = {
-	buffers: PieceTableBuffers
-	pieces: Piece[]
-}
-
 export type PieceTableTreeSnapshot = {
 	buffers: PieceTableBuffers
 	root: PieceTreeNode | null
@@ -32,6 +27,4 @@ export type PieceTableTreeSnapshot = {
 	pieceCount: number
 }
 
-export type PieceTableSnapshot =
-	| PieceTableTreeSnapshot
-	| PieceTableLinearSnapshot
+export type PieceTableSnapshot = PieceTableTreeSnapshot

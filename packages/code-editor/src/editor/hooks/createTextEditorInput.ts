@@ -21,7 +21,7 @@ export type TextEditorInputOptions = {
 	cursorState: Accessor<CursorState>
 	cursorActions: CursorActions
 	visibleLineRange: Accessor<VisibleLineRange>
-	updateSelectedFilePieceTable: (
+	updatePieceTable: (
 		updater: (
 			current: PieceTableSnapshot | undefined
 		) => PieceTableSnapshot | undefined
@@ -63,7 +63,7 @@ export function createTextEditorInput(
 	const applyInsert = (value: string) => {
 		if (!value) return
 		const offset = options.cursorState().position.offset
-		options.updateSelectedFilePieceTable(current => {
+		options.updatePieceTable(current => {
 			const baseSnapshot =
 				current ?? createPieceTableSnapshot(options.pieceTableText())
 			return insertIntoPieceTable(baseSnapshot, offset, value)
@@ -74,7 +74,7 @@ export function createTextEditorInput(
 
 	const applyDelete = (offset: number, length: number) => {
 		if (length <= 0 || offset < 0) return
-		options.updateSelectedFilePieceTable(current => {
+		options.updatePieceTable(current => {
 			const baseSnapshot =
 				current ?? createPieceTableSnapshot(options.pieceTableText())
 			const totalLength = getPieceTableLength(baseSnapshot)

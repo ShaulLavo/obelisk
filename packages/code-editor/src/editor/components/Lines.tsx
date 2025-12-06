@@ -14,11 +14,9 @@ export const Lines = (props: LinesProps) => {
 						rowVirtualizer={props.rowVirtualizer}
 						virtualRow={virtualRow}
 						entry={entry}
-						columns={props.columns()}
-						totalColumnWidth={props.totalColumnWidth()}
 						lineHeight={props.lineHeight()}
-						fontSize={props.fontSize()}
-						fontFamily={props.fontFamily()}
+						contentWidth={props.contentWidth()}
+						charWidth={props.charWidth()}
 						onRowClick={props.onRowClick}
 						onPreciseClick={props.onPreciseClick}
 						isActive={props.activeLineIndex() === entry.index}

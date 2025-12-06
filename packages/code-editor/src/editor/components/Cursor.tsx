@@ -16,6 +16,7 @@ export type CursorProps = {
 	paddingLeft: number
 	visibleLineStart: number
 	visibleLineEnd: number
+	getColumnOffset: (lineIndex: number, columnIndex: number) => number
 	getLineY: (lineIndex: number) => number
 	cursorMode: Accessor<CursorMode>
 }
@@ -29,8 +30,12 @@ export const Cursor = (props: CursorProps) => {
 	const shouldBlink = createMemo(() => props.cursorState().isBlinking)
 
 	const cursorX = createMemo(() => {
-		const column = props.cursorState().position.column
-		return props.lineNumberWidth + props.paddingLeft + column * props.charWidth
+		const state = props.cursorState()
+		const columnOffset = props.getColumnOffset(
+			state.position.line,
+			state.position.column
+		)
+		return props.lineNumberWidth + props.paddingLeft + columnOffset
 	})
 
 	const cursorYOffset = createMemo(() =>

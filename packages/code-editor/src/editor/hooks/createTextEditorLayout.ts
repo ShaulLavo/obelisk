@@ -2,12 +2,15 @@ import { createVirtualizer } from '@tanstack/solid-virtual'
 import type { VirtualItem, Virtualizer } from '@tanstack/virtual-core'
 import { createEffect, createMemo, type Accessor } from 'solid-js'
 import {
-	COLUMN_CHARS_PER_ITEM,
-	HORIZONTAL_VIRTUALIZER_OVERSCAN,
 	VERTICAL_VIRTUALIZER_OVERSCAN,
 	LINE_NUMBER_WIDTH
 } from '../consts'
-import { estimateColumnWidth, estimateLineHeight, measureCharWidth } from '../utils'
+import {
+	calculateColumnOffset,
+	calculateVisualColumnCount,
+	estimateLineHeight,
+	measureCharWidth
+} from '../utils'
 import type { LineEntry } from '../types'
 import type { CursorState } from '../cursor'
 
@@ -25,16 +28,15 @@ export type TextEditorLayout = {
 	activeLineIndex: Accessor<number | null>
 	charWidth: Accessor<number>
 	lineHeight: Accessor<number>
+	contentWidth: Accessor<number>
 	inputX: Accessor<number>
 	inputY: Accessor<number>
+	getColumnOffset: (lineIndex: number, columnIndex: number) => number
 	getLineY: (lineIndex: number) => number
 	visibleLineRange: Accessor<{ start: number; end: number }>
 	rowVirtualizer: Virtualizer<HTMLDivElement, HTMLDivElement>
-	columnVirtualizer: Virtualizer<HTMLDivElement, HTMLDivElement>
 	virtualItems: () => VirtualItem[]
 	totalSize: () => number
-	columnItems: () => VirtualItem[]
-	columnTotalSize: () => number
 }
 
 export function createTextEditorLayout(
@@ -48,18 +50,12 @@ export function createTextEditorLayout(
 		return options.cursorState().position.line
 	})
 
-	const maxColumnChunks = createMemo(() => {
+	const maxVisualColumns = createMemo(() => {
 		const entries = options.lineEntries()
-		if (!entries.length) return 0
 		let max = 0
 		for (const entry of entries) {
-			const chunks = Math.max(
-				1,
-				Math.ceil(entry.text.length / COLUMN_CHARS_PER_ITEM)
-			)
-			if (chunks > max) {
-				max = chunks
-			}
+			const columns = calculateVisualColumnCount(entry.text)
+			if (columns > max) max = columns
 		}
 		return max
 	})
@@ -85,37 +81,34 @@ export function createTextEditorLayout(
 		overscan: VERTICAL_VIRTUALIZER_OVERSCAN
 	})
 
-	const columnVirtualizer = createVirtualizer<HTMLDivElement, HTMLDivElement>({
-		horizontal: true,
-		get count() {
-			return Math.max(maxColumnChunks(), 1)
-		},
-		get enabled() {
-			return options.isFileSelected() && hasLineEntries()
-		},
-		getScrollElement: () => options.scrollElement(),
-		estimateSize: () => estimateColumnWidth(options.fontSize()),
-		overscan: HORIZONTAL_VIRTUALIZER_OVERSCAN
-	})
-
 	createEffect(() => {
 		options.fontSize()
 		options.fontFamily()
 		options.lineEntries()
 		queueMicrotask(() => {
 			rowVirtualizer.measure()
-			columnVirtualizer.measure()
 		})
 	})
 
 	const virtualItems = () => rowVirtualizer.getVirtualItems()
 	const totalSize = () => rowVirtualizer.getTotalSize()
-	const columnItems = () => columnVirtualizer.getVirtualItems()
-	const columnTotalSize = () => columnVirtualizer.getTotalSize()
 	const lineHeight = createMemo(() => estimateLineHeight(options.fontSize()))
+	const contentWidth = createMemo(() => {
+		const maxColumns = maxVisualColumns()
+		if (maxColumns === 0) {
+			return Math.max(options.fontSize(), 1)
+		}
+		return maxColumns * charWidth()
+	})
+
+	const columnOffset = (lineIndex: number, columnIndex: number): number => {
+		const entry = options.lineEntries()[lineIndex]
+		if (!entry) return 0
+		return calculateColumnOffset(entry.text, columnIndex, charWidth())
+	}
 
 	const inputX = createMemo(
-		() => LINE_NUMBER_WIDTH + cursorColumnIndex() * charWidth()
+		() => LINE_NUMBER_WIDTH + columnOffset(cursorLineIndex(), cursorColumnIndex())
 	)
 
 	const inputY = createMemo(() => cursorLineIndex() * lineHeight())
@@ -138,15 +131,14 @@ export function createTextEditorLayout(
 		activeLineIndex,
 		charWidth,
 		lineHeight,
+		contentWidth,
 		inputX,
 		inputY,
+		getColumnOffset: columnOffset,
 		getLineY,
 		visibleLineRange,
 		rowVirtualizer,
-		columnVirtualizer,
 		virtualItems,
-		totalSize,
-		columnItems,
-		columnTotalSize
+		totalSize
 	}
 }

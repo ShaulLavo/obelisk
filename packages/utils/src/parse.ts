@@ -188,7 +188,6 @@ export type ParseOptions = {
 }
 
 export type ParseResult = {
-	text: string
 	characterCount: number
 	lineCount: number
 	lineStarts: number[]
@@ -652,7 +651,6 @@ export function parseFileBuffer(
 	}
 
 	return {
-		text: content,
 		characterCount: length,
 		lineCount: lineInfo.length,
 		lineStarts,
@@ -718,7 +716,6 @@ export const createMinimalBinaryParseResult = (
 		: undefined
 
 	return {
-		text,
 		characterCount: length,
 		lineCount: lineInfo.length,
 		lineStarts,

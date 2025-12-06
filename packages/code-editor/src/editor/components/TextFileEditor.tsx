@@ -1,5 +1,4 @@
 import { createMemo } from 'solid-js'
-import { useFs } from '../../fs/context/FsContext'
 import { getPieceTableText } from '@repo/utils/pieceTable'
 import { textToLineEntries } from '../utils'
 import { CursorProvider } from '../cursor'
@@ -7,15 +6,12 @@ import { TextFileEditorInner } from './TextFileEditorInner'
 import type { LineEntry, TextFileEditorProps } from '../types'
 
 export const TextFileEditor = (props: TextFileEditorProps) => {
-	const [state] = useFs()
-
 	const pieceTableText = createMemo(() => {
-		const snapshot = state.selectedFilePieceTable
+		const snapshot = props.document.pieceTable()
 		if (snapshot) {
 			return getPieceTableText(snapshot)
 		}
-		const stats = props.stats()
-		return stats?.text ?? ''
+		return props.document.content()
 	})
 
 	const lineEntries = createMemo<LineEntry[]>(() => {
@@ -27,7 +23,7 @@ export const TextFileEditor = (props: TextFileEditorProps) => {
 
 	return (
 		<CursorProvider
-			filePath={() => state.lastKnownFilePath}
+			filePath={() => props.document.filePath()}
 			lineEntries={lineEntries}
 			documentText={pieceTableText}
 			documentLength={documentLength}

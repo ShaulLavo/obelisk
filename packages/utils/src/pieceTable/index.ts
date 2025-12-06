@@ -11,4 +11,4 @@ export {
 	getPieceTableLength,
 	getPieceTableText,
 	insertIntoPieceTable
-} from './pieceTableTree'
+} from './pieceTable'

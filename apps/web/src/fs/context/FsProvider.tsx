@@ -169,7 +169,7 @@ export function FsProvider(props: { children: JSX.Element }) {
 	}
 
 	let selectRequestId = 0
-	const MAX_FILE_SIZE_BYTES = 1024 * 1024 * 100 // 100 MB
+	const MAX_FILE_SIZE_BYTES = Infinity
 
 	const getRestorableFilePath = (tree: FsDirTreeNode) => {
 		const candidates = [state.selectedPath, state.lastKnownFilePath].filter(
@@ -270,96 +270,98 @@ export function FsProvider(props: { children: JSX.Element }) {
 			await trackOperation(
 				'fs:selectPath',
 				async ({ timeSync, timeAsync }) => {
-				const fileSize = await timeAsync('get-file-size', () =>
-					getFileSize(source, path)
-				)
-				perfMetadata.fileSize = fileSize
-				if (requestId !== selectRequestId) return
-
-				let selectedFileContentValue = ''
-				let pieceTableSnapshot:
-					| ReturnType<typeof createPieceTableSnapshot>
-					| undefined
-				let fileStatsResult:
-					| ReturnType<typeof parseFileBuffer>
-					| ReturnType<typeof createMinimalBinaryParseResult>
-					| undefined
-
-				let previewBytes: Uint8Array | undefined
-
-				if (fileSize > MAX_FILE_SIZE_BYTES) {
-					// Skip processing for large files
-				} else {
-					previewBytes = await timeAsync('read-preview-bytes', () =>
-						readFilePreviewBytes(source, path)
+					const fileSize = await timeAsync('get-file-size', () =>
+						getFileSize(source, path)
 					)
+					perfMetadata.fileSize = fileSize
 					if (requestId !== selectRequestId) return
 
-					const detection = detectBinaryFromPreview(path, previewBytes)
-					const isBinary = !detection.isText
+					let selectedFileContentValue = ''
+					let pieceTableSnapshot:
+						| ReturnType<typeof createPieceTableSnapshot>
+						| undefined
+					let fileStatsResult:
+						| ReturnType<typeof parseFileBuffer>
+						| ReturnType<typeof createMinimalBinaryParseResult>
+						| undefined
 
-					if (isBinary) {
-						fileStatsResult = timeSync('binary-file-metadata', () =>
-							createMinimalBinaryParseResult('', detection)
-						)
+					let binaryPreviewBytes: Uint8Array | undefined
+
+					if (fileSize > MAX_FILE_SIZE_BYTES) {
+						// Skip processing for large files
 					} else {
-						const text = await timeAsync('read-file-text', () =>
-							readFileText(source, path)
+						const previewBytes = await timeAsync('read-preview-bytes', () =>
+							readFilePreviewBytes(source, path)
 						)
 						if (requestId !== selectRequestId) return
 
-						selectedFileContentValue = text
+						const detection = detectBinaryFromPreview(path, previewBytes)
+						const isBinary = !detection.isText
 
-						fileStatsResult = timeSync('parse-file-buffer', () =>
-							parseFileBuffer(text, {
-								path,
-								previewBytes,
-								textHeuristic: detection
-							})
-						)
+						if (isBinary) {
+							binaryPreviewBytes = previewBytes
+							fileStatsResult = timeSync('binary-file-metadata', () =>
+								createMinimalBinaryParseResult('', detection)
+							)
+						} else {
+							// Only keep preview bytes for binaries to avoid holding large typed arrays
+							// when we're about to read the full text anyway.
+							const text = await timeAsync('read-file-text', () =>
+								readFileText(source, path)
+							)
+							if (requestId !== selectRequestId) return
 
-						if (fileStatsResult.contentKind === 'text') {
-							const existingSnapshot = (
-								state.pieceTables as Record<
-									string,
-									ReturnType<typeof createPieceTableSnapshot> | undefined
-								>
-							)[path]
+							selectedFileContentValue = text
 
-							pieceTableSnapshot =
-								existingSnapshot ??
-								timeSync('create-piece-table', () =>
-									createPieceTableSnapshot(text)
-								)
+							fileStatsResult = timeSync('parse-file-buffer', () =>
+								parseFileBuffer(text, {
+									path,
+									textHeuristic: detection
+								})
+							)
+
+							if (fileStatsResult.contentKind === 'text') {
+								const existingSnapshot = (
+									state.pieceTables as Record<
+										string,
+										ReturnType<typeof createPieceTableSnapshot> | undefined
+									>
+								)[path]
+
+								pieceTableSnapshot =
+									existingSnapshot ??
+									timeSync('create-piece-table', () =>
+										createPieceTableSnapshot(text)
+									)
+							}
 						}
 					}
-				}
 
-				timeSync('apply-selection-state', ({ timeSync }) => {
-					batch(() => {
-						timeSync('set-selected-path', () => setSelectedPath(path))
-						timeSync('clear-error', () => setError(undefined))
-						timeSync('set-selected-file-size', () =>
-							setSelectedFileSize(fileSize)
-						)
-						timeSync('set-selected-file-preview-bytes', () =>
-							setSelectedFilePreviewBytes(previewBytes)
-						)
-						timeSync('set-selected-file-content', () =>
-							setSelectedFileContent(selectedFileContentValue)
-						)
-						if (pieceTableSnapshot) {
-							timeSync('set-piece-table', () =>
-								setPieceTable(path, pieceTableSnapshot)
+					timeSync('apply-selection-state', ({ timeSync }) => {
+						batch(() => {
+							timeSync('set-selected-path', () => setSelectedPath(path))
+							timeSync('clear-error', () => setError(undefined))
+							timeSync('set-selected-file-size', () =>
+								setSelectedFileSize(fileSize)
 							)
-						}
-						if (fileStatsResult) {
-							timeSync('set-file-stats', () =>
-								setFileStats(path, fileStatsResult)
+							timeSync('set-selected-file-preview-bytes', () =>
+								setSelectedFilePreviewBytes(binaryPreviewBytes)
 							)
-						}
+							timeSync('set-selected-file-content', () =>
+								setSelectedFileContent(selectedFileContentValue)
+							)
+							if (pieceTableSnapshot) {
+								timeSync('set-piece-table', () =>
+									setPieceTable(path, pieceTableSnapshot)
+								)
+							}
+							if (fileStatsResult) {
+								timeSync('set-file-stats', () =>
+									setFileStats(path, fileStatsResult)
+								)
+							}
+						})
 					})
-				})
 				},
 				{
 					metadata: perfMetadata

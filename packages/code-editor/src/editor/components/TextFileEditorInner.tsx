@@ -1,11 +1,10 @@
 import { Show, createEffect, on, onCleanup, onMount } from 'solid-js'
 import type { JSX } from 'solid-js'
-import { useFs } from '../../fs/context/FsContext'
 import { Lines } from './Lines'
 import { Cursor } from './Cursor'
 import { LineGutters } from './LineGutters'
 import { Input } from './Input'
-import { LINE_NUMBER_WIDTH, EDITOR_PADDING_LEFT } from '../consts'
+import { LINE_NUMBER_WIDTH } from '../consts'
 import { useCursor } from '../cursor'
 import {
 	createCursorScrollSync,
@@ -13,22 +12,18 @@ import {
 	createTextEditorLayout
 } from '../hooks'
 import type { LineEntry, TextFileEditorProps } from '../types'
-import { useFocusManager } from '~/focus/focusManager'
 
 export const TextFileEditorInner = (props: TextFileEditorProps) => {
-	const [state, { updateSelectedFilePieceTable }] = useFs()
 	const cursor = useCursor()
 	const cursorState = () => cursor.state
 	const cursorActions = cursor.actions
 	const lineEntries = cursor.lineEntries
 	const pieceTableText = cursor.documentText
-	const focus = useFocusManager()
 
 	let scrollElement: HTMLDivElement = null!
 	let inputElement: HTMLTextAreaElement = null!
 
-	const isEditable = () =>
-		props.isFileSelected() && !state.selectedFileLoading && !state.loading
+	const isEditable = () => props.document.isEditable()
 
 	const layout = createTextEditorLayout({
 		lineEntries,
@@ -40,21 +35,19 @@ export const TextFileEditorInner = (props: TextFileEditorProps) => {
 	})
 
 	createEffect(
-		on(
-			() => state.lastKnownFilePath,
-			() => {
-				if (scrollElement) {
-					scrollElement.scrollTop = 0
-					scrollElement.scrollLeft = 0
-				}
+		on(() => props.document.filePath(), () => {
+			if (scrollElement) {
+				scrollElement.scrollTop = 0
+				scrollElement.scrollLeft = 0
 			}
-		)
+		})
 	)
 
 	const cursorScroll = createCursorScrollSync({
 		scrollElement: () => scrollElement,
 		lineHeight: layout.lineHeight,
-		charWidth: layout.charWidth
+		charWidth: layout.charWidth,
+		getColumnOffset: layout.getColumnOffset
 	})
 
 	const scrollCursorIntoView = () => {
@@ -66,7 +59,7 @@ export const TextFileEditorInner = (props: TextFileEditorProps) => {
 		cursorState,
 		cursorActions,
 		visibleLineRange: layout.visibleLineRange,
-		updateSelectedFilePieceTable,
+		updatePieceTable: props.document.updatePieceTable,
 		pieceTableText,
 		isFileSelected: () => props.isFileSelected(),
 		getInputElement: () => inputElement,
@@ -109,8 +102,10 @@ export const TextFileEditorInner = (props: TextFileEditorProps) => {
 
 	onMount(() => {
 		if (!scrollElement) return
-		const unregister = focus.registerArea('editor', () => scrollElement)
-		onCleanup(unregister)
+		const unregister = props.registerEditorArea?.(() => scrollElement)
+		if (typeof unregister === 'function') {
+			onCleanup(unregister)
+		}
 	})
 
 	return (
@@ -157,6 +152,7 @@ export const TextFileEditorInner = (props: TextFileEditorProps) => {
 							paddingLeft={0}
 							visibleLineStart={layout.visibleLineRange().start}
 							visibleLineEnd={layout.visibleLineRange().end}
+							getColumnOffset={layout.getColumnOffset}
 							getLineY={layout.getLineY}
 							cursorMode={props.cursorMode}
 						/>
@@ -172,13 +168,11 @@ export const TextFileEditorInner = (props: TextFileEditorProps) => {
 
 						<Lines
 							rows={layout.virtualItems}
-							columns={layout.columnItems}
 							entries={lineEntries}
-							totalColumnWidth={layout.columnTotalSize}
+							contentWidth={layout.contentWidth}
 							rowVirtualizer={layout.rowVirtualizer}
 							lineHeight={layout.lineHeight}
-							fontSize={props.fontSize}
-							fontFamily={props.fontFamily}
+							charWidth={layout.charWidth}
 							onRowClick={handleRowClick}
 							onPreciseClick={handlePreciseClick}
 							activeLineIndex={layout.activeLineIndex}

@@ -8,11 +8,12 @@ export type CursorScrollSyncOptions = {
 	lineHeight: () => number
 	charWidth: () => number
 	contextRows?: number
+	getColumnOffset?: (line: number, column: number) => number
 }
 
 export type CursorScrollSync = {
 	scrollToLine: (line: number) => void
-	scrollToColumn: (column: number) => void
+	scrollToColumn: (line: number, column: number) => void
 	scrollToCursor: (line: number, column: number) => void
 }
 
@@ -54,17 +55,20 @@ export function createCursorScrollSync(
 		}
 	}
 
-	const scrollToColumn = (column: number) => {
+	const scrollToColumn = (line: number, column: number) => {
 		const scrollEl = options.scrollElement()
 		if (!scrollEl) return
 
 		const cw = options.charWidth()
-		const cursorX = column * cw
+		const cursorOffset =
+			typeof options.getColumnOffset === 'function'
+				? options.getColumnOffset(line, column)
+				: column * cw
 		const gutterWidth = LINE_NUMBER_WIDTH
 
 		const scrollLeft = scrollEl.scrollLeft
 		const viewportWidth = scrollEl.clientWidth
-		const absoluteCursorX = gutterWidth + cursorX
+		const absoluteCursorX = gutterWidth + cursorOffset
 
 		// Check if cursor is outside horizontal viewport
 		if (absoluteCursorX < scrollLeft + gutterWidth) {
@@ -82,7 +86,7 @@ export function createCursorScrollSync(
 
 	const scrollToCursor = (line: number, column: number) => {
 		scrollToLine(line)
-		scrollToColumn(column)
+		scrollToColumn(line, column)
 	}
 
 	return { scrollToLine, scrollToColumn, scrollToCursor }

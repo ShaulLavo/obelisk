@@ -6,7 +6,7 @@ import { StatusBar } from './components/StatusBar'
 const Main: Component = () => {
 	return (
 		<main class="h-screen max-h-screen overflow-hidden bg-[#0b0c0f] text-zinc-100">
-			<div class="grid h-full min-h-0 grid-rows-[13fr_7fr_auto] gap-5">
+			<div class="grid h-full min-h-0 grid-rows-[13fr_7fr_auto]">
 				<div class="min-h-0">
 					<Fs />
 				</div>

@@ -2,7 +2,8 @@ import {
 	CHAR_WIDTH_RATIO,
 	COLUMN_CHARS_PER_ITEM,
 	LINE_HEIGHT_RATIO,
-	MIN_ESTIMATED_LINE_HEIGHT
+	MIN_ESTIMATED_LINE_HEIGHT,
+	TAB_SIZE
 } from './consts'
 import type { LineEntry } from './types'
 
@@ -12,14 +13,8 @@ export const estimateLineHeight = (fontSize: number) =>
 export const estimateColumnWidth = (fontSize: number) =>
 	Math.max(fontSize * CHAR_WIDTH_RATIO * COLUMN_CHARS_PER_ITEM, fontSize * 4)
 
-// Canvas for measuring text - reused for performance
 let measureCanvas: HTMLCanvasElement | null = null
 
-/**
- * Measure the actual width of a single character for a given font.
- * Uses canvas measureText for accurate pixel measurement.
- * Results are cached per font configuration.
- */
 const charWidthCache = new Map<string, number>()
 
 export const measureCharWidth = (
@@ -32,41 +27,29 @@ export const measureCharWidth = (
 		return cached
 	}
 
-	// Create canvas lazily
 	if (!measureCanvas) {
 		measureCanvas = document.createElement('canvas')
 	}
 
 	const ctx = measureCanvas.getContext('2d')
 	if (!ctx) {
-		// Fallback to estimate if canvas not available
 		return fontSize * CHAR_WIDTH_RATIO
 	}
 
 	ctx.font = `${fontSize}px ${fontFamily}`
 
-	// Measure a representative character (use 'M' for monospace width)
-	// For monospace fonts, all characters should have the same width
 	const metrics = ctx.measureText('M')
 	const width = metrics.width
 
-	// Cache the result
 	charWidthCache.set(cacheKey, width)
 
 	return width
 }
 
-/**
- * Clear the character width cache (useful when fonts change)
- */
 export const clearCharWidthCache = () => {
 	charWidthCache.clear()
 }
 
-/**
- * Convert text content into line entries for the editor.
- * Each entry contains the line index, start offset, length, and text content.
- */
 export const textToLineEntries = (text: string): LineEntry[] => {
 	if (text.length === 0) {
 		return [
@@ -111,11 +94,87 @@ export const textToLineEntries = (text: string): LineEntry[] => {
 	return entries
 }
 
+const normalizeTabSize = (tabSize: number): number => {
+	return Number.isFinite(tabSize) && tabSize > 0 ? tabSize : TAB_SIZE
+}
+
+const getTabAdvance = (visualColumn: number, tabSize: number): number => {
+	const normalizedTab = normalizeTabSize(tabSize)
+	const remainder = visualColumn % normalizedTab
+	return remainder === 0 ? normalizedTab : normalizedTab - remainder
+}
+
+export const calculateVisualColumnCount = (
+	text: string,
+	tabSize = TAB_SIZE
+): number => {
+	let visualColumn = 0
+	for (let i = 0; i < text.length; i++) {
+		if (text[i] === '\t') {
+			visualColumn += getTabAdvance(visualColumn, tabSize)
+		} else {
+			visualColumn += 1
+		}
+	}
+	return visualColumn
+}
+
+const normalizeCharWidth = (charWidth: number): number => {
+	return Number.isFinite(charWidth) && charWidth > 0 ? charWidth : 1
+}
+
+export const calculateColumnOffset = (
+	text: string,
+	column: number,
+	charWidth: number,
+	tabSize = TAB_SIZE
+): number => {
+	const safeCharWidth = normalizeCharWidth(charWidth)
+	const clampedColumn = Math.max(0, Math.min(column, text.length))
+	let visualColumn = 0
+
+	for (let i = 0; i < clampedColumn; i++) {
+		if (text[i] === '\t') {
+			visualColumn += getTabAdvance(visualColumn, tabSize)
+		} else {
+			visualColumn += 1
+		}
+	}
+
+	return visualColumn * safeCharWidth
+}
+
+export const calculateColumnFromX = (
+	text: string,
+	targetX: number,
+	charWidth: number,
+	tabSize = TAB_SIZE
+): number => {
+	const safeCharWidth = normalizeCharWidth(charWidth)
+	const safeTarget = Math.max(0, targetX) / safeCharWidth
+
+	let visualColumn = 0
+
+	for (let i = 0; i < text.length; i++) {
+		const advance =
+			text[i] === '\t' ? getTabAdvance(visualColumn, tabSize) : 1
+		const midpoint = visualColumn + advance / 2
+
+		if (safeTarget < midpoint) {
+			return i
+		}
+
+		visualColumn += advance
+	}
+
+	return text.length
+}
+
 export const calculateColumnFromClick = (
+	text: string,
 	clickX: number,
 	charWidth: number,
-	maxColumn: number
+	tabSize = TAB_SIZE
 ): number => {
-	const column = Math.round(clickX / charWidth)
-	return Math.max(0, Math.min(column, maxColumn))
+	return calculateColumnFromX(text, clickX, charWidth, tabSize)
 }

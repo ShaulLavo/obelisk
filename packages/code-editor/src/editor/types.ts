@@ -1,15 +1,34 @@
 import type { VirtualItem, Virtualizer } from '@tanstack/virtual-core'
 import type { Accessor } from 'solid-js'
 import type { ParseResult } from '@repo/utils/parse'
+import type { PieceTableSnapshot } from '@repo/utils/pieceTable'
 
 export type CursorMode = 'regular' | 'terminal'
 
+export type EditorAreaRegistration = (
+	resolver: () => HTMLElement | null
+) => (() => void) | void
+
+export type TextEditorDocument = {
+	filePath: Accessor<string | undefined>
+	content: Accessor<string>
+	pieceTable: Accessor<PieceTableSnapshot | undefined>
+	updatePieceTable: (
+		updater: (
+			current: PieceTableSnapshot | undefined
+		) => PieceTableSnapshot | undefined
+	) => void
+	isEditable: Accessor<boolean>
+}
+
 export type EditorProps = {
+	document: TextEditorDocument
 	isFileSelected: Accessor<boolean>
 	stats: Accessor<ParseResult | undefined>
 	fontSize: Accessor<number>
 	fontFamily: Accessor<string>
 	cursorMode: Accessor<CursorMode>
+	registerEditorArea?: EditorAreaRegistration
 	previewBytes?: Accessor<Uint8Array | undefined>
 }
 
@@ -24,11 +43,9 @@ export type LineProps = {
 	rowVirtualizer: Virtualizer<HTMLDivElement, HTMLDivElement>
 	virtualRow: VirtualItem
 	entry: LineEntry
-	columns: VirtualItem[]
-	totalColumnWidth: number
 	lineHeight: number
-	fontSize: number
-	fontFamily: string
+	contentWidth: number
+	charWidth: number
 	onRowClick: (entry: LineEntry) => void
 	onPreciseClick: (lineIndex: number, column: number) => void
 	isActive: boolean
@@ -36,13 +53,11 @@ export type LineProps = {
 
 export type LinesProps = {
 	rows: Accessor<VirtualItem[]>
-	columns: Accessor<VirtualItem[]>
 	entries: Accessor<LineEntry[]>
-	totalColumnWidth: Accessor<number>
+	contentWidth: Accessor<number>
 	rowVirtualizer: Virtualizer<HTMLDivElement, HTMLDivElement>
 	lineHeight: Accessor<number>
-	fontSize: Accessor<number>
-	fontFamily: Accessor<string>
+	charWidth: Accessor<number>
 	onRowClick: (entry: LineEntry) => void
 	onPreciseClick: (lineIndex: number, column: number) => void
 	activeLineIndex: Accessor<number | null>
