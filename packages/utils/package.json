@@ -12,10 +12,11 @@
   "dependencies": {
     "@repo/perf": "*"
   },
-  "scripts": {
-    "lint": "eslint . --max-warnings 0",
-    "check-types": "tsc --noEmit"
-  },
+	"scripts": {
+		"lint": "eslint . --max-warnings 0",
+		"check-types": "tsc --noEmit",
+		"test": "bun test"
+	},
   "devDependencies": {
     "@repo/eslint-config": "*",
     "@repo/typescript-config": "*",

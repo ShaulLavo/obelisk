@@ -1,5 +1,5 @@
 import { normalizeCombo } from './combo'
-import { contentKeyMapper } from './keyUtils'
+import { normalizeKey } from './keyUtils'
 import type { EqualPreference } from './keyUtils'
 import type { KeyCombo, Modifier } from './types'
 
@@ -17,7 +17,7 @@ export function fromEvent(
 	const rawKey = (e.key || '').toString()
 	const rawCode = (e.code || '').toString()
 
-	let key = contentKeyMapper(rawKey || rawCode, { treatEqualAsDistinct })
+	let key = normalizeKey(rawKey || rawCode, { treatEqualAsDistinct })
 
 	if (key === 'unknown' && rawKey) {
 		const lk = rawKey.toLowerCase()

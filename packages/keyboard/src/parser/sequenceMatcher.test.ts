@@ -50,4 +50,33 @@ describe('createShortcutSequenceMatcher', () => {
 			Date.now = originalNow
 		}
 	})
+
+	it('supports subsequence matching when enabled', () => {
+		const matcher = createShortcutSequenceMatcher('["g","i"]', {
+			allowSubsequence: true,
+			timeoutMs: 1000
+		})
+		expect(matcher.handleEvent(eventFor('g'))).toBe(false)
+		expect(matcher.handleEvent(eventFor('x'))).toBe(false)
+		expect(matcher.handleEvent(eventFor('i'))).toBe(true)
+	})
+
+	it('still enforces timeouts for subsequences', () => {
+		const matcher = createShortcutSequenceMatcher('["g","i"]', {
+			allowSubsequence: true,
+			timeoutMs: 100
+		})
+		const originalNow = Date.now
+		let now = 0
+		Date.now = () => now
+		try {
+			expect(matcher.handleEvent(eventFor('g'))).toBe(false)
+			now = 150
+			expect(matcher.handleEvent(eventFor('x'))).toBe(false)
+			now = 200
+			expect(matcher.handleEvent(eventFor('i'))).toBe(false)
+		} finally {
+			Date.now = originalNow
+		}
+	})
 })

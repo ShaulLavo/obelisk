@@ -264,5 +264,3 @@ export function createFs(
 ): FsContext {
 	return new FsContextImpl(root, options)
 }
-
-export const createVfs = createFs

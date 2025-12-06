@@ -1,6 +1,6 @@
 export { VFile } from './vfile'
 export { VDir } from './vdir'
-export { createFs, createVfs } from './fsContext'
+export { createFs } from './fsContext'
 export {
 	createStore,
 	type VfsStore,

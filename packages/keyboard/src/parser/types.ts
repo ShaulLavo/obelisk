@@ -80,14 +80,17 @@ export type MatchOptions = {
 	treatEqualAsDistinct?: boolean
 }
 
-export type SequenceMatcherOptions = {
+export type ShortcutSequenceMatcherOptions = {
 	platform?: Platform
 	timeoutMs?: number
 	ignoreRepeat?: boolean
 	treatEqualAsDistinct?: boolean
+	allowSubsequence?: boolean
 }
 
 export type ShortcutSequenceMatcher = {
 	handleEvent(e: KeyboardEvent): boolean
 	reset(): void
 }
+
+export type SequenceMatcherOptions = ShortcutSequenceMatcherOptions

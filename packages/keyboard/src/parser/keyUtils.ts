@@ -50,3 +50,10 @@ export function parseKeyToken(raw: string, opts: EqualPreference = {}): ContentK
 	const trimmed = raw.trim()
 	return contentKeyMapper(trimmed, opts)
 }
+
+export function normalizeKey(
+	key: string,
+	opts: EqualPreference = {}
+): ContentKey {
+	return contentKeyMapper(key, opts)
+}

@@ -14,6 +14,14 @@ describe('parseShortcut', () => {
 		const plusCombo = parseShortcut('ctrl++')
 		expect(plusCombo.key).toBe('+')
 	})
+
+	it('supports primary modifier alias per platform', () => {
+		const macCombo = parseShortcut('primary+k', { platform: 'mac' })
+		expect(macCombo.modifiers).toEqual(new Set(['meta']))
+
+		const winCombo = parseShortcut('primary+k', { platform: 'windows' })
+		expect(winCombo.modifiers).toEqual(new Set(['ctrl']))
+	})
 })
 
 describe('parseShortcutSequence', () => {

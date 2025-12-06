@@ -6,9 +6,9 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@repo/env": "*",
     "@repo/logger": "*",
-    "localforage": "^1.10.0"
+    "localforage": "^1.10.0",
+    "zod": "^4.1.13"
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",

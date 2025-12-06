@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { contentKeyMapper, parseKeyToken } from './keyUtils'
+import { contentKeyMapper, normalizeKey, parseKeyToken } from './keyUtils'
 
 describe('contentKeyMapper', () => {
 	it('maps letters to lowercase letter keys', () => {
@@ -24,5 +24,16 @@ describe('contentKeyMapper', () => {
 describe('parseKeyToken', () => {
 	it('trims input before mapping', () => {
 		expect(parseKeyToken('  ; ')).toBe(';')
+	})
+})
+
+describe('normalizeKey', () => {
+	it('maps raw strings into normalized content keys', () => {
+		expect(normalizeKey('ArrowLeft')).toBe('←')
+		expect(normalizeKey('A')).toBe('a')
+	})
+
+	it('honors equal preference when collapsing +=', () => {
+		expect(normalizeKey('=', { treatEqualAsDistinct: false })).toBe('+')
 	})
 })

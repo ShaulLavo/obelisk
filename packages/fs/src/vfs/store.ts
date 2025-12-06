@@ -1,16 +1,39 @@
 import type { FsContext, FsContextOptions } from './types'
-import { sanitizePath } from './utils/path'
+import { getParentPath, sanitizePath } from './utils/path'
 import { VFile } from './vfile'
 import { createFs } from './fsContext'
 import { textEncoder } from './utils/streams'
+import { randomId } from './utils/random'
 
 const DEFAULT_STORE_INDEX_PATH = '.vfs-store/store.meta.json'
 const STORE_DATA_SUFFIX = '.data'
 const textDecoder = new TextDecoder()
 
+/** Compact when dead bytes exceed this fraction of total data file size. */
+const COMPACTION_RATIO_THRESHOLD = 0.5
+/** Minimum dead bytes before compaction is considered (avoid compacting tiny files). */
+const COMPACTION_MIN_DEAD_BYTES = 64 * 1024 // 64KB
+
 type ItemPointer = {
 	start: number
 	length: number
+}
+
+type StoreIndexData = {
+	entries: Map<string, ItemPointer>
+	deadBytes: number
+}
+
+type DataSwapGuards = {
+	commit: () => Promise<void>
+	rollback: () => Promise<void>
+}
+
+type MoveCapableFileHandle = FileSystemFileHandle & {
+	move?: (
+		newParent: FileSystemDirectoryHandle,
+		newName?: string
+	) => Promise<unknown>
 }
 
 function isFsContext(value: unknown): value is FsContext {
@@ -45,22 +68,24 @@ export interface CreateVfsStoreOptions {
 }
 
 class VfsStoreImpl implements VfsStore {
+	#ctx: FsContext
 	#indexFile: VFile
 	#dataFile: VFile
-	#indexCache: Map<string, ItemPointer> | null = null
-	#loadingIndex: Promise<Map<string, ItemPointer>> | null = null
+	#indexCache: StoreIndexData | null = null
+	#loadingIndex: Promise<StoreIndexData> | null = null
 	#queue: Promise<void> = Promise.resolve()
 	#isRunning = false
 
-	constructor(indexFile: VFile, dataFile: VFile) {
+	constructor(ctx: FsContext, indexFile: VFile, dataFile: VFile) {
+		this.#ctx = ctx
 		this.#indexFile = indexFile
 		this.#dataFile = dataFile
 	}
 
 	async getItem<T>(key: string): Promise<T | null> {
 		return this.#enqueue(async () => {
-			const index = await this.#ensureIndex()
-			const pointer = index.get(key)
+			const { entries } = await this.#ensureIndex()
+			const pointer = entries.get(key)
 			if (!pointer) return null
 			return (await this.#readValueAt(pointer)) as T
 		})
@@ -68,45 +93,57 @@ class VfsStoreImpl implements VfsStore {
 
 	async setItem<T>(key: string, value: T): Promise<T> {
 		return this.#enqueue(async () => {
-			const index = await this.#ensureIndex()
+			const indexData = await this.#ensureIndex()
 			const normalized = value === undefined ? null : (value as unknown)
+			const oldPointer = indexData.entries.get(key)
 			const pointer = await this.#appendValue(normalized)
-			index.set(key, pointer)
-			await this.#persistIndex(index)
+			indexData.entries.set(key, pointer)
+			// Track dead bytes from overwritten value
+			if (oldPointer) {
+				indexData.deadBytes += oldPointer.length
+			}
+			await this.#persistIndex(indexData)
+			await this.#maybeCompact(indexData)
 			return value
 		})
 	}
 
 	async removeItem(key: string): Promise<void> {
 		return this.#enqueue(async () => {
-			const index = await this.#ensureIndex()
-			if (!index.delete(key)) return
-			await this.#rewriteDataFile(index)
+			const indexData = await this.#ensureIndex()
+			const pointer = indexData.entries.get(key)
+			if (!pointer) return
+			indexData.entries.delete(key)
+			// Track dead bytes instead of rewriting - O(1) deletion
+			indexData.deadBytes += pointer.length
+			await this.#persistIndex(indexData)
+			await this.#maybeCompact(indexData)
 		})
 	}
 
 	async clear(): Promise<void> {
 		return this.#enqueue(async () => {
-			const index = await this.#ensureIndex()
-			if (index.size === 0) return
-			index.clear()
+			const indexData = await this.#ensureIndex()
+			if (indexData.entries.size === 0) return
+			indexData.entries.clear()
+			indexData.deadBytes = 0
 			await this.#dataFile.write('', { truncate: true })
-			await this.#persistIndex(index)
+			await this.#persistIndex(indexData)
 		})
 	}
 
 	async length(): Promise<number> {
 		return this.#enqueue(async () => {
-			const index = await this.#ensureIndex()
-			return index.size
+			const { entries } = await this.#ensureIndex()
+			return entries.size
 		})
 	}
 
 	async key(index: number): Promise<string | null> {
 		return this.#enqueue(async () => {
-			const map = await this.#ensureIndex()
+			const { entries } = await this.#ensureIndex()
 			let current = 0
-			for (const key of map.keys()) {
+			for (const key of entries.keys()) {
 				if (current === index) return key
 				current += 1
 			}
@@ -116,8 +153,8 @@ class VfsStoreImpl implements VfsStore {
 
 	async keys(): Promise<string[]> {
 		return this.#enqueue(async () => {
-			const index = await this.#ensureIndex()
-			return Array.from(index.keys())
+			const { entries } = await this.#ensureIndex()
+			return Array.from(entries.keys())
 		})
 	}
 
@@ -125,12 +162,12 @@ class VfsStoreImpl implements VfsStore {
 		iteratee: (value: T, key: string, iterationNumber: number) => U | Promise<U>
 	): Promise<U | undefined> {
 		return this.#enqueue(async () => {
-			const index = await this.#ensureIndex()
-			const entries = Array.from(index.entries())
+			const { entries } = await this.#ensureIndex()
+			const entryList = Array.from(entries.entries())
 			let iterationNumber = 1
-			for (const [key] of entries) {
+			for (const [key] of entryList) {
 				// Refresh pointer so removeItem inside iteratee doesn't leave stale offsets.
-				const pointer = index.get(key)
+				const pointer = entries.get(key)
 				if (!pointer) continue
 				const value = (await this.#readValueAt(pointer)) as T
 				const result = await iteratee(value, key, iterationNumber++)
@@ -165,13 +202,13 @@ class VfsStoreImpl implements VfsStore {
 		return run
 	}
 
-	async #ensureIndex(): Promise<Map<string, ItemPointer>> {
+	async #ensureIndex(): Promise<StoreIndexData> {
 		if (this.#indexCache) return this.#indexCache
 		if (this.#loadingIndex) return this.#loadingIndex
 		this.#loadingIndex = this.#readIndexFromDisk()
-			.then(index => {
-				this.#indexCache = index
-				return index
+			.then(indexData => {
+				this.#indexCache = indexData
+				return indexData
 			})
 			.finally(() => {
 				this.#loadingIndex = null
@@ -179,15 +216,15 @@ class VfsStoreImpl implements VfsStore {
 		return this.#loadingIndex
 	}
 
-	async #readIndexFromDisk(): Promise<Map<string, ItemPointer>> {
+	async #readIndexFromDisk(): Promise<StoreIndexData> {
 		const exists = await this.#indexFile.exists()
 		if (!exists) {
-			return new Map()
+			return { entries: new Map(), deadBytes: 0 }
 		}
 
 		const text = await this.#indexFile.text()
 		if (text.trim() === '') {
-			return new Map()
+			return { entries: new Map(), deadBytes: 0 }
 		}
 
 		let parsed: unknown
@@ -206,7 +243,11 @@ class VfsStoreImpl implements VfsStore {
 		}
 
 		const entries: Array<[string, ItemPointer]> = []
-		for (const [key, value] of Object.entries(parsed)) {
+		const entriesObj = isPlainRecord(parsed.entries) ? parsed.entries : parsed
+		const deadBytes =
+			typeof parsed.deadBytes === 'number' ? parsed.deadBytes : 0
+
+		for (const [key, value] of Object.entries(entriesObj)) {
 			if (
 				!isPlainRecord(value) ||
 				typeof value.start !== 'number' ||
@@ -219,16 +260,212 @@ class VfsStoreImpl implements VfsStore {
 			entries.push([key, { start: value.start, length: value.length }])
 		}
 
-		return new Map(entries)
+		return { entries: new Map(entries), deadBytes }
 	}
 
-	async #persistIndex(index: Map<string, ItemPointer>): Promise<void> {
-		const payload: Record<string, ItemPointer> = {}
-		for (const [key, pointer] of index.entries()) {
-			payload[key] = { start: pointer.start, length: pointer.length }
+	async #persistIndex(indexData: StoreIndexData): Promise<void> {
+		const entriesPayload: Record<string, ItemPointer> = {}
+		for (const [key, pointer] of indexData.entries.entries()) {
+			entriesPayload[key] = { start: pointer.start, length: pointer.length }
+		}
+		const payload = {
+			entries: entriesPayload,
+			deadBytes: indexData.deadBytes
 		}
 		await this.#indexFile.writeJSON(payload, { truncate: true })
-		this.#indexCache = index
+		this.#indexCache = indexData
+	}
+
+	async #maybeCompact(indexData: StoreIndexData): Promise<void> {
+		if (indexData.deadBytes < COMPACTION_MIN_DEAD_BYTES) {
+			return
+		}
+		const totalLiveBytes = Array.from(indexData.entries.values()).reduce(
+			(sum, p) => sum + p.length,
+			0
+		)
+		const totalBytes = totalLiveBytes + indexData.deadBytes
+		if (
+			totalBytes === 0 ||
+			indexData.deadBytes / totalBytes < COMPACTION_RATIO_THRESHOLD
+		) {
+			return
+		}
+		await this.#compactDataFile(indexData)
+	}
+
+	async #compactDataFile(indexData: StoreIndexData): Promise<void> {
+		const tempFile = this.#createTempDataFile()
+		const writer = await tempFile.createWriter()
+		const nextEntries = new Map<string, ItemPointer>()
+		const previousEntries = indexData.entries
+		const previousDeadBytes = indexData.deadBytes
+		let offset = 0
+		let writeFailed = false
+		let swapGuards: DataSwapGuards | null = null
+		let indexUpdated = false
+
+		try {
+			for (const [key, pointer] of indexData.entries.entries()) {
+				const chunk = await this.#readRawBytes(pointer)
+				if (chunk.byteLength > 0) {
+					await writer.write(chunk, {
+						at: offset
+					})
+				}
+				nextEntries.set(key, { start: offset, length: chunk.byteLength })
+				offset += chunk.byteLength
+			}
+
+			await writer.truncate(offset)
+			await writer.flush()
+		} catch (error) {
+			writeFailed = true
+			throw error
+		} finally {
+			await writer.close().catch(error => {
+				console.error('Failed to close VFS compacted temp file writer', error)
+			})
+			if (writeFailed) {
+				await this.#safeRemoveFile(tempFile)
+			}
+		}
+
+		try {
+			swapGuards = await this.#atomicallySwapDataFile(tempFile)
+			indexData.entries = nextEntries
+			indexData.deadBytes = 0
+			indexUpdated = true
+			await this.#persistIndex(indexData)
+			await swapGuards.commit()
+		} catch (error) {
+			if (indexUpdated) {
+				indexData.entries = previousEntries
+				indexData.deadBytes = previousDeadBytes
+			}
+			await this.#safeRemoveFile(tempFile)
+			if (swapGuards) {
+				await swapGuards.rollback()
+			} else if (
+				error instanceof Error &&
+				error.message.includes('Atomic rename is not supported')
+			) {
+				console.warn(
+					'VFS data compaction skipped: underlying filesystem does not support atomic rename operations'
+				)
+				return
+			}
+			throw error
+		}
+	}
+
+	#createTempDataFile(): VFile {
+		const parentDir = this.#dataFile.parent ?? this.#ctx.dir('')
+		const tempName = `${this.#dataFile.name}.${randomId()}.tmp`
+		return parentDir.getFile(tempName, 'rw')
+	}
+
+	async #safeRemoveFile(file: VFile): Promise<void> {
+		try {
+			await file.remove({ force: true })
+		} catch {
+			// best-effort cleanup
+		}
+	}
+
+	#splitPath(path: string): { dir: string; name: string } {
+		const sanitized = sanitizePath(path)
+		const segments = sanitized ? sanitized.split('/') : []
+		if (segments.length === 0) {
+			throw new Error('File path cannot be empty')
+		}
+		const name = segments[segments.length - 1]!
+		const dir = getParentPath(segments) ?? ''
+		return { dir, name }
+	}
+
+	async #moveHandle(
+		handle: FileSystemFileHandle,
+		parent: FileSystemDirectoryHandle,
+		name: string
+	): Promise<void> {
+		const candidate = handle as MoveCapableFileHandle
+		if (typeof candidate.move !== 'function') {
+			throw new Error('Atomic rename is not supported by this filesystem')
+		}
+		await candidate.move.call(handle, parent, name)
+	}
+
+	async #atomicallySwapDataFile(tempFile: VFile): Promise<DataSwapGuards> {
+		const { dir: destDirPath, name: destName } = this.#splitPath(
+			this.#dataFile.path
+		)
+		const destDirHandle = await this.#ctx.getDirectoryHandleForRelative(
+			destDirPath,
+			true
+		)
+		const tempHandle = await this.#ctx.getFileHandleForRelative(
+			tempFile.path,
+			false
+		)
+		const dataExists = await this.#dataFile.exists()
+		let backupName: string | null = null
+
+		if (dataExists) {
+			backupName = `${destName}.bak-${randomId()}`
+			const currentHandle = await this.#ctx.getFileHandleForRelative(
+				this.#dataFile.path,
+				false
+			)
+			await this.#moveHandle(currentHandle, destDirHandle, backupName)
+		}
+
+		try {
+			await this.#moveHandle(tempHandle, destDirHandle, destName)
+		} catch (error) {
+			if (backupName) {
+				await this.#restoreBackup(destDirHandle, backupName, destName)
+			}
+			throw error
+		}
+
+		return {
+			commit: async () => {
+				if (!backupName) {
+					return
+				}
+				try {
+					await destDirHandle.removeEntry(backupName)
+				} catch (error) {
+					console.error('Failed to remove VFS data file backup', error)
+				}
+			},
+			rollback: async () => {
+				try {
+					await destDirHandle.removeEntry(destName)
+				} catch {
+					// ignore best-effort removal
+				}
+				if (backupName) {
+					await this.#restoreBackup(destDirHandle, backupName, destName)
+				}
+			}
+		}
+	}
+
+	async #restoreBackup(
+		parentHandle: FileSystemDirectoryHandle,
+		backupName: string,
+		originalName: string
+	): Promise<void> {
+		try {
+			const backupHandle = await parentHandle.getFileHandle(backupName, {
+				create: false
+			})
+			await this.#moveHandle(backupHandle, parentHandle, originalName)
+		} catch (error) {
+			console.error('Failed to restore VFS data file from backup', error)
+		}
 	}
 
 	async #appendValue(value: unknown): Promise<ItemPointer> {
@@ -262,49 +499,16 @@ class VfsStoreImpl implements VfsStore {
 		}
 	}
 
-	async #rewriteDataFile(index: Map<string, ItemPointer>): Promise<void> {
-		const writer = await this.#dataFile.createWriter()
-		const nextIndex = new Map<string, ItemPointer>()
-		let offset = 0
-		let rewriteSucceeded = false
-
-		try {
-			for (const [key, pointer] of index.entries()) {
-				const chunk = await this.#readRawBytes(pointer)
-				if (chunk.byteLength > 0) {
-					await writer.write(chunk as unknown as BufferSource, {
-						at: offset
-					})
-				}
-				nextIndex.set(key, { start: offset, length: chunk.byteLength })
-				offset += chunk.byteLength
-			}
-
-			await writer.truncate(offset)
-			// NOTE: Deletion rewrites the whole data file, which is intentionally slow but predictable.
-			await writer.flush()
-			rewriteSucceeded = true
-		} finally {
-			await writer.close().catch(error => {
-				console.error('Failed to close VFS data file writer', error)
-			})
-		}
-
-		if (rewriteSucceeded) {
-			await this.#persistIndex(nextIndex)
-		}
-	}
-
-	async #readRawBytes(pointer: ItemPointer): Promise<Uint8Array> {
+	async #readRawBytes(pointer: ItemPointer): Promise<Uint8Array<ArrayBuffer>> {
 		if (pointer.length === 0) {
-			return new Uint8Array()
+			return new Uint8Array(new ArrayBuffer(0))
 		}
 
 		const reader = await this.#dataFile.createReader()
 		try {
-			const buffer = await reader.read(pointer.length, {
+			const buffer = (await reader.read(pointer.length, {
 				at: pointer.start
-			})
+			})) as ArrayBuffer
 			return new Uint8Array(buffer)
 		} finally {
 			await reader.close()
@@ -325,5 +529,5 @@ export function createStore(
 	const dataPath = sanitizePath(`${indexPath}${STORE_DATA_SUFFIX}`)
 	const indexFile = ctx.file(indexPath, 'rw')
 	const dataFile = ctx.file(dataPath, 'rw')
-	return new VfsStoreImpl(indexFile, dataFile)
+	return new VfsStoreImpl(ctx, indexFile, dataFile)
 }

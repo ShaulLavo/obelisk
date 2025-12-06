@@ -4,9 +4,9 @@ export {
 	trackSync,
 	trackMicro,
 	createOperationTracker,
-	PERF_TRACKING_ENABLED,
 	type TimingControls
 } from './perfTracker'
+export { PERF_TRACKING_ENABLED } from './config'
 
 // Store functions
 export {
@@ -30,3 +30,5 @@ export {
 	logRecentOperations,
 	setLogLevel
 } from './perfLogger'
+
+export { perfEnv, type PerfEnv } from './env'

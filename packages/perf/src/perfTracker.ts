@@ -3,12 +3,11 @@ import {
 	type TimingControls,
 	type TimingTracker
 } from './timing'
-import { PERF_TRACKING_ENABLED } from '@repo/env'
+import { PERF_TRACKING_ENABLED } from './config'
 import { record, type PerfBreakdownEntry, type PerfRecord } from './perfStore'
 import { logOperation, logOperationSimple } from './perfLogger'
 
 export type { TimingControls }
-export { PERF_TRACKING_ENABLED }
 
 type TrackOptions = {
 	metadata?: Record<string, unknown>
@@ -57,6 +56,20 @@ const noopControls: TimingControls = {
 	timeAsync: (_label, fn) => fn(noopControls)
 }
 
+const createTransientRecord = (
+	name: string,
+	duration: number,
+	breakdown: PerfBreakdownEntry[],
+	metadata?: Record<string, unknown>
+): PerfRecord => ({
+	id: `transient-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+	name,
+	duration,
+	breakdown,
+	timestamp: Date.now(),
+	metadata
+})
+
 /**
  * Track an async operation with timing and optional persistence
  */
@@ -65,7 +78,7 @@ export const trackOperation = async <T>(
 	fn: (controls: TimingControls) => Promise<T>,
 	options: TrackOptions = {}
 ): Promise<T> => {
-	// Early return when tracking disabled - allows tree-shaking
+	// Skip instrumentation entirely when tracking is disabled
 	if (!PERF_TRACKING_ENABLED) {
 		return fn(noopControls)
 	}
@@ -87,7 +100,13 @@ export const trackOperation = async <T>(
 			const perfRecord = await record(name, duration, breakdown, metadata)
 			logOperation(perfRecord, { showBreakdown })
 		} else {
-			logOperationSimple(name, duration, metadata)
+			const perfRecord = createTransientRecord(
+				name,
+				duration,
+				breakdown,
+				metadata
+			)
+			logOperation(perfRecord, { showBreakdown })
 		}
 	}
 }
@@ -100,7 +119,7 @@ export const trackSync = <T>(
 	fn: (controls: TimingControls) => T,
 	options: TrackOptions = {}
 ): T => {
-	// Early return when tracking disabled - allows tree-shaking
+	// Skip instrumentation entirely when tracking is disabled
 	if (!PERF_TRACKING_ENABLED) {
 		return fn(noopControls)
 	}
@@ -124,7 +143,13 @@ export const trackSync = <T>(
 				logOperation(perfRecord, { showBreakdown })
 			})
 		} else {
-			logOperationSimple(name, duration, metadata)
+			const perfRecord = createTransientRecord(
+				name,
+				duration,
+				breakdown,
+				metadata
+			)
+			logOperation(perfRecord, { showBreakdown })
 		}
 	}
 }
@@ -139,7 +164,7 @@ export const trackMicro = <T>(
 	fn: () => T,
 	options: { metadata?: Record<string, unknown>; threshold?: number } = {}
 ): T => {
-	// Early return when tracking disabled - allows tree-shaking
+	// Skip instrumentation entirely when tracking is disabled
 	if (!PERF_TRACKING_ENABLED) {
 		return fn()
 	}

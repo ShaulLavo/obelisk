@@ -7,7 +7,7 @@ export function parseModifiers(s: string, platform: Platform): Set<Modifier> {
 	const tokens = s.split(/\s+/).filter(Boolean)
 
 	for (const token of tokens) {
-		if (token === 'mod') {
+		if (token === 'mod' || token === 'primary') {
 			mods.add(resolveLogicalMod(platform))
 			continue
 		}

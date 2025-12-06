@@ -3,20 +3,21 @@ import { fromEvent } from './events'
 import { detectPlatform } from './platform'
 import { parseShortcutSequence } from './shortcut'
 import type {
-	SequenceMatcherOptions,
 	ShortcutSequence,
-	ShortcutSequenceMatcher
+	ShortcutSequenceMatcher,
+	ShortcutSequenceMatcherOptions
 } from './types'
 
 export function createShortcutSequenceMatcher(
 	sequence: string | ShortcutSequence,
-	options: SequenceMatcherOptions = {}
+	options: ShortcutSequenceMatcherOptions = {}
 ): ShortcutSequenceMatcher {
 	const {
 		platform = detectPlatform(),
 		timeoutMs = 1000,
 		ignoreRepeat = true,
-		treatEqualAsDistinct = true
+		treatEqualAsDistinct = true,
+		allowSubsequence = false
 	} = options
 
 	const targetSequence: ShortcutSequence =
@@ -29,27 +30,27 @@ export function createShortcutSequenceMatcher(
 	}
 
 	let index = 0
-	let lastTime = 0
+	let lastStepTime = 0
 
 	function reset() {
 		index = 0
-		lastTime = 0
+		lastStepTime = 0
 	}
 
 	function handleEvent(e: KeyboardEvent): boolean {
 		if (ignoreRepeat && e.repeat) return false
 
 		const now = Date.now()
-		if (index > 0 && now - lastTime > timeoutMs) {
+		if (index > 0 && now - lastStepTime > timeoutMs) {
 			reset()
 		}
 
 		const combo = fromEvent(e, { treatEqualAsDistinct })
-		lastTime = now
 
 		const expected = targetSequence[index]
 		if (expected && equalCombos(expected, combo)) {
 			index += 1
+			lastStepTime = now
 			if (index === targetSequence.length) {
 				reset()
 				return true
@@ -60,10 +61,13 @@ export function createShortcutSequenceMatcher(
 		const first = targetSequence[0]
 		if (first && equalCombos(first, combo)) {
 			index = 1
+			lastStepTime = now
 			return false
 		}
 
-		reset()
+		if (!allowSubsequence) {
+			reset()
+		}
 		return false
 	}
 

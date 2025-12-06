@@ -8,11 +8,8 @@ export function detectPlatform(): Platform {
 		return 'linux'
 	}
 
-	if (
-		typeof process !== 'undefined' &&
-		typeof (process as any).platform === 'string'
-	) {
-		const p = (process as any).platform
+	if (typeof process !== 'undefined' && typeof process.platform === 'string') {
+		const p = process.platform
 		if (p === 'darwin') return 'mac'
 		if (p.startsWith('win')) return 'windows'
 		return 'linux'

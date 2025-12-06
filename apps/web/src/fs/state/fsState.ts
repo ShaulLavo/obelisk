@@ -5,10 +5,17 @@ import localforage from 'localforage'
 import { createMemo, createSignal } from 'solid-js'
 import { createStore, unwrap } from 'solid-js/store'
 import type { ParseResult } from '@repo/utils/parse'
-import { type PieceTableSnapshot, getPieceTableText } from '@repo/utils/pieceTable'
+import { type PieceTableSnapshot, getPieceTableText } from '@repo/utils'
 import { DEFAULT_SOURCE } from '../config/constants'
 import { findNode } from '../runtime/tree'
 import type { FsState } from '../types'
+import {
+	evictCacheEntries,
+	removeCacheEntry,
+	touchCacheEntry
+} from '../../utils/cache'
+
+const MAX_FILE_STATS_CACHE = 100
 
 export const createFsState = () => {
 	const [tree, setTree, isTreeReady] = makePersisted(
@@ -50,12 +57,13 @@ export const createFsState = () => {
 	const [selectedFileLoading, setSelectedFileLoading] = createSignal(false)
 	const [error, setError] = createSignal<string | undefined>(undefined)
 	const [loading, setLoading] = createSignal(false)
-	const [fileStats, setFileStats] = createStore<
+	const [fileStats, setFileStatsStore] = createStore<
 		Record<string, ParseResult | undefined>
 	>({})
-	const [pieceTables, setPieceTables] = createStore<
+	const [pieceTables, setPieceTablesStore] = createStore<
 		Record<string, PieceTableSnapshot | undefined>
 	>({})
+	const fileStatsOrder: string[] = []
 	const selectedNode = createMemo<FsTreeNode | undefined>(() =>
 		tree ? findNode(tree, selectedPath()) : undefined
 	)
@@ -70,22 +78,48 @@ export const createFsState = () => {
 	const lastKnownFilePath = () => lastKnownFileNode()?.path
 	const hydration = Promise.allSettled([isTreeReady]).then(() => undefined)
 
+	const evictFileStatsEntry = (path: string) => {
+		setFileStatsStore(path, undefined)
+	}
+
 	const updateFileStats = (path: string, result?: ParseResult) => {
 		if (!path) return
-		setFileStats(path, result)
+		if (!result) {
+			removeCacheEntry(fileStatsOrder, path)
+			evictFileStatsEntry(path)
+			return
+		}
+
+		setFileStatsStore(path, result)
+		touchCacheEntry(fileStatsOrder, path)
+		evictCacheEntries(fileStatsOrder, MAX_FILE_STATS_CACHE, evictFileStatsEntry)
 	}
 
 	const clearParseResults = () => {
-		setFileStats({})
+		fileStatsOrder.length = 0
+		for (const path of Object.keys(fileStats)) {
+			evictFileStatsEntry(path)
+		}
+	}
+
+	const evictPieceTableEntry = (path: string) => {
+		setPieceTablesStore(path, undefined)
 	}
 
 	const setPieceTable = (path: string, snapshot?: PieceTableSnapshot) => {
 		if (!path) return
-		setPieceTables(path, snapshot)
+		if (!snapshot) {
+			evictPieceTableEntry(path)
+			return
+		}
+
+		setPieceTablesStore(path, snapshot)
 	}
 
 	const clearPieceTables = () => {
-		setPieceTables({})
+		for (const path of Object.keys(pieceTables)) {
+			evictPieceTableEntry(path)
+		}
 	}
 
 	const state = {
@@ -113,7 +147,7 @@ export const createFsState = () => {
 				return getPieceTableText(snapshot)
 			}
 
-			return fileStats[path]?.text ?? selectedFileContent()
+			return selectedFileContent()
 		},
 		get selectedFileSize() {
 			return selectedFileSize()

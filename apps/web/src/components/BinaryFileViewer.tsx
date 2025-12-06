@@ -126,6 +126,8 @@ export const BinaryFileViewer = (props: BinaryFileViewerProps) => {
 
 	const rowHeight = createMemo(() => estimateRowHeight(props.fontSize()))
 
+	// TODO consider swapping tanstack virtualizer for a lean custom impl since it
+	// currently holds large heaps when rendering big binaries
 	const rowVirtualizer: Virtualizer<HTMLDivElement, HTMLDivElement> =
 		createVirtualizer<HTMLDivElement, HTMLDivElement>({
 			get count() {

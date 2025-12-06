@@ -5,12 +5,10 @@ import {
 	getRootDirectory,
 	type FsContext as VfsContext
 } from '@repo/fs'
-import { logger as baseLogger } from '~/logger'
 import { trackOperation } from '@repo/perf'
 import { OPFS_ROOT_NAME } from '../config/constants'
 import type { FsSource } from '../types'
 
-const logger = baseLogger.withTag('fs:runtime')
 const fsCache: Partial<Record<FsSource, VfsContext>> = {}
 const initPromises: Partial<Record<FsSource, Promise<void>>> = {}
 
@@ -25,12 +23,16 @@ export async function ensureFs(source: FsSource): Promise<VfsContext> {
 	if (fsCache[source]) return fsCache[source]!
 
 	if (!initPromises[source]) {
-		initPromises[source] = (async () => {
-				const start = performance.now()
-				const rootHandle = await getRootDirectory(source, OPFS_ROOT_NAME)
-				fsCache[source] = createFs(rootHandle)
-				logger.debug('Elapsed:', performance.now() - start)
-			})()
+		initPromises[source] = trackOperation(
+			'fs:ensureFs:init',
+			async ({ timeAsync, timeSync }) => {
+				const rootHandle = await timeAsync('get-root', () =>
+					getRootDirectory(source, OPFS_ROOT_NAME)
+				)
+				fsCache[source] = timeSync('create-fs', () => createFs(rootHandle))
+			},
+			{ metadata: { source } }
+		)
 	}
 
 	await initPromises[source]

@@ -6,7 +6,6 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@repo/env": "*",
     "@repo/logger": "*",
     "@repo/perf": "*",
     "@repo/utils": "*",

@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'solid-js'
-import type { PieceTableSnapshot } from '@repo/utils/pieceTable'
+import type { PieceTableSnapshot } from '@repo/utils'
 import type { FsState, FsSource } from '../types'
 
 export type SelectPathOptions = {
@@ -12,7 +12,11 @@ export type FsActions = {
 	toggleDir: (path: string) => void
 	selectPath: (path: string, options?: SelectPathOptions) => Promise<void>
 	createDir: (parentPath: string, name: string) => Promise<void>
-	createFile: (parentPath: string, name: string, content?: string) => Promise<void>
+	createFile: (
+		parentPath: string,
+		name: string,
+		content?: string
+	) => Promise<void>
 	deleteNode: (path: string) => Promise<void>
 	updateSelectedFilePieceTable: (
 		updater: (
