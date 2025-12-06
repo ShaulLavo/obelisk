@@ -343,12 +343,9 @@ export async function buildFsTree(
 		if (childTasks.length) {
 			const childNodes = await Promise.all(childTasks)
 
-			childNodes
+			dirNode.children = childNodes
 				.filter((node): node is FsTreeNode => Boolean(node))
 				.sort(compareNodes)
-				.forEach(node => {
-					dirNode.children.push(node)
-				})
 		}
 
 		dirNode.isLoaded = true
