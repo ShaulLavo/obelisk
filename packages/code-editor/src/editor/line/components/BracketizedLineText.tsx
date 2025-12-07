@@ -1,4 +1,4 @@
-import type { Accessor, JSX } from 'solid-js'
+import { createMemo, type Accessor, type JSX } from 'solid-js'
 import type { BracketDepthMap } from '../../types'
 
 const BRACKET_COLOR_CLASSES = [
@@ -22,7 +22,7 @@ type BracketizedLineTextProps = {
 }
 
 export const BracketizedLineText = (props: BracketizedLineTextProps) => {
-	const renderSegments = () => {
+	const segments = createMemo(() => {
 		const text = props.text
 		const depthMap = props.bracketDepths()
 
@@ -64,7 +64,7 @@ export const BracketizedLineText = (props: BracketizedLineTextProps) => {
 		}
 
 		return segments
-	}
+	})
 
-	return <>{renderSegments()}</>
+	return <>{segments()}</>
 }

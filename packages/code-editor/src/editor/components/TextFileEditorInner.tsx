@@ -69,7 +69,7 @@ export const TextFileEditorInner = (props: TextFileEditorInnerProps) => {
 		scrollElement: () => scrollElement,
 		charWidth: layout.charWidth,
 		tabSize: tabSize,
-		lineHeight: layout.lineHeight,
+		lineHeight: layout.lineHeight
 	})
 
 	const handleLineMouseDown = (
@@ -102,6 +102,9 @@ export const TextFileEditorInner = (props: TextFileEditorInnerProps) => {
 		}
 	})
 
+	/* TODO: move off TanStack virtualization so we control windowing
+		and can let features like bracket coloring share the custom
+		visible-range state */
 	return (
 		<Show
 			when={layout.hasLineEntries()}

@@ -21,9 +21,12 @@ export const TextFileEditor = (props: TextFileEditorProps) => {
 	})
 
 	const bracketDepths = createMemo(() => {
+		if (!props.isFileSelected()) return undefined
+		const text = pieceTableText()
+		if (!text || text.length === 0) return undefined
 		const stats = props.stats()
 		const rules = stats?.language.rules
-		return computeBracketDepths(pieceTableText(), {
+		return computeBracketDepths(text, {
 			angleBrackets: rules?.angleBrackets,
 			stringRules: rules?.strings
 		})
