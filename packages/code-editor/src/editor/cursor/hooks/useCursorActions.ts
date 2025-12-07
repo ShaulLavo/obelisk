@@ -40,12 +40,19 @@ type UseCursorActionsOptions = {
 export function useCursorActions(
 	options: UseCursorActionsOptions
 ): CursorActions {
+	const withActiveCursor = (updates: Partial<CursorState>) => ({
+		...updates,
+		hasCursor: true
+	})
+
 	const setCursorPosition = (position: CursorPosition) => {
-		options.updateCurrentState(() => ({
-			position,
-			preferredColumn: position.column,
-			selections: []
-		}))
+		options.updateCurrentState(() =>
+			withActiveCursor({
+				position,
+				preferredColumn: position.column,
+				selections: []
+			})
+		)
 	}
 
 	const ensureEntries = () => options.lineEntries()
@@ -69,6 +76,7 @@ export function useCursorActions(
 			shiftKey = false
 		) => {
 			const state = options.currentState()
+			if (!state.hasCursor) return
 			const entries = ensureEntries()
 			const anchor = getShiftAnchor(shiftKey, state)
 
@@ -96,17 +104,20 @@ export function useCursorActions(
 				preferredColumn = verticalMove.preferredColumn
 			}
 
-			options.updateCurrentState(() => ({
-				position: newPosition,
-				preferredColumn,
-				selections: shiftKey
-					? [createSelectionRange(anchor, newPosition.offset)]
-					: []
-			}))
+			options.updateCurrentState(() =>
+				withActiveCursor({
+					position: newPosition,
+					preferredColumn,
+					selections: shiftKey
+						? [createSelectionRange(anchor, newPosition.offset)]
+						: []
+				})
+			)
 		},
 
 		moveCursorByLines: (delta: number, shiftKey = false) => {
 			const state = options.currentState()
+			if (!state.hasCursor) return
 			const entries = ensureEntries()
 			const anchor = getShiftAnchor(shiftKey, state)
 
@@ -117,17 +128,20 @@ export function useCursorActions(
 				entries
 			)
 
-			options.updateCurrentState(() => ({
-				position: result.position,
-				preferredColumn: result.preferredColumn,
-				selections: shiftKey
-					? [createSelectionRange(anchor, result.position.offset)]
-					: []
-			}))
+			options.updateCurrentState(() =>
+				withActiveCursor({
+					position: result.position,
+					preferredColumn: result.preferredColumn,
+					selections: shiftKey
+						? [createSelectionRange(anchor, result.position.offset)]
+						: []
+				})
+			)
 		},
 
 		moveCursorHome: (ctrlKey = false, shiftKey = false) => {
 			const state = options.currentState()
+			if (!state.hasCursor) return
 			const entries = ensureEntries()
 			const anchor = getShiftAnchor(shiftKey, state)
 
@@ -135,17 +149,20 @@ export function useCursorActions(
 				? moveToDocStart()
 				: moveToLineStart(state.position, entries)
 
-			options.updateCurrentState(() => ({
-				position: newPosition,
-				preferredColumn: newPosition.column,
-				selections: shiftKey
-					? [createSelectionRange(anchor, newPosition.offset)]
-					: []
-			}))
+			options.updateCurrentState(() =>
+				withActiveCursor({
+					position: newPosition,
+					preferredColumn: newPosition.column,
+					selections: shiftKey
+						? [createSelectionRange(anchor, newPosition.offset)]
+						: []
+				})
+			)
 		},
 
 		moveCursorEnd: (ctrlKey = false, shiftKey = false) => {
 			const state = options.currentState()
+			if (!state.hasCursor) return
 			const entries = ensureEntries()
 			const anchor = getShiftAnchor(shiftKey, state)
 
@@ -153,13 +170,15 @@ export function useCursorActions(
 				? moveToDocEnd(entries)
 				: moveToLineEnd(state.position, entries)
 
-			options.updateCurrentState(() => ({
-				position: newPosition,
-				preferredColumn: newPosition.column,
-				selections: shiftKey
-					? [createSelectionRange(anchor, newPosition.offset)]
-					: []
-			}))
+			options.updateCurrentState(() =>
+				withActiveCursor({
+					position: newPosition,
+					preferredColumn: newPosition.column,
+					selections: shiftKey
+						? [createSelectionRange(anchor, newPosition.offset)]
+						: []
+				})
+			)
 		},
 
 		setCursorFromClick: (
@@ -186,11 +205,13 @@ export function useCursorActions(
 				clampedColumn
 			)
 
-			options.updateCurrentState(() => ({
-				position,
-				preferredColumn: clampedColumn,
-				selections: shiftKey ? [createSelectionRange(anchor, offset)] : []
-			}))
+			options.updateCurrentState(() =>
+				withActiveCursor({
+					position,
+					preferredColumn: clampedColumn,
+					selections: shiftKey ? [createSelectionRange(anchor, offset)] : []
+				})
+			)
 		},
 
 		resetCursor: () => {
@@ -207,11 +228,13 @@ export function useCursorActions(
 			const entries = ensureEntries()
 			const position = offsetToPosition(focus, entries)
 
-			options.updateCurrentState(() => ({
-				position,
-				preferredColumn: position.column,
-				selections: [createSelectionRange(anchor, focus)]
-			}))
+			options.updateCurrentState(() =>
+				withActiveCursor({
+					position,
+					preferredColumn: position.column,
+					selections: [createSelectionRange(anchor, focus)]
+				})
+			)
 		},
 
 		clearSelection: () => {
@@ -225,11 +248,13 @@ export function useCursorActions(
 			const length = options.documentLength()
 			const position = offsetToPosition(length, entries)
 
-			options.updateCurrentState(() => ({
-				position,
-				preferredColumn: position.column,
-				selections: [createSelectionRange(0, length)]
-			}))
+			options.updateCurrentState(() =>
+				withActiveCursor({
+					position,
+					preferredColumn: position.column,
+					selections: [createSelectionRange(0, length)]
+				})
+			)
 		},
 
 		selectWord: (offset: number) => {
@@ -257,11 +282,13 @@ export function useCursorActions(
 
 			const position = offsetToPosition(end, entries)
 
-			options.updateCurrentState(() => ({
-				position,
-				preferredColumn: position.column,
-				selections: [createSelectionRange(start, end)]
-			}))
+			options.updateCurrentState(() =>
+				withActiveCursor({
+					position,
+					preferredColumn: position.column,
+					selections: [createSelectionRange(start, end)]
+				})
+			)
 		},
 
 		selectLine: (lineIndex: number) => {
@@ -275,11 +302,13 @@ export function useCursorActions(
 			const end = entry.start + entry.length
 			const position = offsetToPosition(end, entries)
 
-			options.updateCurrentState(() => ({
-				position,
-				preferredColumn: position.column,
-				selections: [createSelectionRange(start, end)]
-			}))
+			options.updateCurrentState(() =>
+				withActiveCursor({
+					position,
+					preferredColumn: position.column,
+					selections: [createSelectionRange(start, end)]
+				})
+			)
 		},
 
 		getSelectedText: () => {

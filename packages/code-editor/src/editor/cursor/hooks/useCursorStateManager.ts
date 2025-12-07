@@ -52,13 +52,6 @@ export function useCursorStateManager(
 	}
 
 	createEffect(
-		on(currentPath, path => {
-			if (!path || cursorStates[path]) return
-			setCursorStates(path, createDefaultCursorState())
-		})
-	)
-
-	createEffect(
 		on(
 			() => options.documentLength(),
 			length => {

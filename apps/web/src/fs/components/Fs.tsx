@@ -1,6 +1,6 @@
 import { Resizable, ResizableHandle, ResizablePanel } from '@repo/ui/resizable'
 import { makePersisted } from '@solid-primitives/storage'
-import { Show, createEffect, createSignal, onCleanup } from 'solid-js'
+import { Show, createEffect, createSignal, onCleanup, onMount } from 'solid-js'
 import { useFocusManager } from '~/focus/focusManager'
 import { dualStorage } from '~/utils/DualStorage'
 import { useFs } from '../../fs/context/FsContext'
@@ -16,7 +16,7 @@ import { TreeView } from './TreeView'
 export const Fs = () => {
 	const [state] = useFs()
 	const focus = useFocusManager()
-	const [treePanel, setTreePanel] = createSignal<HTMLDivElement | undefined>()
+	let treePanel: HTMLDivElement = null!
 	const storage = typeof window === 'undefined' ? undefined : dualStorage
 	const [panelSizes, setPanelSizes] = makePersisted(
 		// eslint-disable-next-line solid/reactivity
@@ -41,10 +41,9 @@ export const Fs = () => {
 	// 			: 'border-zinc-700/70 bg-zinc-800 text-zinc-100 hover:bg-zinc-700'
 	// 	].join(' ')
 
-	createEffect(() => {
-		const panel = treePanel()
-		if (!panel) return
-		const unregister = focus.registerArea('fileTree', () => panel)
+	onMount(() => {
+		if (!treePanel) return
+		const unregister = focus.registerArea('fileTree', () => treePanel)
 		onCleanup(unregister)
 	})
 
@@ -68,7 +67,7 @@ export const Fs = () => {
 					initialSize={panelSizes()[0] ?? 0.3}
 					minSize={0.18}
 					class="min-h-0 overflow-auto border-r border-zinc-800/70 bg-zinc-950/60 px-3 py-2"
-					ref={setTreePanel}
+					ref={treePanel}
 				>
 					<TreeView tree={() => state.tree} loading={() => state.loading} />
 				</ResizablePanel>

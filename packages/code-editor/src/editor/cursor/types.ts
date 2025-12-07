@@ -21,6 +21,7 @@ export type CursorState = {
 	preferredColumn: number // for ArrowUp/Down column preservation
 	isBlinking: boolean
 	selections: SelectionRange[] // empty array = no selection, array for multi-cursor future
+	hasCursor: boolean // false until user activates the caret
 }
 
 export type CursorDirection = 'left' | 'right' | 'up' | 'down'
@@ -38,7 +39,8 @@ export const createDefaultCursorState = (): CursorState => ({
 	},
 	preferredColumn: 0,
 	isBlinking: true,
-	selections: []
+	selections: [],
+	hasCursor: false
 })
 
 export const createCursorPosition = (

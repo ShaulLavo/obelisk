@@ -112,7 +112,13 @@ export const trackSync = <T>(
 	fn: (controls: TimingControls) => T,
 	options: TrackOptions = {}
 ): T => {
-	const { metadata, showBreakdown = true, persist = true, logger } = options
+	const {
+		metadata,
+		showBreakdown = true,
+		persist = true,
+		level,
+		logger
+	} = options
 
 	const tracker = createTimingTracker()
 	const { timeSync, timeAsync } = tracker
@@ -128,7 +134,7 @@ export const trackSync = <T>(
 		if (persist) {
 			// Fire-and-forget for sync operations
 			void record(name, duration, breakdown, metadata).then(perfRecord => {
-				logOperation(perfRecord, { showBreakdown, logger })
+				logOperation(perfRecord, { showBreakdown, level, logger })
 			})
 		} else {
 			const perfRecord = createTransientRecord(
@@ -137,7 +143,7 @@ export const trackSync = <T>(
 				breakdown,
 				metadata
 			)
-			logOperation(perfRecord, { showBreakdown, logger })
+			logOperation(perfRecord, { showBreakdown, level, logger })
 		}
 	}
 }

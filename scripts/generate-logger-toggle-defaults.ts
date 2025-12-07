@@ -137,7 +137,13 @@ function loadPreviousStates(): Promise<Map<string, boolean>> {
 				return flattenTreeToMap(mod.LOGGER_TOGGLE_TREE)
 			}
 			if (mod.LOGGER_TOGGLE_DEFAULTS) {
-				return new Map(Object.entries(mod.LOGGER_TOGGLE_DEFAULTS))
+				const defaults = mod.LOGGER_TOGGLE_DEFAULTS
+				if (defaults instanceof Map) {
+					return new Map(defaults)
+				}
+				return new Map(
+					Object.entries(defaults as Record<string, boolean>)
+				)
 			}
 			return new Map()
 		})
