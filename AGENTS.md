@@ -16,6 +16,7 @@
 - Lint: `bun run lint` (uses `@repo/eslint-config`).
 - Format: `bun run format` (Prettier for `ts`, `tsx`, `md`).
 - Type-check: `bun run check-types`.
+- Logger toggles: `bun run generate:logger-toggles` regenerates `packages/logger/src/utils/toggleDefaults.ts` (auto-runs via `predev`/`prebuild`).
 
 ## Coding Style & Naming
 - Languages: TypeScript/TSX for apps and packages.

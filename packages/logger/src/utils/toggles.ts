@@ -39,7 +39,7 @@ const getDefaultEnabledForTag = (tag: string): boolean => {
 	}
 
 	throw new Error(
-		`Unknown logger tag "${normalized}". Add it to LOGGER_TOGGLE_DEFAULTS in packages/logger/src/utils/definitions.ts.`
+		`Unknown logger tag "${normalized}". Add it to LOGGER_TOGGLE_DEFAULTS in packages/logger/src/utils/toggleDefaults.ts.`
 	)
 }
 

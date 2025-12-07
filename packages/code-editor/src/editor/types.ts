@@ -2,6 +2,9 @@ import type { VirtualItem, Virtualizer } from '@tanstack/virtual-core'
 import type { Accessor } from 'solid-js'
 import type { ParseResult } from '@repo/utils/parse'
 import type { PieceTableSnapshot } from '@repo/utils'
+import type { BracketDepthMap as InternalBracketDepthMap } from './utils/bracketDepths'
+
+export type BracketDepthMap = InternalBracketDepthMap
 
 export type CursorMode = 'regular' | 'terminal'
 
@@ -58,6 +61,7 @@ export type LineProps = {
 		textElement: HTMLElement | null
 	) => void
 	isActive: boolean
+	bracketDepths: Accessor<BracketDepthMap | undefined>
 }
 
 export type LinesProps = {
@@ -76,6 +80,7 @@ export type LinesProps = {
 		textElement: HTMLElement | null
 	) => void
 	activeLineIndex: Accessor<number | null>
+	bracketDepths: Accessor<BracketDepthMap | undefined>
 }
 
 export type LineGuttersProps = {

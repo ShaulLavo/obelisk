@@ -1,4 +1,5 @@
 /* eslint-disable solid/prefer-for */
+import { BracketizedLineText } from './BracketizedLineText'
 import { calculateColumnFromClick } from '../../utils'
 import type { LineProps } from '../../types'
 
@@ -15,7 +16,6 @@ export const Line = (props: LineProps) => {
 			return
 		}
 
-		// Calculate column from click position
 		let column = props.entry.text.length
 		if (textContentElement) {
 			const rect = textContentElement.getBoundingClientRect()
@@ -29,19 +29,18 @@ export const Line = (props: LineProps) => {
 			)
 		}
 
-		// If custom mouse handler is provided, use it (for drag selection, double-click, etc.)
 		if (props.onMouseDown) {
 			props.onMouseDown(event, props.entry.index, column, textContentElement)
 			return
 		}
 
-		// Fallback to simple click handling
 		if (event.shiftKey || event.ctrlKey || event.metaKey) {
 			return
 		}
 
 		props.onPreciseClick(props.entry.index, column, event.shiftKey)
 	}
+
 	return (
 		<div
 			data-index={props.virtualRow.index}
@@ -68,7 +67,11 @@ export const Line = (props: LineProps) => {
 					'tab-size': Math.max(1, props.tabSize)
 				}}
 			>
-				{props.entry.text}
+				<BracketizedLineText
+					text={props.entry.text}
+					lineStart={props.entry.start}
+					bracketDepths={props.bracketDepths}
+				/>
 			</div>
 		</div>
 	)

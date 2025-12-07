@@ -11,7 +11,8 @@
   },
   "dependencies": {
     "consola": "^3.4.2",
-    "picocolors": "^1.1.1"
+    "picocolors": "^1.1.1",
+    "zod": "^4.1.13"
   },
   "devDependencies": {
     "@repo/eslint-config": "*",

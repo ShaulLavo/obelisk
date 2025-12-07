@@ -99,28 +99,6 @@ export type StringRegion = {
 	multiline: boolean
 }
 
-export type BracketType = 'paren' | 'brace' | 'bracket' | 'angle'
-
-export type BracketPair = {
-	type: BracketType
-	open: number
-	close: number
-}
-
-export type BracketToken = {
-	type: BracketType
-	index: number
-	char: string
-}
-
-type BracketReport = {
-	pairs: BracketPair[]
-	unmatchedOpens: BracketToken[]
-	unmatchedCloses: BracketToken[]
-	maxDepth: number
-	depthByIndex: Record<number, number>
-}
-
 type LanguageId =
 	| 'typescript'
 	| 'tsx'
@@ -182,7 +160,6 @@ export type IndentationSummary = {
 export type ParseOptions = {
 	path?: string
 	languageHint?: LanguageId
-	enableAngleBracketScan?: boolean
 	previewBytes?: Uint8Array
 	textHeuristic?: TextHeuristicDecision
 }
@@ -197,7 +174,6 @@ export type ParseResult = {
 	binary: BinaryReport
 	indentation: IndentationSummary
 	strings: StringRegion[]
-	brackets: BracketReport
 	language: LanguageInfo
 	contentKind: 'text' | 'binary'
 	textHeuristic?: TextHeuristicDecision
@@ -369,8 +345,6 @@ export function parseFileBuffer(
 		options.languageHint
 	)
 	const languageRules = LANGUAGE_RULES[languageDetection.id]
-	const angleBracketsEnabled =
-		options.enableAngleBracketScan ?? languageRules.angleBrackets
 
 	const lineStarts: number[] = [0]
 	const lineInfo: LineInfo[] = []
@@ -392,33 +366,6 @@ export function parseFileBuffer(
 	let stringState: (StringRule & { start: number; escaped: boolean }) | null =
 		null
 	let contentLines = 0
-
-	type BracketDescriptor = {
-		type: BracketType
-		open: boolean
-		match: string
-	}
-
-	const bracketLookup: Record<string, BracketDescriptor> = {
-		'(': { type: 'paren', open: true, match: ')' },
-		')': { type: 'paren', open: false, match: '(' },
-		'[': { type: 'bracket', open: true, match: ']' },
-		']': { type: 'bracket', open: false, match: '[' },
-		'{': { type: 'brace', open: true, match: '}' },
-		'}': { type: 'brace', open: false, match: '{' }
-	}
-
-	if (angleBracketsEnabled) {
-		bracketLookup['<'] = { type: 'angle', open: true, match: '>' }
-		bracketLookup['>'] = { type: 'angle', open: false, match: '<' }
-	}
-
-	const bracketStack: BracketToken[] = []
-	const bracketPairs: BracketPair[] = []
-	const unmatchedOpens: BracketToken[] = []
-	const unmatchedCloses: BracketToken[] = []
-	const bracketDepth: Record<number, number> = Object.create(null)
-	let maxBracketDepth = 0
 
 	const unicodeIssues: UnicodeIssue[] = []
 	let hasNullByte = false
@@ -470,8 +417,6 @@ export function parseFileBuffer(
 		const char = content[i]!
 		const codePoint = content.charCodeAt(i)
 		const isWhitespace = char === ' ' || char === '\t'
-		const skipBracketForChar = Boolean(stringState)
-
 		// Unicode validation
 		if (codePoint === 0) {
 			hasNullByte = true
@@ -558,51 +503,9 @@ export function parseFileBuffer(
 			continue
 		}
 
-		// Bracket handling (skip when inside strings)
-		if (!skipBracketForChar) {
-			const bracket = bracketLookup[char]
-			if (bracket) {
-				if (bracket.open) {
-					const depth = bracketStack.length + 1
-					bracketStack.push({
-						type: bracket.type,
-						index: i,
-						char
-					})
-					bracketDepth[i] = depth
-					if (depth > maxBracketDepth) {
-						maxBracketDepth = depth
-					}
-				} else {
-					const last = bracketStack[bracketStack.length - 1]
-					if (last && last.char === bracket.match) {
-						bracketStack.pop()
-						const depth = bracketStack.length + 1
-						bracketPairs.push({
-							type: bracket.type,
-							open: last.index,
-							close: i
-						})
-						bracketDepth[last.index] = depth
-						bracketDepth[i] = depth
-					} else {
-						unmatchedCloses.push({
-							type: bracket.type,
-							index: i,
-							char
-						})
-					}
-				}
-			}
-		}
 	}
 
 	pushLine(length)
-
-	while (bracketStack.length) {
-		const open = bracketStack.pop()!
-		unmatchedOpens.push(open)
-	}
 
 	if (stringState) {
 		stringRegions.push({
@@ -660,13 +563,6 @@ export function parseFileBuffer(
 		binary,
 		indentation,
 		strings: stringRegions,
-		brackets: {
-			pairs: bracketPairs,
-			unmatchedOpens,
-			unmatchedCloses,
-			maxDepth: maxBracketDepth,
-			depthByIndex: bracketDepth
-		},
 		language: languageDetection,
 		contentKind: 'text',
 		textHeuristic: detection
@@ -742,13 +638,6 @@ export const createMinimalBinaryParseResult = (
 			totalTrailingWhitespace: 0
 		},
 		strings: [],
-		brackets: {
-			pairs: [],
-			unmatchedOpens: [],
-			unmatchedCloses: [],
-			maxDepth: 0,
-			depthByIndex: {}
-		},
 		language: {
 			id: 'unknown',
 			source: 'fallback',

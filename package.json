@@ -2,6 +2,9 @@
   "name": "vibe",
   "private": true,
   "scripts": {
+    "generate:logger-toggles": "bun scripts/generate-logger-toggle-defaults.ts",
+    "predev": "bun run generate:logger-toggles",
+    "prebuild": "bun run generate:logger-toggles",
     "build": "turbo run build",
     "dev": "turbo run dev",
     "lint": "turbo run lint",

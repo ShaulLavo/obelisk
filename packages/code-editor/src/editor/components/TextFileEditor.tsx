@@ -1,6 +1,6 @@
 import { createMemo } from 'solid-js'
 import { getPieceTableText } from '@repo/utils'
-import { textToLineEntries } from '../utils'
+import { computeBracketDepths, textToLineEntries } from '../utils'
 import { CursorProvider } from '../cursor'
 import { HistoryProvider } from '../history'
 import { TextFileEditorInner } from './TextFileEditorInner'
@@ -20,6 +20,15 @@ export const TextFileEditor = (props: TextFileEditorProps) => {
 		return textToLineEntries(pieceTableText())
 	})
 
+	const bracketDepths = createMemo(() => {
+		const stats = props.stats()
+		const rules = stats?.language.rules
+		return computeBracketDepths(pieceTableText(), {
+			angleBrackets: rules?.angleBrackets,
+			stringRules: rules?.strings
+		})
+	})
+
 	const documentLength = createMemo(() => pieceTableText().length)
 
 	return (
@@ -30,7 +39,7 @@ export const TextFileEditor = (props: TextFileEditorProps) => {
 			documentLength={documentLength}
 		>
 			<HistoryProvider document={props.document}>
-				<TextFileEditorInner {...props} />
+				<TextFileEditorInner {...props} bracketDepths={bracketDepths} />
 			</HistoryProvider>
 		</CursorProvider>
 	)

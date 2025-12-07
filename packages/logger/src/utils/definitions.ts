@@ -1,51 +1,11 @@
-import { buildTag, type LoggerScope } from './tags'
-
-// Edit this map to hardcode which loggers start enabled/disabled.
-const LOGGER_TOGGLE_DEFAULTS = {
-	app: false,
-	web: false,
-	server: false,
-	desktop: false,
-	fs: false,
-	'code-editor': false,
-	perf: false
-} as const satisfies Record<string, boolean>
-
-type LoggerDefinition = {
-	scopes: readonly LoggerScope[]
-	enabled?: boolean
-}
-
-const LOGGER_DEFINITIONS = {
-	app: {
-		scopes: []
-	},
-	web: {
-		scopes: ['web']
-	},
-	server: {
-		scopes: ['server']
-	},
-	desktop: {
-		scopes: ['desktop']
-	},
-	fs: {
-		scopes: ['fs']
-	},
-	codeEditor: {
-		scopes: ['code-editor']
-	},
-	perf: {
-		scopes: ['perf']
-	}
-} as const satisfies Record<string, LoggerDefinition>
-
-type LoggerName = keyof typeof LOGGER_DEFINITIONS
-
-const definitionEntries = Object.entries(LOGGER_DEFINITIONS) as [
-	LoggerName,
-	LoggerDefinition
-][]
+import { LOGGER_TOGGLE_DEFAULTS } from './toggleDefaults'
+import {
+	LOGGER_DEFINITIONS,
+	definitionEntries,
+	type LoggerDefinition,
+	type LoggerName
+} from './loggerDefinitions'
+import { buildTag } from './tags'
 
 const defaultLoggerVisibility = new Map<string, boolean>(
 	Object.entries(LOGGER_TOGGLE_DEFAULTS)

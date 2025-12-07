@@ -1,4 +1,11 @@
-import { Show, createEffect, on, onCleanup, onMount } from 'solid-js'
+import {
+	Show,
+	createEffect,
+	on,
+	onCleanup,
+	onMount,
+	type Accessor
+} from 'solid-js'
 import { Lines } from '../line/components/Lines'
 import { Cursor } from '../cursor/components/Cursor'
 import { SelectionLayer } from '../selection/components/SelectionLayer'
@@ -12,9 +19,13 @@ import {
 	createTextEditorLayout,
 	createMouseSelection
 } from '../hooks'
-import type { TextFileEditorProps } from '../types'
+import type { BracketDepthMap, TextFileEditorProps } from '../types'
 
-export const TextFileEditorInner = (props: TextFileEditorProps) => {
+type TextFileEditorInnerProps = TextFileEditorProps & {
+	bracketDepths: Accessor<BracketDepthMap | undefined>
+}
+
+export const TextFileEditorInner = (props: TextFileEditorInnerProps) => {
 	const cursor = useCursor()
 
 	const tabSize = () => props.tabSize?.() ?? DEFAULT_TAB_SIZE
@@ -169,6 +180,7 @@ export const TextFileEditorInner = (props: TextFileEditorProps) => {
 							onPreciseClick={input.handlePreciseClick}
 							onMouseDown={handleLineMouseDown}
 							activeLineIndex={layout.activeLineIndex}
+							bracketDepths={props.bracketDepths}
 						/>
 					</div>
 				</div>

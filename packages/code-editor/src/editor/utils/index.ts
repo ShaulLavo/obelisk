@@ -173,3 +173,5 @@ export const calculateColumnFromClick = (
 
 	return text.length
 }
+
+export * from './bracketDepths'

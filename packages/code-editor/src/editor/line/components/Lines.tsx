@@ -24,6 +24,7 @@ export const Lines = (props: LinesProps) => {
 						onPreciseClick={props.onPreciseClick}
 						onMouseDown={props.onMouseDown}
 						isActive={props.activeLineIndex() === entry.index}
+						bracketDepths={props.bracketDepths}
 					/>
 				)
 			})}
