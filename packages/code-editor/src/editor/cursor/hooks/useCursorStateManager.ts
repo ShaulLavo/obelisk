@@ -75,13 +75,16 @@ export function useCursorStateManager(
 					anchor: Math.min(selection.anchor, length),
 					focus: Math.min(selection.focus, length)
 				}))
-				const hasSelectionChanges = clampedSelections.some((selection, index) => {
-					const original = state.selections[index]
-					return (
-						original.anchor !== selection.anchor ||
-						original.focus !== selection.focus
-					)
-				})
+				const hasSelectionChanges = clampedSelections.some(
+					(selection, index) => {
+						const original = state.selections[index]
+						if (!original) return false
+						return (
+							original.anchor !== selection.anchor ||
+							original.focus !== selection.focus
+						)
+					}
+				)
 				if (hasSelectionChanges) {
 					updates.selections = clampedSelections
 				}

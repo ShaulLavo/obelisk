@@ -3,7 +3,6 @@ import type { PieceTableSnapshot } from '@repo/utils'
 import {
 	createPieceTableSnapshot,
 	deleteFromPieceTable,
-	getPieceTableLength,
 	insertIntoPieceTable
 } from '@repo/utils'
 import {
@@ -13,6 +12,7 @@ import {
 } from '@repo/keyboard'
 import type { LineEntry } from '../types'
 import { useCursor, getSelectionBounds, hasSelection } from '../cursor'
+import { useHistory, type HistoryMergeMode } from '../history'
 import { clipboard } from '../utils/clipboard'
 import { createKeyRepeat } from './createKeyRepeat'
 
@@ -63,6 +63,7 @@ export function createTextEditorInput(
 	options: TextEditorInputOptions
 ): TextEditorInputHandlers {
 	const cursor = useCursor()
+	const history = useHistory()
 	const focusInput = () => {
 		if (!options.isEditable()) return
 		const element = options.getInputElement()
@@ -80,36 +81,103 @@ export function createTextEditorInput(
 		}
 	})
 
+	const snapshotCursorPosition = () => ({
+		offset: cursor.state.position.offset,
+		line: cursor.state.position.line,
+		column: cursor.state.position.column
+	})
+
+	const snapshotSelection = () => {
+		const selection = cursor.actions.getSelection()
+		return selection
+			? { anchor: selection.anchor, focus: selection.focus }
+			: null
+	}
+
+	const applyTextChange = (
+		start: number,
+		end: number,
+		insertedText: string,
+		changeOptions?: {
+			cursorOffsetAfter?: number
+			mergeMode?: HistoryMergeMode
+		}
+	): boolean => {
+		if (!options.isEditable()) return false
+
+		const documentLength = cursor.documentLength()
+		const normalizedStart = Math.min(start, end)
+		const normalizedEnd = Math.max(start, end)
+		const clampedStart = Math.max(0, Math.min(normalizedStart, documentLength))
+		const clampedEnd = Math.max(
+			clampedStart,
+			Math.min(normalizedEnd, documentLength)
+		)
+		const deleteLength = clampedEnd - clampedStart
+
+		if (deleteLength === 0 && insertedText.length === 0) {
+			return false
+		}
+
+		const documentText = cursor.documentText()
+		const deletedText =
+			deleteLength > 0 ? documentText.slice(clampedStart, clampedEnd) : ''
+
+		const cursorBefore = snapshotCursorPosition()
+		const selectionBefore = snapshotSelection()
+
+		options.updatePieceTable(current => {
+			const baseSnapshot = current ?? createPieceTableSnapshot(documentText)
+			let snapshot = baseSnapshot
+
+			if (deleteLength > 0) {
+				snapshot = deleteFromPieceTable(snapshot, clampedStart, deleteLength)
+			}
+
+			if (insertedText.length > 0) {
+				snapshot = insertIntoPieceTable(snapshot, clampedStart, insertedText)
+			}
+
+			return snapshot
+		})
+
+		const cursorOffsetAfter =
+			typeof changeOptions?.cursorOffsetAfter === 'number'
+				? changeOptions.cursorOffsetAfter
+				: insertedText.length > 0
+					? clampedStart + insertedText.length
+					: clampedStart
+
+		cursor.actions.setCursorOffset(cursorOffsetAfter)
+
+		const cursorAfter = snapshotCursorPosition()
+		const selectionAfter = snapshotSelection()
+
+		history.recordChange(
+			{
+				offset: clampedStart,
+				insertedText,
+				deletedText,
+				cursorBefore,
+				cursorAfter,
+				selectionBefore,
+				selectionAfter
+			},
+			{
+				mergeMode: changeOptions?.mergeMode
+			}
+		)
+
+		options.scrollCursorIntoView()
+		return true
+	}
+
 	const applyInsert = (value: string) => {
 		if (!value) return
 		const offset = cursor.state.position.offset
-		options.updatePieceTable(current => {
-			const baseSnapshot =
-				current ?? createPieceTableSnapshot(cursor.documentText())
-			return insertIntoPieceTable(baseSnapshot, offset, value)
-		})
-		cursor.actions.setCursorOffset(offset + value.length)
-		options.scrollCursorIntoView()
-	}
-
-	const applyDelete = (offset: number, length: number) => {
-		if (length <= 0 || offset < 0) return
-		options.updatePieceTable(current => {
-			const baseSnapshot =
-				current ?? createPieceTableSnapshot(cursor.documentText())
-			const totalLength = getPieceTableLength(baseSnapshot)
-
-			if (offset >= totalLength) {
-				return baseSnapshot
-			}
-
-			const clampedLength = Math.max(0, Math.min(length, totalLength - offset))
-
-			if (clampedLength === 0) {
-				return baseSnapshot
-			}
-
-			return deleteFromPieceTable(baseSnapshot, offset, clampedLength)
+		applyTextChange(offset, offset, value, {
+			cursorOffsetAfter: offset + value.length,
+			mergeMode: 'insert'
 		})
 	}
 
@@ -122,11 +190,9 @@ export function createTextEditorInput(
 		if (!selection) return false
 
 		const { start, end } = getSelectionBounds(selection)
-		const length = end - start
-
-		applyDelete(start, length)
-		cursor.actions.setCursorOffset(start)
-		return true
+		return applyTextChange(start, end, '', {
+			cursorOffsetAfter: start
+		})
 	}
 
 	function performDelete(
@@ -143,7 +209,6 @@ export function createTextEditorInput(
 		}
 
 		if (deleteSelection()) {
-			options.scrollCursorIntoView()
 			return
 		}
 
@@ -151,13 +216,20 @@ export function createTextEditorInput(
 
 		if (key === 'Backspace') {
 			if (offset === 0) return
-			applyDelete(offset - 1, 1)
-			cursor.actions.setCursorOffset(offset - 1)
+			applyTextChange(offset - 1, offset, '', {
+				cursorOffsetAfter: offset - 1,
+				mergeMode: 'delete'
+			})
 		} else {
-			applyDelete(offset, 1)
+			if (offset >= cursor.documentLength()) return
+			applyTextChange(offset, offset + 1, '', {
+				cursorOffsetAfter: offset,
+				mergeMode: 'delete'
+			})
 		}
-
-		options.scrollCursorIntoView()
+		if (_shiftKey) {
+			//noop
+		}
 	}
 
 	const handleInput = (event: InputEvent) => {
@@ -248,9 +320,7 @@ export function createTextEditorInput(
 				if (selectedText) {
 					void clipboard.writeText(selectedText)
 				}
-				if (deleteSelection()) {
-					options.scrollCursorIntoView()
-				}
+				deleteSelection()
 			}
 		},
 		[{ shortcut: 'primary+x' }]
@@ -268,6 +338,30 @@ export function createTextEditorInput(
 				})
 		},
 		[{ shortcut: 'primary+v' }]
+	)
+
+	registerCommandWithShortcuts(
+		{
+			id: 'editor.undo',
+			run: () => {
+				if (!options.isEditable()) return
+				history.undo()
+				options.scrollCursorIntoView()
+			}
+		},
+		[{ shortcut: 'primary+z' }]
+	)
+
+	registerCommandWithShortcuts(
+		{
+			id: 'editor.redo',
+			run: () => {
+				if (!options.isEditable()) return
+				history.redo()
+				options.scrollCursorIntoView()
+			}
+		},
+		[{ shortcut: 'primary+shift+z' }, { shortcut: 'primary+y' }]
 	)
 
 	registerCommandWithShortcuts(
@@ -298,17 +392,11 @@ export function createTextEditorInput(
 			id: 'editor.cursor.home',
 			run: context => {
 				const ctrlOrMeta = context.event.ctrlKey || context.event.metaKey
-				cursor.actions.moveCursorHome(
-					ctrlOrMeta,
-					context.event.shiftKey
-				)
+				cursor.actions.moveCursorHome(ctrlOrMeta, context.event.shiftKey)
 				options.scrollCursorIntoView()
 			}
 		},
-		[
-			{ shortcut: 'home' },
-			{ shortcut: 'primary+home' }
-		]
+		[{ shortcut: 'home' }, { shortcut: 'primary+home' }]
 	)
 
 	registerCommandWithShortcuts(
@@ -316,17 +404,11 @@ export function createTextEditorInput(
 			id: 'editor.cursor.end',
 			run: context => {
 				const ctrlOrMeta = context.event.ctrlKey || context.event.metaKey
-				cursor.actions.moveCursorEnd(
-					ctrlOrMeta,
-					context.event.shiftKey
-				)
+				cursor.actions.moveCursorEnd(ctrlOrMeta, context.event.shiftKey)
 				options.scrollCursorIntoView()
 			}
 		},
-		[
-			{ shortcut: 'end' },
-			{ shortcut: 'primary+end' }
-		]
+		[{ shortcut: 'end' }, { shortcut: 'primary+end' }]
 	)
 
 	registerCommandWithShortcuts(
@@ -335,10 +417,7 @@ export function createTextEditorInput(
 			run: context => {
 				const range = options.visibleLineRange()
 				const visibleLines = range.end - range.start
-				cursor.actions.moveCursorByLines(
-					-visibleLines,
-					context.event.shiftKey
-				)
+				cursor.actions.moveCursorByLines(-visibleLines, context.event.shiftKey)
 				options.scrollCursorIntoView()
 			}
 		},
@@ -351,10 +430,7 @@ export function createTextEditorInput(
 			run: context => {
 				const range = options.visibleLineRange()
 				const visibleLines = range.end - range.start
-				cursor.actions.moveCursorByLines(
-					visibleLines,
-					context.event.shiftKey
-				)
+				cursor.actions.moveCursorByLines(visibleLines, context.event.shiftKey)
 				options.scrollCursorIntoView()
 			}
 		},
