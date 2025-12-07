@@ -50,9 +50,8 @@ export function useCursorActions(
 
 	const ensureEntries = () => options.lineEntries()
 
-	const getShiftAnchor = (shiftKey: boolean, state: CursorState): number => {
-		return shiftKey ? getSelectionAnchor(state) : 0
-	}
+	const getShiftAnchor = (shiftKey: boolean, state: CursorState): number =>
+		shiftKey ? getSelectionAnchor(state) : state.position.offset
 
 	return {
 		setCursor: (position: CursorPosition) => {
@@ -199,8 +198,7 @@ export function useCursorActions(
 		},
 
 		setBlinking: (blinking: boolean) => {
-			options.updateCurrentState(prev => ({
-				...prev,
+			options.updateCurrentState(() => ({
 				isBlinking: blinking
 			}))
 		},
@@ -217,8 +215,7 @@ export function useCursorActions(
 		},
 
 		clearSelection: () => {
-			options.updateCurrentState(prev => ({
-				...prev,
+			options.updateCurrentState(() => ({
 				selections: []
 			}))
 		},

@@ -2,6 +2,7 @@ import { createMemo } from 'solid-js'
 import { getPieceTableText } from '@repo/utils'
 import { textToLineEntries } from '../utils'
 import { CursorProvider } from '../cursor'
+import { HistoryProvider } from '../history'
 import { TextFileEditorInner } from './TextFileEditorInner'
 import type { LineEntry, TextFileEditorProps } from '../types'
 
@@ -28,7 +29,9 @@ export const TextFileEditor = (props: TextFileEditorProps) => {
 			documentText={pieceTableText}
 			documentLength={documentLength}
 		>
-			<TextFileEditorInner {...props} />
+			<HistoryProvider document={props.document}>
+				<TextFileEditorInner {...props} />
+			</HistoryProvider>
 		</CursorProvider>
 	)
 }

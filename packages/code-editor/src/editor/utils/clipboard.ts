@@ -1,6 +1,6 @@
-import { logger } from '@repo/logger'
+import { loggers } from '@repo/logger'
 
-const clipboardLogger = logger.withTag('clipboard')
+const clipboardLogger = loggers.codeEditor.withTag('clipboard')
 
 const createHiddenTextarea = () => {
 	const textarea = document.createElement('textarea')

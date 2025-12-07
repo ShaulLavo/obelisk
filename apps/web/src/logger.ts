@@ -1,3 +1,3 @@
-import { createLogger } from '@repo/logger'
+import { loggers } from '@repo/logger'
 
-export const logger = createLogger('web')
+export const logger = loggers.web

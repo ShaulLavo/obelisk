@@ -1,4 +1,4 @@
-import { createLogger } from '@repo/logger'
+import { loggers } from '@repo/logger'
 import type { PerfBreakdownEntry, PerfRecord, PerfSummary } from './perfStore'
 import { getSummary, getRecentForOperation } from './perfStore'
 
@@ -6,7 +6,7 @@ type LogLevel = 'debug' | 'info' | 'warn'
 
 let currentLogLevel: LogLevel = 'debug'
 
-const perfLogger = createLogger('perf')
+const perfLogger = loggers.perf
 
 export const setLogLevel = (level: LogLevel): void => {
 	currentLogLevel = level

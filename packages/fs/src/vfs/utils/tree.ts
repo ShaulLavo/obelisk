@@ -4,10 +4,12 @@ import type {
 	FsTreeNode,
 	FsTreeOptions
 } from '../types'
-import { logger } from '@repo/logger'
+import { loggers } from '@repo/logger'
 import { throwIfAborted } from './abort'
 import { iterateDirectoryEntries } from './dir'
 import { joinPaths } from './path'
+
+const fsLogger = loggers.fs
 
 type TreeContextApi = {
 	getDirectoryHandleForRelative(
@@ -229,7 +231,7 @@ export async function buildFsTree(
 
 		if (withFileMeta) {
 			if (!handle) {
-				logger.warn('File handle is required to fetch file metadata')
+				fsLogger.warn('File handle is required to fetch file metadata')
 				return undefined
 			}
 
