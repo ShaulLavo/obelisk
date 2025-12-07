@@ -11,6 +11,11 @@ export type SelectionRange = {
 	focus: number // offset where selection ends (= cursor position)
 }
 
+export type SelectionBounds = {
+	start: number
+	end: number
+}
+
 export type CursorState = {
 	position: CursorPosition
 	preferredColumn: number // for ArrowUp/Down column preservation
@@ -57,7 +62,7 @@ export const createSelectionRange = (
 // Helper to get normalized selection bounds (start <= end)
 export const getSelectionBounds = (
 	selection: SelectionRange
-): { start: number; end: number } => ({
+): SelectionBounds => ({
 	start: Math.min(selection.anchor, selection.focus),
 	end: Math.max(selection.anchor, selection.focus)
 })

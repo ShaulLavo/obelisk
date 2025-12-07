@@ -1,9 +1,11 @@
 /* eslint-disable solid/prefer-for */
-import { EDITOR_PADDING_LEFT, LINE_NUMBER_WIDTH } from '../consts'
-import type { LineEntry, LineGuttersProps } from '../types'
+import { EDITOR_PADDING_LEFT, LINE_NUMBER_WIDTH } from '../../consts'
+import { useCursor } from '../../cursor'
+import type { LineEntry, LineGuttersProps } from '../../types'
 import { LineGutter } from './LineGutter'
 
 export const LineGutters = (props: LineGuttersProps) => {
+	const cursor = useCursor()
 	const handleRowMouseDown = (event: MouseEvent, entry: LineEntry) => {
 		if (
 			event.button !== 0 ||
@@ -36,7 +38,7 @@ export const LineGutters = (props: LineGuttersProps) => {
 				}}
 			>
 				{props.rows().map(virtualRow => {
-					const entry: LineEntry | undefined = props.entries()[virtualRow.index]
+					const entry: LineEntry | undefined = cursor.lineEntries()[virtualRow.index]
 					if (!entry) return null
 
 					const height = virtualRow.size || props.lineHeight()

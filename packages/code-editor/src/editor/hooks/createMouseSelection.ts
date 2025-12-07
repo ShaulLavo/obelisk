@@ -1,17 +1,13 @@
 import { onCleanup } from 'solid-js'
 import type { Accessor } from 'solid-js'
-import type { LineEntry } from '../types'
-import type { CursorActions } from '../cursor'
-import { positionToOffset } from '../cursor'
+import { positionToOffset, useCursor } from '../cursor'
 import { calculateColumnFromClick } from '../utils'
 
 export type MouseSelectionOptions = {
 	scrollElement: Accessor<HTMLElement | null>
-	lineEntries: Accessor<LineEntry[]>
 	charWidth: Accessor<number>
 	tabSize: Accessor<number>
 	lineHeight: Accessor<number>
-	cursorActions: CursorActions
 }
 
 export type MouseSelectionHandlers = {
@@ -30,6 +26,7 @@ const AUTO_SCROLL_SPEED = 10 // pixels per frame
 export function createMouseSelection(
 	options: MouseSelectionOptions
 ): MouseSelectionHandlers {
+	const cursor = useCursor()
 	let isDragging = false
 	let anchorOffset: number | null = null
 	let lastClickTime = 0
@@ -66,7 +63,7 @@ export function createMouseSelection(
 		if (!scrollEl) return null
 
 		const rect = scrollEl.getBoundingClientRect()
-		const entries = options.lineEntries()
+		const entries = cursor.lineEntries()
 		if (entries.length === 0) return null
 
 		// Calculate Y position relative to scroll content
@@ -102,10 +99,10 @@ export function createMouseSelection(
 		const pos = getPositionFromMouseEvent(event)
 		if (!pos) return
 
-		const entries = options.lineEntries()
+		const entries = cursor.lineEntries()
 		const focusOffset = positionToOffset(pos.lineIndex, pos.column, entries)
 
-		options.cursorActions.setSelection(anchorOffset, focusOffset)
+		cursor.actions.setSelection(anchorOffset, focusOffset)
 
 		// Auto-scroll when near edges
 		const scrollEl = options.scrollElement()
@@ -136,7 +133,7 @@ export function createMouseSelection(
 	) => {
 		if (event.button !== 0) return
 
-		const entries = options.lineEntries()
+		const entries = cursor.lineEntries()
 		if (entries.length === 0) return
 
 		const now = Date.now()
@@ -159,14 +156,14 @@ export function createMouseSelection(
 		if (clickCount === 2) {
 			// Double-click: select word
 			event.preventDefault()
-			options.cursorActions.selectWord(offset)
+			cursor.actions.selectWord(offset)
 			return
 		}
 
 		if (clickCount >= 3) {
 			// Triple-click: select line
 			event.preventDefault()
-			options.cursorActions.selectLine(lineIndex)
+			cursor.actions.selectLine(lineIndex)
 			clickCount = 0 // Reset to prevent quad-click issues
 			return
 		}
@@ -175,13 +172,13 @@ export function createMouseSelection(
 		if (event.shiftKey) {
 			// Shift+click: extend selection
 			event.preventDefault()
-			options.cursorActions.setCursorFromClick(lineIndex, column, true)
+			cursor.actions.setCursorFromClick(lineIndex, column, true)
 		} else {
 			// Normal click: start potential drag
 			event.preventDefault()
 			anchorOffset = offset
 			isDragging = true
-			options.cursorActions.setCursorFromClick(lineIndex, column, false)
+			cursor.actions.setCursorFromClick(lineIndex, column, false)
 
 			document.addEventListener('mousemove', handleMouseMove)
 			document.addEventListener('mouseup', handleMouseUp)

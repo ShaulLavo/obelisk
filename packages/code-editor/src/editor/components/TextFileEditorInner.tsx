@@ -1,9 +1,8 @@
 import { Show, createEffect, on, onCleanup, onMount } from 'solid-js'
-import type { JSX } from 'solid-js'
-import { Lines } from './Lines'
-import { Cursor } from './Cursor'
-import { SelectionLayer } from './SelectionLayer'
-import { LineGutters } from './LineGutters'
+import { Lines } from '../line/components/Lines'
+import { Cursor } from '../cursor/components/Cursor'
+import { SelectionLayer } from '../selection/components/SelectionLayer'
+import { LineGutters } from '../line/components/LineGutters'
 import { Input } from './Input'
 import { DEFAULT_TAB_SIZE, LINE_NUMBER_WIDTH } from '../consts'
 import { useCursor } from '../cursor'
@@ -13,14 +12,11 @@ import {
 	createTextEditorLayout,
 	createMouseSelection
 } from '../hooks'
-import type { LineEntry, TextFileEditorProps } from '../types'
+import type { TextFileEditorProps } from '../types'
 
 export const TextFileEditorInner = (props: TextFileEditorProps) => {
 	const cursor = useCursor()
-	const cursorState = () => cursor.state
-	const cursorActions = cursor.actions
-	const lineEntries = cursor.lineEntries
-	const pieceTableText = cursor.documentText
+
 	const tabSize = () => props.tabSize?.() ?? DEFAULT_TAB_SIZE
 
 	let scrollElement: HTMLDivElement = null!
@@ -29,14 +25,52 @@ export const TextFileEditorInner = (props: TextFileEditorProps) => {
 	const isEditable = () => props.document.isEditable()
 
 	const layout = createTextEditorLayout({
-		lineEntries,
-		cursorState,
 		fontSize: () => props.fontSize(),
 		fontFamily: () => props.fontFamily(),
 		isFileSelected: () => props.isFileSelected(),
 		tabSize,
 		scrollElement: () => scrollElement
 	})
+
+	const cursorScroll = createCursorScrollSync({
+		scrollElement: () => scrollElement,
+		lineHeight: layout.lineHeight,
+		charWidth: layout.charWidth,
+		getColumnOffset: layout.getColumnOffset
+	})
+
+	const scrollCursorIntoView = () => {
+		const pos = cursor.state.position
+		cursorScroll.scrollToCursor(pos.line, pos.column)
+	}
+
+	const input = createTextEditorInput({
+		visibleLineRange: layout.visibleLineRange,
+		updatePieceTable: updater => props.document.updatePieceTable(updater),
+		isFileSelected: () => props.isFileSelected(),
+		isEditable,
+		getInputElement: () => inputElement,
+		scrollCursorIntoView,
+		activeScopes: () => props.activeScopes?.() ?? ['editor', 'global']
+	})
+
+	const mouseSelection = createMouseSelection({
+		scrollElement: () => scrollElement,
+		charWidth: layout.charWidth,
+		tabSize: tabSize,
+		lineHeight: layout.lineHeight,
+	})
+
+	const handleLineMouseDown = (
+		event: MouseEvent,
+		lineIndex: number,
+		column: number,
+		textElement: HTMLElement | null
+	) => {
+		if (!isEditable()) return
+		mouseSelection.handleMouseDown(event, lineIndex, column, textElement)
+		input.focusInput()
+	}
 
 	createEffect(
 		on(
@@ -49,95 +83,6 @@ export const TextFileEditorInner = (props: TextFileEditorProps) => {
 			}
 		)
 	)
-
-	const cursorScroll = createCursorScrollSync({
-		scrollElement: () => scrollElement,
-		lineHeight: layout.lineHeight,
-		charWidth: layout.charWidth,
-		getColumnOffset: layout.getColumnOffset
-	})
-
-	const scrollCursorIntoView = () => {
-		const pos = cursorState().position
-		cursorScroll.scrollToCursor(pos.line, pos.column)
-	}
-
-	const input = createTextEditorInput({
-		cursorState,
-		cursorActions,
-		visibleLineRange: layout.visibleLineRange,
-		updatePieceTable: updater => props.document.updatePieceTable(updater),
-		pieceTableText,
-		isFileSelected: () => props.isFileSelected(),
-		getInputElement: () => inputElement,
-		scrollCursorIntoView,
-		activeScopes: () => props.activeScopes?.() ?? ['editor', 'global']
-	})
-
-	const handleInput: JSX.EventHandlerUnion<
-		HTMLTextAreaElement,
-		InputEvent
-	> = event => {
-		if (!isEditable()) return
-		input.handleInput(event)
-	}
-
-	const handleKeyDown: JSX.EventHandlerUnion<
-		HTMLTextAreaElement,
-		KeyboardEvent
-	> = event => {
-		if (!isEditable()) return
-		input.handleKeyDown(event)
-	}
-
-	const handleKeyUp: JSX.EventHandlerUnion<
-		HTMLTextAreaElement,
-		KeyboardEvent
-	> = event => {
-		if (!isEditable()) return
-		input.handleKeyUp(event)
-	}
-
-	const handleRowClick = (entry: LineEntry) => {
-		if (!isEditable()) return
-		input.handleRowClick(entry)
-	}
-
-	const handlePreciseClick = (
-		lineIndex: number,
-		column: number,
-		shiftKey = false
-	) => {
-		if (!isEditable()) return
-		input.handlePreciseClick(lineIndex, column, shiftKey)
-	}
-
-	const focusInput = () => {
-		if (!isEditable()) return
-		input.focusInput()
-	}
-
-	// Mouse selection for drag, double-click (word), triple-click (line)
-	const mouseSelection = createMouseSelection({
-		scrollElement: () => scrollElement,
-		lineEntries,
-		charWidth: layout.charWidth,
-		tabSize: tabSize,
-		lineHeight: layout.lineHeight,
-		cursorActions
-	})
-
-	const handleLineMouseDown = (
-		event: MouseEvent,
-		lineIndex: number,
-		column: number,
-		textElement: HTMLElement | null
-	) => {
-		if (!isEditable()) return
-		mouseSelection.handleMouseDown(event, lineIndex, column, textElement)
-		focusInput()
-	}
-
 	onMount(() => {
 		if (!scrollElement) return
 		const unregister = props.registerEditorArea?.(() => scrollElement)
@@ -161,9 +106,9 @@ export const TextFileEditorInner = (props: TextFileEditorProps) => {
 				style={{
 					'font-size': `${props.fontSize()}px`,
 					'font-family': props.fontFamily(),
-					'user-select': 'none' // Disable browser text selection
+					'user-select': 'none'
 				}}
-				onClick={() => focusInput()}
+				onClick={() => input.focusInput()}
 			>
 				<Input
 					inputRef={element => {
@@ -171,9 +116,9 @@ export const TextFileEditorInner = (props: TextFileEditorProps) => {
 					}}
 					layout={layout}
 					isEditable={isEditable}
-					onInput={handleInput}
-					onKeyDown={handleKeyDown}
-					onKeyUp={handleKeyUp}
+					onInput={input.handleInput}
+					onKeyDown={input.handleKeyDown}
+					onKeyUp={input.handleKeyUp}
 				/>
 				<div
 					style={{
@@ -182,8 +127,6 @@ export const TextFileEditorInner = (props: TextFileEditorProps) => {
 					}}
 				>
 					<SelectionLayer
-						selections={() => cursorState().selections}
-						lineEntries={lineEntries}
 						virtualItems={layout.virtualItems}
 						lineHeight={layout.lineHeight}
 						lineNumberWidth={LINE_NUMBER_WIDTH}
@@ -195,7 +138,6 @@ export const TextFileEditorInner = (props: TextFileEditorProps) => {
 					/>
 					<Show when={isEditable()}>
 						<Cursor
-							cursorState={cursorState}
 							fontSize={props.fontSize()}
 							fontFamily={props.fontFamily()}
 							charWidth={layout.charWidth()}
@@ -211,22 +153,20 @@ export const TextFileEditorInner = (props: TextFileEditorProps) => {
 					<div class="flex h-full">
 						<LineGutters
 							rows={layout.virtualItems}
-							entries={lineEntries}
 							lineHeight={layout.lineHeight}
-							onRowClick={handleRowClick}
+							onRowClick={input.handleRowClick}
 							activeLineIndex={layout.activeLineIndex}
 						/>
 
 						<Lines
 							rows={layout.virtualItems}
-							entries={lineEntries}
 							contentWidth={layout.contentWidth}
 							rowVirtualizer={layout.rowVirtualizer}
 							lineHeight={layout.lineHeight}
 							charWidth={layout.charWidth}
 							tabSize={tabSize}
-							onRowClick={handleRowClick}
-							onPreciseClick={handlePreciseClick}
+							onRowClick={input.handleRowClick}
+							onPreciseClick={input.handlePreciseClick}
 							onMouseDown={handleLineMouseDown}
 							activeLineIndex={layout.activeLineIndex}
 						/>

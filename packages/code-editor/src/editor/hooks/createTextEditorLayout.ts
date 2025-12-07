@@ -11,12 +11,9 @@ import {
 	estimateLineHeight,
 	measureCharWidth
 } from '../utils'
-import type { LineEntry } from '../types'
-import type { CursorState } from '../cursor'
+import { useCursor } from '../cursor'
 
 export type TextEditorLayoutOptions = {
-	lineEntries: Accessor<LineEntry[]>
-	cursorState: Accessor<CursorState>
 	fontSize: Accessor<number>
 	fontFamily: Accessor<string>
 	isFileSelected: Accessor<boolean>
@@ -43,16 +40,17 @@ export type TextEditorLayout = {
 export function createTextEditorLayout(
 	options: TextEditorLayoutOptions
 ): TextEditorLayout {
-	const hasLineEntries = createMemo(() => options.lineEntries().length > 0)
+	const cursor = useCursor()
+	const hasLineEntries = createMemo(() => cursor.lineEntries().length > 0)
 
 	const activeLineIndex = createMemo<number | null>(() => {
-		const entries = options.lineEntries()
+		const entries = cursor.lineEntries()
 		if (!entries.length) return null
-		return options.cursorState().position.line
+		return cursor.state.position.line
 	})
 
 	const maxColumns = createMemo(() => {
-		const entries = options.lineEntries()
+		const entries = cursor.lineEntries()
 		let max = 0
 		const tabSize = options.tabSize()
 
@@ -70,14 +68,12 @@ export function createTextEditorLayout(
 		measureCharWidth(options.fontSize(), options.fontFamily())
 	)
 
-	const cursorLineIndex = createMemo(() => options.cursorState().position.line)
-	const cursorColumnIndex = createMemo(
-		() => options.cursorState().position.column
-	)
+	const cursorLineIndex = createMemo(() => cursor.state.position.line)
+	const cursorColumnIndex = createMemo(() => cursor.state.position.column)
 
 	const rowVirtualizer = createVirtualizer<HTMLDivElement, HTMLDivElement>({
 		get count() {
-			return options.lineEntries().length
+			return cursor.lineEntries().length
 		},
 		get enabled() {
 			return options.isFileSelected() && hasLineEntries()
@@ -90,7 +86,7 @@ export function createTextEditorLayout(
 	createEffect(() => {
 		options.fontSize()
 		options.fontFamily()
-		options.lineEntries()
+		cursor.lineEntries()
 		queueMicrotask(() => {
 			rowVirtualizer.measure()
 		})
@@ -108,7 +104,7 @@ export function createTextEditorLayout(
 	})
 
 	const columnOffset = (lineIndex: number, columnIndex: number): number => {
-		const entry = options.lineEntries()[lineIndex]
+		const entry = cursor.lineEntries()[lineIndex]
 		if (!entry) return 0
 		return calculateColumnOffset(
 			entry.text,

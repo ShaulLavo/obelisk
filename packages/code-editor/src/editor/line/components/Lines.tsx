@@ -1,12 +1,14 @@
 /* eslint-disable solid/prefer-for */
-import type { LineEntry, LinesProps } from '../types'
+import { useCursor } from '../../cursor'
+import type { LineEntry, LinesProps } from '../../types'
 import { Line } from './Line'
 
 export const Lines = (props: LinesProps) => {
+	const cursor = useCursor()
 	return (
 		<div class="relative flex-1">
 			{props.rows().map(virtualRow => {
-				const entry: LineEntry | undefined = props.entries()[virtualRow.index]
+				const entry: LineEntry | undefined = cursor.lineEntries()[virtualRow.index]
 				if (!entry) return null
 
 				return (

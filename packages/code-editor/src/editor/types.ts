@@ -62,7 +62,6 @@ export type LineProps = {
 
 export type LinesProps = {
 	rows: Accessor<VirtualItem[]>
-	entries: Accessor<LineEntry[]>
 	contentWidth: Accessor<number>
 	rowVirtualizer: Virtualizer<HTMLDivElement, HTMLDivElement>
 	lineHeight: Accessor<number>
@@ -81,7 +80,6 @@ export type LinesProps = {
 
 export type LineGuttersProps = {
 	rows: Accessor<VirtualItem[]>
-	entries: Accessor<LineEntry[]>
 	lineHeight: Accessor<number>
 	onRowClick: (entry: LineEntry) => void
 	activeLineIndex: Accessor<number | null>
