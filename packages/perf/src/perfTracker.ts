@@ -193,7 +193,10 @@ export const createOperationTracker = (
 			threshold?: number
 			logger?: Logger
 		}
-	) => trackMicro(operationName, fn, options)
+	) => {
+		const mergedOptions = { ...defaultOptions, ...options }
+		return trackMicro(operationName, fn, mergedOptions)
+	}
 })
 
 // Re-export store functions for convenience

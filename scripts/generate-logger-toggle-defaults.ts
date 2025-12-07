@@ -151,6 +151,7 @@ function flattenTree(
 	const result = new Map<string, boolean>()
 
 	for (const [key, value] of Object.entries(tree ?? {})) {
+		if (typeof value === 'undefined') continue
 		flattenNode(key, value, result)
 	}
 
@@ -162,6 +163,14 @@ function flattenNode(
 	node: RawToggleNode,
 	acc: Map<string, boolean>
 ) {
+	if (
+		typeof node === 'undefined' ||
+		node === null ||
+		(typeof node !== 'boolean' && typeof node !== 'object')
+	) {
+		return
+	}
+
 	if (typeof node === 'boolean') {
 		acc.set(currentKey, node)
 		return
