@@ -11,6 +11,7 @@ import { makeTreePrefetch } from '../hooks/useTreePrefetch'
 import { useDirectoryLoader } from '../hooks/useDirectoryLoader'
 import { useFileSelection } from '../hooks/useFileSelection'
 import { useFsRefresh } from '../hooks/useFsRefresh'
+import { createFileCacheController } from '../cache/fileCacheController'
 
 export function FsProvider(props: { children: JSX.Element }) {
 	const {
@@ -40,6 +41,12 @@ export function FsProvider(props: { children: JSX.Element }) {
 		registerDeferredMetadata,
 		clearDeferredMetadata
 	} = createFsState()
+
+	const fileCache = createFileCacheController({
+		state,
+		setPieceTable,
+		setFileStats
+	})
 
 	const setDirNode = (path: string, node: FsDirTreeNode) => {
 		if (!state.tree) return
@@ -84,8 +91,7 @@ export function FsProvider(props: { children: JSX.Element }) {
 		setSelectedFileContent,
 		setSelectedFileLoading,
 		setError,
-		setPieceTable,
-		setFileStats
+		fileCache
 	})
 
 	const { refresh } = useFsRefresh({
@@ -97,6 +103,7 @@ export function FsProvider(props: { children: JSX.Element }) {
 		setLoading,
 		clearParseResults,
 		clearPieceTables,
+		clearFileCache: fileCache.clearAll,
 		setBackgroundPrefetching,
 		setBackgroundIndexedFileCount,
 		setLastPrefetchedPath,

@@ -16,6 +16,7 @@ type UseFsRefreshOptions = {
 	setLoading: (value: boolean) => void
 	clearParseResults: () => void
 	clearPieceTables: () => void
+	clearFileCache: () => void
 	clearDeferredMetadata: () => void
 	setBackgroundPrefetching: (value: boolean) => void
 	setBackgroundIndexedFileCount: (value: number) => void
@@ -36,6 +37,7 @@ export const useFsRefresh = ({
 	setLoading,
 	clearParseResults,
 	clearPieceTables,
+	clearFileCache,
 	clearDeferredMetadata,
 	setBackgroundPrefetching,
 	setBackgroundIndexedFileCount,
@@ -67,6 +69,7 @@ export const useFsRefresh = ({
 		setLoading(true)
 		clearParseResults()
 		clearPieceTables()
+		clearFileCache()
 		clearDeferredMetadata()
 		const ensurePaths = buildEnsurePaths()
 

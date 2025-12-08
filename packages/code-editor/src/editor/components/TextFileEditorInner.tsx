@@ -104,7 +104,10 @@ export const TextFileEditorInner = (props: TextFileEditorInnerProps) => {
 
 	/* TODO: move off TanStack virtualization so we control windowing
 		and can let features like bracket coloring share the custom
-		visible-range state */
+		visible-range state
+		And we can not read ALL the text at once from the piece table 
+		just the needed chunks
+		*/
 	return (
 		<Show
 			when={layout.hasLineEntries()}

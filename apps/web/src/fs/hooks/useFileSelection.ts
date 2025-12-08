@@ -18,6 +18,7 @@ import { DEFAULT_SOURCE } from '../config/constants'
 import type { FsState } from '../types'
 import type { FsContextValue, SelectPathOptions } from '../context/FsContext'
 import { findNode } from '../runtime/tree'
+import type { FileCacheController } from '../cache/fileCacheController'
 
 type UseFileSelectionOptions = {
 	state: FsState
@@ -27,13 +28,7 @@ type UseFileSelectionOptions = {
 	setSelectedFileContent: (content: string) => void
 	setSelectedFileLoading: (value: boolean) => void
 	setError: (message: string | undefined) => void
-	setPieceTable: (path: string, snapshot?: PieceTableSnapshot) => void
-	setFileStats: (
-		path: string,
-		result?:
-			| ReturnType<typeof parseFileBuffer>
-			| ReturnType<typeof createMinimalBinaryParseResult>
-	) => void
+	fileCache: FileCacheController
 }
 
 const MAX_FILE_SIZE_BYTES = Infinity
@@ -46,8 +41,7 @@ export const useFileSelection = ({
 	setSelectedFileContent,
 	setSelectedFileLoading,
 	setError,
-	setPieceTable,
-	setFileStats
+	fileCache
 }: UseFileSelectionOptions) => {
 	let selectRequestId = 0
 
@@ -104,8 +98,8 @@ export const useFileSelection = ({
 						)
 						if (requestId !== selectRequestId) return
 
-						const existingSnapshot = state.pieceTables[path]
-						const existingFileStats = state.fileStats[path]
+						const { pieceTable: existingSnapshot, stats: existingFileStats } =
+							fileCache.get(path)
 						const detection = detectBinaryFromPreview(path, previewBytes)
 						const isBinary = !detection.isText
 
@@ -163,14 +157,13 @@ export const useFileSelection = ({
 							timeSync('set-selected-file-content', () =>
 								setSelectedFileContent(selectedFileContentValue)
 							)
-							if (pieceTableSnapshot) {
-								timeSync('set-piece-table', () =>
-									setPieceTable(path, pieceTableSnapshot)
-								)
-							}
-							if (fileStatsResult) {
-								timeSync('set-file-stats', () =>
-									setFileStats(path, fileStatsResult)
+							if (pieceTableSnapshot || fileStatsResult || binaryPreviewBytes) {
+								timeSync('set-cache-entry', () =>
+									fileCache.set(path, {
+										pieceTable: pieceTableSnapshot,
+										stats: fileStatsResult,
+										previewBytes: binaryPreviewBytes
+									})
 								)
 							}
 						})
@@ -200,7 +193,7 @@ export const useFileSelection = ({
 			const next = updater(current)
 			if (!next) return
 
-			setPieceTable(path, next)
+			fileCache.set(path, { pieceTable: next })
 		}
 
 	return {

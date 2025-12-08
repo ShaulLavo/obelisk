@@ -15,12 +15,8 @@ import { createPieceTableState } from './createPieceTableState'
 export const createFsState = () => {
 	const { tree, setTree, hydration } = createTreeState()
 	const { expanded, setExpanded } = createExpandedState()
-	const {
-		selectedPath,
-		setSelectedPath,
-		activeSource,
-		setActiveSource
-	} = createSelectionState()
+	const { selectedPath, setSelectedPath, activeSource, setActiveSource } =
+		createSelectionState()
 	const {
 		selectedFileSize,
 		setSelectedFileSize,
@@ -86,7 +82,8 @@ export const createFsState = () => {
 		},
 		get selectedFileContent() {
 			const path = lastKnownFilePath()
-			if (!path) {
+			const currentPath = selectedPath()
+			if (!path || currentPath !== path) {
 				return selectedFileContent()
 			}
 
