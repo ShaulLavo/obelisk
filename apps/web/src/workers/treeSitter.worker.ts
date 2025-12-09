@@ -9,12 +9,14 @@ import type {
 	TreeSitterError
 } from './treeSitterWorkerTypes'
 
+import { logger } from '../logger'
+
 import jsHighlightsQuerySource from '../treeSitter/queries/javascript-highlights.scm?raw'
 import jsJsxHighlightsQuerySource from 'tree-sitter-javascript/queries/highlights-jsx.scm?raw'
 import tsHighlightsQuerySource from '../treeSitter/queries/typescript-highlights.scm?raw'
 
 
-
+const log = logger.withTag('treeSitter')
 type CachedTreeEntry = {
 	tree: Tree
 	text: string
@@ -42,7 +44,7 @@ const ensureParser = async () => {
 				highlightQueries = []
 			})().catch(error => {
 				parserInitPromise = null
-				console.error('[Tree-sitter worker demo] parser init failed', error)
+				log.error('Tree-sitter parser init failed', error)
 				throw error
 			})
 	}
@@ -83,7 +85,7 @@ const ensureHighlightQueries = async () => {
 		const source = highlightQuerySources.join('\n')
 		highlightQueries = [new Query(language, source)]
 	} catch (error) {
-		console.error('[Tree-sitter worker] failed to init query', error)
+		log.error('[Tree-sitter worker] failed to init query', error)
 		highlightQueries = []
 	}
 	return highlightQueries

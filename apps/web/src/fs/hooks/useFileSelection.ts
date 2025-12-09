@@ -59,6 +59,10 @@ export const useFileSelection = ({
 		if (!tree) return
 		if (state.selectedPath === path && !options?.forceReload) return
 
+		if (options?.forceReload) {
+			fileCache.clearPath(path)
+		}
+
 		const node = findNode(tree, path)
 		if (!node) return
 
@@ -150,7 +154,7 @@ export const useFileSelection = ({
 											}
 										})
 										.catch(error => {
-											console.error(
+											loggers.fs.error(
 												'[Tree-sitter worker] parse failed',
 												path,
 												error

@@ -113,6 +113,7 @@ class VfsStoreImpl implements VfsStore {
 			return
 		}
 
+		let hadError = false
 		this.#dirty = false
 		const content = JSON.stringify(this.#data)
 
@@ -121,15 +122,16 @@ class VfsStoreImpl implements VfsStore {
 			const writable = await handle.createWritable()
 			await writable.write(content)
 			await writable.close()
-
-			if (this.#dirty) {
-				this.#scheduleFlush()
-			}
 		} catch (error) {
+			hadError = true
 			this.#dirty = true
 			throw error
 		} finally {
 			this.#flushPromise = null
+
+			if (!hadError && this.#dirty) {
+				this.#scheduleFlush()
+			}
 		}
 	}
 

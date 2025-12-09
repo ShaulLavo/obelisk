@@ -17,7 +17,6 @@ export const sendIncrementalTreeEdit = (
 		newEndPosition: edit.newEndPosition,
 		insertedText: edit.insertedText
 	})
-	if (!highlightPromise) return undefined
 	return highlightPromise.catch(error => {
 		logger.withTag('treeSitter').error('[Tree-sitter worker] incremental edit failed', error)
 		return undefined

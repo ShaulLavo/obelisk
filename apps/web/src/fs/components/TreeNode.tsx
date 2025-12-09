@@ -25,7 +25,7 @@ export const TreeNode = (props: TreeNodeProps) => {
 	}
 
 	const handleSelect = () => {
-		void actions.selectPath(props.node.path)
+		void actions.selectPath(props.node.path, { forceReload: true })
 	}
 
 	const handleClick = () => {
