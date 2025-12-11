@@ -1,5 +1,5 @@
 // import { FitAddon } from '@xterm/addon-fit'
-import { Terminal as Xterm, init } from 'ghostty-web'
+import { Terminal as Xterm, init, FitAddon } from 'ghostty-web'
 // import { Terminal as Xterm } from '@xterm/xterm'
 import { LocalEchoController } from './localEcho'
 import { handleCommand } from './commands'
@@ -8,6 +8,7 @@ const promptLabel = 'guest@vibe:~$ '
 
 export const createTerminalController = async (container: HTMLDivElement) => {
 	let disposed = false
+	let initialFitRaf: number | null = null
 	await init()
 	const term = new Xterm({
 		convertEol: true,
@@ -26,10 +27,10 @@ export const createTerminalController = async (container: HTMLDivElement) => {
 		}
 	})
 
-	// const fitAddon = new FitAddon()
+	const fitAddon = new FitAddon()
 	const echoAddon = new LocalEchoController()
 
-	// term.loadAddon(fitAddon)
+	term.loadAddon(fitAddon)
 	term.loadAddon(echoAddon)
 
 	const startPromptLoop = async () => {
@@ -44,12 +45,28 @@ export const createTerminalController = async (container: HTMLDivElement) => {
 	}
 
 	const fit = () => {
-		// if (!disposed) fitAddon.fit()
+		if (!disposed) fitAddon.fit()
 	}
 	const handleResize = () => fit()
 
 	term.open(container)
-	fit()
+	{
+		// ghostty-web fit needs the container to have final layout (and ideally fonts)
+		// before measuring. Doing an initial rAF fit is much more reliable than an
+		// immediate sync fit during mount.
+		const observeResize = (
+			fitAddon as unknown as {
+				observeResize?: () => void
+			}
+		).observeResize
+		if (typeof observeResize === 'function') observeResize.call(fitAddon)
+
+		initialFitRaf = requestAnimationFrame(() => {
+			fit()
+			// 2nd pass to catch late layout/font metric settling
+			requestAnimationFrame(fit)
+		})
+	}
 	term.focus()
 
 	echoAddon.println('Welcome to vibe shell')
@@ -61,6 +78,7 @@ export const createTerminalController = async (container: HTMLDivElement) => {
 		fit,
 		dispose: () => {
 			disposed = true
+			if (initialFitRaf !== null) cancelAnimationFrame(initialFitRaf)
 			window.removeEventListener('resize', handleResize)
 			echoAddon.abortRead('terminal disposed')
 			echoAddon.dispose()

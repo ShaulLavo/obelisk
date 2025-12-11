@@ -26,7 +26,7 @@ export const Terminal: Component = () => {
 	return (
 		<div class="flex h-full min-h-0 flex-col overflow-hidden">
 			<div
-				class="flex-1 min-h-0 rounded border border-zinc-800/70 bg-black/70 p-2 shadow-xl shadow-black/30"
+				class="terminal-container relative flex-1 min-h-0 overflow-hidden rounded border border-zinc-800/70 bg-[#0a0a0b] p-2 shadow-xl shadow-black/30"
 				ref={el => (containerRef = el)}
 			/>
 		</div>

@@ -36,6 +36,20 @@
 	scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
 }
 
+/* ghostty-web: ensure the terminal canvas doesn't behave like inline content */
+.terminal-container canvas {
+	display: block;
+}
+
+/* ghostty-web: hide the helper textarea caret (keep input working) */
+.terminal-container textarea {
+	caret-color: transparent;
+	color: transparent;
+	background: transparent;
+	border: 0;
+	outline: 0;
+}
+
 /* Terminal-style cursor blink
    - Instant on/off (no fade), like most Linux/macOS terminals.
 */
