@@ -1,5 +1,6 @@
-import { FitAddon } from '@xterm/addon-fit'
-import { Terminal as Xterm } from '@xterm/xterm'
+// import { FitAddon } from '@xterm/addon-fit'
+import { Terminal as Xterm, init } from 'ghostty-web'
+// import { Terminal as Xterm } from '@xterm/xterm'
 import { LocalEchoController } from './localEcho'
 import { handleCommand } from './commands'
 
@@ -7,7 +8,7 @@ const promptLabel = 'guest@vibe:~$ '
 
 export const createTerminalController = async (container: HTMLDivElement) => {
 	let disposed = false
-
+	await init()
 	const term = new Xterm({
 		convertEol: true,
 		cursorBlink: true,
@@ -25,10 +26,10 @@ export const createTerminalController = async (container: HTMLDivElement) => {
 		}
 	})
 
-	const fitAddon = new FitAddon()
+	// const fitAddon = new FitAddon()
 	const echoAddon = new LocalEchoController()
 
-	term.loadAddon(fitAddon)
+	// term.loadAddon(fitAddon)
 	term.loadAddon(echoAddon)
 
 	const startPromptLoop = async () => {
@@ -43,7 +44,7 @@ export const createTerminalController = async (container: HTMLDivElement) => {
 	}
 
 	const fit = () => {
-		if (!disposed) fitAddon.fit()
+		// if (!disposed) fitAddon.fit()
 	}
 	const handleResize = () => fit()
 

@@ -1,4 +1,5 @@
-import type { Terminal } from '@xterm/xterm'
+import type { Terminal } from 'ghostty-web'
+// import type { Terminal } from '@xterm/xterm'
 import { HistoryController } from './historyController'
 import {
 	closestLeftBoundary,
@@ -133,7 +134,7 @@ export class LocalEchoController implements ILocalEchoController {
 
 	/** Remove a previously registered autocomplete handler */
 	removeAutocompleteHandler(fn: AutocompleteCallback): void {
-		const idx = this.autocompleteHandlers.findIndex((h) => h.fn === fn)
+		const idx = this.autocompleteHandlers.findIndex(h => h.fn === fn)
 		if (idx !== -1) {
 			this.autocompleteHandlers.splice(idx, 1)
 		}
@@ -201,7 +202,7 @@ export class LocalEchoController implements ILocalEchoController {
 			return
 		}
 
-		const maxWidth = Math.max(...items.map((item) => item.length))
+		const maxWidth = Math.max(...items.map(item => item.length))
 		const itemWidth = maxWidth + padding
 		const cols = Math.floor(this.termSize.cols / itemWidth)
 		const rows = Math.ceil(items.length / cols)
@@ -240,7 +241,11 @@ export class LocalEchoController implements ILocalEchoController {
 		const allRows = countLines(currentPrompt, this.termSize.cols)
 
 		const promptCursor = this.applyPromptOffset(this.input, this.cursor)
-		const { row } = offsetToColRow(currentPrompt, promptCursor, this.termSize.cols)
+		const { row } = offsetToColRow(
+			currentPrompt,
+			promptCursor,
+			this.termSize.cols
+		)
 
 		// Move to the last row
 		const moveRows = allRows - row - 1
@@ -270,7 +275,11 @@ export class LocalEchoController implements ILocalEchoController {
 		// Position cursor correctly
 		const newCursor = this.applyPromptOffset(newInput, this.cursor)
 		const newLines = countLines(newPrompt, this.termSize.cols)
-		const { col, row } = offsetToColRow(newPrompt, newCursor, this.termSize.cols)
+		const { col, row } = offsetToColRow(
+			newPrompt,
+			newCursor,
+			this.termSize.cols
+		)
 		const moveUpRows = newLines - row - 1
 
 		this.term?.write(ANSI.CARRIAGE_RETURN)
@@ -362,13 +371,16 @@ export class LocalEchoController implements ILocalEchoController {
 	private handleCursorErase(backspace: boolean): void {
 		if (backspace) {
 			if (this.cursor <= 0) return
-			const newInput = this.input.substring(0, this.cursor - 1) + this.input.substring(this.cursor)
+			const newInput =
+				this.input.substring(0, this.cursor - 1) +
+				this.input.substring(this.cursor)
 			this.clearInput()
 			this.cursor -= 1
 			this.setInput(newInput, false)
 		} else {
 			const newInput =
-				this.input.substring(0, this.cursor) + this.input.substring(this.cursor + 1)
+				this.input.substring(0, this.cursor) +
+				this.input.substring(this.cursor + 1)
 			this.setInput(newInput)
 		}
 	}
@@ -376,7 +388,9 @@ export class LocalEchoController implements ILocalEchoController {
 	/** Insert text at cursor */
 	private handleCursorInsert(data: string): void {
 		const newInput =
-			this.input.substring(0, this.cursor) + data + this.input.substring(this.cursor)
+			this.input.substring(0, this.cursor) +
+			data +
+			this.input.substring(this.cursor)
 		this.cursor += data.length
 		this.setInput(newInput)
 	}
@@ -495,7 +509,9 @@ export class LocalEchoController implements ILocalEchoController {
 
 			case ESCAPE_SEQ.ALT_BACKSPACE: {
 				const pos = closestLeftBoundary(this.input, this.cursor)
-				this.setInput(this.input.substring(0, pos) + this.input.substring(this.cursor))
+				this.setInput(
+					this.input.substring(0, pos) + this.input.substring(this.cursor)
+				)
 				this.setCursor(pos)
 				break
 			}
@@ -552,7 +568,10 @@ export class LocalEchoController implements ILocalEchoController {
 
 		const inputFragment = this.input.substring(0, this.cursor)
 		const hasTrailingSpace = hasTailingWhitespace(inputFragment)
-		const candidates = collectAutocompleteCandidates(this.autocompleteHandlers, inputFragment)
+		const candidates = collectAutocompleteCandidates(
+			this.autocompleteHandlers,
+			inputFragment
+		)
 
 		candidates.sort()
 
@@ -601,4 +620,3 @@ export class LocalEchoController implements ILocalEchoController {
 		this.history.rewind()
 	}
 }
-

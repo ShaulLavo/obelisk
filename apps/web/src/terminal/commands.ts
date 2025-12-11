@@ -1,4 +1,5 @@
-import type { Terminal } from '@xterm/xterm'
+import type { Terminal } from 'ghostty-web'
+// import type { Terminal } from '@xterm/xterm'
 import type { LocalEchoController } from './localEcho'
 import { printColumns } from './utils'
 
@@ -7,7 +8,10 @@ export interface CommandContext {
 	term: Terminal | null
 }
 
-export const handleCommand = (input: string, { localEcho, term }: CommandContext) => {
+export const handleCommand = (
+	input: string,
+	{ localEcho, term }: CommandContext
+) => {
 	if (!localEcho || !term) return
 
 	const trimmed = input.trim()

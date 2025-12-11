@@ -1,4 +1,4 @@
-import '@xterm/xterm/css/xterm.css'
+// import '@xterm/xterm/css/xterm.css'
 import { createResizeObserver } from '@solid-primitives/resize-observer'
 import { onCleanup, onMount, type Component } from 'solid-js'
 import { createTerminalController } from '../terminal/terminalController'

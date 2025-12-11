@@ -54,6 +54,7 @@
     "@xterm/xterm": "^5.5.0",
     "add": "^2.0.6",
     "comlink": "^4.4.2",
+    "ghostty-web": "^0.4.0",
     "gsap": "^3.13.0",
     "localforage": "^1.10.0",
     "nanoid": "^5.1.6",

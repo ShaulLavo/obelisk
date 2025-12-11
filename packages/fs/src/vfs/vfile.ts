@@ -1,8 +1,4 @@
-import {
-	type FsContext,
-	type OpenMode,
-	type VfsReadableStream
-} from './types'
+import { type FsContext, type OpenMode, type VfsReadableStream } from './types'
 import { getParentPath } from './utils/path'
 import {
 	bufferSourceToUint8Array,
@@ -194,7 +190,7 @@ export class VFile {
 						typeof chunk === 'string' ? textEncoder.encode(chunk) : chunk
 					)
 					const bytes = accessHandle.write(
-						data as BufferSource,
+						data,
 						opts?.at !== undefined ? { at: opts.at } : undefined
 					)
 					return typeof bytes === 'number' ? bytes : data.byteLength
@@ -206,12 +202,12 @@ export class VFile {
 				flush: async () => {
 					ensureOpen()
 					if (typeof accessHandle.flush === 'function') {
-						await accessHandle.flush()
+						accessHandle.flush()
 					}
 				},
 				close: async () => {
 					if (closed) return
-					await accessHandle.close()
+					accessHandle.close()
 					closed = true
 				}
 			}
