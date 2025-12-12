@@ -123,7 +123,6 @@ export const TreeNode = (props: TreeNodeProps) => {
 						'group-hover:bg-zinc-800/50': !isSelected(),
 					}}
 				/>
-
 				{/* TODO: Move keyboard controls (Enter/Space to toggle) to keyboard manager */}
 				<button
 					type="button"
