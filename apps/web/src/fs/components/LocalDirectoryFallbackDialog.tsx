@@ -13,6 +13,7 @@ import {
 	type Component,
 	type JSX,
 } from 'solid-js'
+import { logger } from '~/logger'
 import { importDirectoryToMemory } from '../fallback/importDirectoryToMemory'
 import {
 	importDirectoryToOpfs,
@@ -26,6 +27,8 @@ import {
 	type LocalDirectoryFallbackResult,
 } from '../fallback/localDirectoryFallbackCoordinator'
 import type { FsSource } from '../types'
+
+const log = logger.withTag('LocalDirectoryFallback')
 
 // intentionally not exported from module
 const FALLBACK_ERROR = 'local-directory-fallback-error'
@@ -117,7 +120,7 @@ export const LocalDirectoryFallbackDialog: Component = () => {
 			if (err instanceof Error && err.message.includes('cancelled by user')) {
 				setError(undefined)
 			} else {
-				console.error(FALLBACK_ERROR, err)
+				log.error(FALLBACK_ERROR, err)
 				setError('Failed to import the selected folder. Please try again.')
 			}
 		} finally {

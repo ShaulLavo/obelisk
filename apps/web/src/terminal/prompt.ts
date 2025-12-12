@@ -39,19 +39,33 @@ const dimText = (text: string) => `${ANSI_DIM}${text}${ANSI_RESET}`
 const dimColorize = (rgb: Rgb, text: string) =>
 	`${ANSI_DIM}${colorCode(rgb)}${text}${ANSI_RESET}`
 
+/**
+ * Strips ANSI escape sequences and control characters from a string.
+ * Prevents ANSI injection if path/sourceLabel inputs become untrusted.
+ */
+const stripControlChars = (text: string): string =>
+	text
+		.replace(/\x1b\[[0-9;]*m/g, '') // Remove ANSI color/style codes
+		.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '') // Remove control chars (except \t, \n, \r)
+
 export const createPrompt = (
 	path: string,
 	sourceLabel?: string
 ): TerminalPrompt => {
+	const safePath = stripControlChars(path)
+	const safeSourceLabel = sourceLabel
+		? stripControlChars(sourceLabel)
+		: undefined
+
 	const now = formatTime(new Date())
 	const timestamp = dimColorize(timestampColor, `[${now}]`)
 	const identity = `${colorize(userColor, promptUser)}${dimText('@')}${colorize(
 		hostColor,
 		promptHost
 	)}`
-	const location = `${dimText(':')}${colorize(pathColor, formatPromptPath(path))}`
-	const source = sourceLabel
-		? ` ${dimText('(')}${colorize(sourceColor, sourceLabel)}${dimText(')')}`
+	const location = `${dimText(':')}${colorize(pathColor, formatPromptPath(safePath))}`
+	const source = safeSourceLabel
+		? ` ${dimText('(')}${colorize(sourceColor, safeSourceLabel)}${dimText(')')}`
 		: ''
 	const symbol = colorize(symbolColor, '$')
 

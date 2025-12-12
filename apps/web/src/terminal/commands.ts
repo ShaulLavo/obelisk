@@ -142,6 +142,8 @@ const clearTerminal = (ctx: CommandContext) => {
 }
 
 const handleCd = async (ctx: CommandContext, rawPath?: string) => {
+	if (!ensureTreeReady(ctx)) return
+
 	const cwd = ctx.shell.getCwd()
 	const target = rawPath ? normalizePath(cwd, rawPath) : ''
 	const dir = await ensureDir(ctx, target)
