@@ -11,7 +11,7 @@
     "depcheck": "depcheck",
     "unimported": "unimported",
     "tsprune": "ts-prune",
-    "repo:health": "npm run depcheck && npm run unimported && npm run tsprune"
+    "repo:health": "bun run depcheck && bun run unimported && bun run tsprune"
   },
   "dependencies": {
     "consola": "^3.4.2",
