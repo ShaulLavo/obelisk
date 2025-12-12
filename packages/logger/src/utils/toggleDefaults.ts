@@ -11,7 +11,7 @@ const LOGGER_TOGGLE_TREE = {
 		history: false,
 	},
 	desktop: false,
-	fs: true,
+	fs: false,
 	server: false,
 	web: {
 		$self: false,
