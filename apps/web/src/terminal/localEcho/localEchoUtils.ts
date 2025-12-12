@@ -201,10 +201,10 @@ export function getSharedFragment(
 	candidates: string[]
 ): string | null {
 	if (candidates.length === 0) return null
-	if (fragment.length >= candidates[0]!.length) return fragment
+	if (fragment.length >= candidates[0].length) return fragment
 
 	const oldFragment = fragment
-	const nextChar = candidates[0]!.charAt(fragment.length)
+	const nextChar = candidates[0].charAt(fragment.length)
 	const newFragment = fragment + nextChar
 
 	for (const candidate of candidates) {
