@@ -162,14 +162,8 @@ export function useStickToBottom(options: StickToBottomOptions = {}) {
 		get escapedFromLock() {
 			return escapedFromLock()
 		},
-		set escapedFromLock(v: boolean) {
-			setEscapedFromLock(v)
-		},
 		get isAtBottom() {
 			return isAtBottom()
-		},
-		set isAtBottom(v: boolean) {
-			setIsAtBottom(v)
 		},
 		get scrollTop() {
 			return scrollRef.current?.scrollTop ?? 0
@@ -557,6 +551,8 @@ export const StickToBottom: Component<StickToBottomProps> & {
 		'targetScrollTop',
 	])
 
+	let customTarget: GetTargetScrollTop | null = null
+
 	const defaultInstance = useStickToBottom({
 		get mass() {
 			return p.mass
@@ -578,7 +574,6 @@ export const StickToBottom: Component<StickToBottomProps> & {
 	})
 
 	const inst = () => p.instance ?? defaultInstance
-	let customTarget: GetTargetScrollTop | null = null
 
 	const context: StickToBottomContext = {
 		scrollToBottom: () => inst().scrollToBottom(),
