@@ -513,7 +513,7 @@ const createOpfsBinarySyncStore = async (dirName: string): Promise<Store> => {
 			const handle = await openHandle(key, { create: true })
 			if (!handle) return value
 			handle.truncate(0)
-			handle.write(new Uint8Array(data), { at: 0 })
+			handle.write(data, { at: 0 })
 			handle.flush()
 			return value
 		},
@@ -666,7 +666,7 @@ const rawBinarySyncAdapter: RawBinaryAdapter = {
 		return {
 			writeChunk(offset, data) {
 				const chunk = toWritableBuffer(data)
-				handle.write(new Uint8Array(chunk), { at: offset })
+				handle.write(chunk, { at: offset })
 			},
 			async finalizeWrites() {
 				handle.flush()

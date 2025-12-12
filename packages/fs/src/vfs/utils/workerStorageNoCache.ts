@@ -5,7 +5,7 @@ const createAsyncMutex = () => {
 	let last = Promise.resolve()
 
 	return async <T>(fn: () => Promise<T>): Promise<T> => {
-		let release: () => void = () => {}
+		let release: (() => void) | null = null
 		const next = new Promise<void>((resolve) => {
 			release = resolve
 		})
@@ -15,7 +15,7 @@ const createAsyncMutex = () => {
 		try {
 			return await fn()
 		} finally {
-			release()
+			release?.()
 		}
 	}
 }

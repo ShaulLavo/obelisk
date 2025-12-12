@@ -50,7 +50,6 @@ export class ComlinkPool<T extends object> {
 
 	private executeJob<R>(workerIndex: number, job: Job<T, R>) {
 		const handle = this.workers[workerIndex]
-		if (!handle) return
 		handle.busy = true
 
 		job
@@ -71,7 +70,7 @@ export class ComlinkPool<T extends object> {
 			const job: Job<T, R> = { fn, resolve, reject }
 			const freeIndex = this.getFreeWorkerIndex()
 			if (freeIndex === -1) {
-				this.queue.push(job as Job<T, unknown>)
+				this.queue.push(job)
 			} else {
 				this.executeJob(freeIndex, job)
 			}
