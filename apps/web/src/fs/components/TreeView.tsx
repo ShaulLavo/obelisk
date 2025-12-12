@@ -1,4 +1,4 @@
-import { Accessor, Show } from 'solid-js'
+import { Accessor, For, Show } from 'solid-js'
 import type { FsDirTreeNode } from '@repo/fs'
 import { TreeNode } from './TreeNode'
 
@@ -19,7 +19,9 @@ export const TreeView = (props: TreeViewProps) => (
 				</p>
 			}
 		>
-			{tree => <TreeNode node={tree()} />}
+			{tree => (
+				<For each={tree().children}>{child => <TreeNode node={child} />}</For>
+			)}
 		</Show>
 	</div>
 )

@@ -1,0 +1,4 @@
+{
+	"$schema": "https://unimported.axel.ch/schema.json",
+	"entry": ["./unimported-entry.ts"]
+}

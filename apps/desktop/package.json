@@ -10,7 +10,7 @@
     "depcheck": "depcheck",
     "unimported": "unimported",
     "tsprune": "echo 'ts-prune skipped (no tsconfig in package)'",
-    "repo:health": "npm run depcheck && npm run unimported && npm run tsprune"
+    "repo:health": "bun run depcheck && bun run unimported && bun run tsprune"
   },
   "license": "MIT",
   "devDependencies": {

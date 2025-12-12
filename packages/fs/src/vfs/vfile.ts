@@ -1,8 +1,4 @@
-import {
-	type FsContext,
-	type OpenMode,
-	type VfsReadableStream
-} from './types'
+import { type FsContext, type OpenMode, type VfsReadableStream } from './types'
 import { getParentPath } from './utils/path'
 import {
 	bufferSourceToUint8Array,
@@ -30,6 +26,7 @@ export type SyncCapableFileHandle = FileSystemFileHandle & {
 export class VFile {
 	#ctx: FsContextInternal
 	#mode: OpenMode
+	#fileSnapshot: Promise<File> | null = null
 
 	readonly kind = 'file' as const
 	readonly path: string
@@ -113,6 +110,7 @@ export class VFile {
 			await writeToWritable(writable, content)
 		} finally {
 			await writable.close()
+			this.#invalidateFileSnapshot()
 		}
 	}
 
@@ -186,6 +184,9 @@ export class VFile {
 					throw new Error('Writer is already closed')
 				}
 			}
+			const invalidate = () => {
+				this.#invalidateFileSnapshot()
+			}
 
 			return {
 				write: async (chunk, opts) => {
@@ -194,25 +195,29 @@ export class VFile {
 						typeof chunk === 'string' ? textEncoder.encode(chunk) : chunk
 					)
 					const bytes = accessHandle.write(
-						data as BufferSource,
+						data,
 						opts?.at !== undefined ? { at: opts.at } : undefined
 					)
+					invalidate()
 					return typeof bytes === 'number' ? bytes : data.byteLength
 				},
 				truncate: async size => {
 					ensureOpen()
 					accessHandle.truncate(size)
+					invalidate()
 				},
 				flush: async () => {
 					ensureOpen()
 					if (typeof accessHandle.flush === 'function') {
-						await accessHandle.flush()
+						accessHandle.flush()
 					}
+					invalidate()
 				},
 				close: async () => {
 					if (closed) return
-					await accessHandle.close()
+					accessHandle.close()
 					closed = true
+					invalidate()
 				}
 			}
 		}
@@ -224,6 +229,9 @@ export class VFile {
 			if (closed) {
 				throw new Error('Writer is already closed')
 			}
+		}
+		const invalidate = () => {
+			this.#invalidateFileSnapshot()
 		}
 
 		return {
@@ -238,11 +246,13 @@ export class VFile {
 				} else {
 					await writable.write(chunk as FileSystemWriteChunkType)
 				}
+				invalidate()
 				return chunkByteLength(chunk)
 			},
 			truncate: async size => {
 				ensureOpen()
 				await writable.truncate(size)
+				invalidate()
 			},
 			flush: async () => {
 				ensureOpen()
@@ -259,11 +269,13 @@ export class VFile {
 						}
 					).flush!()
 				}
+				invalidate()
 			},
 			close: async () => {
 				if (closed) return
 				await writable.close()
 				closed = true
+				invalidate()
 			}
 		}
 	}
@@ -338,6 +350,7 @@ export class VFile {
 	async remove(opts?: { force?: boolean }): Promise<void> {
 		try {
 			await this.#ctx.remove(this.path, { recursive: false })
+			this.#invalidateFileSnapshot()
 		} catch (error) {
 			if (opts?.force) return
 			throw error
@@ -373,8 +386,25 @@ export class VFile {
 		return this.#ctx.getFileHandleForRelative(this.path, create)
 	}
 
-	async #getFile(): Promise<File> {
-		const handle = await this.#getHandle(false)
-		return handle.getFile()
+	#invalidateFileSnapshot(): void {
+		this.#fileSnapshot = null
+	}
+
+	async #getFile(opts?: { fresh?: boolean }): Promise<File> {
+		if (!opts?.fresh && this.#fileSnapshot) {
+			return this.#fileSnapshot
+		}
+
+		const promise = this.#getHandle(false).then(handle => handle.getFile())
+		this.#fileSnapshot = promise
+
+		try {
+			return await promise
+		} catch (error) {
+			if (this.#fileSnapshot === promise) {
+				this.#fileSnapshot = null
+			}
+			throw error
+		}
 	}
 }

@@ -14,7 +14,7 @@
     "depcheck": "depcheck",
     "unimported": "unimported",
     "tsprune": "ts-prune",
-    "repo:health": "npm run depcheck && npm run unimported && npm run tsprune"
+    "repo:health": "bun run depcheck && bun run unimported && bun run tsprune"
   },
   "license": "MIT",
   "devDependencies": {
@@ -53,11 +53,12 @@
     "@tanstack/solid-virtual": "^3.13.12",
     "@xterm/xterm": "^5.5.0",
     "add": "^2.0.6",
+    "ansis": "^4.2.0",
     "comlink": "^4.4.2",
+    "ghostty-web": "^0.4.0",
     "gsap": "^3.13.0",
     "localforage": "^1.10.0",
     "nanoid": "^5.1.6",
-    "picocolors": "^1.1.1",
     "shell-quote": "^1.8.2",
     "solid-js": "^1.9.5",
     "tailwindcss": "^4.1.17",

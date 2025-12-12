@@ -6,6 +6,10 @@ import type {
 	TreePrefetchWorkerCallbacks,
 	TreePrefetchWorkerInitPayload
 } from './treePrefetchWorkerTypes'
+import {
+	TreePrefetchHandleCloneError,
+	isHandleCloneError
+} from './errors'
 
 const createWorkerInstance = () =>
 	new Worker(new URL('./treePrefetch.worker.ts', import.meta.url), {
@@ -62,12 +66,19 @@ export const createTreePrefetchClient = (
 	let initialized = false
 
 	return {
-		async init(payload) {
-			if (destroyed) return
-			await queue.resetForSource(payload.source)
-			await pool.broadcast(remote => remote.init(payload))
-			initialized = true
-		},
+			async init(payload) {
+				if (destroyed) return
+				await queue.resetForSource(payload.source)
+				try {
+					await pool.broadcast(remote => remote.init(payload))
+				} catch (error) {
+					if (isHandleCloneError(error)) {
+						throw new TreePrefetchHandleCloneError(error)
+					}
+					throw error
+				}
+				initialized = true
+			},
 		async seedTree(tree) {
 			if (destroyed || !initialized) return
 			await queue.seedTree(tree)

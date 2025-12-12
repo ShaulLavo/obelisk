@@ -1,4 +1,4 @@
-import type { Terminal } from '@xterm/xterm'
+import type { Terminal } from 'ghostty-web'
 import { HistoryController } from './historyController'
 import {
 	closestLeftBoundary,
@@ -58,6 +58,11 @@ const ESCAPE_SEQ = {
 	ALT_BACKSPACE: '\x7F'
 } as const
 
+// ANSI strip regex intentionally contains control codes to match escape sequences
+// eslint-disable-next-line no-control-regex
+const ANSI_COLOR_REGEX = /\u001B\[[0-9;]*m/g
+const stripAnsi = (value: string): string => value.replace(ANSI_COLOR_REGEX, '')
+
 /**
  * Local terminal controller for displaying messages and handling local echo.
  *
@@ -82,6 +87,9 @@ export class LocalEchoController implements ILocalEchoController {
 	private activeCharPrompt: CharPromptConfig | null = null
 	private termSize: TerminalSize = { cols: 0, rows: 0 }
 	private disposables: Disposable[] = []
+
+	private promptVisible = ''
+	private continuationVisible = ''
 
 	constructor(options: LocalEchoOptions = {}) {
 		this.history = new HistoryController(options.historySize ?? 10)
@@ -133,7 +141,7 @@ export class LocalEchoController implements ILocalEchoController {
 
 	/** Remove a previously registered autocomplete handler */
 	removeAutocompleteHandler(fn: AutocompleteCallback): void {
-		const idx = this.autocompleteHandlers.findIndex((h) => h.fn === fn)
+		const idx = this.autocompleteHandlers.findIndex(h => h.fn === fn)
 		if (idx !== -1) {
 			this.autocompleteHandlers.splice(idx, 1)
 		}
@@ -146,6 +154,8 @@ export class LocalEchoController implements ILocalEchoController {
 	read(prompt: string, continuationPrompt = '> '): Promise<string> {
 		return new Promise((resolve, reject) => {
 			this.term?.write(prompt)
+			this.promptVisible = stripAnsi(prompt)
+			this.continuationVisible = stripAnsi(continuationPrompt)
 			this.activePrompt = { prompt, continuationPrompt, resolve, reject }
 			this.input = ''
 			this.cursor = 0
@@ -181,6 +191,8 @@ export class LocalEchoController implements ILocalEchoController {
 		}
 
 		this.active = false
+		this.promptVisible = ''
+		this.continuationVisible = ''
 	}
 
 	/** Print a message followed by newline */
@@ -201,7 +213,7 @@ export class LocalEchoController implements ILocalEchoController {
 			return
 		}
 
-		const maxWidth = Math.max(...items.map((item) => item.length))
+		const maxWidth = Math.max(...items.map(item => item.length))
 		const itemWidth = maxWidth + padding
 		const cols = Math.floor(this.termSize.cols / itemWidth)
 		const rows = Math.ceil(items.length / cols)
@@ -211,7 +223,7 @@ export class LocalEchoController implements ILocalEchoController {
 			let rowStr = ''
 			for (let col = 0; col < cols && itemIndex < items.length; col++) {
 				const item = items[itemIndex++]
-				rowStr += item.padEnd(itemWidth)
+				rowStr += item?.padEnd(itemWidth)
 			}
 			this.println(rowStr)
 		}
@@ -222,25 +234,36 @@ export class LocalEchoController implements ILocalEchoController {
 	// ─────────────────────────────────────────────────────────────────────────────
 
 	/** Apply prompt prefixes to input for display */
-	private applyPrompts(input: string): string {
-		const prompt = this.activePrompt?.prompt ?? ''
-		const continuation = this.activePrompt?.continuationPrompt ?? ''
+	private applyPrompts(input: string, mode: 'raw' | 'visible' = 'raw'): string {
+		const prompt =
+			mode === 'raw'
+				? (this.activePrompt?.prompt ?? '')
+				: this.promptVisible || stripAnsi(this.activePrompt?.prompt ?? '')
+		const continuation =
+			mode === 'raw'
+				? (this.activePrompt?.continuationPrompt ?? '')
+				: this.continuationVisible ||
+					stripAnsi(this.activePrompt?.continuationPrompt ?? '')
 		return prompt + input.replace(/\n/g, '\n' + continuation)
 	}
 
 	/** Calculate display offset accounting for prompt length */
 	private applyPromptOffset(input: string, offset: number): number {
-		const withPrompt = this.applyPrompts(input.substring(0, offset))
+		const withPrompt = this.applyPrompts(input.substring(0, offset), 'visible')
 		return withPrompt.length
 	}
 
 	/** Clear the current input display */
 	private clearInput(): void {
-		const currentPrompt = this.applyPrompts(this.input)
+		const currentPrompt = this.applyPrompts(this.input, 'visible')
 		const allRows = countLines(currentPrompt, this.termSize.cols)
 
 		const promptCursor = this.applyPromptOffset(this.input, this.cursor)
-		const { row } = offsetToColRow(currentPrompt, promptCursor, this.termSize.cols)
+		const { row } = offsetToColRow(
+			currentPrompt,
+			promptCursor,
+			this.termSize.cols
+		)
 
 		// Move to the last row
 		const moveRows = allRows - row - 1
@@ -259,8 +282,9 @@ export class LocalEchoController implements ILocalEchoController {
 	private setInput(newInput: string, clearFirst = true): void {
 		if (clearFirst) this.clearInput()
 
-		const newPrompt = this.applyPrompts(newInput)
-		this.print(newPrompt)
+		const renderedPrompt = this.applyPrompts(newInput)
+		const visiblePrompt = this.applyPrompts(newInput, 'visible')
+		this.print(renderedPrompt)
 
 		// Clamp cursor to new input length
 		if (this.cursor > newInput.length) {
@@ -269,8 +293,12 @@ export class LocalEchoController implements ILocalEchoController {
 
 		// Position cursor correctly
 		const newCursor = this.applyPromptOffset(newInput, this.cursor)
-		const newLines = countLines(newPrompt, this.termSize.cols)
-		const { col, row } = offsetToColRow(newPrompt, newCursor, this.termSize.cols)
+		const newLines = countLines(visiblePrompt, this.termSize.cols)
+		const { col, row } = offsetToColRow(
+			visiblePrompt,
+			newCursor,
+			this.termSize.cols
+		)
 		const moveUpRows = newLines - row - 1
 
 		this.term?.write(ANSI.CARRIAGE_RETURN)
@@ -308,7 +336,7 @@ export class LocalEchoController implements ILocalEchoController {
 	private setCursor(newCursor: number): void {
 		newCursor = Math.max(0, Math.min(newCursor, this.input.length))
 
-		const inputWithPrompt = this.applyPrompts(this.input)
+		const inputWithPrompt = this.applyPrompts(this.input, 'visible')
 
 		// Calculate previous position
 		const prevOffset = this.applyPromptOffset(this.input, this.cursor)
@@ -362,13 +390,16 @@ export class LocalEchoController implements ILocalEchoController {
 	private handleCursorErase(backspace: boolean): void {
 		if (backspace) {
 			if (this.cursor <= 0) return
-			const newInput = this.input.substring(0, this.cursor - 1) + this.input.substring(this.cursor)
+			const newInput =
+				this.input.substring(0, this.cursor - 1) +
+				this.input.substring(this.cursor)
 			this.clearInput()
 			this.cursor -= 1
 			this.setInput(newInput, false)
 		} else {
 			const newInput =
-				this.input.substring(0, this.cursor) + this.input.substring(this.cursor + 1)
+				this.input.substring(0, this.cursor) +
+				this.input.substring(this.cursor + 1)
 			this.setInput(newInput)
 		}
 	}
@@ -376,7 +407,9 @@ export class LocalEchoController implements ILocalEchoController {
 	/** Insert text at cursor */
 	private handleCursorInsert(data: string): void {
 		const newInput =
-			this.input.substring(0, this.cursor) + data + this.input.substring(this.cursor)
+			this.input.substring(0, this.cursor) +
+			data +
+			this.input.substring(this.cursor)
 		this.cursor += data.length
 		this.setInput(newInput)
 	}
@@ -392,6 +425,8 @@ export class LocalEchoController implements ILocalEchoController {
 
 		this.term?.write(ANSI.NEWLINE)
 		this.active = false
+		this.promptVisible = ''
+		this.continuationVisible = ''
 	}
 
 	// ─────────────────────────────────────────────────────────────────────────────
@@ -495,7 +530,9 @@ export class LocalEchoController implements ILocalEchoController {
 
 			case ESCAPE_SEQ.ALT_BACKSPACE: {
 				const pos = closestLeftBoundary(this.input, this.cursor)
-				this.setInput(this.input.substring(0, pos) + this.input.substring(this.cursor))
+				this.setInput(
+					this.input.substring(0, pos) + this.input.substring(this.cursor)
+				)
 				this.setCursor(pos)
 				break
 			}
@@ -552,7 +589,10 @@ export class LocalEchoController implements ILocalEchoController {
 
 		const inputFragment = this.input.substring(0, this.cursor)
 		const hasTrailingSpace = hasTailingWhitespace(inputFragment)
-		const candidates = collectAutocompleteCandidates(this.autocompleteHandlers, inputFragment)
+		const candidates = collectAutocompleteCandidates(
+			this.autocompleteHandlers,
+			inputFragment
+		)
 
 		candidates.sort()
 
@@ -564,7 +604,7 @@ export class LocalEchoController implements ILocalEchoController {
 		} else if (candidates.length === 1) {
 			// Single match - complete it
 			const lastToken = getLastToken(inputFragment)
-			this.handleCursorInsert(candidates[0].substring(lastToken.length) + ' ')
+			this.handleCursorInsert(candidates[0]?.substring(lastToken.length) + ' ')
 		} else if (candidates.length <= this.maxAutocompleteEntries) {
 			// Multiple matches - try partial completion
 			const sharedFragment = getSharedFragment(inputFragment, candidates)
@@ -601,4 +641,3 @@ export class LocalEchoController implements ILocalEchoController {
 		this.history.rewind()
 	}
 }
-

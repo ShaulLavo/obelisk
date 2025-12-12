@@ -77,10 +77,15 @@ async function createWorkerStorage(): Promise<WorkerStorage> {
 		})
 	}
 
+	type DirectoryWithEntries = FileSystemDirectoryHandle & {
+		entries?: () => AsyncIterableIterator<[string, FileSystemHandle]>
+	}
+	const directory = root as DirectoryWithEntries
 	const loadInitialKeys = async () => {
-		if (!root.entries) return
+		const entries = directory.entries
+		if (!entries) return
 		try {
-			for await (const [name, handle] of root.entries()) {
+			for await (const [name, handle] of entries.call(directory)) {
 				if ((handle as FileSystemHandle)?.kind === 'file') {
 					filenames.add(name)
 				}

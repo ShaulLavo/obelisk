@@ -7,7 +7,7 @@ import {
 	getPieceTableText
 } from '@repo/utils'
 import { loggers } from '@repo/logger'
-import type { PieceTableSnapshot } from '@repo/utils'
+import type { PieceTableSnapshot, ParseResult } from '@repo/utils'
 import { trackOperation } from '@repo/perf'
 import {
 	getFileSize,
@@ -67,9 +67,11 @@ export const useFileSelection = ({
 		if (!node) return
 
 		if (node.kind === 'dir') {
-			setSelectedPath(path)
-			setSelectedFileSize(undefined)
-			setSelectedFileLoading(false)
+			batch(() => {
+				setSelectedPath(path)
+				setSelectedFileSize(undefined)
+				setSelectedFileLoading(false)
+			})
 			return
 		}
 
@@ -90,25 +92,20 @@ export const useFileSelection = ({
 
 					let selectedFileContentValue = ''
 					let pieceTableSnapshot: PieceTableSnapshot | undefined
-					let fileStatsResult:
-						| ReturnType<typeof parseFileBuffer>
-						| ReturnType<typeof createMinimalBinaryParseResult>
-						| undefined
+					let fileStatsResult: ParseResult | undefined
 
 					let binaryPreviewBytes: Uint8Array | undefined
 
 					if (fileSize > MAX_FILE_SIZE_BYTES) {
 						// Skip processing for large files
-						} else {
+					} else {
 						const previewBytes = await timeAsync('read-preview-bytes', () =>
 							readFilePreviewBytes(source, path)
 						)
 						if (requestId !== selectRequestId) return
 
-						const {
-							pieceTable: existingSnapshot,
-							stats: existingFileStats
-						} = fileCache.get(path)
+						const { pieceTable: existingSnapshot, stats: existingFileStats } =
+							fileCache.get(path)
 						const detection = detectBinaryFromPreview(path, previewBytes)
 						const isBinary = !detection.isText
 
@@ -131,50 +128,51 @@ export const useFileSelection = ({
 									createMinimalBinaryParseResult('', detection)
 								)
 						} else {
-						const buffer = await timeAsync('read-file-buffer', () =>
-							readFileBuffer(source, path)
-						)
-						if (requestId !== selectRequestId) return
+							const buffer = await timeAsync('read-file-buffer', () =>
+								readFileBuffer(source, path)
+							)
+							if (requestId !== selectRequestId) return
 
-						const textBytes = new Uint8Array(buffer)
-						const text = textDecoder.decode(textBytes)
-						selectedFileContentValue = text
+							const textBytes = new Uint8Array(buffer)
+							const text = textDecoder.decode(textBytes)
+							selectedFileContentValue = text
 
 							const parseResultPromise = parseBufferWithTreeSitter(path, buffer)
-								if (parseResultPromise) {
-									void parseResultPromise
-										.then(result => {
-											if (requestId !== selectRequestId) return
-											if (result) {
-												fileCache.set(path, {
-													highlights: result.captures,
-													brackets: result.brackets,
-													errors: result.errors
-												})
-											}
-										})
-										.catch(error => {
-											loggers.fs.error(
-												'[Tree-sitter worker] parse failed',
-												path,
-												error
-											)
-										})
-								}
+							if (parseResultPromise) {
+								void parseResultPromise
+									.then(result => {
+										if (requestId !== selectRequestId) return
+										if (result) {
+											fileCache.set(path, {
+												highlights: result.captures,
+												folds: result.folds,
+												brackets: result.brackets,
+												errors: result.errors
+											})
+										}
+									})
+									.catch(error => {
+										loggers.fs.error(
+											'[Tree-sitter worker] parse failed',
+											path,
+											error
+										)
+									})
+							}
 
-						fileStatsResult = timeSync('parse-file-buffer', () =>
-							parseFileBuffer(text, {
-								path,
-								textHeuristic: detection
-							})
-						)
-
-						if (fileStatsResult.contentKind === 'text') {
-							pieceTableSnapshot = timeSync('create-piece-table', () =>
-								createPieceTableSnapshot(text)
+							fileStatsResult = timeSync('parse-file-buffer', () =>
+								parseFileBuffer(text, {
+									path,
+									textHeuristic: detection
+								})
 							)
+
+							if (fileStatsResult.contentKind === 'text') {
+								pieceTableSnapshot = timeSync('create-piece-table', () =>
+									createPieceTableSnapshot(text)
+								)
+							}
 						}
-					}
 					}
 
 					timeSync('apply-selection-state', ({ timeSync }) => {
@@ -236,6 +234,13 @@ export const useFileSelection = ({
 			fileCache.set(path, { highlights })
 		}
 
+	const updateSelectedFileFolds: FsContextValue[1]['updateSelectedFileFolds'] =
+		folds => {
+			const path = state.lastKnownFilePath
+			if (!path) return
+			fileCache.set(path, { folds })
+		}
+
 	const updateSelectedFileBrackets: FsContextValue[1]['updateSelectedFileBrackets'] =
 		brackets => {
 			const path = state.lastKnownFilePath
@@ -254,6 +259,7 @@ export const useFileSelection = ({
 		selectPath,
 		updateSelectedFilePieceTable,
 		updateSelectedFileHighlights,
+		updateSelectedFileFolds,
 		updateSelectedFileBrackets,
 		updateSelectedFileErrors
 	}

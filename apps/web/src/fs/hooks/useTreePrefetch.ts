@@ -1,5 +1,5 @@
 import type { FsDirTreeNode } from '@repo/fs'
-import { getOwner, onCleanup } from 'solid-js'
+import { batch, getOwner, onCleanup } from 'solid-js'
 import { findNode } from '../runtime/tree'
 import type { FsState } from '../types'
 import { createTreePrefetchClient } from '../prefetch/treePrefetchClient'
@@ -22,7 +22,9 @@ type MakeTreePrefetchOptions = {
 	setPrefetchProcessedCount: (value: number) => void
 	setPrefetchLastDurationMs: (value: number) => void
 	setPrefetchAverageDurationMs: (value: number) => void
-	registerDeferredMetadata: (node: PrefetchDeferredMetadataPayload['node']) => void
+	registerDeferredMetadata: (
+		node: PrefetchDeferredMetadataPayload['node']
+	) => void
 }
 
 export const makeTreePrefetch = ({
@@ -38,16 +40,18 @@ export const makeTreePrefetch = ({
 	registerDeferredMetadata
 }: MakeTreePrefetchOptions) => {
 	const handlePrefetchStatus = (status: PrefetchStatusPayload) => {
-		setBackgroundPrefetching(
-			status.running || status.pending > 0 || status.deferred > 0
-		)
-		setBackgroundIndexedFileCount(status.indexedFileCount)
-		setPrefetchProcessedCount(status.processedCount)
-		setPrefetchLastDurationMs(status.lastDurationMs)
-		setPrefetchAverageDurationMs(status.averageDurationMs)
-		if (!status.running && status.pending === 0 && status.deferred === 0) {
-			setPrefetchError(undefined)
-		}
+		batch(() => {
+			setBackgroundPrefetching(
+				status.running || status.pending > 0 || status.deferred > 0
+			)
+			setBackgroundIndexedFileCount(status.indexedFileCount)
+			setPrefetchProcessedCount(status.processedCount)
+			setPrefetchLastDurationMs(status.lastDurationMs)
+			setPrefetchAverageDurationMs(status.averageDurationMs)
+			if (!status.running && status.pending === 0 && status.deferred === 0) {
+				setPrefetchError(undefined)
+			}
+		})
 	}
 
 	const handlePrefetchError = (payload: PrefetchErrorPayload) => {
@@ -78,14 +82,14 @@ export const makeTreePrefetch = ({
 				latestDir.parentPath,
 				latestDir.depth
 			)
-			setDirNode(node.path, normalized)
-			setLastPrefetchedPath(node.path)
+			batch(() => {
+				setDirNode(node.path, normalized)
+				setLastPrefetchedPath(node.path)
+			})
 		})
 	}
 
-	const handleDeferredMetadata = (
-		payload: PrefetchDeferredMetadataPayload
-	) => {
+	const handleDeferredMetadata = (payload: PrefetchDeferredMetadataPayload) => {
 		registerDeferredMetadata(payload.node)
 	}
 

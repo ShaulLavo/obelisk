@@ -12,14 +12,14 @@
     "localforage": "^1.10.0",
     "nanoid": "^5.0.9"
   },
-	"scripts": {
-		"test": "bun test",
-		"lint": "eslint . --max-warnings 0",
-		"check-types": "tsc --noEmit",
+  "scripts": {
+    "test": "bun test",
+    "lint": "eslint . --max-warnings 0",
+    "check-types": "tsc --noEmit",
     "depcheck": "depcheck",
     "unimported": "unimported",
     "tsprune": "ts-prune",
-    "repo:health": "npm run depcheck && npm run unimported && npm run tsprune"
+    "repo:health": "bun run depcheck && bun run unimported && bun run tsprune"
   },
   "devDependencies": {
     "@repo/eslint-config": "*",

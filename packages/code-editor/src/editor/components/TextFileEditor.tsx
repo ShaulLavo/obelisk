@@ -81,6 +81,7 @@ export const TextFileEditor = (props: TextFileEditorProps) => {
 						{...props}
 						bracketDepths={bracketDepths}
 						getLineHighlights={getLineHighlights}
+						folds={props.folds}
 					/>
 			</HistoryProvider>
 		</CursorProvider>

@@ -1,6 +1,6 @@
 import type { FsContext } from './types'
 
-const DEFAULT_STORE_FILE = '.vfs-store.json'
+const DEFAULT_STORAGE_FILE = '.vfs-store.json'
 const FLUSH_DELAY_MS = 50
 
 function isFsContext(value: unknown): value is FsContext {
@@ -12,7 +12,7 @@ function isFsContext(value: unknown): value is FsContext {
 	)
 }
 
-export interface VfsStore {
+export interface VfsStorage {
 	getItem<T>(key: string): Promise<T | null>
 	setItem<T>(key: string, value: T): Promise<T>
 	removeItem(key: string): Promise<void>
@@ -27,24 +27,24 @@ export interface VfsStore {
 	flush(): Promise<void>
 }
 
-export interface CreateVfsStoreOptions {
+export interface CreateVfsStorageOptions {
 	filePath?: string
 	/** Delay before flushing changes to disk (ms). Default: 50 */
 	flushDelay?: number
 }
 
-type StoreData = Record<string, unknown>
+type StorageData = Record<string, unknown>
 
 /**
- * Fast single-file store with in-memory cache and batched writes.
+ * Fast single-file storage with in-memory cache and batched writes.
  *
  * - All reads from memory (instant)
  * - Writes batch into single file operation
  * - Great for small/medium values; for huge blobs, consider IndexedDB
  */
-class VfsStoreImpl implements VfsStore {
+class VfsStorageImpl implements VfsStorage {
 	#fileHandle: Promise<FileSystemFileHandle>
-	#data: StoreData | null = null
+	#data: StorageData | null = null
 	#dirty = false
 	#flushTimer: ReturnType<typeof setTimeout> | null = null
 	#flushDelay: number
@@ -68,7 +68,7 @@ class VfsStoreImpl implements VfsStore {
 			try {
 				const file = await handle.getFile()
 				const text = await file.text()
-				this.#data = text ? (JSON.parse(text) as StoreData) : {}
+				this.#data = text ? (JSON.parse(text) as StorageData) : {}
 			} catch (error) {
 				if (
 					error instanceof SyntaxError ||
@@ -210,13 +210,13 @@ class VfsStoreImpl implements VfsStore {
 	}
 }
 
-export type VfsStoreSource = FsContext | FileSystemDirectoryHandle
+	export type VfsStorageSource = FsContext | FileSystemDirectoryHandle
 
-export function createStore(
-	source: VfsStoreSource,
-	options?: CreateVfsStoreOptions
-): VfsStore {
-	const filePath = options?.filePath ?? DEFAULT_STORE_FILE
+export function createStorage(
+	source: VfsStorageSource,
+	options?: CreateVfsStorageOptions
+): VfsStorage {
+	const filePath = options?.filePath ?? DEFAULT_STORAGE_FILE
 	const flushDelay = options?.flushDelay ?? FLUSH_DELAY_MS
 
 	let filePromise: Promise<FileSystemFileHandle>
@@ -227,5 +227,5 @@ export function createStore(
 		filePromise = source.getFileHandle(filePath, { create: true })
 	}
 
-	return new VfsStoreImpl(filePromise, flushDelay)
+	return new VfsStorageImpl(filePromise, flushDelay)
 }

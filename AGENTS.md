@@ -77,6 +77,7 @@
 
 ## Additional Code Conventions & Patterns
 - Persist long-lived UI state with `makePersisted`: use `localforage` for large FS/tree data and `dualStorage` when values must stay in both session/local storage (split sizes, focus-related prefs).
+- When multiple Solid signals/stores need updates in the same tick, wrap the setters in `batch(() => { ... })` (e.g. FS tree and metadata updates) to avoid redundant recomputations.
 - When touching the FS, go through `FsProvider` actions so handle caches, parse stats, and piece tables stay in sync; `FsSource` is always one of `'local' | 'opfs' | 'memory'`.
 - Instrument expensive work (tree building, file streaming, parsing) with `@repo/perf` helpers and log via `@repo/logger.withTag(...)` for traceability.
 - Register any DOM region that wants keyboard focus affordances with `FocusProvider` (`useFocusManager().registerArea`) so the `StatusBar` and editor scope logic stay accurate.

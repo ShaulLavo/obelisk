@@ -237,6 +237,10 @@ export const createPieceTableSnapshot = (
 export const getPieceTableLength = (snapshot: PieceTableTreeSnapshot): number =>
 	snapshot.length
 
+export const getPieceTableOriginalText = (
+	snapshot: PieceTableTreeSnapshot
+): string => snapshot.buffers.original
+
 export const getPieceTableText = (
 	snapshot: PieceTableTreeSnapshot,
 	start = 0,

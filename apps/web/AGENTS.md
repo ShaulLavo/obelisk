@@ -7,17 +7,19 @@
 - Global styles are defined in `src/styles.css` and `tailwind.config.ts`.
 
 ## Build, Test, and Development
-- `npm run dev` / `npm start`: start Vite dev server on port 3000.
-- `npm run build`: production build to `dist/`.
-- `npm run serve`: preview the built app from `dist/`.
-- `npm run lint`: run ESLint using `@repo/eslint-config/solid` (no warnings allowed).
+- `bun run dev` / `bun start`: start Vite dev server on port 3000.
+- `bun run build`: production build to `dist/`.
+- `bun run serve`: preview the built app from `dist/`.
+- `bun run lint`: run ESLint using `@repo/eslint-config/solid` (no warnings allowed).
 - No test runner is configured in this app; add one per feature if needed.
 
 ## Coding Style & Naming
 - Use TypeScript and SolidJS with functional components (`PascalCase` filenames, e.g. `EditorPane.tsx`).
 - Prefer named exports; avoid default exports for components and utilities.
+- When updating more than one Solid signal/store in the same tick, wrap the setters in `batch(() => { ... })` to prevent redundant recomputations.
 - Keep modules focused; colocate feature-specific code under `src/fs`, `src/terminal`, or `src/components/fs`.
 - Follow the shared ESLint config; fix all reported issues before committing.
+- Client-only app: browser globals like `window` are always present; skip `typeof window !== 'undefined'` guards.
 
 ## Logging
 - Use the consola-based logger from `~/logger` (`logger` instance) for all runtime logging.

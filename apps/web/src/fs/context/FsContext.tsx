@@ -1,6 +1,8 @@
 import { createContext, useContext } from 'solid-js'
+import type { FsDirTreeNode } from '@repo/fs'
 import type { PieceTableSnapshot } from '@repo/utils'
-import type { TreeSitterCapture, BracketInfo, TreeSitterError } from '../../workers/treeSitterWorkerTypes'
+import type { TreeSitterCapture, BracketInfo, TreeSitterError, FoldRange } from '../../workers/treeSitterWorkerTypes'
+import type { FileCacheController } from '../cache/fileCacheController'
 import type { FsState, FsSource } from '../types'
 
 export type SelectPathOptions = {
@@ -19,6 +21,7 @@ export type FsActions = {
 		content?: string
 	) => Promise<void>
 	deleteNode: (path: string) => Promise<void>
+	ensureDirPathLoaded: (path: string) => Promise<FsDirTreeNode | undefined>
 	updateSelectedFilePieceTable: (
 		updater: (
 			current: PieceTableSnapshot | undefined
@@ -27,12 +30,14 @@ export type FsActions = {
 	updateSelectedFileHighlights: (
 		highlights: TreeSitterCapture[] | undefined
 	) => void
+	updateSelectedFileFolds: (folds: FoldRange[] | undefined) => void
 	updateSelectedFileBrackets: (
 		brackets: BracketInfo[] | undefined
 	) => void
 	updateSelectedFileErrors: (
 		errors: TreeSitterError[] | undefined
 	) => void
+	fileCache: FileCacheController
 }
 
 export type FsContextValue = [FsState, FsActions]

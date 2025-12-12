@@ -66,7 +66,7 @@ export const Fs = () => {
 				<ResizablePanel
 					initialSize={panelSizes()[0] ?? 0.3}
 					minSize={0.18}
-					class="min-h-0 overflow-auto border-r border-zinc-800/70 bg-zinc-950/60 px-3 py-2"
+					class="min-h-0 overflow-auto border-r border-zinc-800/70 bg-zinc-950/60"
 					ref={treePanel}
 				>
 					<TreeView tree={() => state.tree} loading={() => state.loading} />

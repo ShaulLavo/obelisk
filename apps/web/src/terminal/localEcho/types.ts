@@ -1,4 +1,4 @@
-import type { Terminal, ITerminalAddon, IDisposable } from '@xterm/xterm'
+import type { Terminal, ITerminalAddon, IDisposable } from 'ghostty-web'
 
 /** Terminal size dimensions */
 export interface TerminalSize {
@@ -87,4 +87,3 @@ export interface ILocalEchoController extends ITerminalAddon {
 
 /** Disposable subscription */
 export type Disposable = IDisposable
-

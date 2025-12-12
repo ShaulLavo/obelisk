@@ -23,6 +23,12 @@ export type LineHighlightSegment = {
 	className: string
 	scope: string
 }
+
+export type FoldRange = {
+	startLine: number
+	endLine: number
+	type: string
+}
 export type EditorPoint = {
 	row: number
 	column: number
@@ -77,6 +83,7 @@ export type EditorProps = {
 	previewBytes?: Accessor<Uint8Array | undefined>
 	activeScopes?: Accessor<string[]>
 	highlights?: Accessor<EditorSyntaxHighlight[] | undefined>
+	folds?: Accessor<FoldRange[] | undefined>
 	brackets?: Accessor<BracketInfo[] | undefined>
 	errors?: Accessor<EditorError[] | undefined>
 }
@@ -144,6 +151,9 @@ export type LineGuttersProps = {
 	lineHeight: Accessor<number>
 	onRowClick: (entry: LineEntry) => void
 	activeLineIndex: Accessor<number | null>
+	folds?: Accessor<FoldRange[] | undefined>
+	foldedStarts?: Accessor<Set<number>>
+	onToggleFold?: (startLine: number) => void
 }
 
 export type TextFileEditorProps = EditorProps

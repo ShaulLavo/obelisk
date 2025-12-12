@@ -1,14 +1,32 @@
-import { FitAddon } from '@xterm/addon-fit'
-import { Terminal as Xterm } from '@xterm/xterm'
+// import { FitAddon } from '@xterm/addon-fit'
+import {
+	Terminal as Ghostty,
+	init,
+	FitAddon,
+	type CanvasRenderer
+} from 'ghostty-web'
 import { LocalEchoController } from './localEcho'
-import { handleCommand } from './commands'
+import { handleCommand, type CommandContext } from './commands'
+import type { TerminalPrompt } from './prompt'
 
-const promptLabel = 'guest@vibe:~$ '
+export type TerminalController = Awaited<
+	ReturnType<typeof createTerminalController>
+>
 
-export const createTerminalController = async (container: HTMLDivElement) => {
+type TerminalControllerOptions = {
+	getPrompt: () => TerminalPrompt
+	commandContext: Omit<CommandContext, 'localEcho' | 'term'>
+}
+
+export const createTerminalController = async (
+	container: HTMLDivElement,
+	options: TerminalControllerOptions
+) => {
 	let disposed = false
+	let initialFitRaf: number | null = null
 
-	const term = new Xterm({
+	await init()
+	const term = new Ghostty({
 		convertEol: true,
 		cursorBlink: true,
 		fontSize: 14,
@@ -31,11 +49,21 @@ export const createTerminalController = async (container: HTMLDivElement) => {
 	term.loadAddon(fitAddon)
 	term.loadAddon(echoAddon)
 
+	const remeasureRendererFont = () => {
+		const renderer = term.renderer as CanvasRenderer | undefined
+		renderer?.remeasureFont()
+	}
+
 	const startPromptLoop = async () => {
 		while (!disposed) {
+			const { label, continuation } = options.getPrompt()
 			try {
-				const input = await echoAddon.read(promptLabel)
-				handleCommand(input, { localEcho: echoAddon, term })
+				const input = await echoAddon.read(label, continuation)
+				await handleCommand(input, {
+					localEcho: echoAddon,
+					term,
+					...options.commandContext
+				})
 			} catch {
 				break
 			}
@@ -45,22 +73,41 @@ export const createTerminalController = async (container: HTMLDivElement) => {
 	const fit = () => {
 		if (!disposed) fitAddon.fit()
 	}
-	const handleResize = () => fit()
+	const handleResize = () => {
+		remeasureRendererFont()
+		fit()
+	}
+
+	const viewport = typeof window !== 'undefined' ? window.visualViewport : null
+	const handleViewportResize = () => handleResize()
 
 	term.open(container)
-	fit()
+	remeasureRendererFont()
+	{
+		const observeResize = fitAddon.observeResize
+		observeResize.call(fitAddon)
+
+		initialFitRaf = requestAnimationFrame(() => {
+			fit()
+			// 2nd pass to catch late layout/font metric settling
+			requestAnimationFrame(fit)
+		})
+	}
 	term.focus()
 
 	echoAddon.println('Welcome to vibe shell')
 	echoAddon.println('Type `help` to see available commands.')
 	window.addEventListener('resize', handleResize)
-	await startPromptLoop()
+	viewport?.addEventListener('resize', handleViewportResize)
+	void startPromptLoop()
 
 	return {
 		fit,
 		dispose: () => {
 			disposed = true
+			if (initialFitRaf !== null) cancelAnimationFrame(initialFitRaf)
 			window.removeEventListener('resize', handleResize)
+			viewport?.removeEventListener('resize', handleViewportResize)
 			echoAddon.abortRead('terminal disposed')
 			echoAddon.dispose()
 			term.dispose()

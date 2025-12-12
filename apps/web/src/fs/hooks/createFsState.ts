@@ -12,6 +12,7 @@ import { createPrefetchState } from './createPrefetchState'
 import { createFileStatsState } from './createFileStatsState'
 import { createPieceTableState } from './createPieceTableState'
 import { createHighlightState } from './createHighlightState'
+import { createFoldState } from './createFoldState'
 import { createBracketState } from './createBracketState'
 import { createErrorState } from './createErrorState'
 
@@ -58,6 +59,7 @@ export const createFsState = () => {
 		createPieceTableState()
 	const { fileHighlights, setHighlights, clearHighlights } =
 		createHighlightState()
+	const { fileFolds, setFolds, clearFolds } = createFoldState()
 	const { fileBrackets, setBrackets, clearBrackets } =
 		createBracketState()
 	const { fileErrors, setErrors, clearErrors } =
@@ -81,6 +83,7 @@ export const createFsState = () => {
 		fileStats,
 		pieceTables,
 		fileHighlights,
+		fileFolds,
 		fileBrackets,
 		fileErrors,
 		get selectedPath() {
@@ -154,6 +157,10 @@ export const createFsState = () => {
 			const path = lastKnownFilePath()
 			return path ? fileHighlights[path] : undefined
 		},
+		get selectedFileFolds() {
+			const path = lastKnownFilePath()
+			return path ? fileFolds[path] : undefined
+		},
 		get selectedFileBrackets() {
 			const path = lastKnownFilePath()
 			return path ? fileBrackets[path] : undefined
@@ -200,6 +207,8 @@ export const createFsState = () => {
 		clearPieceTables,
 		setHighlights,
 		clearHighlights,
+		setFolds,
+		clearFolds,
 		setBrackets,
 		clearBrackets,
 		setErrors,

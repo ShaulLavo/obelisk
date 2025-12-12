@@ -6,7 +6,8 @@ import type {
 	TreeSitterCapture,
 	BracketInfo,
 	TreeSitterParseResult,
-	TreeSitterError
+	TreeSitterError,
+	FoldRange
 } from './treeSitterWorkerTypes'
 
 import { logger } from '../logger'
@@ -14,6 +15,8 @@ import { logger } from '../logger'
 import jsHighlightsQuerySource from '../treeSitter/queries/javascript-highlights.scm?raw'
 import jsJsxHighlightsQuerySource from 'tree-sitter-javascript/queries/highlights-jsx.scm?raw'
 import tsHighlightsQuerySource from '../treeSitter/queries/typescript-highlights.scm?raw'
+import jsFoldsQuerySource from '../treeSitter/queries/javascript-folds.scm?raw'
+import tsFoldsQuerySource from '../treeSitter/queries/typescript-folds.scm?raw'
 
 
 const log = logger.withTag('treeSitter')
@@ -26,6 +29,7 @@ let parserInstance: Parser | null = null
 let parserInitPromise: Promise<void> | null = null
 let languageInstance: Language | null = null
 let highlightQueries: Query[] = []
+let foldQueries: Query[] = []
 const textDecoder = new TextDecoder()
 const astCache = new Map<string, CachedTreeEntry>()
 
@@ -33,20 +37,21 @@ const locateWasm = () => '/tree-sitter/tree-sitter.wasm'
 const tsxGrammarPath = '/tree-sitter/tree-sitter-tsx.wasm'
 
 const ensureParser = async () => {
-		if (!parserInitPromise) {
-			parserInitPromise = (async () => {
-				await Parser.init({ locateFile: locateWasm })
-				const parser = new Parser()
-				const tsLanguage = await Language.load(tsxGrammarPath)
-				parser.setLanguage(tsLanguage)
-				parserInstance = parser
-				languageInstance = tsLanguage
-				highlightQueries = []
-			})().catch(error => {
-				parserInitPromise = null
-				log.error('Tree-sitter parser init failed', error)
-				throw error
-			})
+	if (!parserInitPromise) {
+		parserInitPromise = (async () => {
+			await Parser.init({ locateFile: locateWasm })
+			const parser = new Parser()
+			const tsLanguage = await Language.load(tsxGrammarPath)
+			parser.setLanguage(tsLanguage)
+			parserInstance = parser
+			languageInstance = tsLanguage
+			highlightQueries = []
+			foldQueries = []
+		})().catch(error => {
+			parserInitPromise = null
+			log.error('Tree-sitter parser init failed', error)
+			throw error
+		})
 	}
 
 	await parserInitPromise
@@ -74,6 +79,11 @@ const highlightQuerySources = [
 	jsJsxHighlightsQuerySource,
 ].filter(Boolean)
 
+const foldQuerySources = [
+	tsFoldsQuerySource,
+	jsFoldsQuerySource
+].filter(Boolean)
+
 const ensureHighlightQueries = async () => {
 	if (highlightQueries.length > 0) return highlightQueries
 	const parser = await ensureParser()
@@ -89,6 +99,23 @@ const ensureHighlightQueries = async () => {
 		highlightQueries = []
 	}
 	return highlightQueries
+}
+
+const ensureFoldQueries = async () => {
+	if (foldQueries.length > 0) return foldQueries
+	const parser = await ensureParser()
+	if (!parser) return []
+	const language = languageInstance ?? parser.language
+	if (!language) return []
+
+	try {
+		const source = foldQuerySources.join('\n')
+		foldQueries = [new Query(language, source)]
+	} catch (error) {
+		log.error('[Tree-sitter worker] failed to init fold query', error)
+		foldQueries = []
+	}
+	return foldQueries
 }
 
 // Bracket types we care about
@@ -130,6 +157,38 @@ const runHighlightQueries = async (
 		}
 	}
 	results.sort((a, b) => a.startIndex - b.startIndex || a.endIndex - b.endIndex)
+	return results
+}
+
+const runFoldQueries = async (tree: Tree | null): Promise<FoldRange[] | undefined> => {
+	if (!tree) return undefined
+	const queries = await ensureFoldQueries()
+	if (!queries.length) return undefined
+	const results: FoldRange[] = []
+	const seen = new Set<string>()
+
+	for (const query of queries) {
+		for (const match of query.matches(tree.rootNode)) {
+			for (const capture of match.captures) {
+				const node = capture.node
+				const startLine = node.startPosition.row
+				const endLine = node.endPosition.row
+				if (endLine <= startLine) continue
+				const key = `${startLine}:${endLine}:${node.type}`
+				if (seen.has(key)) continue
+				seen.add(key)
+				results.push({
+					startLine,
+					endLine,
+					type: node.type
+				})
+			}
+		}
+	}
+
+	results.sort(
+		(a, b) => a.startLine - b.startLine || a.endLine - b.endLine
+	)
 	return results
 }
 
@@ -200,10 +259,17 @@ const collectTreeData = (tree: Tree) => {
 }
 
 const processTree = async (tree: Tree): Promise<TreeSitterParseResult> => {
-	const capturesPromise = runHighlightQueries(tree)
 	const { brackets, errors } = collectTreeData(tree)
-	const captures = (await capturesPromise) ?? []
-	return { captures, brackets, errors }
+	const [captures, folds] = await Promise.all([
+		runHighlightQueries(tree),
+		runFoldQueries(tree)
+	])
+	return {
+		captures: captures ?? [],
+		folds: folds ?? [],
+		brackets,
+		errors
+	}
 }
 
 const parseAndCacheText = async (
@@ -276,6 +342,10 @@ const api: TreeSitterWorkerApi = {
 			query.delete()
 		}
 		highlightQueries = []
+		for (const query of foldQueries) {
+			query.delete()
+		}
+		foldQueries = []
 		for (const entry of astCache.values()) {
 			entry.tree.delete()
 		}

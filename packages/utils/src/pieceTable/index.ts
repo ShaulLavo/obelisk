@@ -9,6 +9,7 @@ export {
 	deleteFromPieceTable,
 	debugPieceTable,
 	getPieceTableLength,
+	getPieceTableOriginalText,
 	getPieceTableText,
 	insertIntoPieceTable
 } from './pieceTable'

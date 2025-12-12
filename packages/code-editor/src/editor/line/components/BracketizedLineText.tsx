@@ -1,19 +1,6 @@
 import { children, type Accessor, type JSX } from 'solid-js';
 import type { BracketDepthMap, LineHighlightSegment } from '../../types';
-
-const BRACKET_COLOR_CLASSES = [
-	'text-emerald-300',
-	'text-sky-300',
-	'text-indigo-300',
-	'text-rose-300',
-	'text-amber-300',
-	'text-lime-300'
-] as const
-
-const getBracketClass = (depth: number) => {
-	const normalized = Math.max(depth - 1, 0)
-	return BRACKET_COLOR_CLASSES[normalized % BRACKET_COLOR_CLASSES.length]!
-}
+import { getBracketDepthTextClass } from '../../theme/bracketColors';
 
 type SegmentBuffer = {
 	nodes: (string | JSX.Element)[]
@@ -51,7 +38,7 @@ const appendCharToBuffer = (
 	flushPlain(buffer)
 	buffer.nodes.push(
 		<span
-			class={getBracketClass(depth)}
+			class={getBracketDepthTextClass(depth)}
 			data-depth={depth}
 			data-bracket-index={absoluteIndex}
 		>

@@ -1,0 +1,5 @@
+{
+	"$schema": "https://unimported.axel.ch/schema.json",
+	"entry": ["./src/unimported-entry.ts"],
+	"ignoreUnused": ["@tailwindcss/vite", "tailwindcss-animate"]
+}

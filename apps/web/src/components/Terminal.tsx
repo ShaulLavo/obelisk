@@ -1,34 +1,73 @@
-import '@xterm/xterm/css/xterm.css'
 import { createResizeObserver } from '@solid-primitives/resize-observer'
-import { onCleanup, onMount, type Component } from 'solid-js'
-import { createTerminalController } from '../terminal/terminalController'
+import { makePersisted } from '@solid-primitives/storage'
+import { createSignal, onCleanup, onMount, type Component } from 'solid-js'
 import { useFocusManager } from '~/focus/focusManager'
+import { useFs } from '~/fs/context/FsContext'
+import { dualStorage } from '~/utils/DualStorage'
+import { createPrompt } from '../terminal/prompt'
+import {
+	createTerminalController,
+	TerminalController
+} from '../terminal/terminalController'
 
 export const Terminal: Component = () => {
 	let containerRef: HTMLDivElement = null!
 	const focus = useFocusManager()
+	const [state, actions] = useFs()
+	const storage = typeof window === 'undefined' ? undefined : dualStorage
+	const [cwd, setCwd] = makePersisted(
+		// eslint-disable-next-line solid/reactivity
+		createSignal(''),
+		{
+			name: 'terminal-cwd',
+			storage
+		}
+	)
 
-	onMount(async () => {
-		const terminal = await createTerminalController(containerRef)
+	const normalizeCwd = (path: string) => {
+		if (!path || path === '/') return ''
+		return path.replace(/^[/\\]+/, '')
+	}
+
+	onMount(() => {
 		const unregisterFocus = focus.registerArea('terminal', () => containerRef)
+		let controller: TerminalController
 
 		createResizeObserver(
 			() => containerRef,
-			() => terminal.fit()
+			() => controller?.fit()
 		)
 
+		const setup = async () => {
+			controller = await createTerminalController(containerRef, {
+				getPrompt: () => createPrompt(cwd(), state.activeSource),
+				commandContext: {
+					shell: {
+						state,
+						actions,
+						getCwd: () => cwd(),
+						setCwd: path => setCwd(() => normalizeCwd(path))
+					}
+				}
+			})
+			controller.fit()
+			const dir = await actions.ensureDirPathLoaded(cwd())
+			if (!dir) {
+				setCwd(() => '')
+			}
+		}
+		void setup()
+
 		onCleanup(() => {
-			terminal.dispose()
+			controller?.dispose()
 			unregisterFocus()
 		})
 	})
 
 	return (
-		<div class="flex h-full min-h-0 flex-col overflow-hidden">
-			<div
-				class="flex-1 min-h-0 rounded border border-zinc-800/70 bg-black/70 p-2 shadow-xl shadow-black/30"
-				ref={el => (containerRef = el)}
-			/>
-		</div>
+		<div
+			class="terminal-container relative h-full min-h-0 px-2"
+			ref={containerRef}
+		/>
 	)
 }

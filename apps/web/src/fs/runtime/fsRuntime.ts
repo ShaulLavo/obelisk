@@ -3,6 +3,7 @@ import {
 	createFs,
 	FsDirTreeNode,
 	getRootDirectory,
+	DirectoryPickerUnavailableError,
 	type FsContext as VfsContext
 } from '@repo/fs'
 import { loggers } from '@repo/logger'
@@ -10,9 +11,17 @@ import { trackOperation } from '@repo/perf'
 import { toast } from '@repo/ui/toaster'
 import { OPFS_ROOT_NAME } from '../config/constants'
 import type { FsSource } from '../types'
+import { requestLocalDirectoryFallback } from '../fallback/localDirectoryFallbackCoordinator'
 
 const fsCache: Partial<Record<FsSource, VfsContext>> = {}
 const initPromises: Partial<Record<FsSource, Promise<void>>> = {}
+
+export class LocalDirectoryFallbackSwitchError extends Error {
+	constructor(readonly nextSource: FsSource) {
+		super(`Switch to ${nextSource}`)
+		this.name = 'LocalDirectoryFallbackSwitchError'
+	}
+}
 
 export const fileHandleCache = new Map<string, FileSystemFileHandle>()
 
@@ -44,11 +53,30 @@ export async function ensureFs(source: FsSource): Promise<VfsContext> {
 		initPromises[source] = trackOperation(
 			'fs:ensureFs:init',
 			async ({ timeAsync, timeSync }) => {
-				const rootHandle = await timeAsync('get-root', () =>
-					getRootDirectory(source, OPFS_ROOT_NAME, {
-						onAwaitingInteraction: showAwaitingPermissionToast
-					})
-				).finally(() => {
+				const rootHandle = await timeAsync('get-root', async () => {
+					try {
+						return await getRootDirectory(source, OPFS_ROOT_NAME, {
+							onAwaitingInteraction: showAwaitingPermissionToast
+						})
+					} catch (error) {
+						if (
+							source === 'local' &&
+							error instanceof DirectoryPickerUnavailableError
+						) {
+							const fallback = await requestLocalDirectoryFallback(
+								'unsupported'
+							)
+							if (fallback.nextSource && fallback.nextSource !== source) {
+								primeFsCache(fallback.nextSource, fallback.handle)
+								throw new LocalDirectoryFallbackSwitchError(
+									fallback.nextSource
+								)
+							}
+							return fallback.handle
+						}
+						throw error
+					}
+				}).finally(() => {
 					clearAwaitingPermissionToast()
 				})
 				fsCache[source] = timeSync('create-fs', () => createFs(rootHandle))

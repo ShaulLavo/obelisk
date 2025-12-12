@@ -2,11 +2,16 @@ export { VFile } from './vfile'
 export { VDir } from './vdir'
 export { createFs } from './fsContext'
 export {
-	createStore,
-	type VfsStore,
-	type CreateVfsStoreOptions,
-	type VfsStoreSource
-} from './store'
-export { createWorkerStorage, createSyncStore } from './utils/workerStorage'
+	createStorage,
+	type VfsStorage,
+	type CreateVfsStorageOptions,
+	type VfsStorageSource
+} from './storage'
+export { createStorageNoCache } from './storageNoCache'
+export {
+	createWorkerStorage,
+	createSyncStore
+} from './utils/workerStorage'
+export { createWorkerStorageNoCache } from './utils/workerStorageNoCache'
 export type { FsContext } from './types'
 export * from './types'

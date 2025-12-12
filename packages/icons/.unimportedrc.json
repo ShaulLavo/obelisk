@@ -1,0 +1,46 @@
+{
+	"$schema": "https://unimported.axel.ch/schema.json",
+	"entry": ["./unimported-entry.ts"],
+	"ignorePatterns": [
+		"**/node_modules/**",
+		"**/*.tests.{js,jsx,ts,tsx}",
+		"**/*.test.{js,jsx,ts,tsx}",
+		"**/*.spec.{js,jsx,ts,tsx}",
+		"**/tests/**",
+		"**/__tests__/**",
+		"**/*.d.ts",
+		"dist/**",
+		".turbo/**"
+	],
+	"ignoreUnresolved": [
+		[
+			"@trysound/sax",
+			["node_modules/svgo/lib/parser.js"]
+		],
+		[
+			"css-select",
+			["node_modules/svgo/lib/xast.js"]
+		],
+		[
+			"css-tree",
+			[
+				"node_modules/svgo/plugins/inlineStyles.js",
+				"node_modules/svgo/lib/style.js",
+				"node_modules/svgo/plugins/cleanupEnableBackground.js",
+				"node_modules/svgo/plugins/prefixIds.js"
+			]
+		],
+		[
+			"csso",
+			[
+				"node_modules/svgo/plugins/inlineStyles.js",
+				"node_modules/svgo/lib/style.js",
+				"node_modules/svgo/plugins/minifyStyles.js"
+			]
+		],
+		[
+			"css-what",
+			["node_modules/svgo/lib/style.js"]
+		]
+	]
+}
