@@ -12,6 +12,7 @@ import { useDirectoryLoader } from '../hooks/useDirectoryLoader'
 import { useFileSelection } from '../hooks/useFileSelection'
 import { useFsRefresh } from '../hooks/useFsRefresh'
 import { createFileCacheController } from '../cache/fileCacheController'
+import { LocalDirectoryFallbackDialog } from '../components/LocalDirectoryFallbackDialog'
 
 export function FsProvider(props: { children: JSX.Element }) {
 	const {
@@ -179,5 +180,10 @@ export function FsProvider(props: { children: JSX.Element }) {
 		}
 	]
 
-	return <FsContext.Provider value={value}>{props.children}</FsContext.Provider>
+	return (
+		<FsContext.Provider value={value}>
+			{props.children}
+			<LocalDirectoryFallbackDialog />
+		</FsContext.Provider>
+	)
 }

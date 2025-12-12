@@ -1,4 +1,10 @@
-export { getRootDirectory } from './getRoot'
+export {
+	getRootDirectory,
+	DirectoryPickerUnavailableError,
+	getMemoryRoot,
+	MemoryDirectoryHandle,
+	MemoryFileHandle
+} from './getRoot'
 export { createFs, createStorage, VDir, VFile } from './vfs'
 export {
 	createWorkerStorage,
@@ -22,3 +28,4 @@ export type {
 	CreateVfsStorageOptions,
 	VfsStorageSource
 } from './vfs'
+export type { MemHandle } from './getRoot'

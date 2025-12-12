@@ -6,6 +6,13 @@ import {
 	MemoryFileHandle
 } from './MemoryFileHandle'
 
+export class DirectoryPickerUnavailableError extends Error {
+	constructor() {
+		super('showDirectoryPicker is not supported in this environment.')
+		this.name = 'DirectoryPickerUnavailableError'
+	}
+}
+
 export type FsType = 'opfs' | 'local' | 'memory'
 
 type DirectoryPicker = (options?: {
@@ -34,7 +41,7 @@ function assertHasDirectoryPicker(
 ): asserts target is DirectoryPickerWindow {
 	const candidate = target as Window & { showDirectoryPicker?: unknown }
 	if (typeof candidate.showDirectoryPicker !== 'function') {
-		throw new Error('showDirectoryPicker is not supported in this environment.')
+		throw new DirectoryPickerUnavailableError()
 	}
 }
 

@@ -52,7 +52,7 @@ class MockSyncAccessHandle implements FileSystemSyncAccessHandle {
 }
 
 class MockFileHandle implements FileSystemFileHandle {
-	readonly kind: FileSystemHandleKind = 'file'
+	readonly kind: 'file' = 'file'
 	data = new Uint8Array()
 
 	constructor(readonly name: string, private readonly directory: MockDirectoryHandle) {}
@@ -60,14 +60,84 @@ class MockFileHandle implements FileSystemFileHandle {
 	async createSyncAccessHandle(): Promise<FileSystemSyncAccessHandle> {
 		return new MockSyncAccessHandle(this.directory, this)
 	}
+
+	async getFile(): Promise<File> {
+		return new File([this.data], this.name)
+	}
+
+	async createWritable(): Promise<FileSystemWritableFileStream> {
+		const chunks: Uint8Array[] = []
+		const appendChunk = async (data: FileSystemWriteChunkType) => {
+			if (data instanceof Blob) {
+				chunks.push(new Uint8Array(await data.arrayBuffer()))
+				return
+			}
+			if (typeof data === 'string') {
+				const encoder = new TextEncoder()
+				chunks.push(encoder.encode(data))
+				return
+			}
+			if (ArrayBuffer.isView(data)) {
+				const view = data as ArrayBufferView
+				chunks.push(new Uint8Array(view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength)))
+				return
+			}
+			if (data instanceof ArrayBuffer) {
+				chunks.push(new Uint8Array(data))
+				return
+			}
+			// ignore unsupported chunks
+		}
+
+		return {
+			write: async (chunk: FileSystemWriteChunkType) => {
+				await appendChunk(chunk)
+			},
+			close: async () => {
+				const length = chunks.reduce((total, chunk) => total + chunk.length, 0)
+				const next = new Uint8Array(length)
+				let offset = 0
+				for (const chunk of chunks) {
+					next.set(chunk, offset)
+					offset += chunk.length
+				}
+				this.data = next
+			},
+			seek: async () => {},
+			truncate: async (size: number) => {
+				if (size < this.data.length) {
+					this.data = this.data.slice(0, size)
+				}
+			},
+			abort: async () => {
+				chunks.length = 0
+			}
+		} as unknown as FileSystemWritableFileStream
+	}
+
+	async isSameEntry(other: FileSystemHandle): Promise<boolean> {
+		return other === this
+	}
 }
 
 class MockDirectoryHandle implements FileSystemDirectoryHandle {
-	readonly kind: FileSystemHandleKind = 'directory'
+	readonly kind: 'directory' = 'directory'
 	readonly files = new Map<string, MockFileHandle>()
 	activeHandles = 0
 
-	async getFileHandle(name: string, options?: { create?: boolean }): Promise<FileSystemFileHandle> {
+	constructor(readonly name: string = 'root') {}
+
+	async getDirectoryHandle(
+		_name: string,
+		_options?: FileSystemGetDirectoryOptions
+	): Promise<FileSystemDirectoryHandle> {
+		throw new DOMException('NotFoundError', 'NotFoundError')
+	}
+
+	async getFileHandle(
+		name: string,
+		options?: FileSystemGetFileOptions
+	): Promise<FileSystemFileHandle> {
 		const existing = this.files.get(name)
 		if (existing) return existing
 		if (options?.create) {
@@ -78,10 +148,18 @@ class MockDirectoryHandle implements FileSystemDirectoryHandle {
 		throw new DOMException('NotFoundError', 'NotFoundError')
 	}
 
-	async removeEntry(name: string): Promise<void> {
+	async removeEntry(name: string, _options?: FileSystemRemoveOptions): Promise<void> {
 		if (!this.files.delete(name)) {
 			throw new DOMException('NotFoundError', 'NotFoundError')
 		}
+	}
+
+	async resolve(_possibleDescendant: FileSystemHandle): Promise<string[] | null> {
+		return null
+	}
+
+	async isSameEntry(other: FileSystemHandle): Promise<boolean> {
+		return other === this
 	}
 
 	async *entries(): AsyncIterableIterator<[string, FileSystemHandle]> {
