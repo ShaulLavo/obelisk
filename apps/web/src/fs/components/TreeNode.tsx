@@ -63,13 +63,6 @@ export const TreeNode = (props: TreeNodeProps) => {
 						'group-hover:bg-zinc-800/50': !isSelected(),
 					}}
 				/>
-				{/* <Show when={showBranch()}>
-					<span
-						aria-hidden="true"
-						class="pointer-events-none absolute left-1 top-1/2 w-2.5 translate-y-1/2 border-t opacity-0 group-hover:opacity-80"
-						classList={{ [branchBorderClass()]: true }}
-					/>
-				</Show> */}
 				{/* TODO: Move keyboard controls (Enter/Space to toggle) to keyboard manager */}
 				<button
 					type="button"

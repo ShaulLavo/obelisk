@@ -195,8 +195,9 @@ export const LocalDirectoryFallbackDialog: Component = () => {
 								<p class="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-100">
 									Load the folder into memory for a one-off editing session (it
 									resets the moment you reload), or copy it into browser storage
-									(OPFS) to keep it across reloads. Neither option can write
-									back to disk.
+									(OPFS) to keep it across reloads. Important: OPFS is
+									sandboxed, so changes are saved in the browser but will NOT
+									update your original files on disk.
 								</p>
 								<p class="text-[11px] text-zinc-400">
 									Persisting replaces the existing OPFS workspace for this app.

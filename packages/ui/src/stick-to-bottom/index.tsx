@@ -557,6 +557,8 @@ export const StickToBottom: Component<StickToBottomProps> & {
 		'targetScrollTop',
 	])
 
+	let customTarget: GetTargetScrollTop | null = null
+
 	const defaultInstance = useStickToBottom({
 		get mass() {
 			return p.mass
@@ -578,7 +580,6 @@ export const StickToBottom: Component<StickToBottomProps> & {
 	})
 
 	const inst = () => p.instance ?? defaultInstance
-	let customTarget: GetTargetScrollTop | null = null
 
 	const context: StickToBottomContext = {
 		scrollToBottom: () => inst().scrollToBottom(),

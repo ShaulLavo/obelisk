@@ -15,6 +15,54 @@
       "require": "./dist/lib/index.cjs",
       "default": "./dist/lib/index.jsx"
     },
+    "./ai": {
+      "types": "./dist/ai/index.d.ts",
+      "import": "./dist/ai/index.js",
+      "require": "./dist/ai/index.cjs",
+      "default": "./dist/ai/index.js"
+    },
+    "./ai/*": {
+      "types": "./dist/ai/*.d.ts",
+      "import": "./dist/ai/*.js",
+      "require": "./dist/ai/*.cjs",
+      "default": "./dist/ai/*.js"
+    },
+    "./fa": {
+      "types": "./dist/fa/index.d.ts",
+      "import": "./dist/fa/index.js",
+      "require": "./dist/fa/index.cjs",
+      "default": "./dist/fa/index.js"
+    },
+    "./fa/*": {
+      "types": "./dist/fa/*.d.ts",
+      "import": "./dist/fa/*.js",
+      "require": "./dist/fa/*.cjs",
+      "default": "./dist/fa/*.js"
+    },
+    "./wi": {
+      "types": "./dist/wi/index.d.ts",
+      "import": "./dist/wi/index.js",
+      "require": "./dist/wi/index.cjs",
+      "default": "./dist/wi/index.js"
+    },
+    "./wi/*": {
+      "types": "./dist/wi/*.d.ts",
+      "import": "./dist/wi/*.js",
+      "require": "./dist/wi/*.cjs",
+      "default": "./dist/wi/*.js"
+    },
+    "./fi": {
+      "types": "./dist/fi/index.d.ts",
+      "import": "./dist/fi/index.js",
+      "require": "./dist/fi/index.cjs",
+      "default": "./dist/fi/index.js"
+    },
+    "./fi/*": {
+      "types": "./dist/fi/*.d.ts",
+      "import": "./dist/fi/*.js",
+      "require": "./dist/fi/*.cjs",
+      "default": "./dist/fi/*.js"
+    },
     "./vs": {
       "types": "./dist/vs/index.d.ts",
       "import": "./dist/vs/index.js",
@@ -26,14 +74,146 @@
       "import": "./dist/vs/*.js",
       "require": "./dist/vs/*.cjs",
       "default": "./dist/vs/*.js"
+    },
+    "./bs": {
+      "types": "./dist/bs/index.d.ts",
+      "import": "./dist/bs/index.js",
+      "require": "./dist/bs/index.cjs",
+      "default": "./dist/bs/index.js"
+    },
+    "./bs/*": {
+      "types": "./dist/bs/*.d.ts",
+      "import": "./dist/bs/*.js",
+      "require": "./dist/bs/*.cjs",
+      "default": "./dist/bs/*.js"
+    },
+    "./bi": {
+      "types": "./dist/bi/index.d.ts",
+      "import": "./dist/bi/index.js",
+      "require": "./dist/bi/index.cjs",
+      "default": "./dist/bi/index.js"
+    },
+    "./bi/*": {
+      "types": "./dist/bi/*.d.ts",
+      "import": "./dist/bi/*.js",
+      "require": "./dist/bi/*.cjs",
+      "default": "./dist/bi/*.js"
+    },
+    "./im": {
+      "types": "./dist/im/index.d.ts",
+      "import": "./dist/im/index.js",
+      "require": "./dist/im/index.cjs",
+      "default": "./dist/im/index.js"
+    },
+    "./im/*": {
+      "types": "./dist/im/*.d.ts",
+      "import": "./dist/im/*.js",
+      "require": "./dist/im/*.cjs",
+      "default": "./dist/im/*.js"
+    },
+    "./io": {
+      "types": "./dist/io/index.d.ts",
+      "import": "./dist/io/index.js",
+      "require": "./dist/io/index.cjs",
+      "default": "./dist/io/index.js"
+    },
+    "./io/*": {
+      "types": "./dist/io/*.d.ts",
+      "import": "./dist/io/*.js",
+      "require": "./dist/io/*.cjs",
+      "default": "./dist/io/*.js"
+    },
+    "./ri": {
+      "types": "./dist/ri/index.d.ts",
+      "import": "./dist/ri/index.js",
+      "require": "./dist/ri/index.cjs",
+      "default": "./dist/ri/index.js"
+    },
+    "./ri/*": {
+      "types": "./dist/ri/*.d.ts",
+      "import": "./dist/ri/*.js",
+      "require": "./dist/ri/*.cjs",
+      "default": "./dist/ri/*.js"
+    },
+    "./si": {
+      "types": "./dist/si/index.d.ts",
+      "import": "./dist/si/index.js",
+      "require": "./dist/si/index.cjs",
+      "default": "./dist/si/index.js"
+    },
+    "./si/*": {
+      "types": "./dist/si/*.d.ts",
+      "import": "./dist/si/*.js",
+      "require": "./dist/si/*.cjs",
+      "default": "./dist/si/*.js"
+    },
+    "./ti": {
+      "types": "./dist/ti/index.d.ts",
+      "import": "./dist/ti/index.js",
+      "require": "./dist/ti/index.cjs",
+      "default": "./dist/ti/index.js"
+    },
+    "./ti/*": {
+      "types": "./dist/ti/*.d.ts",
+      "import": "./dist/ti/*.js",
+      "require": "./dist/ti/*.cjs",
+      "default": "./dist/ti/*.js"
+    },
+    "./hi": {
+      "types": "./dist/hi/index.d.ts",
+      "import": "./dist/hi/index.js",
+      "require": "./dist/hi/index.cjs",
+      "default": "./dist/hi/index.js"
+    },
+    "./hi/*": {
+      "types": "./dist/hi/*.d.ts",
+      "import": "./dist/hi/*.js",
+      "require": "./dist/hi/*.cjs",
+      "default": "./dist/hi/*.js"
+    },
+    "./cg": {
+      "types": "./dist/cg/index.d.ts",
+      "import": "./dist/cg/index.js",
+      "require": "./dist/cg/index.cjs",
+      "default": "./dist/cg/index.js"
+    },
+    "./cg/*": {
+      "types": "./dist/cg/*.d.ts",
+      "import": "./dist/cg/*.js",
+      "require": "./dist/cg/*.cjs",
+      "default": "./dist/cg/*.js"
+    },
+    "./tb": {
+      "types": "./dist/tb/index.d.ts",
+      "import": "./dist/tb/index.js",
+      "require": "./dist/tb/index.cjs",
+      "default": "./dist/tb/index.js"
+    },
+    "./tb/*": {
+      "types": "./dist/tb/*.d.ts",
+      "import": "./dist/tb/*.js",
+      "require": "./dist/tb/*.cjs",
+      "default": "./dist/tb/*.js"
+    },
+    "./oc": {
+      "types": "./dist/oc/index.d.ts",
+      "import": "./dist/oc/index.js",
+      "require": "./dist/oc/index.cjs",
+      "default": "./dist/oc/index.js"
+    },
+    "./oc/*": {
+      "types": "./dist/oc/*.d.ts",
+      "import": "./dist/oc/*.js",
+      "require": "./dist/oc/*.cjs",
+      "default": "./dist/oc/*.js"
     }
   },
   "scripts": {
-    "prebuild": "bun ./scripts/fetch-packs.ts",
     "lint": "eslint . --max-warnings 0",
     "check-types": "tsc --noEmit",
     "build": "bun ./scripts/build.ts",
-    "fetch-packs": "bun ./scripts/fetch-packs.ts",
+    "init": "bun run fetch && bun run build",
+    "fetch": "bun ./scripts/fetch-packs.ts",
     "depcheck": "depcheck",
     "unimported": "unimported",
     "tsprune": "ts-prune",
