@@ -1,4 +1,11 @@
-import { JSX, createMemo, splitProps } from 'solid-js'
+import {
+	JSX,
+	createMemo,
+	splitProps,
+	createSignal,
+	createEffect,
+	onCleanup,
+} from 'solid-js'
 import { isServer, mergeProps, ssr } from 'solid-js/web'
 
 type SVGSVGElementTags = JSX.SVGElementTags['svg']
@@ -36,6 +43,14 @@ export function IconTemplate(iconSrc: IconTree, props: IconProps): JSX.Element {
 			: iconSrc.c
 	)
 
+	const [content, setContent] = createSignal('')
+	// no idea why we need the effect but it doesn't work without it
+	createEffect(() => setContent(rawContent()))
+
+	onCleanup(() => {
+		setContent('')
+	})
+
 	return (
 		<svg
 			stroke={iconSrc.a?.stroke}
@@ -50,9 +65,9 @@ export function IconTemplate(iconSrc: IconTree, props: IconProps): JSX.Element {
 			height={props.size || '1em'}
 			width={props.size || '1em'}
 			xmlns="http://www.w3.org/2000/svg"
-			innerHTML={rawContent()}
+			innerHTML={content()}
 		>
-			{isServer ? (ssr(rawContent()) as unknown as JSX.Element) : null}
+			{isServer ? (ssr(content()) as unknown as JSX.Element) : null}
 		</svg>
 	)
 }

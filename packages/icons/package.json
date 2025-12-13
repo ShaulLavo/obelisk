@@ -209,11 +209,11 @@
     }
   },
   "scripts": {
-    "prebuild": "bun ./scripts/fetch-packs.ts",
     "lint": "eslint . --max-warnings 0",
     "check-types": "tsc --noEmit",
     "build": "bun ./scripts/build.ts",
-    "fetch-packs": "bun ./scripts/fetch-packs.ts",
+    "init": "bun run fetch && bun run build",
+    "fetch": "bun ./scripts/fetch-packs.ts",
     "depcheck": "depcheck",
     "unimported": "unimported",
     "tsprune": "ts-prune",
