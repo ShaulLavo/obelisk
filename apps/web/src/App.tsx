@@ -13,9 +13,9 @@ const App: Component = () => {
 	return (
 		<Providers>
 			<Router>
+				<Route path="/" component={Main} />
 				<Route path="/bench" component={StoreBenchDashboard} />
 				<Route path="/sqlite" component={SqliteStudio} />
-				<Route path="/" component={Main} />
 			</Router>
 		</Providers>
 	)
