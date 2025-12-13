@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const appRoot = path.resolve(__dirname, '..')
 const publicDir = path.join(appRoot, 'public', 'tree-sitter')
+const sqlitePublicDir = path.join(appRoot, 'public', 'sqlite')
 
 const assets = [
 	{
@@ -56,6 +57,7 @@ const assets = [
 ]
 
 mkdirSync(publicDir, { recursive: true })
+mkdirSync(sqlitePublicDir, { recursive: true })
 
 for (const asset of assets) {
 	if (!existsSync(asset.source)) {
@@ -65,4 +67,38 @@ for (const asset of assets) {
 	cpSync(asset.source, asset.destination)
 }
 
+const sqliteAssets = [
+	{
+		source: path.join(
+			appRoot,
+			'node_modules',
+			'sqlite-wasm',
+			'sqlite-wasm',
+			'jswasm',
+			'sqlite3.wasm'
+		),
+		destination: path.join(sqlitePublicDir, 'sqlite3.wasm'),
+	},
+	{
+		source: path.join(
+			appRoot,
+			'node_modules',
+			'sqlite-wasm',
+			'sqlite-wasm',
+			'jswasm',
+			'sqlite3-opfs-async-proxy.js'
+		),
+		destination: path.join(sqlitePublicDir, 'sqlite3-opfs-async-proxy.js'),
+	},
+]
+
+for (const asset of sqliteAssets) {
+	if (!existsSync(asset.source)) {
+		throw new Error(`Missing sqlite-wasm asset: ${asset.source}`)
+	}
+
+	cpSync(asset.source, asset.destination)
+}
+
 console.log('Tree-sitter assets copied to', publicDir)
+console.log('sqlite-wasm assets copied to', sqlitePublicDir)

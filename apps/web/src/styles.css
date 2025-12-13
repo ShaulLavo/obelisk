@@ -6,6 +6,12 @@
 	--font-sans: 'Geist Variable', sans-serif;
 }
 
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
 /* TODO: Replace native scrollbars with custom implementation */
 /* Hide scrollbar background/track, keep thumb visible */
 ::-webkit-scrollbar {

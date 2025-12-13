@@ -9,8 +9,6 @@ import {
 	type Sqlite3Client,
 	type Config,
 } from 'sqlite-wasm/client'
-import wasmUrl from 'sqlite-wasm/sqlite3.wasm?url'
-console.log('sqlite-wasm/sqlite3.wasm?url', wasmUrl)
 const log = logger.withTag('sqlite').debug
 
 let sqlite3: Sqlite3Static | null = null
@@ -19,6 +17,68 @@ let db: Database | null = null
 let initPromise: Promise<{ version: string; opfsEnabled: boolean }> | null =
 	null
 let clientConfig: Config = { url: 'file:/vibe.sqlite3' }
+
+const sqliteAssetBaseUrl = '/sqlite/'
+const sqliteWasmUrl = `${sqliteAssetBaseUrl}sqlite3.wasm`
+
+type SqliteArgValue =
+	| null
+	| string
+	| number
+	| bigint
+	| ArrayBuffer
+	| boolean
+	| Uint8Array
+	| Date
+
+type SqliteArgs = SqliteArgValue[] | Record<string, SqliteArgValue>
+
+const configureSqliteAssetPaths = (): void => {
+	const globalState = globalThis as unknown as {
+		sqlite3InitModuleState?: unknown
+	}
+	const state = globalState.sqlite3InitModuleState
+	if (!state || typeof state !== 'object') return
+
+	const stateWithPaths = state as {
+		wasmFilename?: unknown
+		sqlite3Dir?: unknown
+	}
+	stateWithPaths.wasmFilename = sqliteWasmUrl
+	stateWithPaths.sqlite3Dir = sqliteAssetBaseUrl
+}
+
+const toSqliteArgValue = (value: unknown): SqliteArgValue => {
+	if (value === undefined || value === null) return null
+
+	if (typeof value === 'string') return value
+	if (typeof value === 'number') return value
+	if (typeof value === 'bigint') return value
+	if (typeof value === 'boolean') return value
+
+	if (value instanceof Uint8Array) return value
+	if (value instanceof ArrayBuffer) return value
+	if (value instanceof Date) return value
+
+	throw new Error(
+		`Unsupported SQLite param type: ${Object.prototype.toString.call(value)}`
+	)
+}
+
+const toSqliteArgs = (
+	params: Record<string, unknown> | unknown[]
+): SqliteArgs => {
+	if (Array.isArray(params)) {
+		return params.map(toSqliteArgValue)
+	}
+
+	const out: Record<string, SqliteArgValue> = {}
+	for (const [key, value] of Object.entries(params)) {
+		out[key] = toSqliteArgValue(value)
+	}
+	return out
+}
+
 const getClient = (): Sqlite3Client => {
 	if (!client) {
 		throw new Error('SQLite not initialized. Call init() first.')
@@ -32,13 +92,14 @@ const performInit = async (): Promise<{
 }> => {
 	// Suppress verbose internal SQLite WASM logging (includes init messages sent to stderr)
 	if (!sqlite3) {
+		// Under Vite pre-bundling, sqlite-wasm may try to load auxiliary files from
+		// `node_modules/.vite/deps/*` (which doesn't include the OPFS proxy worker).
+		// Use stable `/public/sqlite/*` paths instead.
+		configureSqliteAssetPaths()
+
 		sqlite3 = await sqlite3InitModule({
 			print: () => {},
 			printErr: () => {},
-			locateFile: (file: string) => {
-				if (file.endsWith('.wasm')) return wasmUrl
-				return file
-			},
 		})
 	}
 
@@ -74,11 +135,12 @@ const exec = async (sql: string): Promise<void> => {
 
 const run = async <T = Record<string, unknown>>(
 	sql: string,
-	params?: unknown[]
+	params?: Record<string, unknown> | unknown[]
 ): Promise<{ columns: string[]; rows: T[] }> => {
+	const args = params ? toSqliteArgs(params) : undefined
 	const result = await getClient().execute({
 		sql,
-		args: params as any,
+		args,
 	})
 
 	const rows = result.rows.map((row) => {
@@ -301,7 +363,6 @@ const reset = async (): Promise<void> => {
 	// 1. Close the database connection
 	if (db) {
 		try {
-			// @ts-ignore - close might not be in the type definition but is available
 			db.close()
 		} catch (e) {
 			log('[SQLite] Error closing DB:', e)

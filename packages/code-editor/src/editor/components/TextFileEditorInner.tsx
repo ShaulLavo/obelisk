@@ -113,7 +113,7 @@ export const TextFileEditorInner = (props: TextFileEditorInnerProps) => {
 		mouseSelection.handleMouseDown(event, lineIndex, column, textElement)
 		input.focusInput()
 	}
-
+	// TODO deirve foldedStart instead of 2 effects AND a state
 	createEffect(
 		on(
 			() => props.document.filePath(),
