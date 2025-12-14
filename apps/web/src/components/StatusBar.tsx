@@ -97,7 +97,7 @@ export const StatusBar = () => {
 	})
 
 	return (
-		<div class="rounded-lg border border-zinc-800/70 bg-zinc-950/70 py-1 text-xs text-zinc-200 shadow-inner">
+		<div class="z-20 border-t border-zinc-800/70 bg-zinc-950 px-3 py-1 text-xs text-zinc-200">
 			<div class="flex flex-wrap items-center gap-x-4 gap-y-1">
 				<div class="flex min-w-0 flex-1 items-center gap-1.5">
 					<span class="text-[8px] uppercase tracking-[0.08em] text-zinc-500">

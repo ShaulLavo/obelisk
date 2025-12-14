@@ -7,7 +7,7 @@ type TreeViewProps = {
 	loading: Accessor<boolean>
 }
 export const TreeView = (props: TreeViewProps) => (
-	<div class="">
+	<div class="min-w-max">
 		<p class="text-xs font-semibold uppercase tracking-[0.08em] text-zinc-500">
 			Tree
 		</p>

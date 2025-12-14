@@ -59,7 +59,7 @@ while (written < targetBytes) {
 // pad to get close
 const remaining = Math.max(0, targetBytes - written)
 if (remaining > 0) {
-	const pad = '\n/* ' + '0'.repeat(Math.max(0, remaining - 6)) + ' */\n'
+	const pad = '\n/* ' + '0'.repeat(Math.max(0, remaining - 8)) + ' */\n'
 	chunks.push(pad)
 	written += byteLength(pad)
 }
