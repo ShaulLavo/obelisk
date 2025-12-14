@@ -29,15 +29,20 @@ const Main: Component = () => {
 				>
 					<ResizablePanel
 						initialSize={verticalPanelSize()[0] ?? 0.65}
-						minSize={0.3}
+						minSize={0.04}
+						collapsible
 						class="min-h-0"
 					>
 						<Fs />
 					</ResizablePanel>
-					<ResizableHandle aria-label="Resize editor and terminal" />
+					<ResizableHandle
+						class="z-20"
+						aria-label="Resize editor and terminal"
+					/>
 					<ResizablePanel
 						initialSize={verticalPanelSize()[1] ?? 0.35}
-						minSize={0.2}
+						minSize={0.04}
+						collapsible
 						class="min-h-0"
 					>
 						<Terminal />
