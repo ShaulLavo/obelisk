@@ -227,7 +227,7 @@ export function useStickToBottom(options: StickToBottomOptions = {}) {
 		if (!selection || !selection.rangeCount) return false
 		const range = selection.getRangeAt(0)
 		return (
-			!!range.commonAncestorContainer &&
+			Boolean(range.commonAncestorContainer) &&
 			(scrollRef.current?.contains(range.commonAncestorContainer) ||
 				range.commonAncestorContainer?.contains?.(scrollRef.current))
 		)

@@ -1,4 +1,10 @@
-import { createEffect, createMemo, createSignal, type Accessor } from 'solid-js'
+import {
+	createEffect,
+	createMemo,
+	createSignal,
+	untrack,
+	type Accessor,
+} from 'solid-js'
 import { LINE_NUMBER_WIDTH, VERTICAL_VIRTUALIZER_OVERSCAN } from '../consts'
 import {
 	calculateColumnOffset,
@@ -96,16 +102,19 @@ export function createTextEditorLayout(
 
 	const lineHeight = createMemo(() => measuredLineHeight())
 
-	const rowVirtualizer = createFixedRowVirtualizer({
-		count: () => cursor.lines.lineCount(),
-		enabled: () => options.isFileSelected() && hasLineEntries(),
-		scrollElement: () => options.scrollElement(),
-		rowHeight: lineHeight,
-		overscan: VERTICAL_VIRTUALIZER_OVERSCAN,
-	})
+		const rowVirtualizer = createFixedRowVirtualizer({
+			count: () => cursor.lines.lineCount(),
+			enabled: () =>
+				options.isFileSelected() &&
+				hasLineEntries() &&
+				Boolean(options.scrollElement()),
+			scrollElement: () => options.scrollElement(),
+			rowHeight: lineHeight,
+			overscan: VERTICAL_VIRTUALIZER_OVERSCAN,
+		})
 
-	const virtualItems = createMemo(() => rowVirtualizer.virtualItems())
-	const totalSize = createMemo(() => rowVirtualizer.totalSize())
+	const virtualItems = rowVirtualizer.virtualItems
+	const totalSize = rowVirtualizer.totalSize
 
 	const [maxColumnsSeen, setMaxColumnsSeen] = createSignal(0)
 	let lastWidthScanStart = 0
@@ -119,9 +128,9 @@ export function createTextEditorLayout(
 		lastWidthScanEnd = -1
 	})
 
-	createEffect(() => {
-		const items = virtualItems()
-		const tabSize = options.tabSize()
+		createEffect(() => {
+			const items = virtualItems()
+			const tabSize = options.tabSize()
 
 		if (items.length === 0) {
 			lastWidthScanStart = 0
@@ -129,14 +138,15 @@ export function createTextEditorLayout(
 			return
 		}
 
-		const startIndex = items[0]?.index ?? 0
-		const endIndex = items[items.length - 1]?.index ?? startIndex
+			const startIndex = items[0]?.index ?? 0
+			const endIndex = items[items.length - 1]?.index ?? startIndex
 
-		let max = maxColumnsSeen()
-		const scanRange = (from: number, to: number) => {
-			for (let lineIndex = from; lineIndex <= to; lineIndex++) {
-				const text = cursor.lines.getLineText(lineIndex)
-				const visualWidth = calculateVisualColumnCount(text, tabSize)
+			const previousMax = untrack(() => maxColumnsSeen())
+			let max = previousMax
+			const scanRange = (from: number, to: number) => {
+				for (let lineIndex = from; lineIndex <= to; lineIndex++) {
+					const text = cursor.lines.getLineText(lineIndex)
+					const visualWidth = calculateVisualColumnCount(text, tabSize)
 				if (visualWidth > max) {
 					max = visualWidth
 				}
@@ -159,13 +169,13 @@ export function createTextEditorLayout(
 			}
 		}
 
-		lastWidthScanStart = startIndex
-		lastWidthScanEnd = endIndex
+			lastWidthScanStart = startIndex
+			lastWidthScanEnd = endIndex
 
-		if (max !== maxColumnsSeen()) {
-			setMaxColumnsSeen(max)
-		}
-	})
+			if (max !== previousMax) {
+				setMaxColumnsSeen(max)
+			}
+		})
 
 	const contentWidth = createMemo(() => {
 		const visualColumns = maxColumnsSeen()
@@ -194,13 +204,7 @@ export function createTextEditorLayout(
 		return lineIndex * lineHeight()
 	}
 
-	const visibleLineRange = createMemo(() => {
-		const range = rowVirtualizer.visibleRange()
-		return {
-			start: range.start,
-			end: range.end,
-		}
-	})
+	const visibleLineRange = rowVirtualizer.visibleRange
 
 	return {
 		hasLineEntries,

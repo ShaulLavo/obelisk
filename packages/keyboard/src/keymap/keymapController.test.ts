@@ -183,7 +183,7 @@ describe('createKeymapController', () => {
 			scope: 'global',
 			commandId: 'toggle',
 			shortcut: 'meta+/',
-			when: (ctx) => !!ctx.app?.allow,
+			when: (ctx) => Boolean(ctx.app?.allow),
 		})
 
 		expect(controller.handleKeydown(eventFor('/', { metaKey: true }))).toBe(

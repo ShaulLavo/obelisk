@@ -117,7 +117,7 @@ const getScenarioCategory = (scenario: BenchScenario): BenchScenarioCategory =>
 
 const supportsOpfs = () =>
 	typeof navigator !== 'undefined' &&
-	!!navigator.storage &&
+	Boolean(navigator.storage) &&
 	typeof navigator.storage.getDirectory === 'function'
 
 const supportsIndexedDb = () =>

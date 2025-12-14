@@ -29,3 +29,14 @@ export type {
 	VfsStorageSource,
 } from './vfs'
 export type { MemHandle } from './getRoot'
+export {
+	FileSystemObserverPolyfill,
+	createFileSystemObserver,
+	hasNativeObserver,
+} from './FileSystemObserver'
+export type {
+	FileSystemChangeType,
+	FileSystemChangeRecord,
+	FileSystemObserverCallback,
+	FileSystemObserverOptions,
+} from './FileSystemObserver'

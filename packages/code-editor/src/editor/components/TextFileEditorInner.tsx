@@ -23,6 +23,7 @@ import {
 } from '../hooks'
 import type {
 	BracketDepthMap,
+	LineEntry,
 	LineHighlightSegment,
 	TextFileEditorProps,
 } from '../types'
@@ -175,10 +176,10 @@ export const TextFileEditorInner = (props: TextFileEditorInnerProps) => {
 			.sort((a, b) => a.startIndex - b.startIndex)
 	})
 
-	const getLineHighlights = (lineIndex: number): LineHighlightSegment[] => {
-		const lineStart = cursor.lines.getLineStart(lineIndex)
-		const lineLength = cursor.lines.getLineLength(lineIndex)
-		const lineTextLength = cursor.lines.getLineTextLength(lineIndex)
+	const getLineHighlights = (entry: LineEntry): LineHighlightSegment[] => {
+		const lineStart = entry.start
+		const lineLength = entry.length
+		const lineTextLength = entry.text.length
 
 		const highlightSegments = toLineHighlightSegmentsForLine(
 			lineStart,

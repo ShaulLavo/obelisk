@@ -6,6 +6,22 @@ import type {
 	WhitespaceMarker,
 } from '../types'
 import { useCursor } from '../../cursor'
+import { DEFAULT_TAB_SIZE } from '../../consts'
+import {
+	MAX_WHITESPACE_MARKERS,
+	MAX_WHITESPACE_MARKER_SELECTION_LENGTH,
+} from '../constants'
+
+const normalizeCharWidth = (charWidth: number): number =>
+	Number.isFinite(charWidth) && charWidth > 0 ? charWidth : 1
+
+const normalizeTabSize = (tabSize: number): number =>
+	Number.isFinite(tabSize) && tabSize > 0 ? tabSize : DEFAULT_TAB_SIZE
+
+const getTabAdvance = (visualColumn: number, tabSize: number): number => {
+	const remainder = visualColumn % tabSize
+	return remainder === 0 ? tabSize : tabSize - remainder
+}
 
 export const useWhitespaceMarkers = (
 	props: SelectionLayerProps,
@@ -16,13 +32,25 @@ export const useWhitespaceMarkers = (
 		const bounds = selectionBounds()
 		if (!bounds) return []
 
+		// TODO: Virtualize whitespace markers (pool DOM nodes or render via canvas)
+		// so large selections stay smooth without hard caps/disable.
+		if (
+			bounds.end - bounds.start >
+			Math.max(0, MAX_WHITESPACE_MARKER_SELECTION_LENGTH)
+		) {
+			return []
+		}
+
 		const virtualItems = props.virtualItems()
 		const lineHeight = props.lineHeight()
+		const charWidth = normalizeCharWidth(props.charWidth())
+		const tabSize = normalizeTabSize(props.tabSize())
 
 		const markers: WhitespaceMarker[] = []
 		const baseX = props.lineNumberWidth + props.paddingLeft
+		const maxMarkers = Math.max(0, MAX_WHITESPACE_MARKERS)
 
-		for (const virtualRow of virtualItems) {
+		outer: for (const virtualRow of virtualItems) {
 			const lineIndex = virtualRow.index
 			if (lineIndex >= cursor.lines.lineCount()) continue
 
@@ -48,26 +76,37 @@ export const useWhitespaceMarkers = (
 			const rowHeight = virtualRow.size || lineHeight
 			const rowCenterY = virtualRow.start + rowHeight / 2
 
-			for (let column = safeStartCol; column < safeEndCol; column++) {
+			let visualColumn = 0
+			for (let column = 0; column < safeEndCol; column++) {
 				const char = text[column]
-				if (char !== ' ' && char !== '\t') continue
+				const columnOffsetStart = visualColumn * charWidth
+				const advance =
+					char === '\t' ? getTabAdvance(visualColumn, tabSize) : 1
+				const nextVisualColumn = visualColumn + advance
 
-				const columnOffsetStart = props.getColumnOffset(lineIndex, column)
-				const columnOffsetEnd = props.getColumnOffset(lineIndex, column + 1)
-				const columnWidth = Math.max(columnOffsetEnd - columnOffsetStart, 1)
-				const isTab = char === '\t'
+				if (column >= safeStartCol && (char === ' ' || char === '\t')) {
+					const columnOffsetEnd = nextVisualColumn * charWidth
+					const columnWidth = Math.max(columnOffsetEnd - columnOffsetStart, 1)
+					const isTab = char === '\t'
 
-				const markerX = isTab
-					? baseX + columnOffsetStart + 1
-					: baseX + columnOffsetStart + columnWidth / 2
+					const markerX = isTab
+						? baseX + columnOffsetStart + 1
+						: baseX + columnOffsetStart + columnWidth / 2
 
-				markers.push({
-					key: `${lineIndex}-${column}`,
-					x: markerX,
-					y: rowCenterY,
-					type: isTab ? 'tab' : 'space',
-					align: isTab ? 'left' : 'center',
-				})
+					markers.push({
+						key: `${lineIndex}-${column}`,
+						x: markerX,
+						y: rowCenterY,
+						type: isTab ? 'tab' : 'space',
+						align: isTab ? 'left' : 'center',
+					})
+
+					if (maxMarkers > 0 && markers.length >= maxMarkers) {
+						break outer
+					}
+				}
+
+				visualColumn = nextVisualColumn
 			}
 		}
 

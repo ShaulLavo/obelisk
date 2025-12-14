@@ -22,7 +22,7 @@ type UseGSAPReturn = {
 let _gsap: typeof gsap = gsap
 
 const isConfig = (value: unknown): value is UseGSAPConfig =>
-	!!value && typeof value === 'object' && !Array.isArray(value)
+	Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 
 export function useGSAP(
 	callbackOrConfig?: UseGSAPCallback | UseGSAPConfig,

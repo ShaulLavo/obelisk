@@ -21,7 +21,7 @@ export const Lines = (props: LinesProps) => {
 						text: cursor.lines.getLineText(index),
 					}))
 
-					const highlights = createMemo(() => props.getLineHighlights?.(index))
+					const highlights = createMemo(() => props.getLineHighlights?.(entry()))
 
 					return (
 						<Line

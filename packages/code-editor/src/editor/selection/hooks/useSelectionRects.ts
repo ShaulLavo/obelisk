@@ -6,6 +6,53 @@ import type {
 	SelectionRect,
 } from '../types'
 import { useCursor } from '../../cursor'
+import { DEFAULT_TAB_SIZE } from '../../consts'
+
+const normalizeCharWidth = (charWidth: number): number =>
+	Number.isFinite(charWidth) && charWidth > 0 ? charWidth : 1
+
+const normalizeTabSize = (tabSize: number): number =>
+	Number.isFinite(tabSize) && tabSize > 0 ? tabSize : DEFAULT_TAB_SIZE
+
+const getTabAdvance = (visualColumn: number, tabSize: number): number => {
+	const remainder = visualColumn % tabSize
+	return remainder === 0 ? tabSize : tabSize - remainder
+}
+
+const getColumnOffsetsForRange = (options: {
+	text: string
+	startCol: number
+	endCol: number
+	charWidth: number
+	tabSize: number
+}): { startX: number; endX: number } => {
+	const safeStartCol = Math.max(0, Math.min(options.startCol, options.text.length))
+	const safeEndCol = Math.max(safeStartCol, Math.min(options.endCol, options.text.length))
+
+	let visualColumn = 0
+	let startX = 0
+	let endX = 0
+
+	for (let column = 0; column <= safeEndCol; column++) {
+		if (column === safeStartCol) {
+			startX = visualColumn * options.charWidth
+		}
+
+		if (column === safeEndCol) {
+			endX = visualColumn * options.charWidth
+			break
+		}
+
+		const char = options.text[column]
+		if (char === '\t') {
+			visualColumn += getTabAdvance(visualColumn, options.tabSize)
+		} else {
+			visualColumn += 1
+		}
+	}
+
+	return { startX, endX }
+}
 
 export const useSelectionRects = (
 	props: SelectionLayerProps,
@@ -18,7 +65,8 @@ export const useSelectionRects = (
 
 		const virtualItems = props.virtualItems()
 		const lineHeight = props.lineHeight()
-		const charWidth = props.charWidth()
+		const charWidth = normalizeCharWidth(props.charWidth())
+		const tabSize = normalizeTabSize(props.tabSize())
 
 		const rects: SelectionRect[] = []
 		const baseX = props.lineNumberWidth + props.paddingLeft
@@ -40,8 +88,14 @@ export const useSelectionRects = (
 			const startCol = selStart - lineStart
 			const endCol = selEnd - lineStart
 
-			const startX = props.getColumnOffset(lineIndex, startCol)
-			const endX = props.getColumnOffset(lineIndex, endCol)
+			const text = cursor.lines.getLineText(lineIndex)
+			const { startX, endX } = getColumnOffsetsForRange({
+				text,
+				startCol,
+				endCol,
+				charWidth,
+				tabSize,
+			})
 
 			let width = endX - startX
 			if (width === 0 && selEnd > selStart) {

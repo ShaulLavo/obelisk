@@ -144,7 +144,7 @@ export type LinesProps = {
 	) => void
 	activeLineIndex: Accessor<number | null>
 	bracketDepths: Accessor<BracketDepthMap | undefined>
-	getLineHighlights?: (lineIndex: number) => LineHighlightSegment[] | undefined
+	getLineHighlights?: (entry: LineEntry) => LineHighlightSegment[] | undefined
 }
 
 export type LineGuttersProps = {
