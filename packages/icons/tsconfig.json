@@ -7,5 +7,5 @@
 		}
 	},
 	"include": ["scripts/**/*.ts", "scripts/**/*.tsx"],
-	"exclude": ["node_modules", "dist", "src/icons"]
+	"exclude": ["node_modules", "dist", "src/icons", ".cache"]
 }
