@@ -77,7 +77,7 @@ export const moveByWord = (
 			const boundary = findWordBoundaryLeft(chunk, end - start)
 			newOffset = start + boundary
 
-			if (boundary > 0 || start === 0) {
+			if (boundary > 0 || start === 0 || chunk.trim().length > 0) {
 				break
 			}
 

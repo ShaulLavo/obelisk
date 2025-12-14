@@ -14,7 +14,10 @@ import { LineGutters } from '../line/components/LineGutters'
 import { Input } from './Input'
 import { DEFAULT_TAB_SIZE, LINE_NUMBER_WIDTH } from '../consts'
 import { useCursor } from '../cursor'
-import { mergeLineSegments, toLineHighlightSegmentsForLine } from '../utils/highlights'
+import {
+	mergeLineSegments,
+	toLineHighlightSegmentsForLine,
+} from '../utils/highlights'
 import {
 	createCursorScrollSync,
 	createTextEditorInput,
@@ -111,9 +114,8 @@ export const TextFileEditorInner = (props: TextFileEditorInnerProps) => {
 		lineIndex: number,
 		column: number
 	) => {
-		if (!isEditable()) return
 		mouseSelection.handleMouseDown(event, lineIndex, column)
-		input.focusInput()
+		if (isEditable()) input.focusInput()
 	}
 
 	createEffect(

@@ -6,18 +6,7 @@ import type {
 	SelectionRect,
 } from '../types'
 import { useCursor } from '../../cursor'
-import { DEFAULT_TAB_SIZE } from '../../consts'
-
-const normalizeCharWidth = (charWidth: number): number =>
-	Number.isFinite(charWidth) && charWidth > 0 ? charWidth : 1
-
-const normalizeTabSize = (tabSize: number): number =>
-	Number.isFinite(tabSize) && tabSize > 0 ? tabSize : DEFAULT_TAB_SIZE
-
-const getTabAdvance = (visualColumn: number, tabSize: number): number => {
-	const remainder = visualColumn % tabSize
-	return remainder === 0 ? tabSize : tabSize - remainder
-}
+import { getTabAdvance, normalizeCharWidth, normalizeTabSize } from '../utils'
 
 const getColumnOffsetsForRange = (options: {
 	text: string
@@ -26,8 +15,14 @@ const getColumnOffsetsForRange = (options: {
 	charWidth: number
 	tabSize: number
 }): { startX: number; endX: number } => {
-	const safeStartCol = Math.max(0, Math.min(options.startCol, options.text.length))
-	const safeEndCol = Math.max(safeStartCol, Math.min(options.endCol, options.text.length))
+	const safeStartCol = Math.max(
+		0,
+		Math.min(options.startCol, options.text.length)
+	)
+	const safeEndCol = Math.max(
+		safeStartCol,
+		Math.min(options.endCol, options.text.length)
+	)
 
 	let visualColumn = 0
 	let startX = 0

@@ -6,7 +6,10 @@ export const normalizeCharWidth = (charWidth: number): number =>
 export const normalizeTabSize = (tabSize: number): number =>
 	Number.isFinite(tabSize) && tabSize > 0 ? tabSize : DEFAULT_TAB_SIZE
 
-export const getTabAdvance = (visualColumn: number, tabSize: number): number => {
+export const getTabAdvance = (
+	visualColumn: number,
+	tabSize: number
+): number => {
 	const remainder = visualColumn % tabSize
 	return remainder === 0 ? tabSize : tabSize - remainder
 }
