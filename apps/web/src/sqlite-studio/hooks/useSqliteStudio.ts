@@ -6,7 +6,7 @@ import {
 } from '../../workers/sqliteClient'
 import { quoteIdentifier, splitStatements } from '../utils/sqlUtils'
 import { EditingCell, TableInfo } from '../types'
-
+type RunSqliteQueryResult = Awaited<ReturnType<typeof runSqliteQuery>>
 export const useSqliteStudio = () => {
 	const [tables, setTables] = createSignal<string[]>([])
 	const [selectedTable, setSelectedTable] = createSignal<string | null>(null)
@@ -19,7 +19,7 @@ export const useSqliteStudio = () => {
 	const [error, setError] = createSignal<string | null>(null)
 	const [sqlQuery, setSqlQuery] = createSignal('')
 	const [queryResults, setQueryResults] = createSignal<
-		{ columns: string[]; rows: Record<string, any>[] }[] | null
+		RunSqliteQueryResult[] | null
 	>(null)
 	const [editingCell, setEditingCell] = createSignal<EditingCell | null>(null)
 
@@ -29,9 +29,11 @@ export const useSqliteStudio = () => {
 				"SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
 			)
 			setTables(res.rows.map((r) => r.name))
-		} catch (e: any) {
+		} catch (e: unknown) {
 			console.error(e)
-			setError(e.message)
+			if (e instanceof Error) {
+				setError(e.message)
+			} else setError('Failed to fetch tables')
 		}
 	}
 
@@ -52,7 +54,7 @@ export const useSqliteStudio = () => {
 			}
 		}
 
-		const res = await runSqliteQuery<any>(
+		const res = await runSqliteQuery(
 			`SELECT ${selectCols} FROM ${safeTableName} LIMIT 100`
 		)
 		setTableData(res.rows)
@@ -93,8 +95,10 @@ export const useSqliteStudio = () => {
 			setHasRowId(rowIdAvailable)
 
 			await refreshTableData(tableName)
-		} catch (e: any) {
-			setError(e.message)
+		} catch (e: unknown) {
+			if (e instanceof Error) {
+				setError(e.message)
+			} else setError('Failed to load table')
 		} finally {
 			setIsLoading(false)
 		}
@@ -113,10 +117,10 @@ export const useSqliteStudio = () => {
 		})
 		try {
 			const statements = splitStatements(sql)
-			const results: { columns: string[]; rows: any[] }[] = []
+			const results: RunSqliteQueryResult[] = []
 
 			for (const stmt of statements) {
-				const res = await runSqliteQuery<any>(stmt)
+				const res = await runSqliteQuery(stmt)
 				results.push(res)
 			}
 			batch(() => {
