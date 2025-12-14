@@ -3,6 +3,7 @@ import { HistoryContext } from './HistoryContext'
 import { useHistoryStore } from '../hooks/useHistoryStore'
 
 export const HistoryProvider = (props: HistoryProviderProps) => {
+	// eslint-disable-next-line solid/reactivity
 	const value = useHistoryStore(props.document)
 
 	return (

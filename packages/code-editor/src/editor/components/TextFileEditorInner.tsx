@@ -1,10 +1,10 @@
 import {
 	Show,
 	createEffect,
+	createMemo,
 	createSignal,
 	on,
 	onCleanup,
-	onMount,
 	type Accessor,
 } from 'solid-js'
 import { Lines } from '../line/components/Lines'
@@ -14,6 +14,7 @@ import { LineGutters } from '../line/components/LineGutters'
 import { Input } from './Input'
 import { DEFAULT_TAB_SIZE, LINE_NUMBER_WIDTH } from '../consts'
 import { useCursor } from '../cursor'
+import { mergeLineSegments, toLineHighlightSegmentsForLine } from '../utils/highlights'
 import {
 	createCursorScrollSync,
 	createTextEditorInput,
@@ -28,7 +29,6 @@ import type {
 
 type TextFileEditorInnerProps = TextFileEditorProps & {
 	bracketDepths: Accessor<BracketDepthMap | undefined>
-	getLineHighlights: (index: number) => LineHighlightSegment[] | undefined
 }
 
 export const TextFileEditorInner = (props: TextFileEditorInnerProps) => {
@@ -36,7 +36,9 @@ export const TextFileEditorInner = (props: TextFileEditorInnerProps) => {
 
 	const tabSize = () => props.tabSize?.() ?? DEFAULT_TAB_SIZE
 
-	let scrollElement: HTMLDivElement = null!
+	const [scrollElement, setScrollElement] = createSignal<HTMLDivElement | null>(
+		null
+	)
 	let inputElement: HTMLTextAreaElement = null!
 
 	const isEditable = () => props.document.isEditable()
@@ -46,11 +48,11 @@ export const TextFileEditorInner = (props: TextFileEditorInnerProps) => {
 		fontFamily: () => props.fontFamily(),
 		isFileSelected: () => props.isFileSelected(),
 		tabSize,
-		scrollElement: () => scrollElement,
+		scrollElement,
 	})
 
 	const cursorScroll = createCursorScrollSync({
-		scrollElement: () => scrollElement,
+		scrollElement,
 		lineHeight: layout.lineHeight,
 		charWidth: layout.charWidth,
 		getColumnOffset: layout.getColumnOffset,
@@ -73,7 +75,7 @@ export const TextFileEditorInner = (props: TextFileEditorInnerProps) => {
 	})
 
 	const mouseSelection = createMouseSelection({
-		scrollElement: () => scrollElement,
+		scrollElement,
 		charWidth: layout.charWidth,
 		tabSize: tabSize,
 		lineHeight: layout.lineHeight,
@@ -106,11 +108,10 @@ export const TextFileEditorInner = (props: TextFileEditorInnerProps) => {
 	const handleLineMouseDown = (
 		event: MouseEvent,
 		lineIndex: number,
-		column: number,
-		textElement: HTMLElement | null
+		column: number
 	) => {
 		if (!isEditable()) return
-		mouseSelection.handleMouseDown(event, lineIndex, column, textElement)
+		mouseSelection.handleMouseDown(event, lineIndex, column)
 		input.focusInput()
 	}
 
@@ -118,9 +119,10 @@ export const TextFileEditorInner = (props: TextFileEditorInnerProps) => {
 		on(
 			() => props.document.filePath(),
 			() => {
-				if (scrollElement) {
-					scrollElement.scrollTop = 0
-					scrollElement.scrollLeft = 0
+				const element = scrollElement()
+				if (element) {
+					element.scrollTop = 0
+					element.scrollLeft = 0
 				}
 				setFoldedStarts(new Set<number>())
 			}
@@ -143,20 +145,58 @@ export const TextFileEditorInner = (props: TextFileEditorInnerProps) => {
 			}
 		)
 	)
-	onMount(() => {
-		if (!scrollElement) return
-		const unregister = props.registerEditorArea?.(() => scrollElement)
+
+	createEffect(() => {
+		const element = scrollElement()
+		if (!element) return
+
+		const unregister = props.registerEditorArea?.(() => element)
 		if (typeof unregister === 'function') {
 			onCleanup(unregister)
 		}
 	})
 
-	/* TODO: move off TanStack virtualization so we control windowing
-		and can let features like bracket coloring share the custom
-		visible-range state
-		And we can not read ALL the text at once from the piece table
-		just the needed chunks
-		*/
+	const sortedHighlights = createMemo(() => {
+		const highlights = props.highlights?.()
+		if (!highlights?.length) return []
+		return highlights.slice().sort((a, b) => a.startIndex - b.startIndex)
+	})
+
+	const sortedErrorHighlights = createMemo(() => {
+		const errors = props.errors?.()
+		if (!errors?.length) return []
+
+		return errors
+			.map((error) => ({
+				startIndex: error.startIndex,
+				endIndex: error.endIndex,
+				scope: error.isMissing ? 'missing' : 'error',
+			}))
+			.sort((a, b) => a.startIndex - b.startIndex)
+	})
+
+	const getLineHighlights = (lineIndex: number): LineHighlightSegment[] => {
+		const lineStart = cursor.lines.getLineStart(lineIndex)
+		const lineLength = cursor.lines.getLineLength(lineIndex)
+		const lineTextLength = cursor.lines.getLineTextLength(lineIndex)
+
+		const highlightSegments = toLineHighlightSegmentsForLine(
+			lineStart,
+			lineLength,
+			lineTextLength,
+			sortedHighlights()
+		)
+
+		const errorSegments = toLineHighlightSegmentsForLine(
+			lineStart,
+			lineLength,
+			lineTextLength,
+			sortedErrorHighlights()
+		)
+
+		return mergeLineSegments(highlightSegments, errorSegments)
+	}
+
 	return (
 		<Show
 			when={layout.hasLineEntries()}
@@ -167,7 +207,7 @@ export const TextFileEditorInner = (props: TextFileEditorInnerProps) => {
 			}
 		>
 			<div
-				ref={scrollElement}
+				ref={setScrollElement}
 				class="relative  flex-1 overflow-auto   bg-zinc-950/30"
 				style={{
 					'font-size': `${props.fontSize()}px`,
@@ -230,7 +270,6 @@ export const TextFileEditorInner = (props: TextFileEditorInnerProps) => {
 						<Lines
 							rows={layout.virtualItems}
 							contentWidth={layout.contentWidth}
-							rowVirtualizer={layout.rowVirtualizer}
 							lineHeight={layout.lineHeight}
 							charWidth={layout.charWidth}
 							tabSize={tabSize}
@@ -240,7 +279,7 @@ export const TextFileEditorInner = (props: TextFileEditorInnerProps) => {
 							onMouseDown={handleLineMouseDown}
 							activeLineIndex={layout.activeLineIndex}
 							bracketDepths={props.bracketDepths}
-							getLineHighlights={props.getLineHighlights}
+							getLineHighlights={getLineHighlights}
 						/>
 					</div>
 				</div>

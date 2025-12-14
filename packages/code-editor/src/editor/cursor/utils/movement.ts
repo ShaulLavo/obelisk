@@ -1,30 +1,32 @@
-import type { LineEntry } from '../../types'
 import type { CursorPosition } from '../types'
 import { createCursorPosition } from '../types'
-import { offsetToPosition } from './position'
+import { getLineStart, getLineTextLength, offsetToPosition } from './position'
 
 export const moveVertically = (
 	position: CursorPosition,
 	direction: 'up' | 'down',
 	preferredColumn: number,
-	lineEntries: LineEntry[]
+	lineStarts: number[],
+	documentLength: number
 ): { position: CursorPosition; preferredColumn: number } => {
-	if (lineEntries.length === 0) {
+	if (lineStarts.length === 0) {
 		return { position, preferredColumn }
 	}
 
 	const targetLine =
 		direction === 'up'
 			? Math.max(0, position.line - 1)
-			: Math.min(lineEntries.length - 1, position.line + 1)
+			: Math.min(lineStarts.length - 1, position.line + 1)
 
 	if (targetLine === position.line) {
 		return { position, preferredColumn }
 	}
 
-	const targetEntry = lineEntries[targetLine]!
-	const targetColumn = Math.min(preferredColumn, targetEntry.text.length)
-	const newOffset = targetEntry.start + targetColumn
+	const targetColumn = Math.min(
+		preferredColumn,
+		getLineTextLength(targetLine, lineStarts, documentLength)
+	)
+	const newOffset = getLineStart(targetLine, lineStarts) + targetColumn
 
 	return {
 		position: createCursorPosition(newOffset, targetLine, targetColumn),
@@ -36,24 +38,27 @@ export const moveByLines = (
 	position: CursorPosition,
 	delta: number,
 	preferredColumn: number,
-	lineEntries: LineEntry[]
+	lineStarts: number[],
+	documentLength: number
 ): { position: CursorPosition; preferredColumn: number } => {
-	if (lineEntries.length === 0 || delta === 0) {
+	if (lineStarts.length === 0 || delta === 0) {
 		return { position, preferredColumn }
 	}
 
 	const targetLine = Math.max(
 		0,
-		Math.min(lineEntries.length - 1, position.line + delta)
+		Math.min(lineStarts.length - 1, position.line + delta)
 	)
 
 	if (targetLine === position.line) {
 		return { position, preferredColumn }
 	}
 
-	const targetEntry = lineEntries[targetLine]!
-	const targetColumn = Math.min(preferredColumn, targetEntry.text.length)
-	const newOffset = targetEntry.start + targetColumn
+	const targetColumn = Math.min(
+		preferredColumn,
+		getLineTextLength(targetLine, lineStarts, documentLength)
+	)
+	const newOffset = getLineStart(targetLine, lineStarts) + targetColumn
 
 	return {
 		position: createCursorPosition(newOffset, targetLine, targetColumn),
@@ -63,72 +68,69 @@ export const moveByLines = (
 
 export const moveToLineStart = (
 	position: CursorPosition,
-	lineEntries: LineEntry[]
+	lineStarts: number[]
 ): CursorPosition => {
-	if (lineEntries.length === 0) {
+	if (lineStarts.length === 0) {
 		return createCursorPosition(0, 0, 0)
 	}
 
-	const entry = lineEntries[position.line]
-	if (!entry) {
-		return position
-	}
-
-	return createCursorPosition(entry.start, position.line, 0)
+	const start = getLineStart(position.line, lineStarts)
+	return createCursorPosition(start, position.line, 0)
 }
 
 export const moveToLineEnd = (
 	position: CursorPosition,
-	lineEntries: LineEntry[]
+	lineStarts: number[],
+	documentLength: number
 ): CursorPosition => {
-	if (lineEntries.length === 0) {
+	if (lineStarts.length === 0) {
 		return createCursorPosition(0, 0, 0)
 	}
 
-	const entry = lineEntries[position.line]
-	if (!entry) {
-		return position
-	}
-
-	const endColumn = entry.text.length
-	return createCursorPosition(entry.start + endColumn, position.line, endColumn)
+	const endColumn = getLineTextLength(position.line, lineStarts, documentLength)
+	const start = getLineStart(position.line, lineStarts)
+	return createCursorPosition(start + endColumn, position.line, endColumn)
 }
 
 export const moveToDocStart = (): CursorPosition => {
 	return createCursorPosition(0, 0, 0)
 }
 
-export const moveToDocEnd = (lineEntries: LineEntry[]): CursorPosition => {
-	if (lineEntries.length === 0) {
+export const moveToDocEnd = (
+	lineStarts: number[],
+	documentLength: number
+): CursorPosition => {
+	if (lineStarts.length === 0) {
 		return createCursorPosition(0, 0, 0)
 	}
 
-	const lastEntry = lineEntries[lineEntries.length - 1]!
-	const endColumn = lastEntry.text.length
+	const lastLine = lineStarts.length - 1
+	const endColumn = getLineTextLength(lastLine, lineStarts, documentLength)
 	return createCursorPosition(
-		lastEntry.start + endColumn,
-		lastEntry.index,
+		getLineStart(lastLine, lineStarts) + endColumn,
+		lastLine,
 		endColumn
 	)
 }
 
 export const moveCursorLeft = (
 	position: CursorPosition,
-	lineEntries: LineEntry[]
+	lineStarts: number[],
+	documentLength: number
 ): CursorPosition => {
 	if (position.offset <= 0) {
 		return position
 	}
-	return offsetToPosition(position.offset - 1, lineEntries)
+	return offsetToPosition(position.offset - 1, lineStarts, documentLength)
 }
 
 export const moveCursorRight = (
 	position: CursorPosition,
 	documentLength: number,
-	lineEntries: LineEntry[]
+	lineStarts: number[]
 ): CursorPosition => {
 	if (position.offset >= documentLength) {
 		return position
 	}
-	return offsetToPosition(position.offset + 1, lineEntries)
+	return offsetToPosition(position.offset + 1, lineStarts, documentLength)
 }

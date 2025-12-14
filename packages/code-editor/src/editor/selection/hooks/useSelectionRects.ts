@@ -12,11 +12,10 @@ export const useSelectionRects = (
 	selectionBounds: Accessor<SelectionBounds | null>
 ) => {
 	const cursor = useCursor()
-	return createMemo<SelectionRect[]>(() => {
+	const selectionRects = createMemo<SelectionRect[]>(() => {
 		const bounds = selectionBounds()
 		if (!bounds) return []
 
-		const entries = cursor.lineEntries()
 		const virtualItems = props.virtualItems()
 		const lineHeight = props.lineHeight()
 		const charWidth = props.charWidth()
@@ -26,13 +25,10 @@ export const useSelectionRects = (
 
 		for (const virtualRow of virtualItems) {
 			const lineIndex = virtualRow.index
-			if (lineIndex >= entries.length) continue
+			if (lineIndex >= cursor.lines.lineCount()) continue
 
-			const entry = entries[lineIndex]
-			if (!entry) continue
-
-			const lineStart = entry.start
-			const lineEnd = entry.start + entry.length
+			const lineStart = cursor.lines.getLineStart(lineIndex)
+			const lineEnd = lineStart + cursor.lines.getLineLength(lineIndex)
 
 			if (bounds.end <= lineStart || bounds.start >= lineEnd) {
 				continue
@@ -62,4 +58,5 @@ export const useSelectionRects = (
 
 		return rects
 	})
+	return selectionRects
 }

@@ -1,13 +1,12 @@
 import { createEffect, createMemo, on, type Accessor } from 'solid-js'
 import { createStore } from 'solid-js/store'
-import type { LineEntry } from '../../types'
 import type { CursorState } from '../types'
 import { createDefaultCursorState } from '../types'
 import { offsetToPosition } from '../utils/position'
 
 type UseCursorStateManagerOptions = {
 	filePath: () => string | undefined
-	lineEntries: () => LineEntry[]
+	lineStarts: () => number[]
 	documentLength: () => number
 }
 
@@ -54,7 +53,7 @@ export function useCursorStateManager(
 				const updates: Partial<CursorState> = {}
 
 				if (state.position.offset > length) {
-					const newPosition = offsetToPosition(length, options.lineEntries())
+					const newPosition = offsetToPosition(length, options.lineStarts(), length)
 					updates.position = newPosition
 					updates.preferredColumn = newPosition.column
 				}

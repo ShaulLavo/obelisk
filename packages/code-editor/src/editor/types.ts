@@ -1,7 +1,12 @@
-import type { VirtualItem, Virtualizer } from '@tanstack/virtual-core'
 import type { Accessor } from 'solid-js'
 import type { ParseResult } from '@repo/utils/parse'
 import type { PieceTableSnapshot } from '@repo/utils'
+
+export type VirtualItem = {
+	index: number
+	start: number
+	size: number
+}
 
 // Bracket depth map: character index -> nesting depth
 export type BracketDepthMap = Record<number, number>
@@ -96,7 +101,6 @@ export type LineEntry = {
 }
 
 export type LineProps = {
-	rowVirtualizer: Virtualizer<HTMLDivElement, HTMLDivElement>
 	virtualRow: VirtualItem
 	entry: LineEntry
 	lineHeight: number
@@ -124,7 +128,6 @@ export type LineProps = {
 export type LinesProps = {
 	rows: Accessor<VirtualItem[]>
 	contentWidth: Accessor<number>
-	rowVirtualizer: Virtualizer<HTMLDivElement, HTMLDivElement>
 	lineHeight: Accessor<number>
 	charWidth: Accessor<number>
 	tabSize: Accessor<number>

@@ -131,6 +131,85 @@ const clampToLine = (
 	return [relativeStart, relativeEnd]
 }
 
+const clampToLineMeta = (
+	lineStart: number,
+	lineLength: number,
+	lineTextLength: number,
+	absoluteStart: number,
+	absoluteEnd: number
+): [number, number] | null => {
+	const lineAbsoluteEnd = lineStart + lineLength
+	const start = Math.max(absoluteStart, lineStart)
+	const end = Math.min(absoluteEnd, lineAbsoluteEnd)
+	const relativeStart = Math.max(
+		0,
+		Math.min(lineTextLength, start - lineStart)
+	)
+	const relativeEnd = Math.max(0, Math.min(lineTextLength, end - lineStart))
+	if (relativeStart >= relativeEnd) {
+		return null
+	}
+	return [relativeStart, relativeEnd]
+}
+
+export const toLineHighlightSegmentsForLine = (
+	lineStart: number,
+	lineLength: number,
+	lineTextLength: number,
+	highlights: EditorSyntaxHighlight[] | undefined
+): LineHighlightSegment[] => {
+	if (!highlights?.length) {
+		return []
+	}
+
+	const segments: LineHighlightSegment[] = []
+	const lineEnd = lineStart + lineLength
+
+	for (const highlight of highlights) {
+		if (
+			highlight.startIndex === undefined ||
+			highlight.endIndex === undefined ||
+			highlight.endIndex <= highlight.startIndex
+		) {
+			continue
+		}
+
+		if (highlight.endIndex <= lineStart) {
+			continue
+		}
+
+		if (highlight.startIndex >= lineEnd) {
+			break
+		}
+
+		const className = getHighlightClassForScope(highlight.scope)
+		if (!className) continue
+
+		const clamped = clampToLineMeta(
+			lineStart,
+			lineLength,
+			lineTextLength,
+			highlight.startIndex,
+			highlight.endIndex
+		)
+		if (!clamped) continue
+
+		const [relativeStart, relativeEnd] = clamped
+		segments.push({
+			start: relativeStart,
+			end: relativeEnd,
+			className,
+			scope: highlight.scope,
+		})
+	}
+
+	if (segments.length > 1) {
+		segments.sort((a, b) => a.start - b.start)
+	}
+
+	return segments
+}
+
 const advanceToLineIndex = (
 	lineEntries: LineEntry[],
 	currentIndex: number,

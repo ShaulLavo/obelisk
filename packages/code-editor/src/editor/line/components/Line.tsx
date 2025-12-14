@@ -1,15 +1,9 @@
-/* eslint-disable solid/prefer-for */
 import type { LineProps } from '../../types'
 import { calculateColumnFromClick } from '../../utils'
 import { BracketizedLineText } from './BracketizedLineText'
 
 export const Line = (props: LineProps) => {
-	let rowElement: HTMLDivElement | null = null
 	let textContentElement: HTMLDivElement | null = null
-
-	const measure = () => {
-		props.rowVirtualizer.measureElement(rowElement)
-	}
 
 	const handleMouseDown = (event: MouseEvent) => {
 		if (event.button !== 0) {
@@ -44,10 +38,6 @@ export const Line = (props: LineProps) => {
 	return (
 		<div
 			data-index={props.virtualRow.index}
-			ref={(el) => {
-				rowElement = el
-				queueMicrotask(measure)
-			}}
 			class="absolute left-0 right-0 flex items-start text-zinc-100"
 			classList={{
 				'cursor-text': props.isEditable(),

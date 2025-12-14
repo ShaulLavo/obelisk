@@ -1,5 +1,4 @@
-/* eslint-disable solid/prefer-for */
-import { createMemo } from 'solid-js'
+import { For, createMemo } from 'solid-js'
 import { EDITOR_PADDING_LEFT, LINE_NUMBER_WIDTH } from '../../consts'
 import { useCursor } from '../../cursor'
 import type { FoldRange, LineEntry, LineGuttersProps } from '../../types'
@@ -53,46 +52,60 @@ export const LineGutters = (props: LineGuttersProps) => {
 					'padding-left': `${EDITOR_PADDING_LEFT}px`,
 				}}
 			>
-				{props.rows().map((virtualRow) => {
-					const entry: LineEntry | undefined =
-						cursor.lineEntries()[virtualRow.index]
-					if (!entry) return null
+				<For each={props.rows()}>
+					{(virtualRow) => {
+						const index = virtualRow.index
+						if (index < 0 || index >= cursor.lines.lineCount()) {
+							return null
+						}
 
-					const height = virtualRow.size || props.lineHeight()
-					const isActive = props.activeLineIndex() === entry.index
-					const hasFold = foldMap().has(entry.index)
-					const isFolded = props.foldedStarts?.()?.has(entry.index) ?? false
+						const entry = createMemo<LineEntry>(() => ({
+							index,
+							start: cursor.lines.getLineStart(index),
+							length: cursor.lines.getLineLength(index),
+							text: cursor.lines.getLineText(index),
+						}))
 
-					return (
-						<div
-							data-index={virtualRow.index}
-							class="absolute left-0 right-0"
-							style={{
-								transform: `translateY(${virtualRow.start}px)`,
-								top: 0,
-								height: `${height}px`,
-							}}
-						>
+						const height = createMemo(() => virtualRow.size || props.lineHeight())
+						const isActive = createMemo(
+							() => props.activeLineIndex() === index
+						)
+						const hasFold = createMemo(() => foldMap().has(index))
+						const isFolded = createMemo(
+							() => props.foldedStarts?.()?.has(index) ?? false
+						)
+
+						return (
 							<div
-								class="relative flex h-full items-center justify-end"
-								onMouseDown={(event) => handleRowMouseDown(event, entry)}
+								data-index={virtualRow.index}
+								class="absolute left-0 right-0"
+								style={{
+									transform: `translateY(${virtualRow.start}px)`,
+									top: 0,
+									height: `${height()}px`,
+								}}
 							>
-								<LineGutter
-									lineNumber={entry.index + 1}
-									lineHeight={height}
-									isActive={isActive}
-									isFoldable={hasFold}
-									isFolded={isFolded}
-									onFoldClick={
-										hasFold
-											? () => props.onToggleFold?.(entry.index)
-											: undefined
-									}
-								/>
+								<div
+									class="relative flex h-full items-center justify-end"
+									onMouseDown={(event) => handleRowMouseDown(event, entry())}
+								>
+									<LineGutter
+										lineNumber={index + 1}
+										lineHeight={height()}
+										isActive={isActive()}
+										isFoldable={hasFold()}
+										isFolded={isFolded()}
+										onFoldClick={
+											hasFold()
+												? () => props.onToggleFold?.(index)
+												: undefined
+										}
+									/>
+								</div>
 							</div>
-						</div>
-					)
-				})}
+						)
+					}}
+				</For>
 			</div>
 		</div>
 	)

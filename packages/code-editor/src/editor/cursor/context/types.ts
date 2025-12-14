@@ -1,5 +1,6 @@
 import type { JSX } from 'solid-js'
-import type { LineEntry } from '../../types'
+import type { Accessor } from 'solid-js'
+import type { PieceTableSnapshot } from '@repo/utils'
 import type {
 	CursorPosition,
 	CursorState,
@@ -41,15 +42,29 @@ export type CursorActions = {
 export type CursorContextValue = {
 	state: CursorState
 	actions: CursorActions
-	lineEntries: () => LineEntry[]
-	documentText: () => string
-	documentLength: () => number
+	lines: {
+		lineStarts: Accessor<number[]>
+		lineCount: Accessor<number>
+		getLineStart: (lineIndex: number) => number
+		getLineLength: (lineIndex: number) => number
+		getLineTextLength: (lineIndex: number) => number
+		getLineText: (lineIndex: number) => string
+		offsetToPosition: (offset: number) => CursorPosition
+		positionToOffset: (line: number, column: number) => number
+		applyEdit: (
+			startIndex: number,
+			deletedText: string,
+			insertedText: string
+		) => void
+	}
+	getTextRange: (start: number, end: number) => string
+	documentLength: Accessor<number>
 }
 
 export type CursorProviderProps = {
 	children: JSX.Element
 	filePath: () => string | undefined
-	lineEntries: () => LineEntry[]
-	documentText: () => string
-	documentLength: () => number
+	isFileSelected: () => boolean
+	content: () => string
+	pieceTable: () => PieceTableSnapshot | undefined
 }

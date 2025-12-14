@@ -12,11 +12,10 @@ export const useWhitespaceMarkers = (
 	selectionBounds: Accessor<SelectionBounds | null>
 ) => {
 	const cursor = useCursor()
-	return createMemo<WhitespaceMarker[]>(() => {
+	const whitespaceMarkers = createMemo<WhitespaceMarker[]>(() => {
 		const bounds = selectionBounds()
 		if (!bounds) return []
 
-		const entries = cursor.lineEntries()
 		const virtualItems = props.virtualItems()
 		const lineHeight = props.lineHeight()
 
@@ -25,13 +24,10 @@ export const useWhitespaceMarkers = (
 
 		for (const virtualRow of virtualItems) {
 			const lineIndex = virtualRow.index
-			if (lineIndex >= entries.length) continue
+			if (lineIndex >= cursor.lines.lineCount()) continue
 
-			const entry = entries[lineIndex]
-			if (!entry) continue
-
-			const lineStart = entry.start
-			const lineEnd = entry.start + entry.length
+			const lineStart = cursor.lines.getLineStart(lineIndex)
+			const lineEnd = lineStart + cursor.lines.getLineLength(lineIndex)
 
 			if (bounds.end <= lineStart || bounds.start >= lineEnd) {
 				continue
@@ -44,11 +40,16 @@ export const useWhitespaceMarkers = (
 
 			if (startCol >= endCol) continue
 
+			const text = cursor.lines.getLineText(lineIndex)
+			const safeStartCol = Math.max(0, Math.min(startCol, text.length))
+			const safeEndCol = Math.max(safeStartCol, Math.min(endCol, text.length))
+			if (safeStartCol >= safeEndCol) continue
+
 			const rowHeight = virtualRow.size || lineHeight
 			const rowCenterY = virtualRow.start + rowHeight / 2
 
-			for (let column = startCol; column < endCol; column++) {
-				const char = entry.text[column]
+			for (let column = safeStartCol; column < safeEndCol; column++) {
+				const char = text[column]
 				if (char !== ' ' && char !== '\t') continue
 
 				const columnOffsetStart = props.getColumnOffset(lineIndex, column)
@@ -72,4 +73,5 @@ export const useWhitespaceMarkers = (
 
 		return markers
 	})
+	return whitespaceMarkers
 }

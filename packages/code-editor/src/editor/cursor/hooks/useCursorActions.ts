@@ -1,5 +1,4 @@
 import type { Accessor } from 'solid-js'
-import type { LineEntry } from '../../types'
 import type { CursorPosition, CursorState, CursorDirection } from '../types'
 import {
 	createCursorPosition,
@@ -9,7 +8,13 @@ import {
 	hasSelection,
 } from '../types'
 import { getSelectionAnchor } from '../utils/selection'
-import { offsetToPosition, positionToOffset } from '../utils/position'
+import {
+	getLineLength,
+	getLineStart,
+	getLineTextLength,
+	offsetToPosition,
+	positionToOffset,
+} from '../utils/position'
 import {
 	moveCursorLeft,
 	moveCursorRight,
@@ -28,8 +33,8 @@ type UseCursorActionsOptions = {
 	updateCurrentState: (
 		updater: (prev: CursorState) => Partial<CursorState>
 	) => void
-	lineEntries: () => LineEntry[]
-	documentText: () => string
+	lineStarts: () => number[]
+	getTextRange: (start: number, end: number) => string
 	documentLength: () => number
 }
 
@@ -51,7 +56,7 @@ export function useCursorActions(
 		)
 	}
 
-	const ensureEntries = () => options.lineEntries()
+	const ensureLineStarts = () => options.lineStarts()
 
 	const getShiftAnchor = (shiftKey: boolean, state: CursorState): number =>
 		shiftKey ? getSelectionAnchor(state) : state.position.offset
@@ -62,7 +67,9 @@ export function useCursorActions(
 		},
 
 		setCursorOffset: (offset: number) => {
-			const position = offsetToPosition(offset, ensureEntries())
+			const lineStarts = ensureLineStarts()
+			const length = options.documentLength()
+			const position = offsetToPosition(offset, lineStarts, length)
 			setCursorPosition(position)
 		},
 
@@ -73,7 +80,8 @@ export function useCursorActions(
 		) => {
 			const state = options.currentState()
 			if (!state.hasCursor) return
-			const entries = ensureEntries()
+			const lineStarts = ensureLineStarts()
+			const docLength = options.documentLength()
 			const anchor = getShiftAnchor(shiftKey, state)
 
 			let newPosition: CursorPosition
@@ -81,20 +89,33 @@ export function useCursorActions(
 
 			if (direction === 'left') {
 				newPosition = ctrlKey
-					? moveByWord(state.position, 'left', options.documentText(), entries)
-					: moveCursorLeft(state.position, entries)
+					? moveByWord(
+							state.position,
+							'left',
+							options.getTextRange,
+							docLength,
+							lineStarts
+						)
+					: moveCursorLeft(state.position, lineStarts, docLength)
 				preferredColumn = newPosition.column
 			} else if (direction === 'right') {
 				newPosition = ctrlKey
-					? moveByWord(state.position, 'right', options.documentText(), entries)
-					: moveCursorRight(state.position, options.documentLength(), entries)
+					? moveByWord(
+							state.position,
+							'right',
+							options.getTextRange,
+							docLength,
+							lineStarts
+						)
+					: moveCursorRight(state.position, docLength, lineStarts)
 				preferredColumn = newPosition.column
 			} else {
 				const verticalMove = moveVertically(
 					state.position,
 					direction,
 					state.preferredColumn,
-					entries
+					lineStarts,
+					docLength
 				)
 				newPosition = verticalMove.position
 				preferredColumn = verticalMove.preferredColumn
@@ -114,14 +135,16 @@ export function useCursorActions(
 		moveCursorByLines: (delta: number, shiftKey = false) => {
 			const state = options.currentState()
 			if (!state.hasCursor) return
-			const entries = ensureEntries()
+			const lineStarts = ensureLineStarts()
+			const docLength = options.documentLength()
 			const anchor = getShiftAnchor(shiftKey, state)
 
 			const result = moveByLines(
 				state.position,
 				delta,
 				state.preferredColumn,
-				entries
+				lineStarts,
+				docLength
 			)
 
 			options.updateCurrentState(() =>
@@ -138,12 +161,12 @@ export function useCursorActions(
 		moveCursorHome: (ctrlKey = false, shiftKey = false) => {
 			const state = options.currentState()
 			if (!state.hasCursor) return
-			const entries = ensureEntries()
+			const lineStarts = ensureLineStarts()
 			const anchor = getShiftAnchor(shiftKey, state)
 
 			const newPosition = ctrlKey
 				? moveToDocStart()
-				: moveToLineStart(state.position, entries)
+				: moveToLineStart(state.position, lineStarts)
 
 			options.updateCurrentState(() =>
 				withActiveCursor({
@@ -159,12 +182,13 @@ export function useCursorActions(
 		moveCursorEnd: (ctrlKey = false, shiftKey = false) => {
 			const state = options.currentState()
 			if (!state.hasCursor) return
-			const entries = ensureEntries()
+			const lineStarts = ensureLineStarts()
+			const docLength = options.documentLength()
 			const anchor = getShiftAnchor(shiftKey, state)
 
 			const newPosition = ctrlKey
-				? moveToDocEnd(entries)
-				: moveToLineEnd(state.position, entries)
+				? moveToDocEnd(lineStarts, docLength)
+				: moveToLineEnd(state.position, lineStarts, docLength)
 
 			options.updateCurrentState(() =>
 				withActiveCursor({
@@ -182,19 +206,25 @@ export function useCursorActions(
 			column: number,
 			shiftKey = false
 		) => {
-			const entries = ensureEntries()
-			if (entries.length === 0) return
+			const lineStarts = ensureLineStarts()
+			if (lineStarts.length === 0) return
 
 			const state = options.currentState()
 			const anchor = getShiftAnchor(shiftKey, state)
 			const clampedLineIndex = Math.max(
 				0,
-				Math.min(lineIndex, entries.length - 1)
+				Math.min(lineIndex, lineStarts.length - 1)
 			)
-			const entry = entries[clampedLineIndex]!
 
-			const clampedColumn = Math.max(0, Math.min(column, entry.text.length))
-			const offset = positionToOffset(clampedLineIndex, clampedColumn, entries)
+			const docLength = options.documentLength()
+			const textLength = getLineTextLength(clampedLineIndex, lineStarts, docLength)
+			const clampedColumn = Math.max(0, Math.min(column, textLength))
+			const offset = positionToOffset(
+				clampedLineIndex,
+				clampedColumn,
+				lineStarts,
+				docLength
+			)
 			const position = createCursorPosition(
 				offset,
 				clampedLineIndex,
@@ -221,8 +251,9 @@ export function useCursorActions(
 		},
 
 		setSelection: (anchor: number, focus: number) => {
-			const entries = ensureEntries()
-			const position = offsetToPosition(focus, entries)
+			const lineStarts = ensureLineStarts()
+			const docLength = options.documentLength()
+			const position = offsetToPosition(focus, lineStarts, docLength)
 
 			options.updateCurrentState(() =>
 				withActiveCursor({
@@ -240,9 +271,9 @@ export function useCursorActions(
 		},
 
 		selectAll: () => {
-			const entries = ensureEntries()
+			const lineStarts = ensureLineStarts()
 			const length = options.documentLength()
-			const position = offsetToPosition(length, entries)
+			const position = offsetToPosition(length, lineStarts, length)
 
 			options.updateCurrentState(() =>
 				withActiveCursor({
@@ -254,29 +285,58 @@ export function useCursorActions(
 		},
 
 		selectWord: (offset: number) => {
-			const text = options.documentText()
-			const entries = ensureEntries()
+			const lineStarts = ensureLineStarts()
+			const maxLength = options.documentLength()
+			const clampedOffset = Math.min(Math.max(0, offset), maxLength)
 
-			let start = offset
-			let end = offset
+			let start = clampedOffset
+			let end = clampedOffset
 
-			while (start > 0) {
-				const char = text[start - 1]
-				if (!char || !isWordChar(char)) break
-				start--
+			const chunkSize = 4096
+
+			let leftEnd = start
+			while (leftEnd > 0) {
+				const leftStart = Math.max(0, leftEnd - chunkSize)
+				const chunk = options.getTextRange(leftStart, leftEnd)
+				let i = leftEnd - leftStart
+
+				while (i > 0 && isWordChar(chunk[i - 1]!)) {
+					i--
+				}
+
+				start = leftStart + i
+
+				if (i > 0 || leftStart === 0) {
+					break
+				}
+
+				leftEnd = leftStart
 			}
 
-			while (end < text.length) {
-				const char = text[end]
-				if (!char || !isWordChar(char)) break
-				end++
+			let rightStart = end
+			while (rightStart < maxLength) {
+				const rightEnd = Math.min(maxLength, rightStart + chunkSize)
+				const chunk = options.getTextRange(rightStart, rightEnd)
+				let i = 0
+
+				while (i < chunk.length && isWordChar(chunk[i]!)) {
+					i++
+				}
+
+				end = rightStart + i
+
+				if (i < chunk.length || rightEnd === maxLength) {
+					break
+				}
+
+				rightStart = rightEnd
 			}
 
-			if (start === end && end < text.length) {
-				end++
+			if (start === end && end < maxLength) {
+				end += 1
 			}
 
-			const position = offsetToPosition(end, entries)
+			const position = offsetToPosition(end, lineStarts, maxLength)
 
 			options.updateCurrentState(() =>
 				withActiveCursor({
@@ -288,15 +348,13 @@ export function useCursorActions(
 		},
 
 		selectLine: (lineIndex: number) => {
-			const entries = ensureEntries()
-			if (lineIndex < 0 || lineIndex >= entries.length) return
+			const lineStarts = ensureLineStarts()
+			if (lineIndex < 0 || lineIndex >= lineStarts.length) return
 
-			const entry = entries[lineIndex]
-			if (!entry) return
-
-			const start = entry.start
-			const end = entry.start + entry.length
-			const position = offsetToPosition(end, entries)
+			const docLength = options.documentLength()
+			const start = getLineStart(lineIndex, lineStarts)
+			const end = start + getLineLength(lineIndex, lineStarts, docLength)
+			const position = offsetToPosition(end, lineStarts, docLength)
 
 			options.updateCurrentState(() =>
 				withActiveCursor({
@@ -315,7 +373,7 @@ export function useCursorActions(
 			if (!selection) return ''
 
 			const { start, end } = getSelectionBounds(selection)
-			return options.documentText().slice(start, end)
+			return options.getTextRange(start, end)
 		},
 
 		getSelection: () => {

@@ -9,20 +9,19 @@
   "scripts": {
     "lint": "eslint . --max-warnings 0",
     "check-types": "tsc --noEmit",
+    "test": "bun test",
     "depcheck": "depcheck",
     "unimported": "unimported",
     "tsprune": "ts-prune",
     "repo:health": "bun run depcheck && bun run unimported && bun run tsprune"
   },
   "dependencies": {
-    "@solid-primitives/map": "^0.7.2",
     "@repo/icons": "*",
     "@repo/keyboard": "*",
     "@repo/logger": "*",
     "@repo/perf": "*",
     "@repo/utils": "*",
-    "@tanstack/solid-virtual": "^3.13.12",
-    "@tanstack/virtual-core": "^3.13.12",
+    "@solid-primitives/map": "^0.7.2",
     "solid-js": "^1.9.5"
   },
   "devDependencies": {

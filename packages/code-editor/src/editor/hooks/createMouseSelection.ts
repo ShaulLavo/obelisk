@@ -1,6 +1,6 @@
 import { onCleanup } from 'solid-js'
 import type { Accessor } from 'solid-js'
-import { positionToOffset, useCursor } from '../cursor'
+import { useCursor } from '../cursor'
 import { calculateColumnFromClick } from '../utils'
 
 export type MouseSelectionOptions = {
@@ -14,8 +14,7 @@ export type MouseSelectionHandlers = {
 	handleMouseDown: (
 		event: MouseEvent,
 		lineIndex: number,
-		column: number,
-		textElement: HTMLElement | null
+		column: number
 	) => void
 }
 
@@ -63,8 +62,8 @@ export function createMouseSelection(
 		if (!scrollEl) return null
 
 		const rect = scrollEl.getBoundingClientRect()
-		const entries = cursor.lineEntries()
-		if (entries.length === 0) return null
+		const lineCount = cursor.lines.lineCount()
+		if (lineCount === 0) return null
 
 		// Calculate Y position relative to scroll content
 		const relativeY = event.clientY - rect.top + scrollEl.scrollTop
@@ -72,11 +71,10 @@ export function createMouseSelection(
 
 		// Find line index
 		let lineIndex = Math.floor(relativeY / lineHeight)
-		lineIndex = Math.max(0, Math.min(lineIndex, entries.length - 1))
+		lineIndex = Math.max(0, Math.min(lineIndex, lineCount - 1))
 
 		// Calculate column (simplified - assumes click is on text area)
-		const entry = entries[lineIndex]
-		if (!entry) return null
+		const text = cursor.lines.getLineText(lineIndex)
 
 		const relativeX = Math.max(
 			0,
@@ -84,7 +82,7 @@ export function createMouseSelection(
 		) // 52 = approximate gutter width
 
 		const column = calculateColumnFromClick(
-			entry.text,
+			text,
 			relativeX,
 			options.charWidth(),
 			options.tabSize()
@@ -99,8 +97,7 @@ export function createMouseSelection(
 		const pos = getPositionFromMouseEvent(event)
 		if (!pos) return
 
-		const entries = cursor.lineEntries()
-		const focusOffset = positionToOffset(pos.lineIndex, pos.column, entries)
+		const focusOffset = cursor.lines.positionToOffset(pos.lineIndex, pos.column)
 
 		cursor.actions.setSelection(anchorOffset, focusOffset)
 
@@ -128,16 +125,14 @@ export function createMouseSelection(
 	const handleMouseDown = (
 		event: MouseEvent,
 		lineIndex: number,
-		column: number,
-		_textElement: HTMLElement | null
+		column: number
 	) => {
 		if (event.button !== 0) return
 
-		const entries = cursor.lineEntries()
-		if (entries.length === 0) return
+		if (cursor.lines.lineCount() === 0) return
 
 		const now = Date.now()
-		const offset = positionToOffset(lineIndex, column, entries)
+		const offset = cursor.lines.positionToOffset(lineIndex, column)
 
 		// Detect click count for double/triple click
 		if (

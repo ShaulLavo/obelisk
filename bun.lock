@@ -106,8 +106,6 @@
         "@repo/perf": "*",
         "@repo/utils": "*",
         "@solid-primitives/map": "^0.7.2",
-        "@tanstack/solid-virtual": "^3.13.12",
-        "@tanstack/virtual-core": "^3.13.12",
         "solid-js": "^1.9.5",
       },
       "devDependencies": {

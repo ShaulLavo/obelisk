@@ -1,5 +1,5 @@
 import type { Accessor } from 'solid-js'
-import type { VirtualItem } from '@tanstack/virtual-core'
+import type { VirtualItem } from '../types'
 
 export type SelectionLayerProps = {
 	virtualItems: Accessor<VirtualItem[]>

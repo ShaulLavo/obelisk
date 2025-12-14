@@ -75,8 +75,6 @@ export const useHistoryStore = (
 		entry: HistoryEntry,
 		direction: 'undo' | 'redo'
 	) => {
-		const docText = cursor.documentText()
-		const lineEntriesSnapshot = cursor.lineEntries().slice()
 		const deletedTextForTree =
 			direction === 'undo' ? entry.insertedText : entry.deletedText
 		const insertedTextForTree =
@@ -84,14 +82,19 @@ export const useHistoryStore = (
 		const incrementalEdit =
 			document.applyIncrementalEdit &&
 			describeIncrementalEdit(
-				lineEntriesSnapshot,
+				(offset) => {
+					const position = cursor.lines.offsetToPosition(offset)
+					return { row: position.line, column: position.column }
+				},
 				entry.offset,
 				deletedTextForTree,
 				insertedTextForTree
 			)
 
 		document.updatePieceTable((current) => {
-			const baseSnapshot = current ?? createPieceTableSnapshot(docText)
+			const baseSnapshot =
+				current ??
+				createPieceTableSnapshot(cursor.getTextRange(0, cursor.documentLength()))
 			let snapshot = baseSnapshot
 
 			if (direction === 'undo') {
@@ -128,6 +131,8 @@ export const useHistoryStore = (
 
 			return snapshot
 		})
+
+		cursor.lines.applyEdit(entry.offset, deletedTextForTree, insertedTextForTree)
 
 		if (direction === 'undo') {
 			applyCursorSnapshot(entry.cursorBefore, entry.selectionBefore)

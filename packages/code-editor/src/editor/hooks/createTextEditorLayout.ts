@@ -1,7 +1,5 @@
-import { createVirtualizer } from '@tanstack/solid-virtual'
-import type { VirtualItem, Virtualizer } from '@tanstack/virtual-core'
-import { createEffect, createMemo, type Accessor } from 'solid-js'
-import { VERTICAL_VIRTUALIZER_OVERSCAN, LINE_NUMBER_WIDTH } from '../consts'
+import { createEffect, createMemo, createSignal, type Accessor } from 'solid-js'
+import { LINE_NUMBER_WIDTH, VERTICAL_VIRTUALIZER_OVERSCAN } from '../consts'
 import {
 	calculateColumnOffset,
 	calculateVisualColumnCount,
@@ -9,6 +7,8 @@ import {
 	measureCharWidth,
 } from '../utils'
 import { useCursor } from '../cursor'
+import type { VirtualItem } from '../types'
+import { createFixedRowVirtualizer } from './createFixedRowVirtualizer'
 
 export type TextEditorLayoutOptions = {
 	fontSize: Accessor<number>
@@ -29,71 +29,146 @@ export type TextEditorLayout = {
 	getColumnOffset: (lineIndex: number, columnIndex: number) => number
 	getLineY: (lineIndex: number) => number
 	visibleLineRange: Accessor<{ start: number; end: number }>
-	rowVirtualizer: Virtualizer<HTMLDivElement, HTMLDivElement>
-	virtualItems: () => VirtualItem[]
-	totalSize: () => number
+	virtualItems: Accessor<VirtualItem[]>
+	totalSize: Accessor<number>
+}
+
+const measureLineHeight = (
+	container: HTMLElement,
+	fontSize: number,
+	fontFamily: string
+): number => {
+	const probe = document.createElement('div')
+	probe.textContent = 'M'
+	probe.style.position = 'absolute'
+	probe.style.visibility = 'hidden'
+	probe.style.pointerEvents = 'none'
+	probe.style.whiteSpace = 'pre'
+	probe.style.padding = '0'
+	probe.style.margin = '0'
+	probe.style.fontSize = `${fontSize}px`
+	probe.style.fontFamily = fontFamily
+
+	container.appendChild(probe)
+	const rect = probe.getBoundingClientRect()
+	probe.remove()
+
+	const height = Math.round(rect.height)
+	return Number.isFinite(height) && height > 0 ? height : estimateLineHeight(fontSize)
 }
 
 export function createTextEditorLayout(
 	options: TextEditorLayoutOptions
 ): TextEditorLayout {
 	const cursor = useCursor()
-	const hasLineEntries = createMemo(() => cursor.lineEntries().length > 0)
+
+	const hasLineEntries = createMemo(() => cursor.lines.lineCount() > 0)
 
 	const activeLineIndex = createMemo<number | null>(() => {
-		const entries = cursor.lineEntries()
-		if (!entries.length) return null
+		if (!cursor.lines.lineCount()) return null
 		return cursor.state.position.line
-	})
-
-	const maxColumns = createMemo(() => {
-		const entries = cursor.lineEntries()
-		let max = 0
-		const tabSize = options.tabSize()
-
-		for (const entry of entries) {
-			const visualWidth = calculateVisualColumnCount(entry.text, tabSize)
-			if (visualWidth > max) {
-				max = visualWidth
-			}
-		}
-
-		return max
 	})
 
 	const charWidth = createMemo(() =>
 		measureCharWidth(options.fontSize(), options.fontFamily())
 	)
 
-	const cursorLineIndex = createMemo(() => cursor.state.position.line)
-	const cursorColumnIndex = createMemo(() => cursor.state.position.column)
-
-	const rowVirtualizer = createVirtualizer<HTMLDivElement, HTMLDivElement>({
-		get count() {
-			return cursor.lineEntries().length
-		},
-		get enabled() {
-			return options.isFileSelected() && hasLineEntries()
-		},
-		getScrollElement: () => options.scrollElement(),
-		estimateSize: () => estimateLineHeight(options.fontSize()),
-		overscan: VERTICAL_VIRTUALIZER_OVERSCAN,
-	})
+	const [measuredLineHeight, setMeasuredLineHeight] = createSignal(
+		estimateLineHeight(options.fontSize())
+	)
 
 	createEffect(() => {
 		options.fontSize()
 		options.fontFamily()
-		cursor.lineEntries()
+
+		const scrollElement = options.scrollElement()
+		if (!scrollElement) return
+
 		queueMicrotask(() => {
-			rowVirtualizer.measure()
+			const height = measureLineHeight(
+				scrollElement,
+				options.fontSize(),
+				options.fontFamily()
+			)
+			setMeasuredLineHeight(height)
 		})
 	})
 
-	const virtualItems = () => rowVirtualizer.getVirtualItems()
-	const totalSize = () => rowVirtualizer.getTotalSize()
-	const lineHeight = createMemo(() => estimateLineHeight(options.fontSize()))
+	const lineHeight = createMemo(() => measuredLineHeight())
+
+	const rowVirtualizer = createFixedRowVirtualizer({
+		count: () => cursor.lines.lineCount(),
+		enabled: () => options.isFileSelected() && hasLineEntries(),
+		scrollElement: () => options.scrollElement(),
+		rowHeight: lineHeight,
+		overscan: VERTICAL_VIRTUALIZER_OVERSCAN,
+	})
+
+	const virtualItems = createMemo(() => rowVirtualizer.virtualItems())
+	const totalSize = createMemo(() => rowVirtualizer.totalSize())
+
+	const [maxColumnsSeen, setMaxColumnsSeen] = createSignal(0)
+	let lastWidthScanStart = 0
+	let lastWidthScanEnd = -1
+
+	createEffect(() => {
+		options.tabSize()
+		cursor.lines.lineStarts()
+		setMaxColumnsSeen(0)
+		lastWidthScanStart = 0
+		lastWidthScanEnd = -1
+	})
+
+	createEffect(() => {
+		const items = virtualItems()
+		const tabSize = options.tabSize()
+
+		if (items.length === 0) {
+			lastWidthScanStart = 0
+			lastWidthScanEnd = -1
+			return
+		}
+
+		const startIndex = items[0]?.index ?? 0
+		const endIndex = items[items.length - 1]?.index ?? startIndex
+
+		let max = maxColumnsSeen()
+		const scanRange = (from: number, to: number) => {
+			for (let lineIndex = from; lineIndex <= to; lineIndex++) {
+				const text = cursor.lines.getLineText(lineIndex)
+				const visualWidth = calculateVisualColumnCount(text, tabSize)
+				if (visualWidth > max) {
+					max = visualWidth
+				}
+			}
+		}
+
+		const overlaps =
+			lastWidthScanEnd >= lastWidthScanStart &&
+			endIndex >= lastWidthScanStart &&
+			startIndex <= lastWidthScanEnd
+
+		if (!overlaps) {
+			scanRange(startIndex, endIndex)
+		} else {
+			if (startIndex < lastWidthScanStart) {
+				scanRange(startIndex, lastWidthScanStart - 1)
+			}
+			if (endIndex > lastWidthScanEnd) {
+				scanRange(lastWidthScanEnd + 1, endIndex)
+			}
+		}
+
+		lastWidthScanStart = startIndex
+		lastWidthScanEnd = endIndex
+
+		if (max !== maxColumnsSeen()) {
+			setMaxColumnsSeen(max)
+		}
+	})
+
 	const contentWidth = createMemo(() => {
-		const visualColumns = maxColumns()
+		const visualColumns = maxColumnsSeen()
 		if (visualColumns === 0) {
 			return Math.max(options.fontSize(), 1)
 		}
@@ -101,15 +176,12 @@ export function createTextEditorLayout(
 	})
 
 	const columnOffset = (lineIndex: number, columnIndex: number): number => {
-		const entry = cursor.lineEntries()[lineIndex]
-		if (!entry) return 0
-		return calculateColumnOffset(
-			entry.text,
-			columnIndex,
-			charWidth(),
-			options.tabSize()
-		)
+		const text = cursor.lines.getLineText(lineIndex)
+		return calculateColumnOffset(text, columnIndex, charWidth(), options.tabSize())
 	}
+
+	const cursorLineIndex = createMemo(() => cursor.state.position.line)
+	const cursorColumnIndex = createMemo(() => cursor.state.position.column)
 
 	const inputX = createMemo(
 		() =>
@@ -123,11 +195,10 @@ export function createTextEditorLayout(
 	}
 
 	const visibleLineRange = createMemo(() => {
-		const items = virtualItems()
-		if (items.length === 0) return { start: 0, end: 0 }
+		const range = rowVirtualizer.visibleRange()
 		return {
-			start: items[0]?.index ?? 0,
-			end: items[items.length - 1]?.index ?? 0,
+			start: range.start,
+			end: range.end,
 		}
 	})
 
@@ -142,7 +213,6 @@ export function createTextEditorLayout(
 		getColumnOffset: columnOffset,
 		getLineY,
 		visibleLineRange,
-		rowVirtualizer,
 		virtualItems,
 		totalSize,
 	}

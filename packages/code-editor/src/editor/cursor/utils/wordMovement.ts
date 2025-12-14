@@ -1,4 +1,3 @@
-import type { LineEntry } from '../../types'
 import type { CursorPosition } from '../types'
 import { offsetToPosition } from './position'
 
@@ -61,13 +60,44 @@ export const findWordBoundaryRight = (text: string, offset: number): number => {
 export const moveByWord = (
 	position: CursorPosition,
 	direction: 'left' | 'right',
-	text: string,
-	lineEntries: LineEntry[]
+	getTextRange: (start: number, end: number) => string,
+	documentLength: number,
+	lineStarts: number[]
 ): CursorPosition => {
-	const newOffset =
-		direction === 'left'
-			? findWordBoundaryLeft(text, position.offset)
-			: findWordBoundaryRight(text, position.offset)
+	const maxLength = Math.max(0, documentLength)
 
-	return offsetToPosition(newOffset, lineEntries)
+	const chunkSize = 4096
+	let newOffset = Math.min(Math.max(0, position.offset), maxLength)
+
+	if (direction === 'left') {
+		let end = newOffset
+		while (end > 0) {
+			const start = Math.max(0, end - chunkSize)
+			const chunk = getTextRange(start, end)
+			const boundary = findWordBoundaryLeft(chunk, end - start)
+			newOffset = start + boundary
+
+			if (boundary > 0 || start === 0) {
+				break
+			}
+
+			end = start
+		}
+	} else {
+		let start = newOffset
+		while (start < maxLength) {
+			const end = Math.min(maxLength, start + chunkSize)
+			const chunk = getTextRange(start, end)
+			const boundary = findWordBoundaryRight(chunk, 0)
+			newOffset = start + boundary
+
+			if (boundary < chunk.length || end === maxLength) {
+				break
+			}
+
+			start = end
+		}
+	}
+
+	return offsetToPosition(newOffset, lineStarts, maxLength)
 }
