@@ -82,10 +82,10 @@ export function createFoldMapping(options: FoldMappingOptions): FoldMapping {
 		cachedFoldedStarts = foldedStarts
 		cachedFoldedStartsSize = foldedStarts.size
 
-		if (!folds?.length || foldedStarts.size === 0) {
-			cachedHiddenRanges = []
-			cachedTotalHiddenLines = 0
-			return
+			if (!folds?.length || foldedStarts.size === 0) {
+				cachedHiddenRanges = []
+				cachedTotalHiddenLines = 0
+				return
 		}
 
 		const activeFolds = folds.filter(

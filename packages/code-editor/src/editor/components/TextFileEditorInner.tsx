@@ -94,12 +94,12 @@ export const TextFileEditorInner = (props: TextFileEditorInnerProps) => {
 
 	const toggleFold = (startLine: number) => {
 		const foldRanges = props.folds?.()
-		const matchingRange = foldRanges?.find(
-			(range) =>
-				range.startLine === startLine && range.endLine > range.startLine
-		)
-
-		if (!matchingRange) {
+		if (
+			!foldRanges?.some(
+				(range) =>
+					range.startLine === startLine && range.endLine > range.startLine
+			)
+		) {
 			return
 		}
 

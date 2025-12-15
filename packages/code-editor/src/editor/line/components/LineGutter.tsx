@@ -31,11 +31,6 @@ export const LineGutter = (props: LineGutterProps) => {
 					onMouseDown={(event) => event.stopPropagation()}
 					onClick={(event) => {
 						event.stopPropagation()
-						console.log('[LineGutter] Fold button clicked', {
-							lineNumber: props.lineNumber,
-							isFolded: props.isFolded,
-							hasOnFoldClick: !!props.onFoldClick,
-						})
 						props.onFoldClick?.()
 					}}
 				>

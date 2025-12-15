@@ -206,14 +206,6 @@ export function createFixedRowVirtualizer(
 		const range = visibleRange()
 		const overscan = Math.max(0, options.overscan)
 
-		console.log('[virtualizer] virtualItems recomputing', {
-			enabled,
-			count,
-			rowHeight,
-			range,
-			overscan,
-		})
-
 		if (!enabled || count === 0) {
 			virtualItemCache.clear()
 			cachedRowHeight = rowHeight
