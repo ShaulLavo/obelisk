@@ -55,7 +55,6 @@ export function createMouseSelection(
 		if (autoScrollInterval && autoScrollDirection === direction) return
 		stopAutoScroll()
 		autoScrollDirection = direction
-
 		const scrollEl = options.scrollElement()
 		if (!scrollEl) {
 			stopAutoScroll()
@@ -217,7 +216,6 @@ export function createMouseSelection(
 			lastPointer = { clientX: event.clientX, clientY: event.clientY }
 			scrollRect = options.scrollElement()?.getBoundingClientRect() ?? null
 			cursor.actions.setCursorFromClick(lineIndex, column, false)
-
 			document.addEventListener('mousemove', handleMouseMove)
 			document.addEventListener('mouseup', handleMouseUp)
 		}
