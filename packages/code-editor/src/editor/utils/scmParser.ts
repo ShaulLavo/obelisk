@@ -97,7 +97,10 @@ const tokenize = (source: string): Token[] => {
 					i++
 				}
 			}
-			i++ // skip closing quote
+			// Only skip closing quote if we found one (not an unterminated string)
+			if (i < len && source[i] === '"') {
+				i++
+			}
 			tokens.push({ type: 'STRING', value, start, end: i })
 			continue
 		}

@@ -126,8 +126,8 @@ export const moveCursorLeft = (
 
 export const moveCursorRight = (
 	position: CursorPosition,
-	documentLength: number,
-	lineStarts: number[]
+	lineStarts: number[],
+	documentLength: number
 ): CursorPosition => {
 	if (position.offset >= documentLength) {
 		return position
