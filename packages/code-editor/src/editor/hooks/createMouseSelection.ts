@@ -55,6 +55,7 @@ export function createMouseSelection(
 		if (autoScrollInterval && autoScrollDirection === direction) return
 		stopAutoScroll()
 		autoScrollDirection = direction
+
 		const scrollEl = options.scrollElement()
 		if (!scrollEl) {
 			stopAutoScroll()
@@ -92,7 +93,10 @@ export function createMouseSelection(
 		// Calculate column (simplified - assumes click is on text area)
 		const text = cursor.lines.getLineText(lineIndex)
 
-		const relativeX = Math.max(0, point.clientX - rect.left + scrollEl.scrollLeft - LINE_NUMBER_WIDTH)
+		const relativeX = Math.max(
+			0,
+			point.clientX - rect.left + scrollEl.scrollLeft - LINE_NUMBER_WIDTH
+		)
 
 		const column = calculateColumnFromClick(
 			text,

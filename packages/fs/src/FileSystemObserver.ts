@@ -89,6 +89,7 @@ export class FileSystemObserverPolyfill {
 		FileSystemHandle,
 		ReturnType<typeof setInterval>
 	> = new Map()
+	private pollingInFlight: Set<FileSystemHandle> = new Set()
 	private snapshots: Map<FileSystemHandle, FileSnapshot> = new Map()
 	private observedOptions: Map<FileSystemHandle, FileSystemObserverOptions> =
 		new Map()
@@ -140,6 +141,8 @@ export class FileSystemObserverPolyfill {
 
 		// Start polling
 		const intervalId = setInterval(async () => {
+			if (this.pollingInFlight.has(handle)) return
+			this.pollingInFlight.add(handle)
 			try {
 				await this.checkForChanges(handle)
 			} catch (error) {
@@ -151,6 +154,8 @@ export class FileSystemObserverPolyfill {
 					type: 'errored',
 				}
 				this.callback([record], this)
+			} finally {
+				this.pollingInFlight.delete(handle)
 			}
 		}, this.pollIntervalMs)
 

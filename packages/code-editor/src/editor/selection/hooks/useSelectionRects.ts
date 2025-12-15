@@ -68,10 +68,10 @@ export const useSelectionRects = (
 
 		for (const virtualRow of virtualItems) {
 			const lineIndex = virtualRow.index
-			if (lineIndex >= cursor.lines.lineCount()) continue
+			if (lineIndex < 0 || lineIndex >= cursor.lines.lineCount()) continue
 
 			const lineStart = cursor.lines.getLineStart(lineIndex)
-			const lineEnd = lineStart + cursor.lines.getLineLength(lineIndex)
+			const lineEnd = lineStart + cursor.lines.getLineTextLength(lineIndex)
 
 			if (bounds.end <= lineStart || bounds.start >= lineEnd) {
 				continue
