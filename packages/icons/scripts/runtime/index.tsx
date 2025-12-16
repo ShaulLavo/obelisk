@@ -1,4 +1,11 @@
-import { JSX, createMemo, splitProps } from 'solid-js'
+import {
+	JSX,
+	createEffect,
+	createMemo,
+	createSignal,
+	onCleanup,
+	splitProps,
+} from 'solid-js'
 import { isServer, mergeProps, ssr } from 'solid-js/web'
 
 type SVGSVGElementTags = JSX.SVGElementTags['svg']
@@ -27,6 +34,7 @@ export const CustomIcon = (props: IconBaseProps) =>
 export function IconTemplate(iconSrc: IconTree, props: IconProps): JSX.Element {
 	const mergedProps = mergeProps(iconSrc.a, props) as IconBaseProps
 	const [_, svgProps] = splitProps(mergedProps, ['src'])
+	const [content, setContent] = createSignal<string>('')
 	const escapeHtml = (str: string) =>
 		str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
@@ -35,6 +43,16 @@ export function IconTemplate(iconSrc: IconTree, props: IconProps): JSX.Element {
 			? `${iconSrc.c}<title>${escapeHtml(props.title)}</title>`
 			: iconSrc.c
 	)
+
+	// NOTE: Icons never render without this effect. The rawContent memo alone
+	// doesn't trigger updates to innerHTML for some reason.
+	// TODO: Investigate why this effect is necessary - possible Solid reactivity issue
+	// with innerHTML or memo timing.
+	createEffect(() => setContent(rawContent()))
+
+	onCleanup(() => {
+		setContent('')
+	})
 
 	return (
 		<svg
@@ -50,7 +68,7 @@ export function IconTemplate(iconSrc: IconTree, props: IconProps): JSX.Element {
 			height={props.size || '1em'}
 			width={props.size || '1em'}
 			xmlns="http://www.w3.org/2000/svg"
-			innerHTML={rawContent()}
+			innerHTML={content()}
 		>
 			{isServer ? (ssr(rawContent()) as unknown as JSX.Element) : null}
 		</svg>

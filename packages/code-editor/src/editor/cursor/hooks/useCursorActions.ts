@@ -107,7 +107,7 @@ export function useCursorActions(
 							docLength,
 							lineStarts
 						)
-					: moveCursorRight(state.position, docLength, lineStarts)
+					: moveCursorRight(state.position, lineStarts, docLength)
 				preferredColumn = newPosition.column
 			} else {
 				const verticalMove = moveVertically(
@@ -217,7 +217,11 @@ export function useCursorActions(
 			)
 
 			const docLength = options.documentLength()
-			const textLength = getLineTextLength(clampedLineIndex, lineStarts, docLength)
+			const textLength = getLineTextLength(
+				clampedLineIndex,
+				lineStarts,
+				docLength
+			)
 			const clampedColumn = Math.max(0, Math.min(column, textLength))
 			const offset = positionToOffset(
 				clampedLineIndex,

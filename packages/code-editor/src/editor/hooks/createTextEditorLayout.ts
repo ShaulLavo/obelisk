@@ -13,8 +13,9 @@ import {
 	measureCharWidth,
 } from '../utils'
 import { useCursor } from '../cursor'
-import type { VirtualItem } from '../types'
+import type { FoldRange, VirtualItem } from '../types'
 import { createFixedRowVirtualizer } from './createFixedRowVirtualizer'
+import { createFoldMapping } from './createFoldMapping'
 
 export type TextEditorLayoutOptions = {
 	fontSize: Accessor<number>
@@ -22,6 +23,8 @@ export type TextEditorLayoutOptions = {
 	isFileSelected: Accessor<boolean>
 	tabSize: Accessor<number>
 	scrollElement: () => HTMLDivElement | null
+	folds?: Accessor<FoldRange[] | undefined>
+	foldedStarts?: Accessor<Set<number>>
 }
 
 export type TextEditorLayout = {
@@ -37,6 +40,12 @@ export type TextEditorLayout = {
 	visibleLineRange: Accessor<{ start: number; end: number }>
 	virtualItems: Accessor<VirtualItem[]>
 	totalSize: Accessor<number>
+	/** Convert display row index to actual document line index */
+	displayToLine: (displayIndex: number) => number
+	/** Convert document line index to display row index (-1 if hidden) */
+	lineToDisplay: (lineIndex: number) => number
+	/** Check if a line is hidden inside a folded region */
+	isLineHidden: (lineIndex: number) => boolean
 }
 
 const measureLineHeight = (
@@ -60,7 +69,9 @@ const measureLineHeight = (
 	probe.remove()
 
 	const height = Math.round(rect.height)
-	return Number.isFinite(height) && height > 0 ? height : estimateLineHeight(fontSize)
+	return Number.isFinite(height) && height > 0
+		? height
+		: estimateLineHeight(fontSize)
 }
 
 export function createTextEditorLayout(
@@ -102,8 +113,16 @@ export function createTextEditorLayout(
 
 	const lineHeight = createMemo(() => measuredLineHeight())
 
+	// Create fold mapping to translate between display indices and document line indices
+	const foldMapping = createFoldMapping({
+		totalLines: () => cursor.lines.lineCount(),
+		folds: () => options.folds?.(),
+		foldedStarts: () => options.foldedStarts?.() ?? new Set<number>(),
+	})
+
 	const rowVirtualizer = createFixedRowVirtualizer({
-		count: () => cursor.lines.lineCount(),
+		// Use visible count from fold mapping instead of total line count
+		count: foldMapping.visibleCount,
 		enabled: () =>
 			options.isFileSelected() &&
 			hasLineEntries() &&
@@ -187,7 +206,12 @@ export function createTextEditorLayout(
 
 	const columnOffset = (lineIndex: number, columnIndex: number): number => {
 		const text = cursor.lines.getLineText(lineIndex)
-		return calculateColumnOffset(text, columnIndex, charWidth(), options.tabSize())
+		return calculateColumnOffset(
+			text,
+			columnIndex,
+			charWidth(),
+			options.tabSize()
+		)
 	}
 
 	const cursorLineIndex = createMemo(() => cursor.state.position.line)
@@ -198,10 +222,14 @@ export function createTextEditorLayout(
 			LINE_NUMBER_WIDTH + columnOffset(cursorLineIndex(), cursorColumnIndex())
 	)
 
-	const inputY = createMemo(() => cursorLineIndex() * lineHeight())
+	const inputY = createMemo(() => {
+		const displayIndex = foldMapping.lineToDisplay(cursorLineIndex())
+		return displayIndex * lineHeight()
+	})
 
 	const getLineY = (lineIndex: number): number => {
-		return lineIndex * lineHeight()
+		const displayIndex = foldMapping.lineToDisplay(lineIndex)
+		return Math.max(0, displayIndex) * lineHeight()
 	}
 
 	const visibleLineRange = rowVirtualizer.visibleRange
@@ -219,5 +247,8 @@ export function createTextEditorLayout(
 		visibleLineRange,
 		virtualItems,
 		totalSize,
+		displayToLine: foldMapping.displayToLine,
+		lineToDisplay: foldMapping.lineToDisplay,
+		isLineHidden: foldMapping.isLineHidden,
 	}
 }

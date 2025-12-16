@@ -122,9 +122,7 @@ export function createTextEditorInput(
 		}
 
 		const deletedText =
-			deleteLength > 0
-				? cursor.getTextRange(clampedStart, clampedEnd)
-				: ''
+			deleteLength > 0 ? cursor.getTextRange(clampedStart, clampedEnd) : ''
 
 		const cursorBefore = snapshotCursorPosition()
 		const selectionBefore = snapshotSelection()
@@ -147,7 +145,9 @@ export function createTextEditorInput(
 		options.updatePieceTable((current) => {
 			const baseSnapshot =
 				current ??
-				createPieceTableSnapshot(cursor.getTextRange(0, cursor.documentLength()))
+				createPieceTableSnapshot(
+					cursor.getTextRange(0, cursor.documentLength())
+				)
 			let snapshot = baseSnapshot
 
 			if (deleteLength > 0) {
@@ -252,16 +252,39 @@ export function createTextEditorInput(
 	}
 
 	const handleInput = (event: InputEvent) => {
-		if (!options.isEditable()) return
+		console.log(
+			'[handleInput] inputType:',
+			event.inputType,
+			'data:',
+			event.data
+		)
+		if (!options.isEditable()) {
+			console.log('[handleInput] Not editable, returning')
+			return
+		}
 		const target = event.target as HTMLTextAreaElement | null
-		if (!target) return
+		if (!target) {
+			console.log('[handleInput] No target, returning')
+			return
+		}
 		const value = target.value
-		if (!value) return
+		console.log(
+			'[handleInput] value:',
+			JSON.stringify(value),
+			'length:',
+			value.length
+		)
+		if (!value) {
+			console.log('[handleInput] Empty value, returning')
+			return
+		}
 
-		deleteSelection()
+		const deletedSelection = deleteSelection()
+		console.log('[handleInput] deletedSelection:', deletedSelection)
 
 		applyInsert(value)
 		target.value = ''
+		console.log('[handleInput] Completed, cleared target.value')
 	}
 
 	const keymap = createKeymapController()

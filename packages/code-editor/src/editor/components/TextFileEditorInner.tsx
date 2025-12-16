@@ -7,6 +7,7 @@ import {
 	onCleanup,
 	type Accessor,
 } from 'solid-js'
+import { ReactiveSet } from '@solid-primitives/set'
 import { Lines } from '../line/components/Lines'
 import { Cursor } from '../cursor/components/Cursor'
 import { SelectionLayer } from '../selection/components/SelectionLayer'
@@ -49,12 +50,17 @@ export const TextFileEditorInner = (props: TextFileEditorInnerProps) => {
 
 	const isEditable = () => props.document.isEditable()
 
+	// Track which fold regions are currently collapsed
+	const foldedStarts = new ReactiveSet<number>()
+
 	const layout = createTextEditorLayout({
 		fontSize: () => props.fontSize(),
 		fontFamily: () => props.fontFamily(),
 		isFileSelected: () => props.isFileSelected(),
 		tabSize,
 		scrollElement,
+		folds: props.folds,
+		foldedStarts: () => foldedStarts,
 	})
 
 	const cursorScroll = createCursorScrollSync({
@@ -87,8 +93,6 @@ export const TextFileEditorInner = (props: TextFileEditorInnerProps) => {
 		lineHeight: layout.lineHeight,
 	})
 
-	const [foldedStarts, setFoldedStarts] = createSignal<Set<number>>(new Set())
-
 	const toggleFold = (startLine: number) => {
 		const foldRanges = props.folds?.()
 		if (
@@ -100,15 +104,11 @@ export const TextFileEditorInner = (props: TextFileEditorInnerProps) => {
 			return
 		}
 
-		setFoldedStarts((prev) => {
-			const next = new Set(prev)
-			if (next.has(startLine)) {
-				next.delete(startLine)
-			} else {
-				next.add(startLine)
-			}
-			return next
-		})
+		if (foldedStarts.has(startLine)) {
+			foldedStarts.delete(startLine)
+		} else {
+			foldedStarts.add(startLine)
+		}
 	}
 
 	const handleLineMouseDown = (
@@ -129,7 +129,7 @@ export const TextFileEditorInner = (props: TextFileEditorInnerProps) => {
 					element.scrollTop = 0
 					element.scrollLeft = 0
 				}
-				setFoldedStarts(new Set<number>())
+				foldedStarts.clear()
 			}
 		)
 	)
@@ -137,16 +137,19 @@ export const TextFileEditorInner = (props: TextFileEditorInnerProps) => {
 		on(
 			() => props.folds?.(),
 			(folds) => {
-				setFoldedStarts((prev) => {
-					if (!folds?.length) return new Set<number>()
-					const next = new Set<number>()
-					for (const fold of folds) {
-						if (fold.endLine > fold.startLine && prev.has(fold.startLine)) {
-							next.add(fold.startLine)
-						}
+				if (!folds?.length) {
+					foldedStarts.clear()
+					return
+				}
+				// Remove folded starts that are no longer valid folds
+				const validStarts = new Set(
+					folds.filter((f) => f.endLine > f.startLine).map((f) => f.startLine)
+				)
+				for (const start of foldedStarts) {
+					if (!validStarts.has(start)) {
+						foldedStarts.delete(start)
 					}
-					return next
-				})
+				}
 			}
 		)
 	)
@@ -177,7 +180,7 @@ export const TextFileEditorInner = (props: TextFileEditorInnerProps) => {
 				endIndex: error.endIndex,
 				scope: error.isMissing ? 'missing' : 'error',
 			}))
-				.sort((a, b) => a.startIndex - b.startIndex)
+			.sort((a, b) => a.startIndex - b.startIndex)
 	})
 
 	const getLineHighlights = (entry: LineEntry): LineHighlightSegment[] => {
@@ -281,8 +284,9 @@ export const TextFileEditorInner = (props: TextFileEditorInnerProps) => {
 							onRowClick={input.handleRowClick}
 							activeLineIndex={layout.activeLineIndex}
 							folds={props.folds}
-							foldedStarts={foldedStarts}
+							foldedStarts={() => foldedStarts}
 							onToggleFold={toggleFold}
+							displayToLine={layout.displayToLine}
 						/>
 
 						<Lines
@@ -297,6 +301,7 @@ export const TextFileEditorInner = (props: TextFileEditorInnerProps) => {
 							activeLineIndex={layout.activeLineIndex}
 							bracketDepths={props.bracketDepths}
 							getLineHighlights={getLineHighlights}
+							displayToLine={layout.displayToLine}
 						/>
 					</div>
 				</div>

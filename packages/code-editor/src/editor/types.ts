@@ -145,6 +145,8 @@ export type LinesProps = {
 	activeLineIndex: Accessor<number | null>
 	bracketDepths: Accessor<BracketDepthMap | undefined>
 	getLineHighlights?: (entry: LineEntry) => LineHighlightSegment[] | undefined
+	/** Convert display row index to actual document line index */
+	displayToLine?: (displayIndex: number) => number
 }
 
 export type LineGuttersProps = {
@@ -155,6 +157,8 @@ export type LineGuttersProps = {
 	folds?: Accessor<FoldRange[] | undefined>
 	foldedStarts?: Accessor<Set<number>>
 	onToggleFold?: (startLine: number) => void
+	/** Convert display row index to actual document line index */
+	displayToLine?: (displayIndex: number) => number
 }
 
 export type TextFileEditorProps = EditorProps

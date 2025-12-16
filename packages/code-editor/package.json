@@ -25,6 +25,8 @@
     "@repo/perf": "*",
     "@repo/utils": "*",
     "@solid-primitives/map": "^0.7.2",
+    "@solid-primitives/set": "^0.7.2",
+    "safe-regex": "^2.1.1",
     "solid-js": "^1.9.5"
   },
   "devDependencies": {

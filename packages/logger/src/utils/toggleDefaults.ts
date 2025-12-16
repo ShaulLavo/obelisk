@@ -10,10 +10,11 @@ const LOGGER_TOGGLE_TREE = {
 		clipboard: false,
 		cursor: false,
 		history: false,
+		scmParser: false,
 		virtualizer: false
 	},
 	desktop: false,
-	fs: true,
+	fs: false,
 	server: false,
 	web: {
 		$self: false,

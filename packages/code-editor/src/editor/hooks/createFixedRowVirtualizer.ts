@@ -59,7 +59,10 @@ export const computeFixedRowVisibleRange = (options: {
 	const height = normalizeNumber(options.viewportHeight)
 
 	const start = Math.max(0, Math.min(count - 1, Math.floor(top / rowHeight)))
-	const visibleCount = Math.max(1, Math.ceil((height + rowHeight - 1) / rowHeight))
+	const visibleCount = Math.max(
+		1,
+		Math.ceil((height + rowHeight - 1) / rowHeight)
+	)
 	const end = Math.max(start, Math.min(count - 1, start + visibleCount - 1))
 
 	return { start, end }
@@ -188,7 +191,8 @@ export function createFixedRowVirtualizer(
 			}),
 		{ start: 0, end: 0 },
 		{
-			equals: (prev, next) => prev.start === next.start && prev.end === next.end,
+			equals: (prev, next) =>
+				prev.start === next.start && prev.end === next.end,
 		}
 	)
 

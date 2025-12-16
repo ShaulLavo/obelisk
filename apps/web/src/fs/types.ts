@@ -1,4 +1,4 @@
-import type { FsDirTreeNode, FsTreeNode } from '@repo/fs'
+import type { FsDirTreeNode, FsFileTreeNode, FsTreeNode } from '@repo/fs'
 import type { ParseResult, PieceTableSnapshot } from '@repo/utils'
 import type {
 	TreeSitterCapture,
@@ -41,7 +41,7 @@ export type FsState = {
 	fileErrors: Record<string, TreeSitterError[] | undefined>
 	selectedFileErrors?: TreeSitterError[]
 	selectedNode?: FsTreeNode | undefined
-	lastKnownFileNode?: FsTreeNode | undefined
+	lastKnownFileNode?: FsFileTreeNode | undefined
 	lastKnownFilePath?: string
 	deferredMetadata: Record<string, DeferredDirMetadata>
 }

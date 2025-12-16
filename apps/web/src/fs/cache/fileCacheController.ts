@@ -8,6 +8,22 @@ import type {
 } from '../../workers/treeSitterWorkerTypes'
 import type { FsState } from '../types'
 
+/**
+ * TODO: Rethink where data lives vs what lives in the cache.
+ *
+ * Currently, even the active file buffer (pieceTable) is stored through this cache.
+ * This means setting DISABLE_CACHE = true breaks typing because updateSelectedFilePieceTable
+ * goes through fileCache.set() which does nothing when disabled.
+ *
+ * We don't want inactive file buffers kept in memory, but the active file's state
+ * needs to be stored somewhere that bypasses this cache flag. Need to separate:
+ * - Active file state (always stored, not subject to cache eviction)
+ * - Inactive file cache (subject to DISABLE_CACHE and future eviction policies)
+ */
+
+/** Set to `true` to completely disable file caching */
+export const DISABLE_CACHE = false as const
+
 export type FileCacheEntry = {
 	pieceTable?: PieceTableSnapshot
 	stats?: ParseResult
@@ -56,6 +72,7 @@ export const createFileCacheController = ({
 	const previews: Record<string, Uint8Array | undefined> = {}
 
 	const get = (path: string): FileCacheEntry => {
+		if (DISABLE_CACHE) return {}
 		return {
 			pieceTable: state.pieceTables[path],
 			stats: state.fileStats[path],
@@ -68,7 +85,7 @@ export const createFileCacheController = ({
 	}
 
 	const set = (path: string, entry: FileCacheEntry) => {
-		if (!path) return
+		if (!path || DISABLE_CACHE) return
 		batch(() => {
 			if (entry.pieceTable !== undefined) {
 				setPieceTable(path, entry.pieceTable)

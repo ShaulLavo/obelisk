@@ -56,10 +56,10 @@ while (written < targetBytes) {
 	written += size
 }
 
-// pad to get close
+// pad to get close (only if the wrapper itself fits)
 const remaining = Math.max(0, targetBytes - written)
-if (remaining > 0) {
-	const pad = '\n/* ' + '0'.repeat(Math.max(0, remaining - 8)) + ' */\n'
+if (remaining >= 8) {
+	const pad = '\n/* ' + '0'.repeat(remaining - 8) + ' */\n'
 	chunks.push(pad)
 	written += byteLength(pad)
 }
