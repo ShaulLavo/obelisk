@@ -128,14 +128,14 @@ export const TextFileEditorInner = (props: TextFileEditorInnerProps) => {
 			() => props.document.filePath(),
 			() => {
 				const element = scrollElement()
-				if (element) {
-					element.scrollTop = 0
-					element.scrollLeft = 0
+					if (element) {
+						element.scrollTop = 0
+						element.scrollLeft = 0
+					}
+					setFoldedStarts(new Set<number>())
 				}
-				setFoldedStarts(new Set<number>())
-			}
+			)
 		)
-	)
 	createEffect(
 		on(
 			() => props.folds?.(),
@@ -291,16 +291,16 @@ export const TextFileEditorInner = (props: TextFileEditorInnerProps) => {
 						/>
 					</Show>
 					<div class="flex h-full">
-							<LineGutters
-								rows={layout.virtualItems}
-								lineHeight={layout.lineHeight}
-								onRowClick={input.handleRowClick}
-								activeLineIndex={layout.activeLineIndex}
-								folds={props.folds}
-								foldedStarts={foldedStarts}
-								onToggleFold={toggleFold}
-								displayToLine={layout.displayToLine}
-							/>
+						<LineGutters
+							rows={layout.virtualItems}
+							lineHeight={layout.lineHeight}
+							onRowClick={input.handleRowClick}
+							activeLineIndex={layout.activeLineIndex}
+							folds={props.folds}
+							foldedStarts={foldedStarts}
+							onToggleFold={toggleFold}
+							displayToLine={layout.displayToLine}
+						/>
 
 						<Lines
 							rows={layout.virtualItems}

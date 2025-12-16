@@ -5,7 +5,6 @@
     "": {
       "name": "vibe",
       "dependencies": {
-        "safe-regex": "^2.1.1",
         "sqlite-wasm": "^0.0.2",
       },
       "devDependencies": {

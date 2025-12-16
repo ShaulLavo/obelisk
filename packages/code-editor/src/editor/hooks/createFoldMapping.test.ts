@@ -66,34 +66,36 @@ describe('createFoldMapping', () => {
 
 	describe('single fold', () => {
 		it('hides lines inside a folded region', () => {
-			// Fold from line 2 to line 5 means lines 3,4,5 are hidden (line 2 is the header)
+			// Fold from line 2 to line 5: lines 3,4 are hidden (line 2 is header, line 5 is closing bracket)
 			const folds: FoldRange[] = [
 				{ startLine: 2, endLine: 5, type: 'function' },
 			]
 			runWithMapping(
 				{ totalLines: 10, folds, foldedStarts: new Set([2]) },
 				(mapping) => {
-					// 10 total - 3 hidden (lines 3,4,5) = 7 visible
-					expect(mapping.visibleCount()).toBe(7)
+					// 10 total - 2 hidden (lines 3,4) = 8 visible
+					expect(mapping.visibleCount()).toBe(8)
 
 					// Line 2 (fold header) is visible
 					expect(mapping.isLineHidden(2)).toBe(false)
 					expect(mapping.isFoldHeader(2)).toBe(true)
 
-					// Lines 3,4,5 are hidden
+					// Lines 3,4 are hidden
 					expect(mapping.isLineHidden(3)).toBe(true)
 					expect(mapping.isLineHidden(4)).toBe(true)
-					expect(mapping.isLineHidden(5)).toBe(true)
 
-					// Line 6 is visible again
+					// Line 5 (closing bracket) stays visible
+					expect(mapping.isLineHidden(5)).toBe(false)
+
+					// Line 6 is visible
 					expect(mapping.isLineHidden(6)).toBe(false)
 				}
 			)
 		})
 
 		it('correctly maps display indices to line indices', () => {
-			// Lines: 0,1,2,[3,4,5 hidden],6,7,8,9
-			// Display: 0,1,2,3,4,5,6 -> Lines: 0,1,2,6,7,8,9
+			// Lines: 0,1,2,[3,4 hidden],5,6,7,8,9
+			// Display: 0,1,2,3,4,5,6,7 -> Lines: 0,1,2,5,6,7,8,9
 			const folds: FoldRange[] = [
 				{ startLine: 2, endLine: 5, type: 'function' },
 			]
@@ -103,10 +105,11 @@ describe('createFoldMapping', () => {
 					expect(mapping.displayToLine(0)).toBe(0)
 					expect(mapping.displayToLine(1)).toBe(1)
 					expect(mapping.displayToLine(2)).toBe(2) // fold header
-					expect(mapping.displayToLine(3)).toBe(6) // skip hidden lines
-					expect(mapping.displayToLine(4)).toBe(7)
-					expect(mapping.displayToLine(5)).toBe(8)
-					expect(mapping.displayToLine(6)).toBe(9)
+					expect(mapping.displayToLine(3)).toBe(5) // closing bracket (endLine stays visible)
+					expect(mapping.displayToLine(4)).toBe(6)
+					expect(mapping.displayToLine(5)).toBe(7)
+					expect(mapping.displayToLine(6)).toBe(8)
+					expect(mapping.displayToLine(7)).toBe(9)
 				}
 			)
 		})
@@ -123,9 +126,9 @@ describe('createFoldMapping', () => {
 					expect(mapping.lineToDisplay(2)).toBe(2)
 					expect(mapping.lineToDisplay(3)).toBe(-1) // hidden
 					expect(mapping.lineToDisplay(4)).toBe(-1) // hidden
-					expect(mapping.lineToDisplay(5)).toBe(-1) // hidden
-					expect(mapping.lineToDisplay(6)).toBe(3)
-					expect(mapping.lineToDisplay(7)).toBe(4)
+					expect(mapping.lineToDisplay(5)).toBe(3) // closing bracket visible
+					expect(mapping.lineToDisplay(6)).toBe(4)
+					expect(mapping.lineToDisplay(7)).toBe(5)
 				}
 			)
 		})
@@ -134,7 +137,7 @@ describe('createFoldMapping', () => {
 	describe('multiple non-overlapping folds', () => {
 		it('handles multiple separate folded regions', () => {
 			// Two folds: [2-4] and [7-9]
-			// Hidden: 3,4 and 8,9
+			// Hidden: 3 and 8 only (closing brackets 4 and 9 stay visible)
 			const folds: FoldRange[] = [
 				{ startLine: 2, endLine: 4, type: 'function' },
 				{ startLine: 7, endLine: 9, type: 'function' },
@@ -142,17 +145,17 @@ describe('createFoldMapping', () => {
 			runWithMapping(
 				{ totalLines: 12, folds, foldedStarts: new Set([2, 7]) },
 				(mapping) => {
-					// 12 - 2 - 2 = 8 visible
-					expect(mapping.visibleCount()).toBe(8)
+					// 12 - 1 - 1 = 10 visible
+					expect(mapping.visibleCount()).toBe(10)
 
 					expect(mapping.isLineHidden(2)).toBe(false) // header
 					expect(mapping.isLineHidden(3)).toBe(true)
-					expect(mapping.isLineHidden(4)).toBe(true)
+					expect(mapping.isLineHidden(4)).toBe(false) // closing bracket
 					expect(mapping.isLineHidden(5)).toBe(false)
 					expect(mapping.isLineHidden(6)).toBe(false)
 					expect(mapping.isLineHidden(7)).toBe(false) // header
 					expect(mapping.isLineHidden(8)).toBe(true)
-					expect(mapping.isLineHidden(9)).toBe(true)
+					expect(mapping.isLineHidden(9)).toBe(false) // closing bracket
 					expect(mapping.isLineHidden(10)).toBe(false)
 				}
 			)
@@ -166,15 +169,17 @@ describe('createFoldMapping', () => {
 			runWithMapping(
 				{ totalLines: 12, folds, foldedStarts: new Set([2, 7]) },
 				(mapping) => {
-					// Display: 0,1,2,3,4,5,6,7 -> Lines: 0,1,2,5,6,7,10,11
+					// Display: 0,1,2,3,4,5,6,7,8,9 -> Lines: 0,1,2,4,5,6,7,9,10,11
 					expect(mapping.displayToLine(0)).toBe(0)
 					expect(mapping.displayToLine(1)).toBe(1)
 					expect(mapping.displayToLine(2)).toBe(2) // header 1
-					expect(mapping.displayToLine(3)).toBe(5)
-					expect(mapping.displayToLine(4)).toBe(6)
-					expect(mapping.displayToLine(5)).toBe(7) // header 2
-					expect(mapping.displayToLine(6)).toBe(10)
-					expect(mapping.displayToLine(7)).toBe(11)
+					expect(mapping.displayToLine(3)).toBe(4) // closing bracket 1
+					expect(mapping.displayToLine(4)).toBe(5)
+					expect(mapping.displayToLine(5)).toBe(6)
+					expect(mapping.displayToLine(6)).toBe(7) // header 2
+					expect(mapping.displayToLine(7)).toBe(9) // closing bracket 2
+					expect(mapping.displayToLine(8)).toBe(10)
+					expect(mapping.displayToLine(9)).toBe(11)
 				}
 			)
 		})
@@ -183,7 +188,7 @@ describe('createFoldMapping', () => {
 	describe('nested folds', () => {
 		it('handles nested folds where inner is already hidden by outer', () => {
 			// Outer fold: 1-10, Inner fold: 3-5
-			// When outer is folded, inner's range is already hidden
+			// When outer is folded, lines 2-9 are hidden (10 is closing bracket, stays visible)
 			const folds: FoldRange[] = [
 				{ startLine: 1, endLine: 10, type: 'class' },
 				{ startLine: 3, endLine: 5, type: 'function' },
@@ -191,14 +196,15 @@ describe('createFoldMapping', () => {
 			runWithMapping(
 				{ totalLines: 15, folds, foldedStarts: new Set([1]) },
 				(mapping) => {
-					// Only outer is folded: lines 2-10 hidden (9 lines)
-					// 15 - 9 = 6 visible
-					expect(mapping.visibleCount()).toBe(6)
+					// Only outer is folded: lines 2-9 hidden (8 lines), line 10 is closing bracket
+					// 15 - 8 = 7 visible
+					expect(mapping.visibleCount()).toBe(7)
 
 					expect(mapping.isLineHidden(1)).toBe(false) // outer header
 					expect(mapping.isLineHidden(2)).toBe(true)
 					expect(mapping.isLineHidden(3)).toBe(true) // would be inner header, but hidden by outer
-					expect(mapping.isLineHidden(10)).toBe(true)
+					expect(mapping.isLineHidden(9)).toBe(true) // last hidden line
+					expect(mapping.isLineHidden(10)).toBe(false) // closing bracket visible
 					expect(mapping.isLineHidden(11)).toBe(false)
 				}
 			)
@@ -206,6 +212,9 @@ describe('createFoldMapping', () => {
 
 		it('correctly merges overlapping fold regions', () => {
 			// Two overlapping folds
+			// Fold 1: startLine=2, endLine=6 -> hides 3-5 (6 is closing bracket)
+			// Fold 2: startLine=4, endLine=8 -> hides 5-7 (8 is closing bracket)
+			// Merged hidden range: 3-7 (5 lines hidden)
 			const folds: FoldRange[] = [
 				{ startLine: 2, endLine: 6, type: 'function' },
 				{ startLine: 4, endLine: 8, type: 'function' },
@@ -213,9 +222,8 @@ describe('createFoldMapping', () => {
 			runWithMapping(
 				{ totalLines: 12, folds, foldedStarts: new Set([2, 4]) },
 				(mapping) => {
-					// Merged hidden range: 3-8 (6 lines hidden)
-					// 12 - 6 = 6 visible
-					expect(mapping.visibleCount()).toBe(6)
+					// 12 - 5 = 7 visible
+					expect(mapping.visibleCount()).toBe(7)
 
 					expect(mapping.isLineHidden(2)).toBe(false) // header 1
 					expect(mapping.isLineHidden(3)).toBe(true)
@@ -223,7 +231,7 @@ describe('createFoldMapping', () => {
 					expect(mapping.isLineHidden(5)).toBe(true)
 					expect(mapping.isLineHidden(6)).toBe(true)
 					expect(mapping.isLineHidden(7)).toBe(true)
-					expect(mapping.isLineHidden(8)).toBe(true)
+					expect(mapping.isLineHidden(8)).toBe(false) // closing bracket of fold 2
 					expect(mapping.isLineHidden(9)).toBe(false)
 				}
 			)
@@ -232,31 +240,36 @@ describe('createFoldMapping', () => {
 
 	describe('edge cases', () => {
 		it('handles fold at the start of document', () => {
+			// Fold 0-3: hides 1,2 (3 is closing bracket)
 			const folds: FoldRange[] = [{ startLine: 0, endLine: 3, type: 'imports' }]
 			runWithMapping(
 				{ totalLines: 10, folds, foldedStarts: new Set([0]) },
 				(mapping) => {
-					// Lines 1,2,3 hidden, line 0 is header
-					expect(mapping.visibleCount()).toBe(7)
+					// Lines 1,2 hidden, line 0 is header, line 3 is closing bracket
+					expect(mapping.visibleCount()).toBe(8)
 					expect(mapping.isLineHidden(0)).toBe(false)
 					expect(mapping.isLineHidden(1)).toBe(true)
+					expect(mapping.isLineHidden(2)).toBe(true)
+					expect(mapping.isLineHidden(3)).toBe(false) // closing bracket
 					expect(mapping.displayToLine(0)).toBe(0)
-					expect(mapping.displayToLine(1)).toBe(4)
+					expect(mapping.displayToLine(1)).toBe(3) // closing bracket
+					expect(mapping.displayToLine(2)).toBe(4)
 				}
 			)
 		})
 
 		it('handles fold at the end of document', () => {
+			// Fold 7-9: hides line 8 only (9 is closing bracket)
 			const folds: FoldRange[] = [
 				{ startLine: 7, endLine: 9, type: 'function' },
 			]
 			runWithMapping(
 				{ totalLines: 10, folds, foldedStarts: new Set([7]) },
 				(mapping) => {
-					// Lines 8,9 hidden
-					expect(mapping.visibleCount()).toBe(8)
+					// Line 8 hidden, 9 is closing bracket
+					expect(mapping.visibleCount()).toBe(9)
 					expect(mapping.displayToLine(7)).toBe(7) // fold header
-					// No display index 8 or 9
+					expect(mapping.displayToLine(8)).toBe(9) // closing bracket
 				}
 			)
 		})
@@ -281,14 +294,16 @@ describe('createFoldMapping', () => {
 			)
 		})
 
-		it('handles folding entire document except first line', () => {
+		it('handles folding entire document except first and last line', () => {
+			// Fold 0-99: hides 1-98, lines 0 and 99 visible
 			const folds: FoldRange[] = [{ startLine: 0, endLine: 99, type: 'all' }]
 			runWithMapping(
 				{ totalLines: 100, folds, foldedStarts: new Set([0]) },
 				(mapping) => {
-					// Only line 0 visible
-					expect(mapping.visibleCount()).toBe(1)
+					// Lines 0 (header) and 99 (closing bracket) visible
+					expect(mapping.visibleCount()).toBe(2)
 					expect(mapping.displayToLine(0)).toBe(0)
+					expect(mapping.displayToLine(1)).toBe(99)
 				}
 			)
 		})
@@ -315,7 +330,7 @@ describe('createFoldMapping', () => {
 
 				// Update the signal and verify the mapping updates
 				setFoldedStarts(new Set([2]))
-				expect(mapping.visibleCount()).toBe(7)
+				expect(mapping.visibleCount()).toBe(8)
 
 				// Verify unfold
 				setFoldedStarts(new Set<number>())

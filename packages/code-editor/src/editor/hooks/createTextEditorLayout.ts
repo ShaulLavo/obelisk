@@ -23,9 +23,7 @@ export type TextEditorLayoutOptions = {
 	isFileSelected: Accessor<boolean>
 	tabSize: Accessor<number>
 	scrollElement: () => HTMLDivElement | null
-	/** Optional fold ranges from syntax analysis */
 	folds?: Accessor<FoldRange[] | undefined>
-	/** Set of startLine indices for currently collapsed folds */
 	foldedStarts?: Accessor<Set<number>>
 }
 
