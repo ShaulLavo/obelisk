@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test'
+import { describe, expect, it } from 'vitest'
 import { equalCombos, normalizeCombo } from './combo'
 import type { KeyCombo, Modifier } from './types'
 

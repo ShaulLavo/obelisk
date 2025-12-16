@@ -13,7 +13,7 @@
     "nanoid": "^5.0.9"
   },
   "scripts": {
-    "test": "bun test",
+    "test": "vitest run",
     "lint": "eslint . --max-warnings 0",
     "check-types": "tsc --noEmit",
     "depcheck": "depcheck",
@@ -26,6 +26,7 @@
     "@repo/typescript-config": "*",
     "@types/node": "^22.15.3",
     "eslint": "^9.39.1",
-    "typescript": "5.9.2"
+    "typescript": "5.9.2",
+    "vitest": "^4.0.16"
   }
 }

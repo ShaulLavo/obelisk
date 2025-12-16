@@ -15,7 +15,7 @@
   "scripts": {
     "lint": "eslint . --max-warnings 0",
     "check-types": "tsc --noEmit",
-    "test": "bun test",
+    "test": "vitest run",
     "depcheck": "depcheck",
     "unimported": "unimported",
     "tsprune": "ts-prune",
@@ -26,6 +26,7 @@
     "@repo/typescript-config": "*",
     "@types/node": "^24.10.1",
     "eslint": "^9.39.1",
-    "typescript": "5.9.2"
+    "typescript": "5.9.2",
+    "vitest": "^4.0.16"
   }
 }

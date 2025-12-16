@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test'
+import { describe, expect, it } from 'vitest'
 import { createShortcutSequenceMatcher } from './sequenceMatcher'
 import type { ShortcutSequence } from './types'
 

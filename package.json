@@ -13,7 +13,7 @@
     "check-types": "turbo run check-types",
     "test": "turbo run test",
     "repo:health": "turbo run repo:health --parallel",
-    "postinstall": "bun --cwd apps/web run copy-tree-sitter-assets",
+    "postinstall": "bun run --cwd=apps/web copy-tree-sitter-assets",
     "depcheck": "turbo run depcheck --parallel",
     "unimported": "turbo run unimported --parallel",
     "tsprune": "turbo run tsprune --parallel"

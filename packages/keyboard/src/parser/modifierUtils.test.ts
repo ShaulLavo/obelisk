@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test'
+import { describe, expect, it } from 'vitest'
 import { parseModifiers, sortModifiers } from './modifierUtils'
 import type { Modifier } from './types'
 

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test, jest } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import {
 	FileSystemObserverPolyfill,
 	createFileSystemObserver,
@@ -240,7 +240,7 @@ const collectRecords = (
 describe('FileSystemObserver Polyfill', () => {
 	describe('Constructor and Factory', () => {
 		test('creates observer with callback', () => {
-			const callback = jest.fn()
+			const callback = vi.fn()
 			const observer = new FileSystemObserverPolyfill(callback)
 
 			expect(observer).toBeInstanceOf(FileSystemObserverPolyfill)
@@ -250,14 +250,14 @@ describe('FileSystemObserver Polyfill', () => {
 		})
 
 		test('createFileSystemObserver factory creates observer', () => {
-			const callback = jest.fn()
+			const callback = vi.fn()
 			const observer = createFileSystemObserver(callback)
 
 			expect(observer).toBeInstanceOf(FileSystemObserverPolyfill)
 		})
 
 		test('createFileSystemObserver accepts custom poll interval', () => {
-			const callback = jest.fn()
+			const callback = vi.fn()
 			const observer = createFileSystemObserver(callback, 500)
 
 			expect(observer).toBeInstanceOf(FileSystemObserverPolyfill)
@@ -269,7 +269,7 @@ describe('FileSystemObserver Polyfill', () => {
 		})
 
 		test('isNative property reflects native API availability', () => {
-			const callback = jest.fn()
+			const callback = vi.fn()
 			const observer = new FileSystemObserverPolyfill(callback)
 
 			// In test environment, native is likely false
@@ -279,7 +279,7 @@ describe('FileSystemObserver Polyfill', () => {
 
 	describe('observe() method', () => {
 		test('observe returns a promise', async () => {
-			const callback = jest.fn()
+			const callback = vi.fn()
 			const observer = new FileSystemObserverPolyfill(callback, 100)
 			const dir = new MockDirectoryHandle()
 
@@ -291,7 +291,7 @@ describe('FileSystemObserver Polyfill', () => {
 		})
 
 		test('observe accepts options with recursive flag', async () => {
-			const callback = jest.fn()
+			const callback = vi.fn()
 			const observer = new FileSystemObserverPolyfill(callback, 100)
 			const dir = new MockDirectoryHandle()
 
@@ -301,7 +301,7 @@ describe('FileSystemObserver Polyfill', () => {
 		})
 
 		test('observe with recursive: false is the default', async () => {
-			const callback = jest.fn()
+			const callback = vi.fn()
 			const observer = new FileSystemObserverPolyfill(callback, 100)
 			const dir = new MockDirectoryHandle()
 
@@ -312,7 +312,7 @@ describe('FileSystemObserver Polyfill', () => {
 		})
 
 		test('can observe multiple handles', async () => {
-			const callback = jest.fn()
+			const callback = vi.fn()
 			const observer = new FileSystemObserverPolyfill(callback, 100)
 			const dir1 = new MockDirectoryHandle('dir1')
 			const dir2 = new MockDirectoryHandle('dir2')
@@ -324,7 +324,7 @@ describe('FileSystemObserver Polyfill', () => {
 		})
 
 		test('observing same handle twice is a no-op', async () => {
-			const callback = jest.fn()
+			const callback = vi.fn()
 			const observer = new FileSystemObserverPolyfill(callback, 100)
 			const dir = new MockDirectoryHandle()
 
@@ -337,7 +337,7 @@ describe('FileSystemObserver Polyfill', () => {
 
 	describe('unobserve() method', () => {
 		test('unobserve stops watching a handle', async () => {
-			const callback = jest.fn()
+			const callback = vi.fn()
 			const observer = new FileSystemObserverPolyfill(callback, 50)
 			const dir = new MockDirectoryHandle()
 
@@ -354,7 +354,7 @@ describe('FileSystemObserver Polyfill', () => {
 		})
 
 		test('unobserve on non-observed handle is a no-op', () => {
-			const callback = jest.fn()
+			const callback = vi.fn()
 			const observer = new FileSystemObserverPolyfill(callback, 100)
 			const dir = new MockDirectoryHandle()
 
@@ -365,7 +365,7 @@ describe('FileSystemObserver Polyfill', () => {
 
 	describe('disconnect() method', () => {
 		test('disconnect stops all observations', async () => {
-			const callback = jest.fn()
+			const callback = vi.fn()
 			const observer = new FileSystemObserverPolyfill(callback, 50)
 			const dir1 = new MockDirectoryHandle('dir1')
 			const dir2 = new MockDirectoryHandle('dir2')
@@ -386,7 +386,7 @@ describe('FileSystemObserver Polyfill', () => {
 		})
 
 		test('disconnect is idempotent', async () => {
-			const callback = jest.fn()
+			const callback = vi.fn()
 			const observer = new FileSystemObserverPolyfill(callback, 100)
 			const dir = new MockDirectoryHandle()
 
@@ -779,7 +779,7 @@ describe('FileSystemObserver Polyfill', () => {
 		})
 
 		test('callback only called when there are changes', async () => {
-			const callback = jest.fn()
+			const callback = vi.fn()
 
 			const observer = new FileSystemObserverPolyfill(callback, 30)
 			const dir = new MockDirectoryHandle()
@@ -861,7 +861,7 @@ describe('FileSystemObserver Polyfill', () => {
 
 	describe('Edge cases', () => {
 		test('handles empty directory', async () => {
-			const callback = jest.fn()
+			const callback = vi.fn()
 			const observer = new FileSystemObserverPolyfill(callback, 30)
 			const dir = new MockDirectoryHandle()
 
@@ -1023,7 +1023,7 @@ describe('FileSystemObserver Spec Compliance', () => {
 
 	describe('observe() behavior per spec', () => {
 		test('observe returns a Promise', async () => {
-			const observer = new FileSystemObserverPolyfill(jest.fn(), 100)
+			const observer = new FileSystemObserverPolyfill(vi.fn(), 100)
 			const dir = new MockDirectoryHandle()
 
 			const result = observer.observe(dir)
@@ -1034,7 +1034,7 @@ describe('FileSystemObserver Spec Compliance', () => {
 		})
 
 		test('observe accepts FileSystemObserverObserveOptions', async () => {
-			const observer = new FileSystemObserverPolyfill(jest.fn(), 100)
+			const observer = new FileSystemObserverPolyfill(vi.fn(), 100)
 			const dir = new MockDirectoryHandle()
 
 			// Per spec: FileSystemObserverObserveOptions has optional recursive boolean
@@ -1048,7 +1048,7 @@ describe('FileSystemObserver Spec Compliance', () => {
 
 	describe('disconnect() behavior per spec', () => {
 		test('disconnect stops observing the filesystem', async () => {
-			const callback = jest.fn()
+			const callback = vi.fn()
 			const observer = new FileSystemObserverPolyfill(callback, 30)
 			const dir = new MockDirectoryHandle()
 
@@ -1064,7 +1064,7 @@ describe('FileSystemObserver Spec Compliance', () => {
 
 	describe('unobserve() behavior per spec', () => {
 		test('unobserve stops observing specific handle', async () => {
-			const callback = jest.fn()
+			const callback = vi.fn()
 			const observer = new FileSystemObserverPolyfill(callback, 30)
 			const dir1 = new MockDirectoryHandle('dir1')
 			const dir2 = new MockDirectoryHandle('dir2')

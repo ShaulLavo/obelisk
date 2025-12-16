@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test'
+import { describe, expect, it } from 'vitest'
 import { formatKeyLabel, formatShortcut } from './format'
 import type { KeyCombo, Modifier } from './types'
 
