@@ -1,0 +1,23 @@
+{
+    "name": "@repo/lexer",
+    "version": "0.0.0",
+    "private": true,
+    "exports": {
+        ".": "./src/index.ts"
+    },
+    "scripts": {
+        "lint": "eslint . --max-warnings 0",
+        "check-types": "tsc --noEmit",
+        "test": "bun test"
+    },
+    "dependencies": {
+        "@repo/logger": "*",
+        "safe-regex": "^2.1.1"
+    },
+    "devDependencies": {
+        "@repo/eslint-config": "*",
+        "@repo/typescript-config": "*",
+        "@types/safe-regex": "^1.1.6",
+        "typescript": "5.9.2"
+    }
+}
