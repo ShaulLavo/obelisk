@@ -1,6 +1,7 @@
 import type { Accessor } from 'solid-js'
 import type { ParseResult } from '@repo/utils/parse'
 import type { PieceTableSnapshot } from '@repo/utils'
+import type { LineState, BracketInfo } from '@repo/lexer'
 
 export type VirtualItem = {
 	index: number
@@ -11,12 +12,7 @@ export type VirtualItem = {
 // Bracket depth map: character index -> nesting depth
 export type BracketDepthMap = Record<number, number>
 
-// Bracket info from tree-sitter AST
-export type BracketInfo = {
-	index: number
-	char: string
-	depth: number
-}
+// Re-exported from @repo/lexer: BracketInfo
 export type EditorSyntaxHighlight = {
 	startIndex: number
 	endIndex: number
@@ -91,6 +87,7 @@ export type EditorProps = {
 	folds?: Accessor<FoldRange[] | undefined>
 	brackets?: Accessor<BracketInfo[] | undefined>
 	errors?: Accessor<EditorError[] | undefined>
+	lexerLineStates?: Accessor<LineState[] | undefined>
 }
 
 export type LineEntry = {

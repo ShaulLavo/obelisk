@@ -2,13 +2,16 @@ export { Editor } from './components/Editor'
 export type * from './types'
 export * from './theme/bracketColors'
 
-// SCM parser and quick lexer utilities
-export { parseScmQuery, mergeScmRules } from './utils/scmParser'
+// Re-export lexer API from @repo/lexer
 export {
-	createQuickLexer,
-	quickTokenizeLine,
-	quickTokensToSegments,
+	Lexer,
 	LexState,
-} from './utils/quickLexer'
-export type { QuickToken } from './utils/quickLexer'
-export type { ScmRules } from './utils/scmParser'
+	parseScmQuery,
+	mergeScmRules,
+	type Token,
+	type LineState,
+	type TokenizeResult,
+	type BracketInfo,
+	type ScmRules,
+	type LineHighlightSegment,
+} from '@repo/lexer'

@@ -19,7 +19,7 @@ import {
 	toLineHighlightSegmentsForLine,
 	getHighlightClassForScope,
 } from '../utils/highlights'
-import { quickTokenizeLine, quickTokensToSegments } from '../utils/quickLexer'
+import { Lexer } from '@repo/lexer'
 import {
 	createCursorScrollSync,
 	createTextEditorInput,
@@ -34,11 +34,14 @@ import type {
 } from '../types'
 
 type TextFileEditorInnerProps = TextFileEditorProps & {
-	bracketDepths: Accessor<BracketDepthMap | undefined>
+	treeSitterBracketDepths: Accessor<BracketDepthMap | undefined>
 }
 
 export const TextFileEditorInner = (props: TextFileEditorInnerProps) => {
 	const cursor = useCursor()
+
+	// Create lexer instance for syntax highlighting
+	const lexer = Lexer.create()
 
 	const tabSize = () => props.tabSize?.() ?? DEFAULT_TAB_SIZE
 
@@ -196,6 +199,51 @@ export const TextFileEditorInner = (props: TextFileEditorInnerProps) => {
 			.sort((a, b) => a.startIndex - b.startIndex)
 	})
 
+	// Compute lexer states on-the-fly if no cache exists
+	// This is a fallback for files opened before the cache was populated
+	const computedLexerStates = createMemo(() => {
+		const cached = props.lexerLineStates?.()
+		if (cached?.length) {
+			lexer.setLineStates(cached)
+			return cached
+		}
+
+		// Compute from document content
+		const content = props.document.content()
+		if (!content) return undefined
+
+		return lexer.computeAllStates(content)
+	})
+
+	// Compute bracket depths for visible lines using cached lexer states
+	const visibleBracketDepths = createMemo<BracketDepthMap | undefined>(() => {
+		// If tree-sitter brackets are available, use those
+		const treeSitterDepths = props.treeSitterBracketDepths()
+		if (treeSitterDepths) return treeSitterDepths
+
+		// Fall back to computing brackets from lexer states for visible lines
+		const lexerStates = computedLexerStates()
+		if (!lexerStates?.length) return undefined
+
+		const depthMap: BracketDepthMap = {}
+		const items = layout.virtualItems()
+
+		for (const item of items) {
+			const lineIndex = layout.displayToLine(item.index)
+			if (lineIndex < 0 || lineIndex >= lexerStates.length) continue
+
+			const lineText = cursor.lines.getLineText(lineIndex)
+			const startState = lexer.getLineState(lineIndex) ?? Lexer.initialState()
+			const { brackets } = lexer.tokenizeLine(lineText, startState)
+
+			for (const bracket of brackets) {
+				depthMap[bracket.index] = bracket.depth
+			}
+		}
+
+		return Object.keys(depthMap).length > 0 ? depthMap : undefined
+	})
+
 	const getLineHighlights = (entry: LineEntry): LineHighlightSegment[] => {
 		const lineStart = entry.start
 		const lineLength = entry.length
@@ -213,9 +261,13 @@ export const TextFileEditorInner = (props: TextFileEditorInnerProps) => {
 				highlights
 			)
 		} else {
-			// Fallback to quick lexer
-			const { tokens } = quickTokenizeLine(entry.text)
-			highlightSegments = quickTokensToSegments(
+			// Fallback to lexer with cached state
+			const lineState = lexer.getLineState(entry.index)
+			const { tokens } = lexer.tokenizeLine(
+				entry.text,
+				lineState ?? Lexer.initialState()
+			)
+			highlightSegments = lexer.tokensToSegments(
 				tokens,
 				getHighlightClassForScope
 			)
@@ -312,7 +364,7 @@ export const TextFileEditorInner = (props: TextFileEditorInnerProps) => {
 							onPreciseClick={input.handlePreciseClick}
 							onMouseDown={handleLineMouseDown}
 							activeLineIndex={layout.activeLineIndex}
-							bracketDepths={props.bracketDepths}
+							bracketDepths={visibleBracketDepths}
 							getLineHighlights={getLineHighlights}
 							displayToLine={layout.displayToLine}
 						/>

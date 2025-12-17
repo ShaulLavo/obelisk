@@ -4,10 +4,7 @@
   "private": true,
   "exports": {
     ".": "./src/index.ts",
-    "./styles.css": "./src/styles.css",
-    "./editor/utils/scmLoader": "./src/editor/utils/scmLoader.ts",
-    "./editor/utils/scmParser": "./src/editor/utils/scmParser.ts",
-    "./editor/utils/quickLexer": "./src/editor/utils/quickLexer.ts"
+    "./styles.css": "./src/styles.css"
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",
@@ -21,12 +18,12 @@
   "dependencies": {
     "@repo/icons": "*",
     "@repo/keyboard": "*",
+    "@repo/lexer": "*",
     "@repo/logger": "*",
     "@repo/perf": "*",
     "@repo/utils": "*",
     "@solid-primitives/map": "^0.7.2",
     "@solid-primitives/set": "^0.7.2",
-    "safe-regex": "^2.1.1",
     "solid-js": "^1.9.5"
   },
   "devDependencies": {
