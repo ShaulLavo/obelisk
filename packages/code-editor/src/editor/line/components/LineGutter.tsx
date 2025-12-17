@@ -1,5 +1,6 @@
 import { VsChevronDown } from '@repo/icons/vs/VsChevronDown'
 import { VsChevronRight } from '@repo/icons/vs/VsChevronRight'
+import { DEFAULT_GUTTER_MODE } from '../../consts'
 
 interface LineGutterProps {
 	lineNumber: number
@@ -20,9 +21,20 @@ export const LineGutter = (props: LineGutterProps) => {
 			}}
 			style={{
 				height: `${props.lineHeight}px`,
+				...(DEFAULT_GUTTER_MODE !== 'decimal'
+					? {
+							'counter-set': `line ${props.lineNumber}`,
+							'--gutter-style': DEFAULT_GUTTER_MODE,
+						}
+					: {}),
 			}}
 		>
-			<span class="flex-1 text-right">{props.lineNumber}</span>
+			<span
+				class="flex-1 text-right"
+				classList={{ 'line-number': DEFAULT_GUTTER_MODE !== 'decimal' }}
+			>
+				{DEFAULT_GUTTER_MODE === 'decimal' ? props.lineNumber : null}
+			</span>
 			{props.isFoldable ? (
 				<button
 					type="button"

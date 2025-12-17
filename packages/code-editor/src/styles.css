@@ -1,2 +1,8 @@
 @import 'tailwindcss';
 @config '../../../apps/web/tailwind.config.ts';
+
+@layer utilities {
+	.line-number::before {
+		content: counter(line, var(--gutter-style, decimal));
+	}
+}

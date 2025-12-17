@@ -1,4 +1,19 @@
 export const LINE_HEIGHT_RATIO = 1.55
+export const GUTTER_MODES = [
+	'decimal',
+	'decimal-leading-zero',
+	'lower-roman',
+	'upper-roman',
+	'lower-alpha',
+	'upper-alpha',
+	'lower-greek',
+	'hebrew',
+	'hiragana',
+	'katakana',
+	'cjk-ideographic',
+] as const
+export type GutterMode = (typeof GUTTER_MODES)[number]
+export const DEFAULT_GUTTER_MODE: GutterMode = 'hebrew'
 export const MIN_ESTIMATED_LINE_HEIGHT = 18
 export const VERTICAL_VIRTUALIZER_OVERSCAN = 10
 // JetBrains Mono character width ratio (monospace)
