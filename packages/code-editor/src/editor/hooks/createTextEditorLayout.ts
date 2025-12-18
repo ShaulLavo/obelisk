@@ -2,6 +2,7 @@ import {
 	createEffect,
 	createMemo,
 	createSignal,
+	onCleanup,
 	untrack,
 	type Accessor,
 } from 'solid-js'
@@ -138,6 +139,28 @@ export function createTextEditorLayout(
 	const [maxColumnsSeen, setMaxColumnsSeen] = createSignal(0)
 	let lastWidthScanStart = 0
 	let lastWidthScanEnd = -1
+	let pendingWidthScanStart: number | null = null
+	let pendingWidthScanEnd: number | null = null
+	let scheduledWidthScan = false
+	let idleScanId: number | undefined
+	let timeoutScanId: ReturnType<typeof setTimeout> | undefined
+
+	type RequestIdleCallback = (
+		callback: () => void,
+		options?: { timeout?: number }
+	) => number
+	type CancelIdleCallback = (handle: number) => void
+
+	const requestIdleCallback: RequestIdleCallback | undefined = (
+		globalThis as unknown as {
+			requestIdleCallback?: RequestIdleCallback
+		}
+	).requestIdleCallback
+	const cancelIdleCallback: CancelIdleCallback | undefined = (
+		globalThis as unknown as {
+			cancelIdleCallback?: CancelIdleCallback
+		}
+	).cancelIdleCallback
 
 	createEffect(() => {
 		options.tabSize()
@@ -145,6 +168,18 @@ export function createTextEditorLayout(
 		setMaxColumnsSeen(0)
 		lastWidthScanStart = 0
 		lastWidthScanEnd = -1
+		pendingWidthScanStart = null
+		pendingWidthScanEnd = null
+		scheduledWidthScan = false
+
+		if (idleScanId != null && cancelIdleCallback) {
+			cancelIdleCallback(idleScanId)
+			idleScanId = undefined
+		}
+		if (timeoutScanId != null) {
+			globalThis.clearTimeout(timeoutScanId)
+			timeoutScanId = undefined
+		}
 	})
 
 	createEffect(() => {
@@ -160,39 +195,74 @@ export function createTextEditorLayout(
 		const startIndex = items[0]?.index ?? 0
 		const endIndex = items[items.length - 1]?.index ?? startIndex
 
-		const previousMax = untrack(() => maxColumnsSeen())
-		let max = previousMax
-		const scanRange = (from: number, to: number) => {
-			for (let lineIndex = from; lineIndex <= to; lineIndex++) {
-				const text = cursor.lines.getLineText(lineIndex)
-				const visualWidth = calculateVisualColumnCount(text, tabSize)
-				if (visualWidth > max) {
-					max = visualWidth
-				}
-			}
-		}
-
 		const overlaps =
 			lastWidthScanEnd >= lastWidthScanStart &&
 			endIndex >= lastWidthScanStart &&
 			startIndex <= lastWidthScanEnd
 
-		if (!overlaps) {
-			scanRange(startIndex, endIndex)
-		} else {
+		const enqueueScan = (from: number, to: number) => {
+			if (from > to) return
+			pendingWidthScanStart =
+				pendingWidthScanStart == null
+					? from
+					: Math.min(pendingWidthScanStart, from)
+			pendingWidthScanEnd =
+				pendingWidthScanEnd == null ? to : Math.max(pendingWidthScanEnd, to)
+		}
+
+		if (!overlaps) enqueueScan(startIndex, endIndex)
+		else {
 			if (startIndex < lastWidthScanStart) {
-				scanRange(startIndex, lastWidthScanStart - 1)
+				enqueueScan(startIndex, lastWidthScanStart - 1)
 			}
 			if (endIndex > lastWidthScanEnd) {
-				scanRange(lastWidthScanEnd + 1, endIndex)
+				enqueueScan(lastWidthScanEnd + 1, endIndex)
 			}
 		}
 
 		lastWidthScanStart = startIndex
 		lastWidthScanEnd = endIndex
 
-		if (max !== previousMax) {
-			setMaxColumnsSeen(max)
+		if (
+			pendingWidthScanStart == null ||
+			pendingWidthScanEnd == null ||
+			scheduledWidthScan
+		) {
+			return
+		}
+
+		scheduledWidthScan = true
+		const from = pendingWidthScanStart
+		const to = pendingWidthScanEnd
+		pendingWidthScanStart = null
+		pendingWidthScanEnd = null
+
+		const runScan = () => {
+			scheduledWidthScan = false
+
+			const previousMax = untrack(() => maxColumnsSeen())
+			let max = previousMax
+			for (let lineIndex = from; lineIndex <= to; lineIndex++) {
+				const text = cursor.lines.getLineText(lineIndex)
+				const visualWidth = calculateVisualColumnCount(text, tabSize)
+				if (visualWidth > max) max = visualWidth
+			}
+			if (max !== previousMax) setMaxColumnsSeen(max)
+		}
+
+		if (requestIdleCallback) {
+			idleScanId = requestIdleCallback(() => runScan(), { timeout: 60 })
+		} else {
+			timeoutScanId = globalThis.setTimeout(runScan, 0)
+		}
+	})
+
+	onCleanup(() => {
+		if (idleScanId != null && cancelIdleCallback) {
+			cancelIdleCallback(idleScanId)
+		}
+		if (timeoutScanId != null) {
+			globalThis.clearTimeout(timeoutScanId)
 		}
 	})
 
