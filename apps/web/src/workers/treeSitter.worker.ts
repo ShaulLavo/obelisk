@@ -22,6 +22,9 @@ const log = logger.withTag('treeSitter')
 type CachedTreeEntry = {
 	tree: Tree
 	text: string
+	captures?: TreeSitterCapture[]
+	brackets?: BracketInfo[]
+	folds?: FoldRange[]
 }
 
 let parserInstance: Parser | null = null
@@ -260,6 +263,94 @@ const collectTreeData = (tree: Tree) => {
 	return { brackets, errors }
 }
 
+/**
+ * Determines if an edit can be handled by shifting indices
+ * rather than re-running tree-sitter queries.
+ * Safe for pure insertions of whitespace/newlines.
+ */
+const isShiftableEdit = (
+	insertedText: string,
+	startIndex: number,
+	oldEndIndex: number
+): boolean => {
+	const isInsertion = oldEndIndex === startIndex
+	const isWhitespaceOnly = /^[\s\n\r\t]*$/.test(insertedText)
+	const hasContent = insertedText.length > 0
+	return isInsertion && isWhitespaceOnly && hasContent
+}
+
+/**
+ * Shifts capture indices after a text insertion.
+ */
+const shiftCaptures = (
+	captures: TreeSitterCapture[],
+	insertPosition: number,
+	delta: number
+): TreeSitterCapture[] => {
+	return captures.map((capture) => {
+		const startsAfterInsert = capture.startIndex >= insertPosition
+		const endsAfterInsert = capture.endIndex > insertPosition
+
+		const newStartIndex = startsAfterInsert
+			? capture.startIndex + delta
+			: capture.startIndex
+		const newEndIndex = endsAfterInsert
+			? capture.endIndex + delta
+			: capture.endIndex
+
+		return {
+			...capture,
+			startIndex: newStartIndex,
+			endIndex: newEndIndex,
+		}
+	})
+}
+
+/**
+ * Shifts bracket indices after a text insertion.
+ */
+const shiftBrackets = (
+	brackets: BracketInfo[],
+	insertPosition: number,
+	delta: number
+): BracketInfo[] => {
+	return brackets.map((bracket) => {
+		const isAfterInsert = bracket.index >= insertPosition
+		const newIndex = isAfterInsert ? bracket.index + delta : bracket.index
+
+		return {
+			...bracket,
+			index: newIndex,
+		}
+	})
+}
+
+/**
+ * Shifts fold ranges after a line insertion.
+ * Uses position to calculate line delta.
+ */
+const shiftFolds = (
+	folds: FoldRange[],
+	insertLineRow: number,
+	lineDelta: number
+): FoldRange[] => {
+	return folds.map((fold) => {
+		const startAfterInsert = fold.startLine >= insertLineRow
+		const endAfterInsert = fold.endLine >= insertLineRow
+
+		const newStartLine = startAfterInsert
+			? fold.startLine + lineDelta
+			: fold.startLine
+		const newEndLine = endAfterInsert ? fold.endLine + lineDelta : fold.endLine
+
+		return {
+			...fold,
+			startLine: newStartLine,
+			endLine: newEndLine,
+		}
+	})
+}
+
 const processTree = async (tree: Tree): Promise<TreeSitterParseResult> => {
 	const { brackets, errors } = collectTreeData(tree)
 	const [captures, folds] = await Promise.all([
@@ -282,8 +373,15 @@ const parseAndCacheText = async (
 	if (!parser) return undefined
 	const tree = parser.parse(text)
 	if (!tree) return undefined
-	setCachedEntry(path, { tree, text })
-	return processTree(tree)
+	const result = await processTree(tree)
+	setCachedEntry(path, {
+		tree,
+		text,
+		captures: result.captures,
+		brackets: result.brackets,
+		folds: result.folds,
+	})
+	return result
 }
 
 const reparseWithEdit = async (
@@ -294,6 +392,7 @@ const reparseWithEdit = async (
 	if (!parser) return undefined
 	const cached = astCache.get(path)
 	if (!cached) return undefined
+
 	const updatedText = applyTextEdit(
 		cached.text,
 		payload.startIndex,
@@ -313,8 +412,66 @@ const reparseWithEdit = async (
 	const nextTree = parser.parse(updatedText, cached.tree)
 	if (!nextTree) return undefined
 
-	setCachedEntry(path, { tree: nextTree, text: updatedText })
-	return processTree(nextTree)
+	// Check if edit is shiftable
+	const hasCachedData = cached.captures && cached.brackets && cached.folds
+	const editIsShiftable =
+		hasCachedData &&
+		isShiftableEdit(
+			payload.insertedText,
+			payload.startIndex,
+			payload.oldEndIndex
+		)
+
+	if (editIsShiftable) {
+		const charDelta = payload.insertedText.length
+		const lineDelta = payload.newEndPosition.row - payload.startPosition.row
+
+		const shiftedCaptures = shiftCaptures(
+			cached.captures!,
+			payload.startIndex,
+			charDelta
+		)
+		const shiftedBrackets = shiftBrackets(
+			cached.brackets!,
+			payload.startIndex,
+			charDelta
+		)
+		const shiftedFolds = shiftFolds(
+			cached.folds!,
+			payload.startPosition.row,
+			lineDelta
+		)
+
+		const { errors } = collectTreeData(nextTree)
+
+		const result: TreeSitterParseResult = {
+			captures: shiftedCaptures,
+			brackets: shiftedBrackets,
+			folds: shiftedFolds,
+			errors,
+		}
+
+		setCachedEntry(path, {
+			tree: nextTree,
+			text: updatedText,
+			captures: shiftedCaptures,
+			brackets: shiftedBrackets,
+			folds: shiftedFolds,
+		})
+
+		return result
+	}
+
+	// Full reparse with queries
+	const result = await processTree(nextTree)
+	setCachedEntry(path, {
+		tree: nextTree,
+		text: updatedText,
+		captures: result.captures,
+		brackets: result.brackets,
+		folds: result.folds,
+	})
+	return result
 }
 
 const reparseWithEditBatch = async (
@@ -329,6 +486,14 @@ const reparseWithEditBatch = async (
 		log.warn('[reparseWithEditBatch] No cached entry for path:', path)
 		return undefined
 	}
+
+	// Check if all edits are shiftable (whitespace-only insertions)
+	const hasCachedData = cached.captures && cached.brackets && cached.folds
+	const allEditsShiftable =
+		hasCachedData &&
+		edits.every((edit) =>
+			isShiftableEdit(edit.insertedText, edit.startIndex, edit.oldEndIndex)
+		)
 
 	let currentText = cached.text
 	let currentTree = cached.tree
@@ -361,8 +526,60 @@ const reparseWithEditBatch = async (
 		currentTree = nextTree
 	}
 
-	setCachedEntry(path, { tree: currentTree, text: currentText })
-	return processTree(currentTree)
+	// If all edits were shiftable, use index shifting instead of re-querying
+	if (allEditsShiftable) {
+		let shiftedCaptures = cached.captures!
+		let shiftedBrackets = cached.brackets!
+		let shiftedFolds = cached.folds!
+
+		for (const edit of edits) {
+			const charDelta = edit.insertedText.length
+			const lineDelta = edit.newEndPosition.row - edit.startPosition.row
+
+			shiftedCaptures = shiftCaptures(
+				shiftedCaptures,
+				edit.startIndex,
+				charDelta
+			)
+			shiftedBrackets = shiftBrackets(
+				shiftedBrackets,
+				edit.startIndex,
+				charDelta
+			)
+			shiftedFolds = shiftFolds(shiftedFolds, edit.startPosition.row, lineDelta)
+		}
+
+		// Walk tree for errors (still useful to update error locations)
+		const { errors } = collectTreeData(currentTree)
+
+		const result: TreeSitterParseResult = {
+			captures: shiftedCaptures,
+			brackets: shiftedBrackets,
+			folds: shiftedFolds,
+			errors,
+		}
+
+		setCachedEntry(path, {
+			tree: currentTree,
+			text: currentText,
+			captures: shiftedCaptures,
+			brackets: shiftedBrackets,
+			folds: shiftedFolds,
+		})
+
+		return result
+	}
+
+	// Full reparse with queries
+	const result = await processTree(currentTree)
+	setCachedEntry(path, {
+		tree: currentTree,
+		text: currentText,
+		captures: result.captures,
+		brackets: result.brackets,
+		folds: result.folds,
+	})
+	return result
 }
 
 const api: TreeSitterWorkerApi = {
