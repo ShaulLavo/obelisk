@@ -64,20 +64,6 @@ const normalizeHighlightSegments = (
 }
 
 /**
- * Find the highlight segment that contains the given position
- */
-const findHighlightAt = (
-	highlights: NormalizedHighlightSegment[],
-	position: number
-): NormalizedHighlightSegment | undefined => {
-	for (const h of highlights) {
-		if (position >= h.start && position < h.end) return h
-		if (h.start > position) break // sorted, so no more matches
-	}
-	return undefined
-}
-
-/**
  * Build text runs by iterating through the text and grouping consecutive
  * characters with the same styling (bracket depth + highlight) together.
  * This is much more efficient than creating a span per character.
@@ -93,18 +79,34 @@ const buildTextRuns = (
 	const runs: TextRun[] = []
 	let currentRun: TextRun | null = null
 
+	let highlightIdx = 0
+	const numHighlights = highlights.length
+	let currentHighlight: NormalizedHighlightSegment | undefined = highlights[0]
+
 	for (let i = 0; i < text.length; i++) {
+		// 1. Advance the highlight cursor if we've passed the current one
+		while (currentHighlight && i >= currentHighlight.end) {
+			highlightIdx++
+			currentHighlight =
+				highlightIdx < numHighlights ? highlights[highlightIdx] : undefined
+		}
+
+		// 2. Simply check if we are inside the current highlight (no searching needed)
+		let activeHighlight: NormalizedHighlightSegment | undefined
+		if (currentHighlight && i >= currentHighlight.start) {
+			activeHighlight = currentHighlight
+		}
+
 		const char = text[i]!
 		const absoluteIndex = lineStart + i
 		const depth = depthMap?.[absoluteIndex]
-		const highlight = findHighlightAt(highlights, i)
 
 		// Check if we can extend the current run
 		const canExtend =
 			currentRun &&
 			currentRun.depth === depth &&
-			currentRun.highlightClass === highlight?.className &&
-			currentRun.highlightScope === highlight?.scope
+			currentRun.highlightClass === activeHighlight?.className &&
+			currentRun.highlightScope === activeHighlight?.scope
 
 		if (canExtend) {
 			currentRun!.text += char
@@ -113,8 +115,8 @@ const buildTextRuns = (
 			currentRun = {
 				text: char,
 				depth,
-				highlightClass: highlight?.className,
-				highlightScope: highlight?.scope,
+				highlightClass: activeHighlight?.className,
+				highlightScope: activeHighlight?.scope,
 			}
 			runs.push(currentRun)
 		}
@@ -127,9 +129,9 @@ const buildTextRuns = (
  * Render a text run to JSX. Plain text is returned as-is,
  * styled runs get wrapped in appropriate spans.
  */
-	const renderRun = (run: TextRun): string | JSX.Element => {
-		const hasDepth = run.depth !== undefined && run.depth > 0
-		const hasHighlight = !!run.highlightClass
+const renderRun = (run: TextRun): string | JSX.Element => {
+	const hasDepth = run.depth !== undefined && run.depth > 0
+	const hasHighlight = !!run.highlightClass
 
 	// Plain text - no wrapping needed
 	if (!hasDepth && !hasHighlight) {

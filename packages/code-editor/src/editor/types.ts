@@ -157,5 +157,3 @@ export type LineGuttersProps = {
 	/** Convert display row index to actual document line index */
 	displayToLine?: (displayIndex: number) => number
 }
-
-export type TextFileEditorProps = EditorProps
