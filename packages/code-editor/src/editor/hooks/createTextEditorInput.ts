@@ -252,39 +252,22 @@ export function createTextEditorInput(
 	}
 
 	const handleInput = (event: InputEvent) => {
-		console.log(
-			'[handleInput] inputType:',
-			event.inputType,
-			'data:',
-			event.data
-		)
 		if (!options.isEditable()) {
-			console.log('[handleInput] Not editable, returning')
 			return
 		}
 		const target = event.target as HTMLTextAreaElement | null
 		if (!target) {
-			console.log('[handleInput] No target, returning')
 			return
 		}
 		const value = target.value
-		console.log(
-			'[handleInput] value:',
-			JSON.stringify(value),
-			'length:',
-			value.length
-		)
 		if (!value) {
-			console.log('[handleInput] Empty value, returning')
 			return
 		}
 
-		const deletedSelection = deleteSelection()
-		console.log('[handleInput] deletedSelection:', deletedSelection)
+		deleteSelection()
 
 		applyInsert(value)
 		target.value = ''
-		console.log('[handleInput] Completed, cleared target.value')
 	}
 
 	const keymap = createKeymapController()
