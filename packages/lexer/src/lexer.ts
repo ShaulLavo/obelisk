@@ -30,7 +30,6 @@ export type LineHighlightSegment = {
 const DEFAULT_RULES: ScmRules = {
 	keywords: DEFAULT_KEYWORDS,
 	regexRules: DEFAULT_REGEX_RULES,
-	nodeTypes: new Map(),
 }
 
 /**

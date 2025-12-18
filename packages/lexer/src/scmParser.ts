@@ -312,26 +312,11 @@ const findMatchPredicate = (
 }
 
 /**
- * Check if expression is a simple node type pattern like (string) or (identifier)
- */
-const isSimpleNodeType = (expr: SExpr): string | null => {
-	if (expr.type === 'list' && expr.items.length >= 1) {
-		const first = expr.items[0]
-		if (first?.type === 'symbol' && !first.value.includes(':')) {
-			// Check it's just (node_type) @capture
-			const hasOnlyCapture = expr.items
-				.slice(1)
-				.every((item) => item.type === 'capture' || item.type === 'predicate')
-			if (hasOnlyCapture || expr.items.length === 1) {
-				return first.value
-			}
-		}
-	}
-	return null
-}
-
-/**
  * Parse an SCM query source and extract lexer rules
+ *
+ * Note: Simple node type patterns like (string), (comment), (number) are
+ * intentionally not extracted here as the tokenizer handles these constructs
+ * directly with hardcoded logic.
  */
 export const parseScmQuery = (source: string): ScmRules => {
 	const tokens = tokenize(source)
@@ -339,7 +324,6 @@ export const parseScmQuery = (source: string): ScmRules => {
 
 	const keywords = new Map<string, string>()
 	const regexRules: Array<{ pattern: RegExp; scope: string }> = []
-	const nodeTypes = new Map<string, string>()
 
 	// Process each top-level expression
 	let i = 0
@@ -405,15 +389,12 @@ export const parseScmQuery = (source: string): ScmRules => {
 				continue
 			}
 
-			// Check for simple node type: (string), (comment), (number)
-			const nodeType = isSimpleNodeType(expr)
-			if (nodeType) {
-				nodeTypes.set(nodeType, capture)
-			}
+			// Note: Simple node types like (string), (comment), (number) are
+			// handled directly by the tokenizer, so we don't extract them here
 		}
 	}
 
-	return { keywords, regexRules, nodeTypes }
+	return { keywords, regexRules }
 }
 
 /**
@@ -423,7 +404,6 @@ export const mergeScmRules = (...rules: ScmRules[]): ScmRules => {
 	const merged: ScmRules = {
 		keywords: new Map(),
 		regexRules: [],
-		nodeTypes: new Map(),
 	}
 
 	for (const rule of rules) {
@@ -431,9 +411,6 @@ export const mergeScmRules = (...rules: ScmRules[]): ScmRules => {
 			merged.keywords.set(k, v)
 		}
 		merged.regexRules.push(...rule.regexRules)
-		for (const [k, v] of rule.nodeTypes) {
-			merged.nodeTypes.set(k, v)
-		}
 	}
 
 	return merged

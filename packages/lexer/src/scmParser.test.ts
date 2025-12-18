@@ -39,7 +39,9 @@ describe('scmParser', () => {
 			expect(rules.regexRules[0]!.pattern.test('foo')).toBe(false)
 		})
 
-		test('extracts simple node types', () => {
+		test('ignores simple node types (handled directly by tokenizer)', () => {
+			// Simple node types like (string), (comment), (number) are handled
+			// directly by the tokenizer, so parseScmQuery doesn't extract them
 			const source = `
 				(string) @string
 				(comment) @comment
@@ -47,9 +49,9 @@ describe('scmParser', () => {
 			`
 			const rules = parseScmQuery(source)
 
-			expect(rules.nodeTypes.get('string')).toBe('string')
-			expect(rules.nodeTypes.get('comment')).toBe('comment')
-			expect(rules.nodeTypes.get('number')).toBe('number')
+			// No keywords or regex rules should be extracted from simple node types
+			expect(rules.keywords.size).toBe(0)
+			expect(rules.regexRules.length).toBe(0)
 		})
 
 		test('ignores comments', () => {
@@ -79,9 +81,9 @@ describe('scmParser', () => {
 			`
 			const rules = parseScmQuery(source)
 
-			// This is an AST pattern, should extract the capture but not as simple node type
-			// Since it has field names (name:), it won't be extracted as a simple node type
-			expect(rules.nodeTypes.has('function_declaration')).toBe(false)
+			// Since it has field names (name:), it has nested children structure
+			// Only the @function capture for identifier would be extracted
+			expect(rules.keywords.size).toBe(0)
 		})
 
 		test('handles real typescript highlights excerpt', () => {
@@ -122,9 +124,8 @@ describe('scmParser', () => {
 			expect(rules.regexRules.length).toBe(1)
 			expect(rules.regexRules[0]!.pattern.test('MyComponent')).toBe(true)
 
-			// Node types
-			expect(rules.nodeTypes.get('string')).toBe('string')
-			expect(rules.nodeTypes.get('number')).toBe('number')
+			// Simple node types like (string) and (number) are handled directly
+			// by the tokenizer, so they're not extracted into ScmRules
 		})
 	})
 

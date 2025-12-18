@@ -57,6 +57,4 @@ export type ScmRules = {
 	keywords: Map<string, string>
 	/** Regex patterns for identifier classification */
 	regexRules: Array<{ pattern: RegExp; scope: string }>
-	/** Node type to scope mappings for special syntax (string, comment, etc.) */
-	nodeTypes: Map<string, string>
 }
