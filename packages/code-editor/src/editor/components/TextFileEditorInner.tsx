@@ -132,14 +132,14 @@ export const TextFileEditorInner = (props: TextFileEditorInnerProps) => {
 			() => props.document.filePath(),
 			() => {
 				const element = scrollElement()
-					if (element) {
-						element.scrollTop = 0
-						element.scrollLeft = 0
-					}
-					setFoldedStarts(new Set<number>())
+				if (element) {
+					element.scrollTop = 0
+					element.scrollLeft = 0
 				}
-			)
+				setFoldedStarts(new Set<number>())
+			}
 		)
+	)
 	createEffect(
 		on(
 			() => props.folds?.(),
@@ -230,7 +230,7 @@ export const TextFileEditorInner = (props: TextFileEditorInnerProps) => {
 		const items = layout.virtualItems()
 
 		for (const item of items) {
-			const lineIndex = layout.displayToLine(item.index)
+			const lineIndex = layout.displayToLine(item.index())
 			if (lineIndex < 0 || lineIndex >= lexerStates.length) continue
 
 			const lineText = cursor.lines.getLineText(lineIndex)
@@ -316,6 +316,39 @@ export const TextFileEditorInner = (props: TextFileEditorInnerProps) => {
 		}
 
 		return result
+	}
+
+	// @ts-ignore
+	window.startBenchmark = async () => {
+		const element = scrollElement()
+		if (!element) return
+
+		console.log('Starting benchmark...')
+		const start = performance.now()
+		const startScroll = element.scrollTop
+		const targetScroll = startScroll + 2000
+		let frames = 0
+
+		return new Promise<void>((resolve) => {
+			const animate = () => {
+				const current = element.scrollTop
+				if (current < targetScroll) {
+					element.scrollTop = Math.min(targetScroll, current + 15) // Scroll 15px per frame
+					frames++
+					requestAnimationFrame(animate)
+				} else {
+					const end = performance.now()
+					const duration = end - start
+					const fps = Math.round((frames / duration) * 1000)
+					console.log(
+						`Benchmark complete: ${fps} FPS, ${duration.toFixed(2)}ms duration`
+					)
+					element.scrollTop = startScroll
+					resolve()
+				}
+			}
+			requestAnimationFrame(animate)
+		})
 	}
 
 	return (
