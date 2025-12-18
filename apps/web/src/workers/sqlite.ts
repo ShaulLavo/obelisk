@@ -1,5 +1,6 @@
 import { logger } from '@repo/logger'
 import * as Comlink from 'comlink'
+import { InArgs } from 'node_modules/sqlite-wasm/dist/client/api'
 import sqlite3InitModule, {
 	type Database,
 	type Sqlite3Static,
@@ -74,11 +75,11 @@ const exec = async (sql: string): Promise<void> => {
 
 const run = async <T = Record<string, unknown>>(
 	sql: string,
-	params?: Record<string, unknown> | unknown[]
+	params?: InArgs
 ): Promise<{ columns: string[]; rows: T[] }> => {
 	const result = await getClient().execute({
 		sql,
-		args: params as any,
+		args: params,
 	})
 
 	const rows = result.rows.map((row) => {
