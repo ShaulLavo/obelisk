@@ -323,17 +323,69 @@ export const TextFileEditorInner = (props: TextFileEditorInnerProps) => {
 		const element = scrollElement()
 		if (!element) return
 
-		console.log('Starting benchmark...')
+		console.log('Starting physics benchmark...')
 		const start = performance.now()
-		const startScroll = element.scrollTop
-		const targetScroll = startScroll + 2000
+		const startScroll = 0
+		element.scrollTop = 0
+
+		const maxScroll = element.scrollHeight - element.clientHeight
+		const cycles = 5
 		let frames = 0
+
+		// Physics State
+		let position = 0
+		let velocity = 0
+		let direction = 1 // 1 for down, -1 for up
+		let currentCycle = 0
+
+		// Physics Constants
+		const ACCEL = 4 // px/frame^2
+		const BRAKE = 10 // px/frame^2 (Deceleration)
 
 		return new Promise<void>((resolve) => {
 			const animate = () => {
-				const current = element.scrollTop
-				if (current < targetScroll) {
-					element.scrollTop = Math.min(targetScroll, current + 15) // Scroll 15px per frame
+				const target = direction === 1 ? maxScroll : 0
+				const dist = Math.abs(target - position)
+
+				// Calculate stopping distance required at current velocity: v^2 = 2*a*d => d = v^2 / 2a
+				const stoppingDist = (velocity * velocity) / (2 * BRAKE)
+
+				if (dist <= stoppingDist) {
+					// BRAKE!
+					if (velocity > 0) velocity = Math.max(0, velocity - BRAKE)
+				} else {
+					// ACCELERATE!
+					velocity += ACCEL
+				}
+
+				// Apply movement
+				const move = velocity * direction
+				position += move
+
+				// Bounds check and Turnaround
+				let turnAround = false
+
+				if (direction === 1 && position >= maxScroll) {
+					position = maxScroll
+					turnAround = true
+				} else if (direction === -1 && position <= 0) {
+					position = 0
+					turnAround = true
+				}
+
+				element.scrollTop = position
+
+				if (turnAround) {
+					velocity = 0 // Stopped
+					if (direction === 1) {
+						direction = -1
+					} else {
+						direction = 1
+						currentCycle++
+					}
+				}
+
+				if (currentCycle < cycles) {
 					frames++
 					requestAnimationFrame(animate)
 				} else {
@@ -341,7 +393,7 @@ export const TextFileEditorInner = (props: TextFileEditorInnerProps) => {
 					const duration = end - start
 					const fps = Math.round((frames / duration) * 1000)
 					console.log(
-						`Benchmark complete: ${fps} FPS, ${duration.toFixed(2)}ms duration`
+						`Benchmark complete: ${fps} FPS, ${duration.toFixed(2)}ms duration, ${frames} frames`
 					)
 					element.scrollTop = startScroll
 					resolve()
