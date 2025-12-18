@@ -1,4 +1,4 @@
-import { createMemo } from 'solid-js'
+import { batch, createMemo } from 'solid-js'
 import { ReactiveMap } from '@solid-primitives/map'
 import { loggers } from '@repo/logger'
 import {
@@ -91,48 +91,56 @@ export const useHistoryStore = (
 				insertedTextForTree
 			)
 
-		document.updatePieceTable((current) => {
-			const baseSnapshot =
-				current ??
-				createPieceTableSnapshot(cursor.getTextRange(0, cursor.documentLength()))
-			let snapshot = baseSnapshot
+		batch(() => {
+			cursor.lines.applyEdit(
+				entry.offset,
+				deletedTextForTree,
+				insertedTextForTree
+			)
 
-			if (direction === 'undo') {
-				if (entry.insertedText.length > 0) {
-					snapshot = deleteFromPieceTable(
-						snapshot,
-						entry.offset,
-						entry.insertedText.length
+			document.updatePieceTable((current) => {
+				const baseSnapshot =
+					current ??
+					createPieceTableSnapshot(
+						cursor.getTextRange(0, cursor.documentLength())
 					)
-				}
-				if (entry.deletedText.length > 0) {
-					snapshot = insertIntoPieceTable(
-						snapshot,
-						entry.offset,
-						entry.deletedText
-					)
-				}
-			} else {
-				if (entry.deletedText.length > 0) {
-					snapshot = deleteFromPieceTable(
-						snapshot,
-						entry.offset,
-						entry.deletedText.length
-					)
-				}
-				if (entry.insertedText.length > 0) {
-					snapshot = insertIntoPieceTable(
-						snapshot,
-						entry.offset,
-						entry.insertedText
-					)
-				}
-			}
+				let snapshot = baseSnapshot
 
-			return snapshot
+				if (direction === 'undo') {
+					if (entry.insertedText.length > 0) {
+						snapshot = deleteFromPieceTable(
+							snapshot,
+							entry.offset,
+							entry.insertedText.length
+						)
+					}
+					if (entry.deletedText.length > 0) {
+						snapshot = insertIntoPieceTable(
+							snapshot,
+							entry.offset,
+							entry.deletedText
+						)
+					}
+				} else {
+					if (entry.deletedText.length > 0) {
+						snapshot = deleteFromPieceTable(
+							snapshot,
+							entry.offset,
+							entry.deletedText.length
+						)
+					}
+					if (entry.insertedText.length > 0) {
+						snapshot = insertIntoPieceTable(
+							snapshot,
+							entry.offset,
+							entry.insertedText
+						)
+					}
+				}
+
+				return snapshot
+			})
 		})
-
-		cursor.lines.applyEdit(entry.offset, deletedTextForTree, insertedTextForTree)
 
 		if (direction === 'undo') {
 			applyCursorSnapshot(entry.cursorBefore, entry.selectionBefore)

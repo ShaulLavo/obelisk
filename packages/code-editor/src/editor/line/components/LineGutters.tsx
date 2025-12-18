@@ -63,7 +63,9 @@ export const LineGutters = (props: LineGuttersProps) => {
 							() => lineIndex() >= 0 && lineIndex() < cursor.lines.lineCount()
 						)
 
-						const height = createMemo(() => virtualRow.size || props.lineHeight())
+						const height = createMemo(
+							() => virtualRow.size || props.lineHeight()
+						)
 						const isActive = createMemo(
 							() => props.activeLineIndex() === lineIndex()
 						)
@@ -80,6 +82,7 @@ export const LineGutters = (props: LineGuttersProps) => {
 									class="absolute left-0 right-0 flex items-center justify-end"
 									style={{
 										transform: `translateY(${virtualRow.start}px)`,
+										'will-change': 'transform',
 										top: 0,
 										height: `${height()}px`,
 									}}
@@ -87,20 +90,20 @@ export const LineGutters = (props: LineGuttersProps) => {
 										handleRowMouseDown(event, lineIndex())
 									}
 								>
-										<LineGutter
-											lineNumber={lineIndex() + 1}
-											lineHeight={height()}
-											isActive={isActive()}
-											isFoldable={hasFold()}
-											isFolded={isFolded()}
-											onFoldClick={() =>
-												hasFold() && props.onToggleFold?.(lineIndex())
-											}
-										/>
-									</div>
-								</Show>
-							)
-						}}
+									<LineGutter
+										lineNumber={lineIndex() + 1}
+										lineHeight={height()}
+										isActive={isActive()}
+										isFoldable={hasFold()}
+										isFolded={isFolded()}
+										onFoldClick={() =>
+											hasFold() && props.onToggleFold?.(lineIndex())
+										}
+									/>
+								</div>
+							</Show>
+						)
+					}}
 				</For>
 			</div>
 		</div>

@@ -5,6 +5,7 @@ import {
 	type PieceTableSnapshot,
 } from '@repo/utils'
 import {
+	batch,
 	createContext,
 	createEffect,
 	createMemo,
@@ -227,12 +228,14 @@ export function CursorProvider(props: CursorProviderProps) {
 		deletedText: string,
 		insertedText: string
 	) => {
-		setDocumentLength((prev) =>
-			Math.max(0, prev + insertedText.length - deletedText.length)
-		)
-		setLineStarts((prev) =>
-			applyEditToLineStarts(prev, startIndex, deletedText, insertedText)
-		)
+		batch(() => {
+			setDocumentLength((prev) =>
+				Math.max(0, prev + insertedText.length - deletedText.length)
+			)
+			setLineStarts((prev) =>
+				applyEditToLineStarts(prev, startIndex, deletedText, insertedText)
+			)
+		})
 		lineTextCache.clear()
 	}
 
@@ -266,8 +269,10 @@ export function CursorProvider(props: CursorProviderProps) {
 		const starts = buildLineStartsFromSnapshot(snapshot)
 		validateLineStarts(starts, length, 'initializeFromSnapshot')
 
-		setDocumentLength(length)
-		setLineStarts(starts)
+		batch(() => {
+			setDocumentLength(length)
+			setLineStarts(starts)
+		})
 		lineTextCache.clear()
 
 		log.debug('Initialized from piece table', {
@@ -282,8 +287,10 @@ export function CursorProvider(props: CursorProviderProps) {
 		const starts = buildLineStartsFromText(content)
 		validateLineStarts(starts, length, 'initializeFromContent')
 
-		setDocumentLength(length)
-		setLineStarts(starts)
+		batch(() => {
+			setDocumentLength(length)
+			setLineStarts(starts)
+		})
 		lineTextCache.clear()
 
 		log.debug('Initialized from content', {
@@ -300,8 +307,10 @@ export function CursorProvider(props: CursorProviderProps) {
 
 		if (!selected || !path) {
 			initializedPath = undefined
-			setDocumentLength(0)
-			setLineStarts([])
+			batch(() => {
+				setDocumentLength(0)
+				setLineStarts([])
+			})
 			lineTextCache.clear()
 			return
 		}

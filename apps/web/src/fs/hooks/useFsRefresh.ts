@@ -78,11 +78,13 @@ export const useFsRefresh = ({
 	) => {
 		let source = initialSource
 		for (;;) {
-			setLoading(true)
-			clearParseResults()
-			clearPieceTables()
-			clearFileCache()
-			clearDeferredMetadata()
+			batch(() => {
+				setLoading(true)
+				clearParseResults()
+				clearPieceTables()
+				clearFileCache()
+				clearDeferredMetadata()
+			})
 			const ensurePaths = buildEnsurePaths()
 
 			try {

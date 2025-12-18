@@ -1,12 +1,12 @@
 import { createStore, reconcile } from 'solid-js/store'
-import type { LineStartState } from '@repo/code-editor'
+import type { LineState } from '@repo/code-editor'
 
 export const createLexerStatesState = () => {
 	const [fileLexerStates, setLexerStatesStore] = createStore<
-		Record<string, LineStartState[] | undefined>
+		Record<string, LineState[] | undefined>
 	>({})
 
-	const setLexerLineStates = (path: string, states?: LineStartState[]) => {
+	const setLexerLineStates = (path: string, states?: LineState[]) => {
 		if (!path) return
 		if (!states?.length) {
 			setLexerStatesStore(path, undefined)

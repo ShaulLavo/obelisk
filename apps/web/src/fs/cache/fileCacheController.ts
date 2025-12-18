@@ -1,6 +1,6 @@
 import { batch } from 'solid-js'
 import type { ParseResult, PieceTableSnapshot } from '@repo/utils'
-import type { LineStartState } from '@repo/code-editor'
+import type { LineState } from '@repo/code-editor'
 import type {
 	TreeSitterCapture,
 	BracketInfo,
@@ -33,7 +33,7 @@ export type FileCacheEntry = {
 	folds?: FoldRange[]
 	brackets?: BracketInfo[]
 	errors?: TreeSitterError[]
-	lexerLineStates?: LineStartState[]
+	lexerLineStates?: LineState[]
 }
 
 export type FileCacheController = {
@@ -60,7 +60,7 @@ type FileCacheControllerOptions = {
 	setFolds: (path: string, folds?: FoldRange[]) => void
 	setBrackets: (path: string, brackets?: BracketInfo[]) => void
 	setErrors: (path: string, errors?: TreeSitterError[]) => void
-	setLexerLineStates: (path: string, states?: LineStartState[]) => void
+	setLexerLineStates: (path: string, states?: LineState[]) => void
 }
 
 export const createFileCacheController = ({

@@ -47,6 +47,7 @@ export const Line = (props: LineProps) => {
 			}}
 			style={{
 				transform: `translateY(${props.virtualRow.start}px)`,
+				'will-change': 'transform',
 				top: 0,
 				width: `${props.contentWidth}px`,
 				height: `${props.virtualRow.size || props.lineHeight}px`,

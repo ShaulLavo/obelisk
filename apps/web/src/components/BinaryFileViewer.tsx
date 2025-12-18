@@ -47,6 +47,7 @@ const BinaryRow = (props: BinaryRowProps) => {
 			class="absolute left-0 right-0"
 			style={{
 				transform: `translateY(${props.virtualRow.start}px)`,
+				'will-change': 'transform',
 				top: 0,
 				height: `${props.virtualRow.size || props.rowHeight}px`,
 			}}
