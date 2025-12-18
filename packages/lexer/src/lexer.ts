@@ -159,8 +159,14 @@ export class Lexer {
 
 		// Start from edited line and propagate until states match
 		let currentLine = editedLineIndex
+		const isFirstLine = currentLine === 0
+		const isOutOfRange = currentLine >= newStates.length
+		const hasState = Boolean(newStates[currentLine])
+
 		let state =
-			currentLine === 0 ? Lexer.initialState() : newStates[currentLine]!
+			isFirstLine || isOutOfRange || !hasState
+				? Lexer.initialState()
+				: newStates[currentLine]!
 
 		while (currentLine < lineCount) {
 			newStates[currentLine] = state
