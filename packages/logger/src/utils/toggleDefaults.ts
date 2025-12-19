@@ -19,6 +19,7 @@ const LOGGER_TOGGLE_TREE = {
 	web: {
 		$self: false,
 		focus: false,
+		fsMutations: false,
 		LocalDirectoryFallback: false,
 		prefetch: false,
 		terminal: false,
