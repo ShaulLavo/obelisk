@@ -102,4 +102,16 @@ export const PACKS: PackConfig[] = [
 		repo: 'https://github.com/primer/octicons',
 		svgPath: 'icons',
 	},
+	{
+		shortName: 'md',
+		packName: 'Material Design Icons',
+		repo: 'https://github.com/Templarian/MaterialDesign-SVG',
+		svgPath: 'svg',
+	},
+	{
+		shortName: 'mt',
+		packName: 'Material Theme Icons',
+		repo: 'https://github.com/material-extensions/vscode-material-icon-theme',
+		svgPath: 'icons',
+	},
 ]

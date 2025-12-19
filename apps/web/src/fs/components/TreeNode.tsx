@@ -6,6 +6,7 @@ import { useFs } from '../../fs/context/FsContext'
 import { VsChevronDown } from '@repo/icons/vs/VsChevronDown'
 import { VsChevronRight } from '@repo/icons/vs/VsChevronRight'
 import { VsFile } from '@repo/icons/vs/VsFile'
+import { FileIcon } from './FileIcon'
 import { VsFolder } from '@repo/icons/vs/VsFolder'
 import { VsFolderOpened } from '@repo/icons/vs/VsFolderOpened'
 
@@ -147,7 +148,10 @@ export const TreeNode = (props: TreeNodeProps) => {
 						class="mr-2 flex items-center justify-center"
 						classList={{ 'text-cyan-700': isSelected() }}
 					>
-						<Show when={isDir()} fallback={<VsFile size={16} />}>
+						<Show
+							when={isDir()}
+							fallback={<FileIcon name={props.node.name} size={16} />}
+						>
 							<Show when={isOpen()} fallback={<VsFolder size={16} />}>
 								<VsFolderOpened size={16} />
 							</Show>

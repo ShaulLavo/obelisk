@@ -53,6 +53,44 @@ const assets = [
 		),
 		destination: path.join(publicDir, 'typescript-highlights.scm'),
 	},
+	{
+		source: path.join(
+			appRoot,
+			'node_modules',
+			'tree-sitter-json',
+			'tree-sitter-json.wasm'
+		),
+		destination: path.join(publicDir, 'tree-sitter-json.wasm'),
+	},
+	{
+		source: path.join(
+			appRoot,
+			'node_modules',
+			'tree-sitter-json',
+			'queries',
+			'highlights.scm'
+		),
+		destination: path.join(publicDir, 'json-highlights.scm'),
+	},
+	{
+		source: path.join(
+			appRoot,
+			'node_modules',
+			'tree-sitter-html',
+			'tree-sitter-html.wasm'
+		),
+		destination: path.join(publicDir, 'tree-sitter-html.wasm'),
+	},
+	{
+		source: path.join(
+			appRoot,
+			'node_modules',
+			'tree-sitter-html',
+			'queries',
+			'highlights.scm'
+		),
+		destination: path.join(publicDir, 'html-highlights.scm'),
+	},
 ]
 
 mkdirSync(publicDir, { recursive: true })

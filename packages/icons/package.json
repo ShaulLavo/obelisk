@@ -206,6 +206,30 @@
       "import": "./dist/oc/*.js",
       "require": "./dist/oc/*.cjs",
       "default": "./dist/oc/*.js"
+    },
+    "./md": {
+      "types": "./dist/md/index.d.ts",
+      "import": "./dist/md/index.js",
+      "require": "./dist/md/index.cjs",
+      "default": "./dist/md/index.js"
+    },
+    "./md/*": {
+      "types": "./dist/md/*.d.ts",
+      "import": "./dist/md/*.js",
+      "require": "./dist/md/*.cjs",
+      "default": "./dist/md/*.js"
+    },
+    "./mt": {
+      "types": "./dist/mt/index.d.ts",
+      "import": "./dist/mt/index.js",
+      "require": "./dist/mt/index.cjs",
+      "default": "./dist/mt/index.js"
+    },
+    "./mt/*": {
+      "types": "./dist/mt/*.d.ts",
+      "import": "./dist/mt/*.js",
+      "require": "./dist/mt/*.cjs",
+      "default": "./dist/mt/*.js"
     }
   },
   "scripts": {

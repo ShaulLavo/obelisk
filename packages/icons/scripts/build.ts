@@ -214,8 +214,10 @@ const buildPack = async (pack: PackConfig) => {
 	const exists = await pathExists(cacheDir)
 
 	if (!exists) {
+		console.error(
 			`Missing cached icons for "${pack.shortName}". Run "bun run fetch-icons" before building.`
 		)
+		return
 	}
 
 	console.log(
@@ -306,8 +308,24 @@ const writeDistPackage = async () => {
 		exports: {
 			'.': RUNTIME_EXPORT,
 			'./lib': RUNTIME_EXPORT,
-			'./vs': VS_EXPORT,
-			'./vs/*': VS_WILDCARD_EXPORT,
+			...PACKS.reduce(
+				(acc, pack) => ({
+					...acc,
+					[`./${pack.shortName}`]: {
+						import: `./${pack.shortName}/index.js`,
+						require: `./${pack.shortName}/index.cjs`,
+						types: `./${pack.shortName}/index.d.ts`,
+						default: `./${pack.shortName}/index.js`,
+					},
+					[`./${pack.shortName}/*`]: {
+						import: `./${pack.shortName}/*.js`,
+						require: `./${pack.shortName}/*.cjs`,
+						types: `./${pack.shortName}/*.d.ts`,
+						default: `./${pack.shortName}/*.js`,
+					},
+				}),
+				{}
+			),
 		},
 	}
 

@@ -27,39 +27,164 @@ type CachedTreeEntry = {
 	captures?: TreeSitterCapture[]
 	brackets?: BracketInfo[]
 	folds?: FoldRange[]
+	languageId: string
 }
 
 let parserInstance: Parser | null = null
 let parserInitPromise: Promise<void> | null = null
-let languageInstance: Language | null = null
-let highlightQueries: Query[] = []
-let foldQueries: Query[] = []
+const languageCache = new Map<string, Language>()
+const queryCache = new Map<string, { highlight: Query[]; fold: Query[] }>()
+
 const textDecoder = new TextDecoder()
 const astCache = new Map<string, CachedTreeEntry>()
 
 const locateWasm = () => '/tree-sitter/tree-sitter.wasm'
-const tsxGrammarPath = '/tree-sitter/tree-sitter-tsx.wasm'
 
-const ensureParser = async () => {
+type LanguageId = 'typescript' | 'tsx' | 'javascript' | 'jsx' | 'json' | 'html'
+
+const EXTENSION_MAP: Record<string, LanguageId> = {
+	ts: 'typescript',
+	mts: 'typescript',
+	cts: 'typescript',
+	tsx: 'tsx',
+	js: 'javascript',
+	mjs: 'javascript',
+	cjs: 'javascript',
+	jsx: 'jsx',
+	json: 'json',
+	html: 'html',
+	htm: 'html',
+}
+
+const LANGUAGE_CONFIG: Record<
+	LanguageId,
+	{
+		wasm: string
+		highlightQueries: string[]
+		foldQueries: string[]
+	}
+> = {
+	typescript: {
+		wasm: '/tree-sitter/tree-sitter-typescript.wasm',
+		highlightQueries: [tsHighlightsQuerySource, jsHighlightsQuerySource],
+		foldQueries: [tsFoldsQuerySource, jsFoldsQuerySource],
+	},
+	tsx: {
+		wasm: '/tree-sitter/tree-sitter-tsx.wasm',
+		highlightQueries: [
+			tsHighlightsQuerySource,
+			jsHighlightsQuerySource,
+			jsJsxHighlightsQuerySource,
+		],
+		foldQueries: [tsFoldsQuerySource, jsFoldsQuerySource],
+	},
+	javascript: {
+		wasm: '/tree-sitter/tree-sitter-javascript.wasm',
+		highlightQueries: [jsHighlightsQuerySource],
+		foldQueries: [jsFoldsQuerySource],
+	},
+	jsx: {
+		wasm: '/tree-sitter/tree-sitter-javascript.wasm',
+		highlightQueries: [jsHighlightsQuerySource, jsJsxHighlightsQuerySource],
+		foldQueries: [jsFoldsQuerySource],
+	},
+	json: {
+		wasm: '/tree-sitter/tree-sitter-json.wasm',
+		highlightQueries: ['/tree-sitter/json-highlights.scm'],
+		foldQueries: [],
+	},
+	html: {
+		wasm: '/tree-sitter/tree-sitter-html.wasm',
+		highlightQueries: ['/tree-sitter/html-highlights.scm'],
+		foldQueries: [],
+	},
+}
+
+const detectLanguage = (path: string): LanguageId | undefined => {
+	const ext = path.split('.').pop()?.toLowerCase()
+	return ext ? EXTENSION_MAP[ext] : undefined
+}
+
+const fetchQuery = async (url: string): Promise<string> => {
+	const res = await fetch(url)
+	if (!res.ok) throw new Error(`Failed to fetch query: ${url}`)
+	return res.text()
+}
+
+const ensureParser = async (languageId?: LanguageId) => {
 	if (!parserInitPromise) {
 		parserInitPromise = (async () => {
 			await Parser.init({ locateFile: locateWasm })
-			const parser = new Parser()
-			const tsLanguage = await Language.load(tsxGrammarPath)
-			parser.setLanguage(tsLanguage)
-			parserInstance = parser
-			languageInstance = tsLanguage
-			highlightQueries = []
-			foldQueries = []
+			parserInstance = new Parser()
 		})().catch((error) => {
 			parserInitPromise = null
 			log.error('Tree-sitter parser init failed', error)
 			throw error
 		})
 	}
-
 	await parserInitPromise
-	return parserInstance
+
+	if (!languageId || !LANGUAGE_CONFIG[languageId]) return undefined
+	const config = LANGUAGE_CONFIG[languageId]
+
+	if (!parserInstance) return undefined
+
+	// Load Language if not cached
+	let language = languageCache.get(languageId)
+	if (!language) {
+		try {
+			language = await Language.load(config.wasm)
+			languageCache.set(languageId, language)
+		} catch (e) {
+			log.error(`Failed to load language ${languageId}`, e)
+			return undefined
+		}
+	}
+
+	parserInstance.setLanguage(language)
+
+	// Load Queries if not cached
+	if (!queryCache.has(languageId)) {
+		const highlightQueries: Query[] = []
+		const foldQueries: Query[] = []
+
+		try {
+			// Combine sources
+			let combinedHighlightSource = ''
+			for (const source of config.highlightQueries) {
+				if (source.startsWith('/')) {
+					combinedHighlightSource += (await fetchQuery(source)) + '\n'
+				} else {
+					combinedHighlightSource += source + '\n'
+				}
+			}
+
+			let combinedFoldSource = ''
+			for (const source of config.foldQueries) {
+				if (source.startsWith('/')) {
+					combinedFoldSource += (await fetchQuery(source)) + '\n'
+				} else {
+					combinedFoldSource += source + '\n'
+				}
+			}
+
+			if (combinedHighlightSource.trim()) {
+				highlightQueries.push(new Query(language, combinedHighlightSource))
+			}
+			if (combinedFoldSource.trim()) {
+				foldQueries.push(new Query(language, combinedFoldSource))
+			}
+		} catch (e) {
+			log.error(`Failed to load queries for ${languageId}`, e)
+		}
+
+		queryCache.set(languageId, {
+			highlight: highlightQueries,
+			fold: foldQueries,
+		})
+	}
+
+	return { parser: parserInstance, languageId }
 }
 
 const applyTextEdit = (
@@ -92,50 +217,6 @@ const setCachedEntry = (path: string, entry: CachedTreeEntry) => {
 	notifyMinimapReady(path)
 }
 
-const highlightQuerySources = [
-	tsHighlightsQuerySource,
-	jsHighlightsQuerySource,
-	jsJsxHighlightsQuerySource,
-].filter(Boolean)
-
-const foldQuerySources = [tsFoldsQuerySource, jsFoldsQuerySource].filter(
-	Boolean
-)
-
-const ensureHighlightQueries = async () => {
-	if (highlightQueries.length > 0) return highlightQueries
-	const parser = await ensureParser()
-	if (!parser) return []
-	const language = languageInstance ?? parser.language
-	if (!language) return []
-
-	try {
-		const source = highlightQuerySources.join('\n')
-		highlightQueries = [new Query(language, source)]
-	} catch (error) {
-		log.error('[Tree-sitter worker] failed to init query', error)
-		highlightQueries = []
-	}
-	return highlightQueries
-}
-
-const ensureFoldQueries = async () => {
-	if (foldQueries.length > 0) return foldQueries
-	const parser = await ensureParser()
-	if (!parser) return []
-	const language = languageInstance ?? parser.language
-	if (!language) return []
-
-	try {
-		const source = foldQuerySources.join('\n')
-		foldQueries = [new Query(language, source)]
-	} catch (error) {
-		log.error('[Tree-sitter worker] failed to init fold query', error)
-		foldQueries = []
-	}
-	return foldQueries
-}
-
 // Bracket types we care about
 const BRACKET_PAIRS: Record<string, string> = {
 	'(': ')',
@@ -149,12 +230,13 @@ const CLOSE_BRACKETS = new Set(Object.values(BRACKET_PAIRS))
 // Type alias for SyntaxNode (not directly exported from web-tree-sitter)
 type SyntaxNode = ReturnType<Tree['rootNode']['child']>
 
-const runHighlightQueries = async (
-	tree: Tree | null
-): Promise<TreeSitterCapture[] | undefined> => {
-	if (!tree) return undefined
-	const queries = await ensureHighlightQueries()
-	if (!queries.length) return undefined
+const runHighlightQueries = (
+	tree: Tree,
+	languageId: string
+): TreeSitterCapture[] => {
+	const queries = queryCache.get(languageId)?.highlight || []
+	if (!queries.length) return []
+
 	const results: TreeSitterCapture[] = []
 	const seen = new Set<string>()
 	for (const query of queries) {
@@ -178,12 +260,10 @@ const runHighlightQueries = async (
 	return results
 }
 
-const runFoldQueries = async (
-	tree: Tree | null
-): Promise<FoldRange[] | undefined> => {
-	if (!tree) return undefined
-	const queries = await ensureFoldQueries()
-	if (!queries.length) return undefined
+const runFoldQueries = (tree: Tree, languageId: string): FoldRange[] => {
+	const queries = queryCache.get(languageId)?.fold || []
+	if (!queries.length) return []
+
 	const results: FoldRange[] = []
 	const seen = new Set<string>()
 
@@ -400,15 +480,16 @@ const shiftFolds = (
 	})
 }
 
-const processTree = async (tree: Tree): Promise<TreeSitterParseResult> => {
+const processTree = async (
+	tree: Tree,
+	languageId: string
+): Promise<TreeSitterParseResult> => {
 	const { brackets, errors } = collectTreeData(tree)
-	const [captures, folds] = await Promise.all([
-		runHighlightQueries(tree),
-		runFoldQueries(tree),
-	])
+	const captures = runHighlightQueries(tree, languageId)
+	const folds = runFoldQueries(tree, languageId)
 	return {
-		captures: captures ?? [],
-		folds: folds ?? [],
+		captures,
+		folds,
 		brackets,
 		errors,
 	}
@@ -418,17 +499,23 @@ const parseAndCacheText = async (
 	path: string,
 	text: string
 ): Promise<TreeSitterParseResult | undefined> => {
-	const parser = await ensureParser()
-	if (!parser) return undefined
+	const languageId = detectLanguage(path)
+	if (!languageId) return undefined
+
+	const res = await ensureParser(languageId)
+	if (!res) return undefined
+	const { parser } = res
+
 	const tree = parser.parse(text)
 	if (!tree) return undefined
-	const result = await processTree(tree)
+	const result = await processTree(tree, languageId)
 	setCachedEntry(path, {
 		tree,
 		text,
 		captures: result.captures,
 		brackets: result.brackets,
 		folds: result.folds,
+		languageId,
 	})
 	return result
 }
@@ -437,10 +524,13 @@ const reparseWithEdit = async (
 	path: string,
 	payload: TreeSitterEditPayload
 ): Promise<TreeSitterParseResult | undefined> => {
-	const parser = await ensureParser()
-	if (!parser) return undefined
 	const cached = astCache.get(path)
 	if (!cached) return undefined
+	const { languageId } = cached
+
+	const res = await ensureParser(languageId as LanguageId)
+	if (!res) return undefined
+	const { parser } = res
 
 	const updatedText = applyTextEdit(
 		cached.text,
@@ -506,19 +596,21 @@ const reparseWithEdit = async (
 			captures: shiftedCaptures,
 			brackets: shiftedBrackets,
 			folds: shiftedFolds,
+			languageId,
 		})
 
 		return result
 	}
 
 	// Full reparse with queries
-	const result = await processTree(nextTree)
+	const result = await processTree(nextTree, languageId)
 	setCachedEntry(path, {
 		tree: nextTree,
 		text: updatedText,
 		captures: result.captures,
 		brackets: result.brackets,
 		folds: result.folds,
+		languageId,
 	})
 	return result
 }
@@ -528,13 +620,15 @@ const reparseWithEditBatch = async (
 	edits: Omit<TreeSitterEditPayload, 'path'>[]
 ): Promise<TreeSitterParseResult | undefined> => {
 	if (edits.length === 0) return undefined
-	const parser = await ensureParser()
-	if (!parser) return undefined
 	const cached = astCache.get(path)
 	if (!cached) {
 		log.warn('[reparseWithEditBatch] No cached entry for path:', path)
 		return undefined
 	}
+	const { languageId } = cached
+	const res = await ensureParser(languageId as LanguageId)
+	if (!res) return undefined
+	const { parser } = res
 
 	// Check if all edits are shiftable (whitespace-only insertions)
 	const hasCachedData = cached?.captures && cached.brackets && cached.folds
@@ -615,19 +709,21 @@ const reparseWithEditBatch = async (
 			captures: shiftedCaptures,
 			brackets: shiftedBrackets,
 			folds: shiftedFolds,
+			languageId,
 		})
 
 		return result
 	}
 
 	// Full reparse with queries
-	const result = await processTree(currentTree)
+	const result = await processTree(currentTree, languageId)
 	setCachedEntry(path, {
 		tree: currentTree,
 		text: currentText,
 		captures: result.captures,
 		brackets: result.brackets,
 		folds: result.folds,
+		languageId,
 	})
 	return result
 }
@@ -739,10 +835,15 @@ const api: TreeSitterWorkerApi = {
 		await ensureParser()
 	},
 	async parse(source) {
-		const parser = await ensureParser()
-		const tree = parser?.parse(source)
+		// This old parse method assumes TSX or default language which is not ideal anymore
+		// But it's usually not used?
+		// We'll default to typescript if called without context, or just fail.
+		const res = await ensureParser('typescript')
+		if (!res) return undefined
+		const { parser } = res
+		const tree = parser.parse(source)
 		if (!tree) return undefined
-		const result = await processTree(tree)
+		const result = await processTree(tree, 'typescript')
 		tree.delete()
 		return result
 	},
@@ -774,14 +875,15 @@ const api: TreeSitterWorkerApi = {
 		parserInstance = null
 		parserInitPromise = null
 		minimapReadySubscribers.clear()
-		for (const query of highlightQueries) {
-			query.delete()
-		}
-		highlightQueries = []
-		for (const query of foldQueries) {
-			query.delete()
-		}
-		foldQueries = []
+
+		languageCache.clear()
+
+		queryCache.forEach((entry) => {
+			entry.highlight.forEach((q) => q.delete())
+			entry.fold.forEach((q) => q.delete())
+		})
+		queryCache.clear()
+
 		for (const entry of astCache.values()) {
 			entry.tree.delete()
 		}
