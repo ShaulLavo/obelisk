@@ -3,6 +3,8 @@ import {
 	initSqlite,
 	resetSqlite,
 	runSqliteQuery,
+	runSqliteDemo,
+	runFtsDemo,
 } from '../../workers/sqliteClient'
 import { splitStatements } from '../utils/sqlUtils'
 
@@ -171,6 +173,8 @@ export const useSqliteStudio = () => {
 	onMount(async () => {
 		try {
 			await initSqlite()
+			await runSqliteDemo()
+			await runFtsDemo()
 			await fetchTables()
 		} catch (e) {
 			console.error('[SqliteStudio] Failed to init:', e)
