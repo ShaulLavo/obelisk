@@ -16,7 +16,7 @@ export const Tabs: Component<TabsProps> = (props) => {
 	return (
 		<div
 			role="tablist"
-			class="flex items-center gap-1 overflow-x-auto border-b border-zinc-900/70 bg-zinc-950/40 px-2 py-1.5 text-xs"
+			class="flex shrink-0 items-end gap-1 overflow-x-auto border-b border-zinc-900/70 bg-zinc-950/40 text-xs"
 		>
 			<Show
 				when={props.values.length > 0}
