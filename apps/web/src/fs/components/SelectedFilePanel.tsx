@@ -7,6 +7,7 @@ import {
 	Accessor,
 	Match,
 	Switch,
+	batch,
 	createMemo,
 	createResource,
 	createSignal,
@@ -118,17 +119,21 @@ export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
 			// Tree-sitter artifacts are async and can briefly go stale vs the live piece table.
 			// Clear highlights and brackets immediately so the editor falls back to the lexer
 			// until the next worker result arrives.
-			updateSelectedFileHighlights(undefined)
-			updateSelectedFileBrackets([])
+			batch(() => {
+				updateSelectedFileHighlights(undefined)
+				updateSelectedFileBrackets([])
+			})
 
 			void parsePromise.then((result) => {
 				if (result && path === state.lastKnownFilePath) {
-					updateSelectedFileHighlights(result.captures)
-					updateSelectedFileFolds(result.folds)
-					updateSelectedFileBrackets(result.brackets)
-					updateSelectedFileErrors(result.errors)
-					// Increment version to trigger minimap re-render
-					setDocumentVersion((v) => v + 1)
+					batch(() => {
+						updateSelectedFileHighlights(result.captures)
+						updateSelectedFileFolds(result.folds)
+						updateSelectedFileBrackets(result.brackets)
+						updateSelectedFileErrors(result.errors)
+						// Increment version to trigger minimap re-render
+						setDocumentVersion((v) => v + 1)
+					})
 				}
 			})
 		},
