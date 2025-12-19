@@ -28,7 +28,7 @@ import type { DocumentIncrementalEdit, EditorProps } from '../types'
 export const TextEditorView = (props: EditorProps) => {
 	const cursor = useCursor()
 	const history = useHistory()
-	const lexer = Lexer.create()
+	const lexer = props.lexer ?? Lexer.create()
 	let lexerStatesPath: string | undefined
 
 	const tabSize = () => props.tabSize?.() ?? DEFAULT_TAB_SIZE

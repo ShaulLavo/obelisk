@@ -32,6 +32,11 @@ const DEFAULT_RULES: ScmRules = {
 	regexRules: DEFAULT_REGEX_RULES,
 }
 
+const EMPTY_RULES: ScmRules = {
+	keywords: new Map(),
+	regexRules: [],
+}
+
 /**
  * Unified Lexer class that provides state management around the pure tokenizer.
  */
@@ -46,10 +51,26 @@ export class Lexer {
 	}
 
 	/**
+	 * Check if the lexer has SCM rules loaded.
+	 * Returns false for empty/no-op lexers (used for unknown file types).
+	 */
+	hasRules(): boolean {
+		return this.keywords.size > 0 || this.regexRules.length > 0
+	}
+
+	/**
 	 * Create a lexer with the given SCM rules
 	 */
 	static create(rules: ScmRules = DEFAULT_RULES): Lexer {
 		return new Lexer(rules)
+	}
+
+	/**
+	 * Create an empty lexer with no rules (plain text mode).
+	 * Use this for files with unknown extensions.
+	 */
+	static createEmpty(): Lexer {
+		return new Lexer(EMPTY_RULES)
 	}
 
 	/**
@@ -79,12 +100,24 @@ export class Lexer {
 	}
 
 	/**
-	 * Tokenize a single line with the given starting state
+	 * Tokenize a single line with the given starting state.
+	 * If no SCM rules are loaded, returns empty tokens (plain text mode).
 	 */
 	tokenizeLine(
 		line: string,
 		state: LineState = Lexer.initialState()
 	): TokenizeResult {
+		// No rules means plain text - skip tokenization
+		if (!this.hasRules()) {
+			return {
+				tokens: [],
+				brackets: [],
+				endState: {
+					...state,
+					offset: state.offset + line.length + 1,
+				},
+			}
+		}
 		return tokenizeLine(line, state, this.keywords, this.regexRules)
 	}
 
@@ -179,7 +212,8 @@ export class Lexer {
 			currentLine++
 
 			// Check if we can stop early
-			const hasNextLine = currentLine < lineCount && currentLine < newStates.length
+			const hasNextLine =
+				currentLine < lineCount && currentLine < newStates.length
 			const hasInsertedLines = insertedLineCount > 0
 			const isBeforeFirstOriginalLineAfterInsertion =
 				hasInsertedLines && currentLine < firstOriginalLineIndexAfterInsertion

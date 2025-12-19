@@ -1,7 +1,7 @@
 import type { Accessor } from 'solid-js'
 import type { ParseResult } from '@repo/utils/parse'
 import type { PieceTableSnapshot } from '@repo/utils'
-import type { BracketInfo } from '@repo/lexer'
+import type { BracketInfo, Lexer } from '@repo/lexer'
 
 export type VirtualItem = {
 	index: number
@@ -89,6 +89,8 @@ export type EditorProps = {
 	errors?: Accessor<EditorError[] | undefined>
 	/** Tree-sitter worker for minimap communication */
 	treeSitterWorker?: Worker
+	/** Optional lexer for syntax highlighting fallback. If not provided, defaults to JS/TS lexer. */
+	lexer?: Lexer
 	/** Document version for minimap re-render */
 	documentVersion?: Accessor<number>
 	onSave?: () => void

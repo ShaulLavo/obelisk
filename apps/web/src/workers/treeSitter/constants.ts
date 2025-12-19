@@ -19,6 +19,9 @@ export const EXTENSION_MAP: Record<string, LanguageId> = {
 	json: 'json',
 	html: 'html',
 	htm: 'html',
+	md: 'markdown',
+	mdx: 'markdown',
+	markdown: 'markdown',
 }
 
 // Language configuration: wasm paths and query sources
@@ -62,6 +65,11 @@ export const LANGUAGE_CONFIG: Record<
 	html: {
 		wasm: '/tree-sitter/tree-sitter-html.wasm',
 		highlightQueries: ['/tree-sitter/html-highlights.scm'],
+		foldQueries: [],
+	},
+	markdown: {
+		wasm: '/tree-sitter/tree-sitter-markdown.wasm',
+		highlightQueries: ['/tree-sitter/markdown-highlights.scm'],
 		foldQueries: [],
 	},
 }

@@ -2,7 +2,7 @@ import type {
 	EditorSyntaxHighlight,
 	TextEditorDocument,
 } from '@repo/code-editor'
-import { Editor } from '@repo/code-editor'
+import { Editor, Lexer } from '@repo/code-editor'
 import {
 	Accessor,
 	Match,
@@ -17,6 +17,7 @@ import { BinaryFileViewer } from '../../components/BinaryFileViewer'
 import { useFs } from '../../fs/context/FsContext'
 import { sendIncrementalTreeEdit } from '../../treeSitter/incrementalEdits'
 import { getTreeSitterWorker } from '../../treeSitter/workerClient'
+import { detectLanguage } from '../../workers/treeSitter/constants'
 import { useTabs } from '../hooks/useTabs'
 import { Tabs } from './Tabs'
 
@@ -58,6 +59,18 @@ export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
 
 	const [documentVersion, setDocumentVersion] = createSignal(0)
 	const [treeSitterWorker] = createResource(async () => getTreeSitterWorker())
+
+	// Create lexer based on file extension - JS/TS lexer only for JS/TS files
+	// Other file types get empty lexer (plain text) when tree-sitter unavailable
+	const JS_TS_LANGUAGES = new Set(['javascript', 'jsx', 'typescript', 'tsx'])
+	const editorLexer = createMemo(() => {
+		const path = state.lastKnownFilePath
+		if (!path) return Lexer.createEmpty()
+		const languageId = detectLanguage(path)
+		return languageId && JS_TS_LANGUAGES.has(languageId)
+			? Lexer.create()
+			: Lexer.createEmpty()
+	})
 
 	const tabs = useTabs(() => state.lastKnownFilePath, {
 		maxTabs: MAX_EDITOR_TABS,
@@ -153,6 +166,7 @@ export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
 						brackets={() => state.selectedFileBrackets}
 						errors={editorErrors}
 						treeSitterWorker={treeSitterWorker() ?? undefined}
+						lexer={editorLexer()}
 						documentVersion={documentVersion}
 						onSave={() => void saveFile()}
 					/>

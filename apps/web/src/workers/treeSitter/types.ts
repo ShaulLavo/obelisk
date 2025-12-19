@@ -30,6 +30,7 @@ export type LanguageId =
 	| 'jsx'
 	| 'json'
 	| 'html'
+	| 'markdown'
 
 // Type alias for SyntaxNode (not directly exported from web-tree-sitter)
 export type SyntaxNode = ReturnType<Tree['rootNode']['child']>
