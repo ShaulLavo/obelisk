@@ -132,6 +132,62 @@ export const getIdentifierScope = (
 }
 
 /**
+ * Skip over an interpolation expression `${...}` handling nested template literals.
+ * Assumes `i` is pointing to the first char inside the expression (after `${`).
+ * Returns the index after the closing `}`.
+ */
+const skipInterpolation = (
+	line: string,
+	startIndex: number,
+	len: number
+): number => {
+	let i = startIndex
+	let depth = 1
+
+	while (i < len && depth > 0) {
+		const c = line[i]
+
+		// Handle nested template literal
+		if (c === '`') {
+			i++
+			while (i < len) {
+				if (line[i] === '\\' && i + 1 < len) {
+					i += 2
+					continue
+				}
+				if (line[i] === '`') {
+					i++
+					break
+				}
+				if (line[i] === '$' && i + 1 < len && line[i + 1] === '{') {
+					i += 2
+					i = skipInterpolation(line, i, len)
+					continue
+				}
+				i++
+			}
+			continue
+		}
+
+		if (c === '{') {
+			depth++
+			i++
+			continue
+		}
+
+		if (c === '}') {
+			depth--
+			i++
+			continue
+		}
+
+		i++
+	}
+
+	return i
+}
+
+/**
  * Tokenize a single line with the given starting state
  */
 export const tokenizeLine = (
@@ -182,12 +238,7 @@ export const tokenizeLine = (
 				}
 				if (line[i] === '$' && i + 1 < len && line[i + 1] === '{') {
 					i += 2
-					let braceDepth = 1
-					while (i < len && braceDepth > 0) {
-						if (line[i] === '{') braceDepth++
-						else if (line[i] === '}') braceDepth--
-						i++
-					}
+					i = skipInterpolation(line, i, len)
 					continue
 				}
 				i++
@@ -291,12 +342,7 @@ export const tokenizeLine = (
 				}
 				if (line[i] === '$' && i + 1 < len && line[i + 1] === '{') {
 					i += 2
-					let braceDepth = 1
-					while (i < len && braceDepth > 0) {
-						if (line[i] === '{') braceDepth++
-						else if (line[i] === '}') braceDepth--
-						i++
-					}
+					i = skipInterpolation(line, i, len)
 					continue
 				}
 				i++

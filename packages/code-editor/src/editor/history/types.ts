@@ -1,5 +1,5 @@
 import type { JSX } from 'solid-js'
-import type { TextEditorDocument } from '../types'
+import type { DocumentIncrementalEdit, TextEditorDocument } from '../types'
 import type { CursorPosition, SelectionRange } from '../cursor/types'
 
 export type HistoryMergeMode = 'insert' | 'delete'
@@ -29,6 +29,9 @@ export type HistoryContextValue = {
 		change: HistoryChangeInput,
 		options?: { mergeMode?: HistoryMergeMode }
 	) => void
+	subscribeAppliedEdits: (
+		listener: (edit: DocumentIncrementalEdit) => void
+	) => () => void
 	undo: () => void
 	redo: () => void
 	canUndo: () => boolean

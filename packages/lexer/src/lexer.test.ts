@@ -1,4 +1,4 @@
-import { describe, test, expect } from 'bun:test'
+import { describe, test, expect } from 'vitest'
 import { Lexer, LexState } from './lexer'
 
 const quickTokenizeLine = (line: string, state?: any) => {

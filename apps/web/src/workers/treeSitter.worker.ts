@@ -279,8 +279,41 @@ const isShiftableEdit = (
 	return isInsertion && isWhitespaceOnly && hasContent
 }
 
+const getEditCharDelta = (edit: {
+	insertedText: string
+	newEndIndex?: number
+	oldEndIndex?: number
+}): number => {
+	if (
+		typeof edit.newEndIndex === 'number' &&
+		typeof edit.oldEndIndex === 'number'
+	) {
+		return edit.newEndIndex - edit.oldEndIndex
+	}
+
+	return edit.insertedText.length
+}
+
+const getEditLineDelta = (edit: {
+	startPosition?: { row: number }
+	oldEndPosition?: { row: number }
+	newEndPosition?: { row: number }
+}): number => {
+	const startRow = edit.startPosition?.row
+	const oldEndRow = edit.oldEndPosition?.row
+	const newEndRow = edit.newEndPosition?.row
+
+	const hasNewEndRow = typeof newEndRow === 'number'
+	const hasOldEndRow = typeof oldEndRow === 'number'
+	const hasStartRow = typeof startRow === 'number'
+
+	if (hasNewEndRow && hasOldEndRow) return newEndRow - oldEndRow
+	if (hasNewEndRow && hasStartRow) return newEndRow - startRow
+	return 0
+}
+
 /**
- * Shifts capture indices after a text insertion.
+ * Shifts capture indices after a text edit.
  */
 const shiftCaptures = (
 	captures: TreeSitterCapture[],
@@ -307,7 +340,7 @@ const shiftCaptures = (
 }
 
 /**
- * Shifts bracket indices after a text insertion.
+ * Shifts bracket indices after a text edit.
  */
 const shiftBrackets = (
 	brackets: BracketInfo[],
@@ -326,8 +359,7 @@ const shiftBrackets = (
 }
 
 /**
- * Shifts fold ranges after a line insertion.
- * Uses position to calculate line delta.
+ * Shifts fold ranges after a line edit.
  */
 const shiftFolds = (
 	folds: FoldRange[],
@@ -423,8 +455,8 @@ const reparseWithEdit = async (
 		)
 
 	if (editIsShiftable) {
-		const charDelta = payload.insertedText.length
-		const lineDelta = payload.newEndPosition.row - payload.startPosition.row
+		const charDelta = getEditCharDelta(payload)
+		const lineDelta = getEditLineDelta(payload)
 
 		const shiftedCaptures = shiftCaptures(
 			cached.captures!,
@@ -533,8 +565,8 @@ const reparseWithEditBatch = async (
 		let shiftedFolds = cached.folds!
 
 		for (const edit of edits) {
-			const charDelta = edit.insertedText.length
-			const lineDelta = edit.newEndPosition.row - edit.startPosition.row
+			const charDelta = getEditCharDelta(edit)
+			const lineDelta = getEditLineDelta(edit)
 
 			shiftedCaptures = shiftCaptures(
 				shiftedCaptures,

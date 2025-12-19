@@ -24,7 +24,6 @@ export const WhitespaceMarkers = (props: WhitespaceMarkersProps) => (
 						marker.align === 'center'
 							? 'translate(-50%, -50%)'
 							: 'translate(0, -50%)',
-					'will-change': 'transform',
 				}}
 			>
 				{marker.type === 'tab' ? (
