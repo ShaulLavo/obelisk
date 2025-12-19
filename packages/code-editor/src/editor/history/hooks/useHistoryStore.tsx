@@ -8,7 +8,7 @@ import {
 	type PieceTableSnapshot,
 } from '@repo/utils'
 import { useCursor } from '../../cursor'
-import type { TextEditorDocument } from '../../types'
+import type { DocumentIncrementalEdit, TextEditorDocument } from '../../types'
 import type {
 	HistoryChangeInput,
 	HistoryContextValue,
@@ -39,6 +39,9 @@ export const useHistoryStore = (
 	document: TextEditorDocument
 ): HistoryContextValue => {
 	const cursor = useCursor()
+	const appliedEditListeners = new Set<
+		(edit: DocumentIncrementalEdit) => void
+	>()
 
 	const filePath = createMemo(() => document.filePath())
 
@@ -156,6 +159,9 @@ export const useHistoryStore = (
 		}
 
 		if (incrementalEdit) {
+			for (const listener of appliedEditListeners) {
+				listener(incrementalEdit)
+			}
 			document.applyIncrementalEdit?.(incrementalEdit)
 		}
 	}
@@ -273,6 +279,12 @@ export const useHistoryStore = (
 
 	return {
 		recordChange,
+		subscribeAppliedEdits: (listener) => {
+			appliedEditListeners.add(listener)
+			return () => {
+				appliedEditListeners.delete(listener)
+			}
+		},
 		undo,
 		redo,
 		canUndo,
