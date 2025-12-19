@@ -1,6 +1,7 @@
 import type { FoldRange } from '@repo/code-editor'
+import type { MinimapTokenSummary } from '@repo/code-editor/tokenSummary'
 
-export type { FoldRange }
+export type { FoldRange, MinimapTokenSummary }
 
 export type TreeSitterCapture = {
 	startIndex: number
@@ -42,6 +43,13 @@ export type TreeSitterWorkerApi = {
 		path: string
 		edits: Omit<TreeSitterEditPayload, 'path'>[]
 	}): Promise<TreeSitterParseResult | undefined>
+	subscribeMinimapReady(callback: (payload: { path: string }) => void): () => void
+	/** Get compact minimap token summary for a cached file */
+	getMinimapSummary(payload: {
+		path: string
+		version: number
+		maxChars?: number
+	}): Promise<MinimapTokenSummary | undefined>
 	dispose(): Promise<void>
 }
 

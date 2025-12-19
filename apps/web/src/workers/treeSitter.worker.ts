@@ -1,5 +1,6 @@
 import { expose } from 'comlink'
 import { Parser, Language, Query, Tree } from 'web-tree-sitter'
+import { getScopeColorId } from '@repo/code-editor/tokenSummary'
 import type {
 	TreeSitterWorkerApi,
 	TreeSitterEditPayload,
@@ -8,6 +9,7 @@ import type {
 	TreeSitterParseResult,
 	TreeSitterError,
 	FoldRange,
+	MinimapTokenSummary,
 } from './treeSitterWorkerTypes'
 
 import { logger } from '../logger'
@@ -67,12 +69,27 @@ const applyTextEdit = (
 	insertedText: string
 ) => text.slice(0, startIndex) + insertedText + text.slice(oldEndIndex)
 
+// Subscribers for minimap readiness notifications.
+// Used by the minimap renderer worker to render as soon as the cache updates.
+const minimapReadySubscribers = new Set<(payload: { path: string }) => void>()
+
+const notifyMinimapReady = (path: string) => {
+	for (const callback of minimapReadySubscribers) {
+		try {
+			callback({ path })
+		} catch (error) {
+			log.warn('[minimap] subscriber callback failed', error)
+		}
+	}
+}
+
 const setCachedEntry = (path: string, entry: CachedTreeEntry) => {
 	const existing = astCache.get(path)
 	if (existing && existing.tree !== entry.tree) {
 		existing.tree.delete()
 	}
 	astCache.set(path, entry)
+	notifyMinimapReady(path)
 }
 
 const highlightQuerySources = [
@@ -615,6 +632,108 @@ const reparseWithEditBatch = async (
 	return result
 }
 
+// ============================================================================
+// Minimap Token Summary Generation
+// ============================================================================
+
+/**
+ * Scope to colorId mapping for minimap.
+ * Keep colorId space small (0-255) for packed representation.
+ */
+const generateMinimapSummary = (
+	path: string,
+	version: number,
+	maxChars: number = 160
+): MinimapTokenSummary | undefined => {
+	const cached = astCache.get(path)
+	if (!cached) return undefined
+
+	const text = cached.text
+	const captures = cached.captures ?? []
+
+	// Count lines
+	const lines = text.split('\n')
+	const lineCount = lines.length
+
+	// Allocate buffer for tokens (lineCount * maxChars)
+	const totalBytes = lineCount * maxChars
+	const buffer = new ArrayBuffer(totalBytes)
+	const tokens = new Uint8Array(buffer)
+
+	// Build line start offsets for fast lookup
+	const lineStarts: number[] = new Array(lineCount)
+	let offset = 0
+	for (let i = 0; i < lineCount; i++) {
+		lineStarts[i] = offset
+		offset += lines[i]!.length + 1 // +1 for newline
+	}
+
+	// Process each line
+	let captureIndex = 0
+
+	for (let lineIndex = 0; lineIndex < lineCount; lineIndex++) {
+		const lineText = lines[lineIndex]!
+		const lineStart = lineStarts[lineIndex]!
+		const lineEnd = lineStart + lineText.length
+
+		// Skip past captures that end before this line
+		while (
+			captureIndex < captures.length &&
+			captures[captureIndex]!.endIndex <= lineStart
+		) {
+			captureIndex++
+		}
+
+		const tokenOffset = lineIndex * maxChars
+		const sampleLength = Math.min(lineText.length, maxChars)
+
+		// Fill line with tokens
+		// Optimization: instead of char-by-char, we can iterate relevant captures
+		// Initialize with 0
+
+		// Iterate relevant captures for this line and paint the tokens
+		let idx = captureIndex
+		while (idx < captures.length && captures[idx]!.startIndex < lineEnd) {
+			const capture = captures[idx]!
+			const colorId = getScopeColorId(capture.captureName)
+
+			// Calculate intersection with clamped line range [lineStart, lineStart + sampleLength]
+			// We only care about the first maxChars of the line
+			const sampleEndGlobal = lineStart + sampleLength
+
+			const startGlobal = Math.max(capture.startIndex, lineStart)
+			const endGlobal = Math.min(capture.endIndex, sampleEndGlobal)
+
+			if (startGlobal < endGlobal) {
+				// Map to local token index
+				const startLocal = startGlobal - lineStart
+				const endLocal = endGlobal - lineStart
+
+				// Fill range
+				for (let i = startLocal; i < endLocal; i++) {
+					// Don't overwrite if character is whitespace (keep 0/transparent if we consider 0 as bg)
+					// Actually, source code might have whitespace.
+					// If we want to see block structure, we should verify it's not a space.
+					const charCode = lineText.charCodeAt(i)
+					if (charCode !== 32 && charCode !== 9) {
+						// space or tab
+						tokens[tokenOffset + i] = colorId
+					}
+				}
+			}
+
+			idx++
+		}
+	}
+
+	return {
+		tokens,
+		maxChars,
+		lineCount,
+		version,
+	}
+}
+
 const api: TreeSitterWorkerApi = {
 	async init() {
 		await ensureParser()
@@ -637,10 +756,24 @@ const api: TreeSitterWorkerApi = {
 	async applyEditBatch(payload) {
 		return reparseWithEditBatch(payload.path, payload.edits)
 	},
+	subscribeMinimapReady(callback) {
+		minimapReadySubscribers.add(callback)
+		return () => {
+			minimapReadySubscribers.delete(callback)
+		}
+	},
+	async getMinimapSummary(payload) {
+		return generateMinimapSummary(
+			payload.path,
+			payload.version,
+			payload.maxChars ?? 160
+		)
+	},
 	async dispose() {
 		parserInstance?.delete()
 		parserInstance = null
 		parserInitPromise = null
+		minimapReadySubscribers.clear()
 		for (const query of highlightQueries) {
 			query.delete()
 		}
@@ -657,3 +790,15 @@ const api: TreeSitterWorkerApi = {
 }
 
 expose(api)
+
+// Handle MessagePort connections from minimap worker
+self.addEventListener('message', (event: MessageEvent) => {
+	if (
+		event.data?.type === 'connect-port' &&
+		event.data.port instanceof MessagePort
+	) {
+		console.log('[TreeSitter] Received port connection from minimap worker')
+		// Expose the API on the port for direct worker-to-worker communication
+		expose(api, event.data.port)
+	}
+})
