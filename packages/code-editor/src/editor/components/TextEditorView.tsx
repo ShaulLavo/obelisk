@@ -163,6 +163,7 @@ export const TextEditorView = (props: EditorProps) => {
 		scrollCursorIntoView,
 		activeScopes: () => props.activeScopes?.() ?? ['editor', 'global'],
 		onIncrementalEdit: handleIncrementalEdit,
+		onSave: props.onSave,
 	})
 
 	const mouseSelection = createMouseSelection({

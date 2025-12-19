@@ -44,4 +44,5 @@ export type FsState = {
 	lastKnownFileNode?: FsFileTreeNode | undefined
 	lastKnownFilePath?: string
 	deferredMetadata: Record<string, DeferredDirMetadata>
+	dirtyPaths: Record<string, boolean>
 }

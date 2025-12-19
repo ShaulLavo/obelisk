@@ -7,6 +7,7 @@ import { type ParentComponent } from 'solid-js'
 import { ThemedToaster } from './ThemedToaster'
 import { FocusProvider } from './focus/focusManager'
 import { FsProvider } from './fs/context/FsProvider'
+import { KeymapProvider } from './keymap/KeymapContext'
 
 export const storageManager = createLocalStorageManager('ui-theme')
 
@@ -15,10 +16,12 @@ export const Providers: ParentComponent = (props) => {
 		<>
 			<ColorModeScript storageType={storageManager.type} />
 			<ColorModeProvider storageManager={storageManager}>
-				<FocusProvider>
-					<ThemedToaster />
-					<FsProvider>{props.children}</FsProvider>
-				</FocusProvider>
+				<KeymapProvider>
+					<FocusProvider>
+						<ThemedToaster />
+						<FsProvider>{props.children}</FsProvider>
+					</FocusProvider>
+				</KeymapProvider>
 			</ColorModeProvider>
 		</>
 	)

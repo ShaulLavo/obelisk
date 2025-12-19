@@ -52,6 +52,7 @@ export type TextEditorInputOptions = {
 	scrollCursorIntoView: () => void
 	activeScopes?: Accessor<string[]>
 	onIncrementalEdit?: (edit: DocumentIncrementalEdit) => void
+	onSave?: () => void
 }
 
 export type TextEditorInputHandlers = {
@@ -389,6 +390,17 @@ export function createTextEditorInput(
 			},
 		},
 		[{ shortcut: 'primary+v' }]
+	)
+
+	registerCommandWithShortcuts(
+		{
+			id: 'editor.save',
+			run: () => {
+				options.onSave?.()
+			},
+		},
+		[{ shortcut: 'primary+s' }],
+		'global'
 	)
 
 	registerCommandWithShortcuts(

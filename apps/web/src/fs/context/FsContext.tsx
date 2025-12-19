@@ -39,6 +39,8 @@ export type FsActions = {
 	updateSelectedFileBrackets: (brackets: BracketInfo[] | undefined) => void
 	updateSelectedFileErrors: (errors: TreeSitterError[] | undefined) => void
 	fileCache: FileCacheController
+	saveFile: (path?: string) => Promise<void>
+	setDirtyPath: (path: string, isDirty: boolean) => void
 }
 
 export type FsContextValue = [FsState, FsActions]

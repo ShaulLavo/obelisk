@@ -14,6 +14,7 @@ import { createPieceTableState } from './createPieceTableState'
 import { createHighlightState } from './createHighlightState'
 import { createFoldState } from './createFoldState'
 import { createBracketState } from './createBracketState'
+import { createDirtyState } from './createDirtyState'
 import { createErrorState } from './createErrorState'
 
 export const createFsState = () => {
@@ -62,6 +63,7 @@ export const createFsState = () => {
 	const { fileFolds, setFolds, clearFolds } = createFoldState()
 	const { fileBrackets, setBrackets, clearBrackets } = createBracketState()
 	const { fileErrors, setErrors, clearErrors } = createErrorState()
+	const { dirtyPaths, setDirtyPath, clearDirtyPaths } = createDirtyState()
 
 	const selectedNode = createMemo<FsTreeNode | undefined>(() =>
 		tree ? findNode(tree, selectedPath()) : undefined
@@ -176,6 +178,9 @@ export const createFsState = () => {
 		get lastKnownFilePath() {
 			return lastKnownFilePath()
 		},
+		get dirtyPaths() {
+			return dirtyPaths
+		},
 	} satisfies FsState
 
 	return {
@@ -211,5 +216,7 @@ export const createFsState = () => {
 		clearBrackets,
 		setErrors,
 		clearErrors,
+		setDirtyPath,
+		clearDirtyPaths,
 	}
 }

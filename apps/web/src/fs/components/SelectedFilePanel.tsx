@@ -11,6 +11,8 @@ import {
 	createMemo,
 	createResource,
 	createSignal,
+	onCleanup,
+	onMount,
 } from 'solid-js'
 import { useFocusManager } from '~/focus/focusManager'
 import { BinaryFileViewer } from '../../components/BinaryFileViewer'
@@ -49,6 +51,7 @@ export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
 			updateSelectedFileFolds,
 			updateSelectedFileBrackets,
 			updateSelectedFileErrors,
+			saveFile,
 		},
 	] = useFs()
 	const focus = useFocusManager()
@@ -139,6 +142,8 @@ export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
 		},
 	}
 
+	// Tree-sitter worker for minimap
+
 	const editorHighlights = createMemo<EditorSyntaxHighlight[] | undefined>(
 		() => {
 			const captures = state.selectedFileHighlights
@@ -184,6 +189,7 @@ export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
 						errors={editorErrors}
 						treeSitterWorker={treeSitterWorker() ?? undefined}
 						documentVersion={documentVersion}
+						onSave={() => void saveFile()}
 					/>
 				}
 			>

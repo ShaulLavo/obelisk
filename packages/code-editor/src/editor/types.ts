@@ -91,6 +91,7 @@ export type EditorProps = {
 	treeSitterWorker?: Worker
 	/** Document version for minimap re-render */
 	documentVersion?: Accessor<number>
+	onSave?: () => void
 }
 
 export type LineEntry = {

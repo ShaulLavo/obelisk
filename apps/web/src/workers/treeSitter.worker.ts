@@ -1,4 +1,4 @@
-import { expose } from 'comlink'
+import { expose, proxy } from 'comlink'
 import { Parser, Language, Query, Tree } from 'web-tree-sitter'
 import { getScopeColorId } from '@repo/code-editor/tokenSummary'
 import type {
@@ -758,9 +758,9 @@ const api: TreeSitterWorkerApi = {
 	},
 	subscribeMinimapReady(callback) {
 		minimapReadySubscribers.add(callback)
-		return () => {
+		return proxy(() => {
 			minimapReadySubscribers.delete(callback)
-		}
+		})
 	},
 	async getMinimapSummary(payload) {
 		return generateMinimapSummary(

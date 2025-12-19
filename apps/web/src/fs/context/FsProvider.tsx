@@ -38,6 +38,7 @@ export function FsProvider(props: { children: JSX.Element }) {
 		setFolds,
 		setBrackets,
 		setErrors,
+		setDirtyPath,
 		setBackgroundPrefetching,
 		setBackgroundIndexedFileCount,
 		setLastPrefetchedPath,
@@ -134,12 +135,16 @@ export function FsProvider(props: { children: JSX.Element }) {
 		clearDeferredMetadata,
 	})
 
-	const { createDir, createFile, deleteNode } = createFsMutations({
+	const { createDir, createFile, deleteNode, saveFile } = createFsMutations({
 		refresh,
 		setExpanded,
 		setSelectedPath,
 		setSelectedFileSize,
+		setSelectedFileContent,
+		updateSelectedFilePieceTable,
 		setError,
+		setLoading,
+		setDirtyPath,
 		getState: () => state,
 		getActiveSource: () => state.activeSource,
 	})
@@ -255,6 +260,8 @@ export function FsProvider(props: { children: JSX.Element }) {
 			updateSelectedFileBrackets,
 			updateSelectedFileErrors,
 			fileCache,
+			saveFile,
+			setDirtyPath,
 		},
 	]
 
