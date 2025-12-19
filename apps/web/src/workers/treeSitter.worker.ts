@@ -797,7 +797,8 @@ self.addEventListener('message', (event: MessageEvent) => {
 		event.data?.type === 'connect-port' &&
 		event.data.port instanceof MessagePort
 	) {
-		console.log('[TreeSitter] Received port connection from minimap worker')
+		log.info('Received port connection from minimap worker')
+		// Explicit MessagePort transfers make origin checks unnecessary in this same-origin worker context.
 		// Expose the API on the port for direct worker-to-worker communication
 		expose(api, event.data.port)
 	}

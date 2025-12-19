@@ -1,0 +1,3 @@
+[submodule "packages/sqlite-wasm"]
+	path = packages/sqlite-wasm
+	url = https://github.com/ShaulLavo/sqlite-wasm.git

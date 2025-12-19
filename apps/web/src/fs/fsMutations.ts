@@ -2,6 +2,7 @@ import { batch, type Setter } from 'solid-js'
 import type { SetStoreFunction } from 'solid-js/store'
 import { ensureFs } from './runtime/fsRuntime'
 import type { FsSource, FsState } from './types'
+import { logger } from '../logger'
 
 import {
 	createPieceTableSnapshot,
@@ -114,6 +115,12 @@ export const createFsMutations = ({
 		const filePath = path ?? state.lastKnownFilePath
 		if (!filePath) return
 
+		// Only allow saving the currently selected file for now
+		if (path && path !== state.lastKnownFilePath) {
+			toast.error('Can only save the currently selected file')
+			return
+		}
+
 		const stats = state.fileStats[filePath]
 		if (stats && stats.contentKind === 'binary') {
 			toast.error('Cannot save binary files')
@@ -158,7 +165,7 @@ export const createFsMutations = ({
 			})
 			toast.success('File saved')
 		} catch (error) {
-			console.error('Save failed:', error)
+			logger.withTag('fsMutations').error('Save failed', { error })
 			setError(error instanceof Error ? error.message : 'Failed to save file')
 			toast.error('Failed to save file')
 		} finally {

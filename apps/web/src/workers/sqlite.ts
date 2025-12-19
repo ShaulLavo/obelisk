@@ -1,6 +1,5 @@
 import { logger } from '@repo/logger'
 import * as Comlink from 'comlink'
-import { InArgs } from 'node_modules/sqlite-wasm/dist/client/api'
 import sqlite3InitModule, {
 	type Database,
 	type Sqlite3Static,
@@ -9,6 +8,7 @@ import {
 	createClient,
 	type Sqlite3Client,
 	type Config,
+	type InArgs,
 } from 'sqlite-wasm/client'
 import wasmUrl from 'sqlite-wasm/sqlite3.wasm?url'
 
