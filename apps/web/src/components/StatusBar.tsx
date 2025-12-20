@@ -38,13 +38,6 @@ export const StatusBar = () => {
 	})
 
 	const statusIndicator = createMemo(() => {
-		if (state.error) {
-			return {
-				label: state.error,
-				class:
-					'border-red-900/60 bg-red-900/30 text-red-200 shadow-[0_0_10px_rgba(248,113,113,0.2)]',
-			}
-		}
 		if (state.loading) {
 			return {
 				label: 'Loading filesystem...',

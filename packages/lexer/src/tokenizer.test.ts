@@ -84,8 +84,8 @@ describe('Tokenizer', () => {
 			inputs.forEach((input) => {
 				const result = tokenize(input)
 				expect(result.tokens).toHaveLength(1)
-				expect(result.tokens[0].scope).toBe('number')
-				expect(result.tokens[0].end).toBe(input.length)
+				expect(result.tokens[0]!.scope).toBe('number')
+				expect(result.tokens[0]!.end).toBe(input.length)
 			})
 		})
 

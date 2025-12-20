@@ -23,6 +23,7 @@
 - Keep modules focused; colocate feature-specific code under `src/fs`, `src/terminal`, or `src/components/fs`.
 - Follow the shared ESLint config; fix all reported issues before committing.
 - Client-only app: browser globals like `window` are always present; skip `typeof window !== 'undefined'` guards.
+- Prefer Tailwind utilities and `@apply`/`@layer` for styling; use CSS modules only in rare cases (e.g. multiple custom scrollbars) to prevent class collisions.
 
 ## Logging
 

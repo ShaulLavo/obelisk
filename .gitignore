@@ -38,3 +38,7 @@ yarn-error.log*
 # Misc
 .DS_Store
 *.pem
+*gb.ts
+*mb.ts
+*kb.ts
+*b.ts
