@@ -13,10 +13,18 @@ import {
 	getCharIndex,
 } from './fontAtlas'
 import {
-	findDirtyLines,
+	findDirtyLinesInRange,
 	clearLines,
 	getCachedImageData,
 	setCachedImageData,
+	getCachedScrollY,
+	setCachedScrollY,
+	getCachedScale,
+	setCachedScale,
+	getPreviousTokens,
+	getPreviousMaxChars,
+	getPreviousLineCount,
+	getPreviousVersion,
 	setPreviousState,
 } from './partialRepaint'
 
@@ -150,6 +158,140 @@ export const renderLine = (
 // Full/Partial Render
 // ============================================================================
 
+const normalizeScrollY = (scrollY: number): number => {
+	return Math.max(0, Math.round(scrollY))
+}
+
+const clearRowRange = (
+	dest: Uint8ClampedArray,
+	deviceWidth: number,
+	startY: number,
+	endY: number
+): void => {
+	const start = Math.max(0, startY)
+	const end = Math.max(start, endY)
+
+	if (start === end) return
+
+	const rowBytes = deviceWidth * Constants.RGBA_CHANNELS_CNT
+	dest.fill(0, start * rowBytes, end * rowBytes)
+}
+
+const blitForScrollDelta = (
+	dest: Uint8ClampedArray,
+	deviceWidth: number,
+	deviceHeight: number,
+	deltaY: number
+): void => {
+	const absDeltaY = Math.abs(deltaY)
+	if (absDeltaY <= 0) return
+
+	const rowBytes = deviceWidth * Constants.RGBA_CHANNELS_CNT
+	const byteDelta = absDeltaY * rowBytes
+	const totalBytes = deviceHeight * rowBytes
+
+	if (absDeltaY >= deviceHeight) {
+		dest.fill(0)
+		return
+	}
+
+	// Scrolling down (deltaY > 0) moves pixels up.
+	if (deltaY > 0) {
+		dest.copyWithin(0, byteDelta, totalBytes)
+		clearRowRange(dest, deviceWidth, deviceHeight - absDeltaY, deviceHeight)
+		return
+	}
+
+	// Scrolling up (deltaY < 0) moves pixels down.
+	dest.copyWithin(byteDelta, 0, totalBytes - byteDelta)
+	clearRowRange(dest, deviceWidth, 0, absDeltaY)
+}
+
+const renderLinesIntersectingYRange = (
+	summary: MinimapTokenSummary,
+	dest: Uint8ClampedArray,
+	charW: number,
+	charH: number,
+	pixelsPerChar: number,
+	scale: number,
+	deviceWidth: number,
+	deviceHeight: number,
+	palette: Uint32Array,
+	scrollY: number,
+	yStart: number,
+	yEnd: number
+): void => {
+	const start = Math.max(0, Math.min(deviceHeight, yStart))
+	const end = Math.max(start, Math.min(deviceHeight, yEnd))
+	if (start === end) return
+
+	const docYStart = scrollY + start
+	const docYEnd = scrollY + end
+
+	const startLine = Math.floor(docYStart / charH)
+	const endLine = Math.floor((docYEnd - 1) / charH) + 1
+
+	const firstLine = Math.max(0, startLine)
+	const lastLine = Math.min(summary.lineCount, endLine)
+
+	for (let line = firstLine; line < lastLine; line++) {
+		renderLine(
+			line,
+			summary.tokens,
+			summary.maxChars,
+			dest,
+			charW,
+			charH,
+			pixelsPerChar,
+			scale,
+			deviceWidth,
+			deviceHeight,
+			palette,
+			scrollY
+		)
+	}
+}
+
+const fullRepaint = (
+	summary: MinimapTokenSummary,
+	ctx: OffscreenCanvasRenderingContext2D,
+	deviceWidth: number,
+	deviceHeight: number,
+	charW: number,
+	charH: number,
+	pixelsPerChar: number,
+	scale: number,
+	palette: Uint32Array,
+	scrollY: number
+): ImageData => {
+	const imageData = ctx.createImageData(deviceWidth, deviceHeight)
+
+	const startLine = Math.max(0, Math.floor(scrollY / charH))
+	const endLine = Math.min(
+		summary.lineCount,
+		Math.ceil((scrollY + deviceHeight) / charH)
+	)
+
+	for (let line = startLine; line < endLine; line++) {
+		renderLine(
+			line,
+			summary.tokens,
+			summary.maxChars,
+			imageData.data,
+			charW,
+			charH,
+			pixelsPerChar,
+			scale,
+			deviceWidth,
+			deviceHeight,
+			palette,
+			scrollY
+		)
+	}
+
+	return imageData
+}
+
 /**
  * Render from binary token summary with partial repainting
  */
@@ -174,53 +316,82 @@ export const renderFromSummary = (
 	const charW = Constants.BASE_CHAR_WIDTH * scale
 	const charH = Constants.BASE_CHAR_HEIGHT * scale
 	const pixelsPerChar = charW * charH
+	const normalizedScrollY = normalizeScrollY(scrollY)
 
-	// Determine visible range
-	const startLine = Math.floor(scrollY / charH)
-	const endLine = Math.ceil((scrollY + deviceHeight) / charH)
-
-	// Find dirty lines
-	const dirtyLines = forceFullRepaint
-		? new Set<number>() // Full repaint covers everything, handled below
-		: findDirtyLines(tokens, maxChars, lineCount)
-
-	// Check if dimensions changed - always requires full repaint
 	const cachedImageData = getCachedImageData()
-	const dimensionsChanged =
-		!cachedImageData ||
-		cachedImageData.width !== deviceWidth ||
-		cachedImageData.height !== deviceHeight
+	const previousTokens = getPreviousTokens()
+	const previousVersion = getPreviousVersion()
+	const previousLineCount = getPreviousLineCount()
+	const previousMaxChars = getPreviousMaxChars()
 
-	// Optimization: if no dirty lines AND dimensions unchanged, skip render
-	// Note: If scrollY changed, the caller should have invalidated cache or set forceFullRepaint
-	// However, we can also check if we really need to repaint.
-	// For scrolling, we essentially ALWAYS need full repaint of the viewport unless we implemented blitting.
-	// Current implementation assumes caller handles "scroll meant full repaint" by passing forceFullRepaint=true OR invalidating cache.
-	if (dirtyLines.size === 0 && !dimensionsChanged && !forceFullRepaint) {
+	const cacheMissing = !cachedImageData
+	const cacheSizeChanged =
+		!!cachedImageData &&
+		(cachedImageData.width !== deviceWidth || cachedImageData.height !== deviceHeight)
+	const cacheScaleChanged = !!cachedImageData && getCachedScale() !== scale
+	const structureChanged =
+		!!previousTokens &&
+		(previousLineCount !== lineCount || previousMaxChars !== maxChars)
+
+	const startLine = Math.max(0, Math.floor(normalizedScrollY / charH))
+	const endLine = Math.min(
+		lineCount,
+		Math.ceil((normalizedScrollY + deviceHeight) / charH)
+	)
+	const visibleLineCount = Math.max(0, endLine - startLine)
+
+	const cachedScrollY = getCachedScrollY()
+	const deltaY = cachedImageData ? normalizedScrollY - cachedScrollY : 0
+	const scrollJumped = !!cachedImageData && Math.abs(deltaY) >= deviceHeight
+
+	const tokensUnchanged = previousTokens === tokens && previousVersion === summary.version
+
+	if (
+		!forceFullRepaint &&
+		!cacheMissing &&
+		!cacheSizeChanged &&
+		!cacheScaleChanged &&
+		!structureChanged &&
+		!scrollJumped &&
+		visibleLineCount > 0 &&
+		tokensUnchanged &&
+		cachedScrollY === normalizedScrollY
+	) {
 		return
 	}
 
-	// Full repaint if dimensions changed or too many dirty lines or FORCE (e.g. scroll)
-	const fullRepaint =
-		forceFullRepaint || dimensionsChanged || dirtyLines.size > lineCount * 0.3
+	let imageData =
+		forceFullRepaint ||
+		cacheMissing ||
+		cacheSizeChanged ||
+		cacheScaleChanged ||
+		structureChanged ||
+		scrollJumped ||
+		visibleLineCount <= 0
+			? fullRepaint(
+					summary,
+					ctx,
+					deviceWidth,
+					deviceHeight,
+					charW,
+					charH,
+					pixelsPerChar,
+					scale,
+					palette,
+					normalizedScrollY
+				)
+			: cachedImageData!
 
-	let imageData: ImageData
+	if (imageData === cachedImageData) {
+		if (deltaY !== 0) {
+			const absDeltaY = Math.abs(deltaY)
+			blitForScrollDelta(imageData.data, deviceWidth, deviceHeight, deltaY)
 
-	if (fullRepaint) {
-		// Full repaint
-		ctx.setTransform(1, 0, 0, 1, 0, 0)
-		ctx.clearRect(0, 0, deviceWidth, deviceHeight)
-		imageData = ctx.createImageData(deviceWidth, deviceHeight)
+			const patchStartY = deltaY > 0 ? deviceHeight - absDeltaY : 0
+			const patchEndY = patchStartY + absDeltaY
 
-		// Render all visible lines
-		const visibleStart = Math.max(0, startLine)
-		const visibleEnd = Math.min(lineCount, endLine)
-
-		for (let row = visibleStart; row < visibleEnd; row++) {
-			renderLine(
-				row,
-				tokens,
-				maxChars,
+			renderLinesIntersectingYRange(
+				summary,
 				imageData.data,
 				charW,
 				charH,
@@ -229,39 +400,60 @@ export const renderFromSummary = (
 				deviceWidth,
 				deviceHeight,
 				palette,
-				scrollY
+				normalizedScrollY,
+				patchStartY,
+				patchEndY
 			)
 		}
-	} else {
-		// Partial repaint - reuse cached image data
-		imageData = cachedImageData!
 
-		// Clear and re-render only dirty lines
-		// WARNING: Partial repaint logic assumes FIXED Y POSITIONS.
-		// If we support scrolling, partial repaint of "dirty lines" is complex because "line 10" is now at a different Y.
-		// So actually, if scrollY != 0 (or changed), we CANNOT use partial repaint comfortably without complex logic.
-		// For now, let's assume if scrollY is used, we might want to force full repaint or be careful.
-		// BUT: if scrollY is constant (no scroll change), but content changed, we CAN partial repaint!
-		// So we just need to ensure renderLine uses the current scrollY.
+		if (!tokensUnchanged) {
+			const dirtyLines = findDirtyLinesInRange(
+				tokens,
+				maxChars,
+				lineCount,
+				startLine,
+				endLine
+			)
 
-		clearLines(imageData.data, dirtyLines, charH, deviceWidth, deviceHeight)
-
-		for (const line of dirtyLines) {
-			if (line >= startLine && line < endLine && line < lineCount) {
-				renderLine(
-					line,
-					tokens,
-					maxChars,
-					imageData.data,
+			if (dirtyLines.size > visibleLineCount * 0.3) {
+				imageData = fullRepaint(
+					summary,
+					ctx,
+					deviceWidth,
+					deviceHeight,
 					charW,
 					charH,
 					pixelsPerChar,
 					scale,
-					deviceWidth,
-					deviceHeight,
 					palette,
-					scrollY
+					normalizedScrollY
 				)
+			} else {
+				clearLines(
+					imageData.data,
+					dirtyLines,
+					charH,
+					normalizedScrollY,
+					deviceWidth,
+					deviceHeight
+				)
+
+				for (const line of dirtyLines) {
+					renderLine(
+						line,
+						tokens,
+						maxChars,
+						imageData.data,
+						charW,
+						charH,
+						pixelsPerChar,
+						scale,
+						deviceWidth,
+						deviceHeight,
+						palette,
+						normalizedScrollY
+					)
+				}
 			}
 		}
 	}
@@ -270,5 +462,7 @@ export const renderFromSummary = (
 
 	// Cache for next render
 	setCachedImageData(imageData)
-	setPreviousState(tokens, maxChars, lineCount)
+	setCachedScrollY(normalizedScrollY)
+	setCachedScale(scale)
+	setPreviousState(tokens, maxChars, lineCount, summary.version)
 }

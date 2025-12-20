@@ -7,7 +7,10 @@ import { Constants } from './constants'
 let previousTokens: Uint16Array | null = null
 let previousMaxChars: number = 0
 let previousLineCount: number = 0
+let previousVersion: number = -1
 let cachedImageData: ImageData | null = null
+let cachedScrollY: number = 0
+let cachedScale: number = 0
 
 // ============================================================================
 // State Accessors
@@ -19,74 +22,88 @@ export const setCachedImageData = (data: ImageData | null): void => {
 	cachedImageData = data
 }
 
+export const getCachedScrollY = (): number => cachedScrollY
+
+export const setCachedScrollY = (scrollY: number): void => {
+	cachedScrollY = scrollY
+}
+
+export const getCachedScale = (): number => cachedScale
+
+export const setCachedScale = (scale: number): void => {
+	cachedScale = scale
+}
+
+export const getPreviousTokens = (): Uint16Array | null => previousTokens
+
+export const getPreviousMaxChars = (): number => previousMaxChars
+
+export const getPreviousLineCount = (): number => previousLineCount
+
+export const getPreviousVersion = (): number => previousVersion
+
 export const setPreviousState = (
 	tokens: Uint16Array,
 	maxChars: number,
-	lineCount: number
+	lineCount: number,
+	version: number
 ): void => {
-	previousTokens = new Uint16Array(tokens)
+	previousTokens = tokens
 	previousMaxChars = maxChars
 	previousLineCount = lineCount
+	previousVersion = version
 }
 
 export const resetPartialRepaintState = (): void => {
 	previousTokens = null
 	previousMaxChars = 0
 	previousLineCount = 0
+	previousVersion = -1
 	cachedImageData = null
+	cachedScrollY = 0
+	cachedScale = 0
 }
 
 export const invalidateCache = (): void => {
 	cachedImageData = null
+	cachedScrollY = 0
+	cachedScale = 0
 }
 
 // ============================================================================
 // Dirty Line Detection
 // ============================================================================
 
-/**
- * Find dirty lines by comparing token buffers
- */
-export const findDirtyLines = (
+export const findDirtyLinesInRange = (
 	newTokens: Uint16Array,
 	newMaxChars: number,
-	newLineCount: number
+	newLineCount: number,
+	startLine: number,
+	endLine: number
 ): Set<number> => {
 	const dirtyLines = new Set<number>()
 
-	// If dimensions changed, repaint everything
-	if (!previousTokens || previousMaxChars !== newMaxChars) {
-		for (let i = 0; i < newLineCount; i++) {
-			dirtyLines.add(i)
-		}
+	const start = Math.max(0, Math.min(newLineCount, startLine))
+	const end = Math.max(start, Math.min(newLineCount, endLine))
+
+	if (start === end) return dirtyLines
+
+	if (
+		!previousTokens ||
+		previousMaxChars !== newMaxChars ||
+		previousLineCount !== newLineCount
+	) {
+		for (let line = start; line < end; line++) dirtyLines.add(line)
 		return dirtyLines
 	}
 
-	// Compare line by line
-	const maxLines = Math.max(previousLineCount, newLineCount)
-	for (let line = 0; line < maxLines; line++) {
-		// New line added
-		if (line >= previousLineCount) {
-			dirtyLines.add(line)
-			continue
-		}
-		// Line removed
-		if (line >= newLineCount) {
-			dirtyLines.add(line)
-			continue
-		}
-
-		// Compare tokens in this line
+	for (let line = start; line < end; line++) {
 		const offset = line * newMaxChars
-		let isDirty = false
 		for (let char = 0; char < newMaxChars; char++) {
 			if (newTokens[offset + char] !== previousTokens[offset + char]) {
-				isDirty = true
+				dirtyLines.add(line)
 				break
 			}
-		}
-		if (isDirty) {
-			dirtyLines.add(line)
 		}
 	}
 
@@ -100,22 +117,24 @@ export const clearLines = (
 	dest: Uint8ClampedArray,
 	dirtyLines: Set<number>,
 	charH: number,
+	scrollY: number,
 	deviceWidth: number,
 	deviceHeight: number
 ): void => {
 	const destWidth = deviceWidth * Constants.RGBA_CHANNELS_CNT
 
 	for (const line of dirtyLines) {
-		const yStart = line * charH
-		if (yStart >= deviceHeight) continue
+		const yStart = Math.floor(line * charH - scrollY)
+		const yEnd = yStart + charH
 
-		const yEnd = Math.min(yStart + charH, deviceHeight)
-		const startIdx = yStart * destWidth
-		const endIdx = yEnd * destWidth
+		if (yEnd <= 0 || yStart >= deviceHeight) continue
 
-		// Clear to transparent
-		for (let i = startIdx; i < endIdx; i++) {
-			dest[i] = 0
-		}
+		const clippedStartY = Math.max(0, yStart)
+		const clippedEndY = Math.min(deviceHeight, yEnd)
+
+		const startIdx = clippedStartY * destWidth
+		const endIdx = clippedEndY * destWidth
+
+		dest.fill(0, startIdx, endIdx)
 	}
 }

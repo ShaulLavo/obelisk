@@ -25,6 +25,7 @@
     "@repo/utils": "*",
     "@repo/ui": "*",
     "@solid-primitives/map": "^0.7.2",
+    "@solid-primitives/resize-observer": "^2.1.3",
     "@solid-primitives/set": "^0.7.2",
     "comlink": "^4.4.2",
     "solid-js": "^1.9.5"

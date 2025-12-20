@@ -55,7 +55,6 @@ let minimapSubscriptionId: number | null = null
 // ============================================================================
 // Worker API
 // ============================================================================
-console.log('Hello!!! minmap worker :)')
 const api = {
 	/**
 	 * Initialize with OffscreenCanvas and layout
@@ -136,7 +135,6 @@ const api = {
 		if (scrollY === scrollTop) return
 
 		scrollY = scrollTop
-		invalidateCache() // Force repaint on scroll
 
 		if (lastSummary && ctx && layout) {
 			renderFromSummary(lastSummary, ctx, layout, palette, scrollY)

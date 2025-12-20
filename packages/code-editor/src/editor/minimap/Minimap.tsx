@@ -1,6 +1,14 @@
 import { AutoHideVisibility, AutoHideWrapper } from '@repo/ui/auto-hide-wrapper'
+import { createResizeObserver } from '@solid-primitives/resize-observer'
 import { clsx } from 'clsx'
-import { createEffect, createSignal, on, onCleanup, onMount } from 'solid-js'
+import {
+	createEffect,
+	createSignal,
+	on,
+	onCleanup,
+	onMount,
+	untrack,
+} from 'solid-js'
 import { useCursor } from '../cursor'
 import type { MinimapProps } from './types'
 import { useMinimapWorker } from './useMinimapWorker'
@@ -12,6 +20,10 @@ const MINIMAP_ROW_HEIGHT_CSS = 2
 const MINIMAP_PADDING_X_CSS = 3
 const MINIMAP_MIN_SLIDER_HEIGHT_CSS = 18
 const MINIMAP_MAX_CHARS = 160
+
+const MINIMAP_WIDTH_RATIO = 12
+const MINIMAP_MIN_WIDTH_CSS = 50
+const MINIMAP_MAX_WIDTH_CSS = MINIMAP_MAX_CHARS
 
 // Helper to map editor scroll to minimap scroll
 const getMinimapScrollState = (
@@ -63,7 +75,9 @@ export const Minimap = (props: MinimapProps) => {
 		createSignal<HTMLCanvasElement | null>(null)
 	const [overlayVisible, setOverlayVisible] = createSignal(false)
 	const [isDragging, setIsDragging] = createSignal(false)
-
+	const [minimapWidthCss, setMinimapWidthCss] = createSignal(
+		MINIMAP_MIN_WIDTH_CSS
+	)
 	// Worker manages the base canvas rendering
 	const [workerActive, setWorkerActive] = createSignal(false)
 	const worker = useMinimapWorker({
@@ -75,6 +89,8 @@ export const Minimap = (props: MinimapProps) => {
 	})
 
 	let rafOverlay = 0
+	let rafScrollSync = 0
+	let pendingWorkerScrollY: number | null = null
 	let connectedTreeSitterWorker: Worker | null = null
 	let hasMeasuredSize = false
 	let hasRenderedBase = false
@@ -109,9 +125,6 @@ export const Minimap = (props: MinimapProps) => {
 		if (canvas.height !== deviceHeight) canvas.height = deviceHeight
 		return { dpr, deviceWidth, deviceHeight }
 	}
-	// ... (rest of helper functions same)
-
-	// ...
 
 	const getLayout = (): MinimapLayout | null => {
 		const size = getCanvasSizeCss()
@@ -153,38 +166,57 @@ export const Minimap = (props: MinimapProps) => {
 		if (!success) return
 	})
 
-	// Keep base + overlay sized to the minimap host.
+	const computeMinimapWidthCss = (editorWidth: number) => {
+		const raw = Math.round(editorWidth / MINIMAP_WIDTH_RATIO)
+		return Math.max(MINIMAP_MIN_WIDTH_CSS, Math.min(MINIMAP_MAX_WIDTH_CSS, raw))
+	}
+
+	const widthMeasureTarget = () => {
+		const scrollHost = props.scrollElement()
+		return scrollHost?.parentElement ?? scrollHost
+	}
+
+	const updateMinimapWidth = () => {
+		const target = widthMeasureTarget()
+		if (!target) return
+
+		const width = Math.max(1, Math.round(target.getBoundingClientRect().width))
+		setMinimapWidthCss(computeMinimapWidthCss(width))
+	}
+
+	createEffect(updateMinimapWidth)
+	createResizeObserver(widthMeasureTarget, updateMinimapWidth)
+
+	const handleMinimapResize = () => {
+		hasMeasuredSize = true
+		const layout = getLayout()
+		if (layout) {
+			void worker.updateLayout(layout)
+
+			// Re-render base layer after resize if we already have content
+			const filePath = props.filePath
+			const version = props.version?.() ?? 0
+			if (hasRenderedBase && filePath) {
+				void worker.renderFromPath(filePath, version)
+			}
+		}
+
+		if (hasRenderedBase && overlayVisible() === false) {
+			setOverlayVisible(true)
+		}
+		if (overlayVisible()) {
+			scheduleOverlayRender()
+		}
+	}
+
+	// Run one initial measurement once the container ref exists; ResizeObserver only reacts to subsequent size changes.
 	createEffect(() => {
-		const host = container()
-		if (!host) return
-
-		const observer = new ResizeObserver(() => {
-			hasMeasuredSize = true
-			const layout = getLayout()
-			if (layout) {
-				void worker.updateLayout(layout)
-
-				// Re-render base layer after resize if we already have content
-				const filePath = props.filePath
-				const version = props.version?.() ?? 0
-				if (hasRenderedBase && filePath) {
-					void worker.renderFromPath(filePath, version)
-				}
-			}
-
-			if (hasRenderedBase && overlayVisible() === false) {
-				setOverlayVisible(true)
-			}
-			if (overlayVisible()) {
-				scheduleOverlayRender()
-			}
-		})
-
-		observer.observe(host)
-		onCleanup(() => observer.disconnect())
+		if (!container()) return
+		untrack(handleMinimapResize)
 	})
+	createResizeObserver(container, handleMinimapResize)
 
-	// Connect Tree-sitter worker and render when inputs change
+	// Side-effect orchestration: connect tree-sitter + (re)render when worker/file/version/content inputs change.
 	createEffect(
 		on(
 			() =>
@@ -290,22 +322,23 @@ export const Minimap = (props: MinimapProps) => {
 		ctx.lineWidth = Math.max(1, Math.round(1 * dpr))
 		ctx.strokeRect(x, y, w, h)
 
-		// Apply scroll offset to line drawing
-		// We need to shift everything up by minimapScrollTop
-		const scrollOffset = minimapScrollTop * dpr
-		const rowHeight = MINIMAP_ROW_HEIGHT_CSS
+		const scale = Math.round(dpr)
+		const rowHeightDevice = MINIMAP_ROW_HEIGHT_CSS * scale
+
+		// Keep scroll pixel-smooth (device-pixel aligned), no row snapping.
+		const scrollOffset = Math.max(0, Math.round(minimapScrollTop * dpr))
 
 		// Helper to convert model line to minimap Y position
 		// This projects the line onto the CANVAS, applying scroll
 		const lineToMinimapY = (line: number) => {
-			const absoluteY = line * rowHeight * dpr
+			const absoluteY = line * rowHeightDevice
 			return absoluteY - scrollOffset
 		}
 
 		// Draw cursor line highlight
 		const cursorLine = cursor.state.position.line
 		const cursorY = lineToMinimapY(cursorLine)
-		const cursorHeight = Math.max(1, Math.round(rowHeight * dpr))
+		const cursorHeight = Math.max(1, rowHeightDevice)
 
 		// Only draw if visible
 		if (cursorY + cursorHeight >= 0 && cursorY < deviceHeight) {
@@ -406,10 +439,19 @@ export const Minimap = (props: MinimapProps) => {
 				)
 
 				const dpr = window.devicePixelRatio || 1
-				void worker.updateScroll(minimapScrollTop * dpr)
+				pendingWorkerScrollY = Math.max(0, Math.round(minimapScrollTop * dpr))
+				if (!rafScrollSync) {
+					rafScrollSync = requestAnimationFrame(() => {
+						rafScrollSync = 0
+						if (pendingWorkerScrollY === null) return
+						void worker.updateScroll(pendingWorkerScrollY)
+						pendingWorkerScrollY = null
+					})
+				}
 			}
 		}
 		element.addEventListener('scroll', handleScroll, { passive: true })
+		handleScroll()
 
 		onCleanup(() => {
 			element.removeEventListener('scroll', handleScroll)
@@ -515,6 +557,7 @@ export const Minimap = (props: MinimapProps) => {
 
 	onCleanup(() => {
 		if (rafOverlay) cancelAnimationFrame(rafOverlay)
+		if (rafScrollSync) cancelAnimationFrame(rafScrollSync)
 	})
 
 	const computedVisibility = () =>
@@ -524,12 +567,15 @@ export const Minimap = (props: MinimapProps) => {
 		<AutoHideWrapper
 			visibility={computedVisibility()}
 			class={clsx(
-				"absolute right-0 top-0 h-full w-[50px] z-50 group before:absolute before:-left-1 before:top-0 before:h-full before:w-[4px] before:content-[''] border-l border-white/5",
+				"absolute right-0 top-0 h-full z-50 group before:absolute before:-left-1 before:top-0 before:h-full before:w-[4px] before:content-[''] border-l border-white/5",
 				computedVisibility() === AutoHideVisibility.SHOW
 					? 'bg-zinc-950/90'
 					: 'bg-zinc-950/20 hover:bg-zinc-950/90'
 			)}
-			style={{ 'view-transition-name': 'minimap' }}
+			style={{
+				'view-transition-name': 'minimap',
+				width: `${minimapWidthCss()}px`,
+			}}
 			ref={setContainer}
 			onPointerDown={handlePointerDown}
 			onPointerMove={handlePointerMove}
