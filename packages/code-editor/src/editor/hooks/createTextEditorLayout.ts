@@ -134,7 +134,12 @@ export function createTextEditorLayout(
 	})
 
 	const virtualItems = rowVirtualizer.virtualItems
-	const totalSize = rowVirtualizer.totalSize
+
+	const totalSize = createMemo(() => {
+		const baseSize = rowVirtualizer.totalSize()
+		const padding = rowVirtualizer.viewportHeight() * 0.5
+		return baseSize + padding
+	})
 
 	const [maxColumnsSeen, setMaxColumnsSeen] = createSignal(0)
 	let lastWidthScanStart = 0

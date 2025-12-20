@@ -13,5 +13,10 @@ export type TreeSitterMinimapApi = {
 		path: string
 		version: number
 		maxChars?: number
+		/**
+		 * Target number of minimap lines to return (tree-sitter worker will sample the document).
+		 * Keeps buffers bounded for huge files and makes the minimap represent the whole document.
+		 */
+		targetLineCount?: number
 	}): Promise<MinimapTokenSummary | undefined>
 }

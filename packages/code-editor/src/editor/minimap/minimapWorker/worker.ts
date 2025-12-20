@@ -21,6 +21,7 @@ import type {
 	MinimapLayout,
 	TreeSitterMinimapApi,
 } from './types'
+import { Constants } from './constants'
 import { setLightFont as setLightFontAtlas } from './fontAtlas'
 import { resetPartialRepaintState, invalidateCache } from './partialRepaint'
 import {
@@ -50,7 +51,7 @@ let minimapSubscriptionId: number | null = null
 // ============================================================================
 // Worker API
 // ============================================================================
-
+console.log('Hello!!! minmap worker :)')
 const api = {
 	/**
 	 * Initialize with OffscreenCanvas and layout
@@ -81,23 +82,30 @@ const api = {
 	/**
 	 * Connect to Tree-sitter worker for direct communication
 	 */
-	connectTreeSitter(port: MessagePort) {
-		treeSitterWorker = wrap<TreeSitterMinimapApi>(port)
+	async connectTreeSitter(port: MessagePort) {
+		try {
+			log.info('connectTreeSitter called')
+			treeSitterWorker = wrap<TreeSitterMinimapApi>(port)
+			log.info('wrapped port with Comlink')
 
-		if (minimapSubscriptionId !== null) {
-			void treeSitterWorker.unsubscribeMinimapReady(minimapSubscriptionId)
-			minimapSubscriptionId = null
-		}
+			if (minimapSubscriptionId !== null) {
+				log.info('unsubscribing previous subscription')
+				void treeSitterWorker.unsubscribeMinimapReady(minimapSubscriptionId)
+				minimapSubscriptionId = null
+			}
 
-		void treeSitterWorker
-			.subscribeMinimapReady(
+			log.info('subscribing to minimapReady...')
+			minimapSubscriptionId = await treeSitterWorker.subscribeMinimapReady(
 				proxy(({ path }) => {
+					log.info('minimapReady notification for', path)
 					wakeWaiters(path)
 				})
 			)
-			.then((id) => {
-				minimapSubscriptionId = id
-			})
+			log.info('subscribeMinimapReady completed, id:', minimapSubscriptionId)
+		} catch (error) {
+			log.error('connectTreeSitter FAILED:', error)
+			throw error
+		}
 	},
 
 	/**
@@ -155,12 +163,28 @@ const api = {
 			return false
 		}
 
+		// Try twice - once immediately, once after waiting for tree-sitter to be ready
 		for (let attempt = 0; attempt < 2; attempt++) {
 			if (nonce !== getCurrentNonce()) return false
 
 			let summary: MinimapTokenSummary | undefined
 			try {
-				summary = await treeSitterWorker.getMinimapSummary({ path, version })
+				const activeLayout = layout
+				if (!activeLayout) return false
+
+				const scale = Math.round(activeLayout.size.dpr)
+				const rowHeightDevice = Constants.BASE_CHAR_HEIGHT * scale
+				const targetLineCount = Math.max(
+					1,
+					Math.floor(activeLayout.size.deviceHeight / rowHeightDevice)
+				)
+
+				summary = await treeSitterWorker.getMinimapSummary({
+					path,
+					version,
+					maxChars: activeLayout.maxChars,
+					targetLineCount,
+				})
 			} catch (err) {
 				log.error('getMinimapSummary failed:', err)
 				return false
@@ -177,8 +201,10 @@ const api = {
 				return true
 			}
 
+			// Clear canvas while waiting
 			api.clear()
 
+			// Wait for tree-sitter to notify that the file is ready
 			const becameReady = await Promise.race([
 				waitForMinimapReady(path, nonce),
 				new Promise<boolean>((resolve) =>
