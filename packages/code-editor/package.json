@@ -35,9 +35,15 @@
     "@repo/typescript-config": "*",
     "@tailwindcss/vite": "^4.1.17",
     "@types/node": "^24.10.1",
+    "@vitest/browser": "^4.0.16",
+    "@vitest/browser-playwright": "^4.0.16",
     "eslint": "^9.39.1",
+    "jsdom": "^27.3.0",
+    "playwright": "^1.57.0",
     "tailwindcss": "^4.1.17",
     "typescript": "5.9.2",
-    "vitest": "^4.0.16"
+    "vite-plugin-solid": "^2.11.10",
+    "vitest": "^4.0.16",
+    "vitest-browser-solid": "*"
   }
 }

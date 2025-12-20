@@ -167,6 +167,7 @@ export function createTextEditorLayout(
 		}
 	).cancelIdleCallback
 
+	// *Approved*
 	createEffect(() => {
 		options.tabSize()
 		cursor.lines.lineStarts()
@@ -187,6 +188,7 @@ export function createTextEditorLayout(
 		}
 	})
 
+	// *Approved*
 	createEffect(() => {
 		const items = virtualItems()
 		const tabSize = options.tabSize()

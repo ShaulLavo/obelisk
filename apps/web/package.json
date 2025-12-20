@@ -22,6 +22,7 @@
     "@types/node": "^24.10.1",
     "@types/shell-quote": "^1.7.5",
     "@types/wicg-file-system-access": "^2023.10.7",
+    "@vitest/browser-playwright": "^4.0.16",
     "@xterm/addon-fit": "^0.10.0",
     "elysia": "^1.4.16",
     "eslint": "^9.39.1",

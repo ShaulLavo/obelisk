@@ -9,6 +9,18 @@ import {
 import { loggers } from '@repo/logger'
 import type { VirtualItem } from '../types'
 
+export type ScrollAlignment = 'start' | 'center' | 'end' | 'auto'
+export type ScrollDirection = 'forward' | 'backward' | null
+
+export type ScrollToIndexOptions = {
+	align?: ScrollAlignment
+	behavior?: ScrollBehavior
+}
+
+export type ScrollToOffsetOptions = {
+	behavior?: ScrollBehavior
+}
+
 export type FixedRowVirtualizerOptions = {
 	count: Accessor<number>
 	enabled: Accessor<boolean>
@@ -23,6 +35,10 @@ export type FixedRowVirtualizer = {
 	virtualItems: Accessor<VirtualItem[]>
 	visibleRange: Accessor<{ start: number; end: number }>
 	totalSize: Accessor<number>
+	isScrolling: Accessor<boolean>
+	scrollDirection: Accessor<ScrollDirection>
+	scrollToIndex: (index: number, options?: ScrollToIndexOptions) => void
+	scrollToOffset: (offset: number, options?: ScrollToOffsetOptions) => void
 }
 
 export type FixedRowVisibleRange = {
@@ -102,10 +118,17 @@ export function createFixedRowVirtualizer(
 	const log = loggers.codeEditor.withTag('virtualizer')
 	const [scrollTop, setScrollTop] = createSignal(0)
 	const [viewportHeight, setViewportHeight] = createSignal(0)
+	const [isScrolling, setIsScrolling] = createSignal(false)
+	const [scrollDirection, setScrollDirection] =
+		createSignal<ScrollDirection>(null)
+
+	// Store ref to element for imperative scroll methods
+	let scrollElementRef: HTMLElement | null = null
 
 	createEffect(() => {
 		const enabled = options.enabled()
 		const element = options.scrollElement()
+		scrollElementRef = element
 
 		if (!enabled) return
 		if (!element) {
@@ -118,8 +141,7 @@ export function createFixedRowVirtualizer(
 		setScrollTop(normalizeNumber(element.scrollTop))
 
 		let warnedZeroHeight = false
-		const updateViewportHeight = () => {
-			const height = normalizeNumber(element.clientHeight)
+		const updateViewportHeight = (height: number) => {
 			setViewportHeight(height)
 
 			if (height === 0) {
@@ -150,28 +172,56 @@ export function createFixedRowVirtualizer(
 		})
 
 		let rafId = 0
+		let prevScrollTop = element.scrollTop
+
 		const onScroll = () => {
 			if (rafId) return
 			rafId = requestAnimationFrame(() => {
 				rafId = 0
-				setScrollTop(normalizeNumber(element.scrollTop))
+				const newScrollTop = normalizeNumber(element.scrollTop)
+
+				// Update scroll direction
+				if (newScrollTop !== prevScrollTop) {
+					setScrollDirection(
+						newScrollTop > prevScrollTop ? 'forward' : 'backward'
+					)
+				}
+				prevScrollTop = newScrollTop
+
+				setIsScrolling(true)
+				setScrollTop(newScrollTop)
 			})
 		}
 
-		element.addEventListener('scroll', onScroll, { passive: true })
+		const onScrollEnd = () => {
+			setIsScrolling(false)
+			setScrollDirection(null)
+		}
 
-		const resizeObserver = new ResizeObserver(() => {
-			updateViewportHeight()
+		element.addEventListener('scroll', onScroll, { passive: true })
+		element.addEventListener('scrollend', onScrollEnd, { passive: true })
+
+		// Use borderBoxSize for more accurate sizing
+		const resizeObserver = new ResizeObserver((entries) => {
+			const entry = entries[0]
+			if (entry?.borderBoxSize?.[0]) {
+				const height = Math.round(entry.borderBoxSize[0].blockSize)
+				updateViewportHeight(height)
+			} else {
+				updateViewportHeight(normalizeNumber(element.clientHeight))
+			}
 		})
-		resizeObserver.observe(element)
-		updateViewportHeight()
+		resizeObserver.observe(element, { box: 'border-box' })
+		updateViewportHeight(normalizeNumber(element.clientHeight))
 
 		onCleanup(() => {
 			element.removeEventListener('scroll', onScroll)
+			element.removeEventListener('scrollend', onScrollEnd)
 			resizeObserver.disconnect()
 			if (rafId) {
 				cancelAnimationFrame(rafId)
 			}
+			scrollElementRef = null
 			log.debug('Virtualizer detached')
 		})
 	})
@@ -243,11 +293,83 @@ export function createFixedRowVirtualizer(
 		return items
 	})
 
+	const scrollToOffset = (offset: number, opts: ScrollToOffsetOptions = {}) => {
+		const element = scrollElementRef
+		if (!element) return
+
+		const maxOffset = totalSize() - viewportHeight()
+		const clampedOffset = Math.max(0, Math.min(offset, maxOffset))
+
+		element.scrollTo({
+			top: clampedOffset,
+			behavior: opts.behavior ?? 'auto',
+		})
+	}
+
+	const scrollToIndex = (index: number, opts: ScrollToIndexOptions = {}) => {
+		const element = scrollElementRef
+		if (!element) return
+
+		const count = options.count()
+		const rowHeight = options.rowHeight()
+		const height = viewportHeight()
+
+		// Clamp index to valid range
+		const clampedIndex = Math.max(0, Math.min(index, count - 1))
+		const itemStart = clampedIndex * rowHeight
+		const itemEnd = itemStart + rowHeight
+
+		const currentScrollTop = scrollTop()
+		const align = opts.align ?? 'auto'
+
+		let targetOffset: number
+
+		switch (align) {
+			case 'start':
+				targetOffset = itemStart
+				break
+
+			case 'center':
+				targetOffset = itemStart - (height - rowHeight) / 2
+				break
+
+			case 'end':
+				targetOffset = itemEnd - height
+				break
+
+			case 'auto':
+			default:
+				// Only scroll if item is not fully visible
+				if (
+					itemStart >= currentScrollTop &&
+					itemEnd <= currentScrollTop + height
+				) {
+					// Already fully visible, don't scroll
+					return
+				}
+				// Scroll to bring into view with minimal movement
+				if (itemStart < currentScrollTop) {
+					// Item is above viewport, scroll up to show at top
+					targetOffset = itemStart
+				} else {
+					// Item is below viewport, scroll down to show at bottom
+					targetOffset = itemEnd - height
+				}
+				break
+		}
+
+		scrollToOffset(targetOffset, { behavior: opts.behavior })
+	}
+
 	return {
 		scrollTop,
 		viewportHeight,
 		virtualItems,
 		visibleRange,
 		totalSize,
+		isScrolling,
+		scrollDirection,
+		scrollToIndex,
+		scrollToOffset,
 	}
 }

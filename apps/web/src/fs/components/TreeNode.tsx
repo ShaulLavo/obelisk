@@ -72,6 +72,7 @@ export const TreeNode = (props: TreeNodeProps) => {
 	// (hovered AND not handling our own branch line via isOpen)
 	let lastContributed = false
 	// Notify parent only when our "contribution" status changes
+	// *Approved*
 	createEffect(() => {
 		const contributes = isHovered() && !isOpen()
 		if (contributes !== lastContributed) {

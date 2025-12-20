@@ -1,3 +1,6 @@
 [submodule "packages/sqlite-wasm"]
 	path = packages/sqlite-wasm
 	url = https://github.com/ShaulLavo/sqlite-wasm.git
+[submodule "packages/vitest-browser-solid"]
+	path = packages/vitest-browser-solid
+	url = https://github.com/ShaulLavo/vitest-browser-solid.git

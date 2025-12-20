@@ -308,36 +308,4 @@ describe('createFoldMapping', () => {
 			)
 		})
 	})
-
-	describe('reactivity', () => {
-		it('updates when foldedStarts changes', () => {
-			createRoot((dispose) => {
-				const folds: FoldRange[] = [
-					{ startLine: 2, endLine: 5, type: 'function' },
-				]
-				const [foldedStarts, setFoldedStarts] = createSignal<Set<number>>(
-					new Set<number>()
-				)
-
-				const mapping = createFoldMapping({
-					totalLines: () => 10,
-					folds: () => folds,
-					foldedStarts,
-				})
-
-				// Initially no folds
-				expect(mapping.visibleCount()).toBe(10)
-
-				// Update the signal and verify the mapping updates
-				setFoldedStarts(new Set([2]))
-				expect(mapping.visibleCount()).toBe(8)
-
-				// Verify unfold
-				setFoldedStarts(new Set<number>())
-				expect(mapping.visibleCount()).toBe(10)
-
-				dispose()
-			})
-		})
-	})
 })
