@@ -1,3 +1,6 @@
+> [!IMPORTANT]
+> **Before writing code: write logs, asserts, and tests.**
+
 # Repository Guidelines
 
 ## Project Structure & Modules
