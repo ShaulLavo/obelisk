@@ -1,6 +1,8 @@
 {
   "name": "vibe",
   "devDependencies": {
+    "@tsconfig/bun": "^1.0.10",
+    "@tsconfig/recommended": "^1.0.13",
     "@types/node": "^24.10.1",
     "depcheck": "^1.4.7",
     "prettier": "^3.6.2",

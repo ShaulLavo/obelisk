@@ -18,6 +18,8 @@ import {
 	MINIMAP_ROW_HEIGHT_CSS,
 	MINIMAP_WIDTH_RATIO,
 } from './constants'
+import { Scrollbar } from './Scrollbar'
+import { ScrollStateProvider, useScrollState } from './ScrollState'
 import { computeScrollOffset, getMinimapScrollState } from './scrollUtils'
 import type { MinimapProps } from './types'
 import { useMinimapInteraction } from './useMinimapInteraction'
@@ -269,7 +271,7 @@ export const Minimap = (props: MinimapProps) => {
 
 		const totalMinimapHeight = lineCount * MINIMAP_ROW_HEIGHT_CSS
 
-		const { minimapScrollTop, sliderTop, sliderHeight } = getMinimapScrollState(
+		const { sliderTop, sliderHeight } = getMinimapScrollState(
 			element,
 			containerHeight, // The visible height of the minimap container
 			totalMinimapHeight
@@ -545,40 +547,109 @@ export const Minimap = (props: MinimapProps) => {
 		isDragging() ? AutoHideVisibility.SHOW : MINIMAP_VISIBILITY
 
 	return (
-		<AutoHideWrapper
-			visibility={computedVisibility()}
-			class={clsx(
-				"absolute right-0 top-0 h-full z-50 group before:absolute before:-left-1 before:top-0 before:h-full before:w-[4px] before:content-[''] border-l border-white/5",
-				computedVisibility() === AutoHideVisibility.SHOW
-					? 'bg-zinc-950/90'
-					: 'bg-zinc-950/20 hover:bg-zinc-950/90'
-			)}
-			style={{
-				'view-transition-name': 'minimap',
-				width: `${minimapWidthCss()}px`,
-			}}
-			ref={setContainer}
-			onPointerDown={handlePointerDown}
-			onPointerMove={handlePointerMove}
-			onPointerUp={handlePointerUp}
-			onPointerCancel={handlePointerUp}
-			onLostPointerCapture={handlePointerUp}
-			onWheel={handleWheel}
-		>
-			<canvas
-				ref={setBaseCanvas}
-				class="absolute left-0 top-0 h-full w-full"
-				style={{
-					'pointer-events': 'none',
-				}}
+		<ScrollStateProvider>
+			<MinimapContent
+				{...props}
+				container={container}
+				setContainer={setContainer}
+				minimapWidthCss={minimapWidthCss}
+				computedVisibility={computedVisibility}
+				isDragging={isDragging}
+				handlePointerDown={handlePointerDown}
+				handlePointerMove={handlePointerMove}
+				handlePointerUp={handlePointerUp}
+				handleWheel={handleWheel}
+				baseCanvas={baseCanvas}
+				setBaseCanvas={setBaseCanvas}
+				overlayCanvas={overlayCanvas}
+				setOverlayCanvas={setOverlayCanvas}
 			/>
-			<canvas
-				ref={setOverlayCanvas}
-				class="absolute left-0 top-0 h-full w-full"
+		</ScrollStateProvider>
+	)
+}
+
+// Inner component that consumes scroll context
+const MinimapContent = (
+	props: MinimapProps & {
+		container: () => HTMLDivElement | null
+		setContainer: (el: HTMLDivElement | null) => void
+		minimapWidthCss: () => number
+		computedVisibility: () => AutoHideVisibility
+		isDragging: () => boolean
+		handlePointerDown: (e: PointerEvent) => void
+		handlePointerMove: (e: PointerEvent) => void
+		handlePointerUp: (e: PointerEvent) => void
+		handleWheel: (e: WheelEvent) => void
+		baseCanvas: () => HTMLCanvasElement | null
+		setBaseCanvas: (el: HTMLCanvasElement | null) => void
+		overlayCanvas: () => HTMLCanvasElement | null
+		setOverlayCanvas: (el: HTMLCanvasElement | null) => void
+	}
+) => {
+	const { setScrollElement, setLineCount, setContainerHeight } =
+		useScrollState()
+	const cursor = useCursor()
+
+	// Connect scroll element to shared state
+	createEffect(() => {
+		const element = props.scrollElement()
+		if (element) {
+			setScrollElement(element)
+		}
+	})
+
+	// Update line count
+	createEffect(() => {
+		setLineCount(cursor.lines.lineCount())
+	})
+
+	// Update container height
+	createEffect(() => {
+		const cont = props.container()
+		if (cont) {
+			setContainerHeight(cont.clientHeight)
+		}
+	})
+
+	return (
+		<>
+			<AutoHideWrapper
+				visibility={props.computedVisibility()}
+				class={clsx(
+					"absolute right-[14px] top-0 h-full z-50 group before:absolute before:-left-1 before:top-0 before:h-full before:w-[4px] before:content-[''] border-l border-white/5",
+					props.computedVisibility() === AutoHideVisibility.SHOW
+						? 'bg-zinc-950/90'
+						: 'bg-zinc-950/20 hover:bg-zinc-950/90'
+				)}
 				style={{
-					'pointer-events': 'none',
+					'view-transition-name': 'minimap',
+					width: `${props.minimapWidthCss()}px`,
 				}}
-			/>
-		</AutoHideWrapper>
+				ref={props.setContainer}
+				onPointerDown={props.handlePointerDown}
+				onPointerMove={props.handlePointerMove}
+				onPointerUp={props.handlePointerUp}
+				onPointerCancel={props.handlePointerUp}
+				onLostPointerCapture={props.handlePointerUp}
+				onWheel={props.handleWheel}
+			>
+				<canvas
+					ref={props.setBaseCanvas}
+					class="absolute left-0 top-0 h-full w-full"
+					style={{
+						'pointer-events': 'none',
+					}}
+				/>
+				<canvas
+					ref={props.setOverlayCanvas}
+					class="absolute left-0 top-0 h-full w-full"
+					style={{
+						'pointer-events': 'none',
+					}}
+				/>
+			</AutoHideWrapper>
+			{/* Scrollbar positioned to the right of minimap */}
+			<Scrollbar class="absolute right-0 top-0 h-full z-50" />
+		</>
 	)
 }
