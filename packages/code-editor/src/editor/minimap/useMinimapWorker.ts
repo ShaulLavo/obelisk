@@ -33,8 +33,8 @@ export type MinimapWorkerController = {
 	updateLayout: (layout: MinimapLayout) => Promise<void>
 	/** Update color palette */
 	updatePalette: (palette: Uint32Array) => Promise<void>
-	/** Update scroll position */
-	updateScroll: (scrollTop: number) => Promise<void>
+	/** Update scroll position using ratio and line count */
+	updateScroll: (scrollRatio: number, lineCount: number) => Promise<void>
 	/** Render from token summary */
 	renderSummary: (summary: MinimapTokenSummary) => Promise<void>
 	/** Request render from Tree-sitter by path */
@@ -129,10 +129,10 @@ export const useMinimapWorker = (
 	}
 
 	/**
-	 * Update scroll position
+	 * Update scroll position using ratio and line count
 	 */
-	const updateScroll = async (scrollTop: number) => {
-		await api?.updateScroll(scrollTop)
+	const updateScroll = async (scrollRatio: number, lineCount: number) => {
+		await api?.updateScroll(scrollRatio, lineCount)
 	}
 
 	/**

@@ -26,6 +26,7 @@ const MINIMAP_MIN_WIDTH_CSS = 50
 const MINIMAP_MAX_WIDTH_CSS = MINIMAP_MAX_CHARS
 
 // Helper to map editor scroll to minimap scroll
+// Used for overlay rendering (slider, cursor, selection)
 const getMinimapScrollState = (
 	element: HTMLElement,
 	minimapHeight: number,
@@ -300,10 +301,9 @@ export const Minimap = (props: MinimapProps) => {
 		if (lineCount <= 0) return
 
 		const totalMinimapHeight = lineCount * MINIMAP_ROW_HEIGHT_CSS
-
 		const { minimapScrollTop, sliderTop, sliderHeight } = getMinimapScrollState(
 			element,
-			containerHeight, // The visible height of the minimap container
+			containerHeight,
 			totalMinimapHeight
 		)
 
@@ -322,11 +322,27 @@ export const Minimap = (props: MinimapProps) => {
 		ctx.lineWidth = Math.max(1, Math.round(1 * dpr))
 		ctx.strokeRect(x, y, w, h)
 
+		// Row height in device pixels for drawing lines
 		const scale = Math.round(dpr)
 		const rowHeightDevice = MINIMAP_ROW_HEIGHT_CSS * scale
 
-		// Keep scroll pixel-smooth (device-pixel aligned), no row snapping.
-		const scrollOffset = Math.max(0, Math.round(minimapScrollTop * dpr))
+		// CRITICAL: Compute scrollOffset the same way the worker does
+		// so that selection/cursor positions match the base canvas content
+		const scrollHeight = element.scrollHeight
+		const clientHeight = element.clientHeight
+		const overscrollPadding = clientHeight * 0.5
+		const actualContentHeight = scrollHeight - overscrollPadding
+		const maxActualScroll = Math.max(0, actualContentHeight - clientHeight)
+		const scrollRatio =
+			maxActualScroll > 0
+				? Math.min(1, Math.max(0, element.scrollTop / maxActualScroll))
+				: 0
+		// Worker's formula: maxScroll = lineCount * charH - deviceHeight
+		const charH = MINIMAP_ROW_HEIGHT_CSS * scale
+		const overlayDeviceHeight = deviceHeight // already in device pixels
+		const totalHeightDevice = lineCount * charH
+		const maxScrollDevice = Math.max(0, totalHeightDevice - overlayDeviceHeight)
+		const scrollOffset = Math.round(scrollRatio * maxScrollDevice)
 
 		// Helper to convert model line to minimap Y position
 		// This projects the line onto the CANVAS, applying scroll
@@ -424,30 +440,29 @@ export const Minimap = (props: MinimapProps) => {
 		const handleScroll = () => {
 			scheduleOverlayRender()
 
-			// Sync scroll to worker
-			const host = container()
-			if (host) {
-				const rect = host.getBoundingClientRect()
-				const minimapHeight = rect.height
-				const lineCount = cursor.lines.lineCount()
-				const totalMinimapHeight = lineCount * MINIMAP_ROW_HEIGHT_CSS
+			// Sync scroll to worker - just pass the scroll ratio and line count
+			// Worker calculates its own scrollY using its own deviceHeight
+			const lineCount = cursor.lines.lineCount()
+			if (lineCount <= 0) return
 
-				const { minimapScrollTop } = getMinimapScrollState(
-					element,
-					minimapHeight,
-					totalMinimapHeight
-				)
+			const scrollHeight = element.scrollHeight
+			const clientHeight = element.clientHeight
 
-				const dpr = window.devicePixelRatio || 1
-				pendingWorkerScrollY = Math.max(0, Math.round(minimapScrollTop * dpr))
-				if (!rafScrollSync) {
-					rafScrollSync = requestAnimationFrame(() => {
-						rafScrollSync = 0
-						if (pendingWorkerScrollY === null) return
-						void worker.updateScroll(pendingWorkerScrollY)
-						pendingWorkerScrollY = null
-					})
-				}
+			// Calculate scroll ratio (0-1) based on how far through the document we've scrolled
+			// Account for editor's overscroll padding (50% of viewport)
+			const overscrollPadding = clientHeight * 0.5
+			const actualContentHeight = scrollHeight - overscrollPadding
+			const maxActualScroll = Math.max(0, actualContentHeight - clientHeight)
+			const scrollRatio =
+				maxActualScroll > 0
+					? Math.min(1, Math.max(0, element.scrollTop / maxActualScroll))
+					: 0
+
+			if (!rafScrollSync) {
+				rafScrollSync = requestAnimationFrame(() => {
+					rafScrollSync = 0
+					void worker.updateScroll(scrollRatio, lineCount)
+				})
 			}
 		}
 		element.addEventListener('scroll', handleScroll, { passive: true })
@@ -514,16 +529,14 @@ export const Minimap = (props: MinimapProps) => {
 
 		const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
 
-		// For dragging, we revert the slider logic:
+		// For dragging, we use the slider position to determine scroll ratio:
 		// sliderTop / (minimapHeight - sliderHeight) = scrollRatio
-		// newScrollTop = scrollRatio * maxScrollTop
+		// This gives 1-to-1 behavior: moving slider from top to bottom scrolls entire document
 
 		const localY = Math.max(0, Math.min(size.height, event.clientY - rect.top))
 		const newSliderTop = localY - dragState.dragOffsetY
 
 		const minimapHeight = size.height
-		// const sliderHeight = dragState.sliderHeight // Use stored height
-
 		const maxSliderTop = Math.max(0, minimapHeight - dragState.sliderHeight)
 		const ratio = maxSliderTop > 0 ? newSliderTop / maxSliderTop : 0
 

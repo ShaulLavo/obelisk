@@ -129,12 +129,21 @@ const api = {
 	},
 
 	/**
-	 * Update scroll position
+	 * Update scroll position using ratio (0-1) and line count
+	 * The worker calculates the actual scrollY using its own deviceHeight
 	 */
-	updateScroll(scrollTop: number) {
-		if (scrollY === scrollTop) return
+	updateScroll(scrollRatio: number, lineCount: number) {
+		if (!layout) return
 
-		scrollY = scrollTop
+		const scale = Math.round(layout.size.dpr)
+		const charH = Constants.BASE_CHAR_HEIGHT * scale
+		const deviceHeight = layout.size.deviceHeight
+		const totalMinimapHeight = lineCount * charH
+		const maxScroll = Math.max(0, totalMinimapHeight - deviceHeight)
+		const newScrollY = Math.round(scrollRatio * maxScroll)
+
+		if (scrollY === newScrollY) return
+		scrollY = newScrollY
 
 		if (lastSummary && ctx && layout) {
 			renderFromSummary(lastSummary, ctx, layout, palette, scrollY)
