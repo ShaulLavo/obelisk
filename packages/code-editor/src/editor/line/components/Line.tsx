@@ -1,6 +1,9 @@
+import { loggers } from '@repo/logger'
 import type { LineProps } from '../../types'
 import { calculateColumnFromClick } from '../../utils'
 import { BracketizedLineText } from './BracketizedLineText'
+
+const log = loggers.codeEditor.withTag('line')
 
 export const Line = (props: LineProps) => {
 	let lineElement: HTMLDivElement | null = null
@@ -35,11 +38,18 @@ export const Line = (props: LineProps) => {
 		props.onPreciseClick(props.entry.index, column, event.shiftKey)
 	}
 
-	// Cast to any to access 2D virtual properties if they exist
-	const virtualRowAny = props.virtualRow as any
-	const columnStart = virtualRowAny.columnStart ?? 0
-	const columnEnd = virtualRowAny.columnEnd
+	const columnStart = props.virtualRow.columnStart
+	const columnEnd = props.virtualRow.columnEnd
 	const xOffset = columnStart * props.charWidth
+	if (columnEnd < columnStart) {
+		const message = 'Line virtual row column range is invalid'
+		log.warn(message, {
+			lineIndex: props.virtualRow.index,
+			columnStart,
+			columnEnd,
+		})
+		console.assert(false, message)
+	}
 
 	return (
 		<div

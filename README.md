@@ -35,3 +35,4 @@ bun run lint    # eslint across packages
 - Target Node/Bun 18+.
 - Source of truth lives in `apps/web/src` and `packages/fs` for the virtual filesystem building blocks; server endpoints are in `apps/server/src`.
 - This README stays short on purpose—treat this repo as a playground while the platform takes shape.
+- `packages/sqlite-wasm` is a submodule pinned to a custom fork that adds sqlite-vec, soundex, and a Solid demo; we keep it to support upcoming editor/FS search + indexing work and OPFS-backed storage experiments in the web client.

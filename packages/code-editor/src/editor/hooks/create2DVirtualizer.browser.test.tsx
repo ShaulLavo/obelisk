@@ -99,6 +99,12 @@ describe('create2DVirtualizer (DOM integration)', () => {
 			expect(longLineItem.columnEnd).toBeLessThan(1000)
 		}
 
+		for (const item of items) {
+			expect(Number.isFinite(item.columnStart)).toBe(true)
+			expect(Number.isFinite(item.columnEnd)).toBe(true)
+			expect(item.columnEnd).toBeGreaterThanOrEqual(item.columnStart)
+		}
+
 		unmount()
 	})
 

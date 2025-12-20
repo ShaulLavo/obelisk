@@ -9,6 +9,11 @@ export type VirtualItem = {
 	size: number
 }
 
+export type VirtualItem2D = VirtualItem & {
+	columnStart: number
+	columnEnd: number
+}
+
 // Bracket depth map: character index -> nesting depth
 export type BracketDepthMap = Record<number, number>
 // Line bracket depth map: offset-in-line -> nesting depth
@@ -106,7 +111,7 @@ export type LineEntry = {
 }
 
 export type LineProps = {
-	virtualRow: VirtualItem
+	virtualRow: VirtualItem2D
 	entry: LineEntry
 	lineHeight: number
 	contentWidth: number
@@ -130,7 +135,7 @@ export type LineProps = {
 }
 
 export type LinesProps = {
-	rows: Accessor<VirtualItem[]>
+	rows: Accessor<VirtualItem2D[]>
 	contentWidth: Accessor<number>
 	lineHeight: Accessor<number>
 	charWidth: Accessor<number>
@@ -155,7 +160,7 @@ export type LinesProps = {
 }
 
 export type LineGuttersProps = {
-	rows: Accessor<VirtualItem[]>
+	rows: Accessor<VirtualItem2D[]>
 	lineHeight: Accessor<number>
 	onRowClick: (lineIndex: number) => void
 	activeLineIndex: Accessor<number | null>

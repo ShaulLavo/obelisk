@@ -1,8 +1,8 @@
 import type { Accessor } from 'solid-js'
-import type { VirtualItem } from '../types'
+import type { VirtualItem2D } from '../types'
 
 export type SelectionLayerProps = {
-	virtualItems: Accessor<VirtualItem[]>
+	virtualItems: Accessor<VirtualItem2D[]>
 	lineHeight: Accessor<number>
 	lineNumberWidth: number
 	paddingLeft: number

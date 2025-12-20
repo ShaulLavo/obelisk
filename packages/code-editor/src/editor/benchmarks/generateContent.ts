@@ -2,11 +2,14 @@
  * Generate large content for benchmarking purposes
  */
 
+import { loggers } from '@repo/logger'
+
 const CHAR_SET =
 	'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 _-=+[]{}();:\'",.<>/?\t'
 
 export type ContentGeneratorOptions = {
 	lines: number
+	// Must exceed line number width when includeLineNumbers is true.
 	charsPerLine: number
 	includeLineNumbers?: boolean
 }
@@ -16,9 +19,29 @@ export type ContentGeneratorOptions = {
  * Uses deterministic pattern for consistent benchmarks
  */
 export const generateContent = (options: ContentGeneratorOptions): string => {
+	const log = loggers.codeEditor.withTag('benchmark-content')
 	const { lines, charsPerLine, includeLineNumbers = true } = options
 	const lineNumberWidth = includeLineNumbers ? String(lines).length + 2 : 0
 	const contentWidth = charsPerLine - lineNumberWidth
+
+	if (charsPerLine < 1) {
+		log.error('Benchmark content requires charsPerLine >= 1', {
+			charsPerLine,
+		})
+		throw new Error(
+			`generateContent requires charsPerLine >= 1 (received ${charsPerLine}).`
+		)
+	}
+
+	if (includeLineNumbers && contentWidth < 1) {
+		log.error(
+			'Benchmark content requires charsPerLine to exceed line number width',
+			{ charsPerLine, lineNumberWidth, lines }
+		)
+		throw new Error(
+			`generateContent requires charsPerLine (${charsPerLine}) to exceed lineNumberWidth (${lineNumberWidth}) when includeLineNumbers is true.`
+		)
+	}
 
 	const result: string[] = []
 

@@ -7,12 +7,7 @@ import {
 	type Accessor,
 } from 'solid-js'
 import { loggers } from '@repo/logger'
-import type { VirtualItem } from '../types'
-
-export type VirtualItem2D = VirtualItem & {
-	columnStart: number
-	columnEnd: number
-}
+import type { VirtualItem, VirtualItem2D } from '../types'
 
 export type Virtualizer2DOptions = {
 	count: Accessor<number>

@@ -14,8 +14,8 @@ import {
 	measureCharWidth,
 } from '../utils'
 import { useCursor } from '../cursor'
-import type { FoldRange, VirtualItem } from '../types'
-import { create2DVirtualizer, type VirtualItem2D } from './create2DVirtualizer'
+import type { FoldRange, VirtualItem2D } from '../types'
+import { create2DVirtualizer } from './create2DVirtualizer'
 import { createFoldMapping } from './createFoldMapping'
 
 export type TextEditorLayoutOptions = {
