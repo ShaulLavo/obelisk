@@ -54,7 +54,6 @@ export const Scrollbar = (props: ScrollbarProps) => {
 				warnedMissingClass = true
 				const message = 'Scrollbar CSS module class is missing'
 				log.warn(message)
-				console.assert(false, message)
 			}
 			return
 		}
@@ -81,7 +80,7 @@ export const Scrollbar = (props: ScrollbarProps) => {
 		if (!element) {
 			const message = `Scrollbar ${context} ignored: missing scroll element`
 			log.warn(message)
-			console.assert(false, message)
+
 			return null
 		}
 		return element

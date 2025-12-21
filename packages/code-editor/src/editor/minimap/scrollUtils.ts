@@ -3,10 +3,7 @@
  * These are used by both the main component and overlay rendering.
  */
 
-import {
-	MINIMAP_MIN_SLIDER_HEIGHT_CSS,
-	MINIMAP_ROW_HEIGHT_CSS,
-} from './constants'
+import { MINIMAP_ROW_HEIGHT_CSS, MINIMAP_SLIDER_HEIGHT_CSS } from './constants'
 
 export type MinimapScrollState = {
 	/** How far the minimap content is scrolled (CSS pixels) */
@@ -34,9 +31,12 @@ export const getMinimapScrollState = (
 	const clientHeight = element.clientHeight
 	const scrollTop = element.scrollTop
 
+	// Use fixed slider height for consistent appearance
+	const sliderHeight = MINIMAP_SLIDER_HEIGHT_CSS
+
 	// If editor content fits, no scroll needed
 	if (scrollHeight <= clientHeight) {
-		return { minimapScrollTop: 0, sliderTop: 0, sliderHeight: minimapHeight }
+		return { minimapScrollTop: 0, sliderTop: 0, sliderHeight }
 	}
 
 	// Use the FULL scroll range including overscroll padding.
@@ -48,15 +48,6 @@ export const getMinimapScrollState = (
 	// How much the minimap content needs to scroll to show the end of the document
 	const maxMinimapScroll = Math.max(0, totalMinimapHeight - minimapHeight)
 	const minimapScrollTop = scrollRatio * maxMinimapScroll
-
-	// Slider height: proportional to how much of the document is visible
-	// based on actual content, not including overscroll padding
-	const overscrollPadding = clientHeight * 0.5
-	const actualContentHeight = scrollHeight - overscrollPadding
-	const sliderHeight = Math.max(
-		MINIMAP_MIN_SLIDER_HEIGHT_CSS,
-		(clientHeight / actualContentHeight) * totalMinimapHeight
-	)
 
 	// Slider position: moves from 0 to (minimapHeight - sliderHeight) as scroll ratio goes 0 to 1
 	const sliderTop = scrollRatio * (minimapHeight - sliderHeight)

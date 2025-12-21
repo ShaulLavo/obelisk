@@ -8,8 +8,8 @@ export const MINIMAP_ROW_HEIGHT_CSS = 2
 /** Horizontal padding in CSS pixels */
 export const MINIMAP_PADDING_X_CSS = 3
 
-/** Minimum slider height in CSS pixels */
-export const MINIMAP_MIN_SLIDER_HEIGHT_CSS = 18
+/** Fixed slider height in CSS pixels */
+export const MINIMAP_SLIDER_HEIGHT_CSS = 60
 
 /** Maximum characters per line in minimap */
 export const MINIMAP_MAX_CHARS = 160

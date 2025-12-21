@@ -75,23 +75,25 @@ export const useMinimapInteraction = (
 			;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
 			setIsDragging(true)
 		} else {
-			// Click outside slider - jump to that position
+			// Click outside slider - jump to the exact text clicked
 			const { minimapScrollTop } = getMinimapScrollState(
 				element,
 				size.height,
 				totalMinimapHeight
 			)
 			const clickedMinimapY = minimapScrollTop + localY
-			const targetRatio =
-				totalMinimapHeight > 0 ? clickedMinimapY / totalMinimapHeight : 0
+			const clickedLine = Math.floor(clickedMinimapY / MINIMAP_ROW_HEIGHT_CSS)
 
-			const scrollHeight = element.scrollHeight
+			// Get the Y position of that line in the editor
+			const editorLineHeight = element.scrollHeight / lineCount
+			const targetY = clickedLine * editorLineHeight
+
+			// Put the clicked line at the top of the viewport
 			const clientHeight = element.clientHeight
+			const scrollHeight = element.scrollHeight
 			const maxScrollTop = Math.max(0, scrollHeight - clientHeight)
 
-			// Scroll to center the clicked line in the editor
-			const targetScrollTop = targetRatio * scrollHeight - clientHeight / 2
-			element.scrollTop = Math.max(0, Math.min(maxScrollTop, targetScrollTop))
+			element.scrollTop = Math.max(0, Math.min(maxScrollTop, targetY))
 		}
 	}
 
@@ -105,26 +107,26 @@ export const useMinimapInteraction = (
 		if (!size) return
 
 		const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
-		const lineCount = getLineCount()
-		const totalMinimapHeight = lineCount * MINIMAP_ROW_HEIGHT_CSS
 
-		const { minimapScrollTop } = getMinimapScrollState(
-			element,
-			size.height,
-			totalMinimapHeight
-		)
+		// For dragging, we use the slider position to determine scroll ratio:
+		// sliderTop / (minimapHeight - sliderHeight) = scrollRatio
+		// This gives 1-to-1 behavior: moving slider from top to bottom scrolls entire document
 
 		const localY = Math.max(0, Math.min(size.height, event.clientY - rect.top))
-		const draggedMinimapY = minimapScrollTop + localY - dragState.dragOffsetY
-		const targetRatio =
-			totalMinimapHeight > 0 ? draggedMinimapY / totalMinimapHeight : 0
+		const newSliderTop = localY - dragState.dragOffsetY
+
+		const minimapHeight = size.height
+		const maxSliderTop = Math.max(0, minimapHeight - dragState.sliderHeight)
+		const ratio = maxSliderTop > 0 ? newSliderTop / maxSliderTop : 0
 
 		const scrollHeight = element.scrollHeight
 		const clientHeight = element.clientHeight
 		const maxScrollTop = Math.max(0, scrollHeight - clientHeight)
 
-		const targetScrollTop = targetRatio * scrollHeight
-		element.scrollTop = Math.max(0, Math.min(maxScrollTop, targetScrollTop))
+		element.scrollTop = Math.max(
+			0,
+			Math.min(maxScrollTop, ratio * maxScrollTop)
+		)
 	}
 
 	const handlePointerUp = (event: PointerEvent) => {
