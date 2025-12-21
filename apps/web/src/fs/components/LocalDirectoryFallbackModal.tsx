@@ -6,7 +6,7 @@ import {
 	type JSX,
 } from 'solid-js'
 import { logger } from '~/logger'
-import { modal } from '@repo/ui/modal'
+import { modal, type ModalAction } from '@repo/ui/modal'
 import { importDirectoryToMemory } from '../fallback/importDirectoryToMemory'
 import {
 	importDirectoryToOpfs,
@@ -93,7 +93,7 @@ export const LocalDirectoryFallbackModal: Component = () => {
 			modalId = null
 		}
 
-		const actions = [
+		const actions: ModalAction[] = [
 			{
 				id: 'cancel',
 				label: 'Cancel',
@@ -123,7 +123,7 @@ export const LocalDirectoryFallbackModal: Component = () => {
 		if (!singleMode()) {
 			actions.push({
 				id: 'opfs',
-				label: () =>
+				label:
 					processing() && pendingMode() === 'opfs'
 						? 'Importing...'
 						: 'Persist to Browser Storage',

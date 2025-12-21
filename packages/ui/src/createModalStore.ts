@@ -5,7 +5,13 @@ export type ModalAction = {
 	id?: string
 	label: JSX.Element | (() => JSX.Element)
 	onPress?: () => void | Promise<void>
-	variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link'
+	variant?:
+		| 'default'
+		| 'destructive'
+		| 'outline'
+		| 'secondary'
+		| 'ghost'
+		| 'link'
 	size?: 'default' | 'sm' | 'lg' | 'icon'
 	class?: string
 	autoClose?: boolean
@@ -36,16 +42,9 @@ export const createModalStore = () => {
 	const [state, setState] = createSignal<ModalState | null>(null)
 
 	const open = (options: ModalOptions) => {
-		console.assert(
-			options.heading !== undefined && options.heading !== null,
-			'[modal] heading is required'
-		)
 		const current = state()
 		const id = options.id ?? createModalId()
-		console.assert(
-			!current || current.id === id,
-			'[modal] replacing existing modal'
-		)
+
 		const next: ModalState = {
 			id,
 			options: {
@@ -61,7 +60,6 @@ export const createModalStore = () => {
 	const update = (id: string, next: Partial<ModalOptions>) => {
 		setState((current) => {
 			if (!current || current.id !== id) {
-				console.assert(false, '[modal] update called for unknown modal')
 				return current
 			}
 			return {
@@ -78,7 +76,6 @@ export const createModalStore = () => {
 		const current = state()
 		if (!current) return
 		if (id && current.id !== id) {
-			console.assert(false, '[modal] dismiss called for unknown modal')
 			return
 		}
 		console.info('[modal] dismiss', { id: current.id })

@@ -113,7 +113,8 @@ type ModalHandler = ((options: ModalOptions) => string) & {
 	update: (id: string, next: Partial<ModalOptions>) => void
 }
 
-const modal = ((options: ModalOptions) => modalStore.open(options)) as ModalHandler
+const modal = ((options: ModalOptions) =>
+	modalStore.open(options)) as ModalHandler
 
 modal.dismiss = (id?: string) => {
 	modalStore.dismiss(id)
@@ -123,4 +124,4 @@ modal.update = (id: string, next: Partial<ModalOptions>) => {
 	modalStore.update(id, next)
 }
 
-export { Modal, modal }
+export { Modal, modal, type ModalAction, type ModalOptions }

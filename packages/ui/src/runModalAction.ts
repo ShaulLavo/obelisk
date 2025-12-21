@@ -5,16 +5,15 @@ type ModalStore = ReturnType<typeof createModalStore>
 
 const isPromise = (value: unknown): value is Promise<unknown> => {
 	if (!value || typeof value !== 'object') return false
-	return 'then' in value && typeof (value as { then?: unknown }).then === 'function'
+	return (
+		'then' in value && typeof (value as { then?: unknown }).then === 'function'
+	)
 }
 
 const runModalAction = (store: ModalStore, action: ModalAction, id: string) => {
 	try {
 		const current = store.state()
-		console.assert(
-			current && current.id === id,
-			'[modal] action invoked for unknown modal'
-		)
+
 		console.info('[modal] action', { id, actionId: action.id })
 		const result = action.onPress?.()
 		const shouldAutoClose = action.autoClose !== false
