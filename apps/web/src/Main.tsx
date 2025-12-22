@@ -29,7 +29,7 @@ const Main: Component = () => {
 				>
 					<ResizablePanel
 						initialSize={verticalPanelSize()[0] ?? 0.65}
-						minSize={0.04}
+						minSize={0.01}
 						collapsible
 						class="min-h-0"
 					>
@@ -41,7 +41,7 @@ const Main: Component = () => {
 					/>
 					<ResizablePanel
 						initialSize={verticalPanelSize()[1] ?? 0.35}
-						minSize={0.04}
+						minSize={0.01}
 						collapsible
 						class="min-h-0"
 					>
