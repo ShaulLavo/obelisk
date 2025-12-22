@@ -27,12 +27,12 @@ export type UseMinimapScrollOptions = {
 export const useMinimapScroll = (options: UseMinimapScrollOptions): void => {
 	const { scrollElement, container, lineCount, worker, onScroll } = options
 
-	let rafScrollSync = 0
-	let pendingWorkerScrollY: number | null = null
-
 	createEffect(() => {
 		const element = scrollElement()
 		if (!element) return
+
+		let rafScrollSync = 0
+		let pendingWorkerScrollY: number | null = null
 
 		const handleScroll = () => {
 			onScroll?.()
@@ -68,10 +68,11 @@ export const useMinimapScroll = (options: UseMinimapScrollOptions): void => {
 
 		onCleanup(() => {
 			element.removeEventListener('scroll', handleScroll)
+			if (rafScrollSync) {
+				cancelAnimationFrame(rafScrollSync)
+				rafScrollSync = 0
+			}
+			pendingWorkerScrollY = null
 		})
-	})
-
-	onCleanup(() => {
-		if (rafScrollSync) cancelAnimationFrame(rafScrollSync)
 	})
 }

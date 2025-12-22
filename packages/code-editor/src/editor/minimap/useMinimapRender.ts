@@ -4,7 +4,10 @@
  */
 
 import { createEffect, on, type Accessor } from 'solid-js'
+import { loggers } from '@repo/logger'
 import type { MinimapWorkerController } from './useMinimapWorker'
+
+const log = loggers.codeEditor.withTag('minimap-render')
 
 export type UseMinimapRenderOptions = {
 	/** Worker controller */
@@ -65,25 +68,16 @@ export const useMinimapRender = (options: UseMinimapRenderOptions): void => {
 					content?.(),
 				] as const,
 			async ([active, tsWorker, path, ver, text]) => {
-				console.log('[Render] Effect triggered:', {
-					active,
-					hasTS: !!tsWorker,
-					path,
-					ver,
-					hasText: !!text,
-				})
 				if (!active) return
 
 				// Connect tree-sitter if changed
 				if (tsWorker && connectedTreeSitterWorker !== tsWorker) {
-					console.log('[Render] Connecting tree-sitter')
 					worker.connectTreeSitter(tsWorker)
 					connectedTreeSitterWorker = tsWorker
 				}
 
 				// Clear if no tree-sitter or file path
 				if (!tsWorker || !path) {
-					console.log('[Render] Clearing - no TS or path')
 					setHasRenderedBase(false)
 					lastRenderedPath = null
 					setOverlayVisible(false)
@@ -94,7 +88,6 @@ export const useMinimapRender = (options: UseMinimapRenderOptions): void => {
 				// Handle path changes
 				const isNewPath = lastRenderedPath !== path
 				if (isNewPath) {
-					console.log('[Render] New path, clearing')
 					setHasRenderedBase(false)
 					setOverlayVisible(false)
 					lastRenderedPath = path
@@ -103,28 +96,19 @@ export const useMinimapRender = (options: UseMinimapRenderOptions): void => {
 
 				// Try path-based render first
 				let rendered = await worker.renderFromPath(path, ver ?? 0)
-				console.log('[Render] renderFromPath:', rendered)
 
 				// Fallback to text-based render
 				if (!rendered && text) {
 					rendered = await worker.renderFromText(text, ver ?? 0)
-					console.log('[Render] renderFromText:', rendered)
 				}
 
 				if (!rendered) {
-					console.log('[Render] Failed')
+					log.debug('Render failed or no content')
 					return
 				}
 
-				console.log(
-					'[Render] Success, hasMeasuredSize:',
-					hasMeasuredSize(),
-					'overlayVisible:',
-					overlayVisible()
-				)
 				setHasRenderedBase(true)
 				if (hasMeasuredSize() && !overlayVisible()) {
-					console.log('[Render] Setting overlayVisible=true')
 					setOverlayVisible(true)
 				}
 				if (overlayVisible()) onRenderComplete?.()
