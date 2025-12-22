@@ -1,5 +1,5 @@
 > [!IMPORTANT]
-> **Before writing code: write logs, asserts, and tests.**
+> **When writing code: write logs, asserts, and tests.**
 > **Always opt in for adding logs and other debug tools and asking the user for input when not sure.**
 
 # Repository Guidelines
@@ -8,16 +8,16 @@
 
 - Monorepo managed with Turbo and Bun.
 - Applications live in `apps/`:
-  - `apps/web`: SolidJS + Vite web client.
+  - `apps/web`: SolidJS + Vite + Tailwind v4 web client.
   - `apps/server`: Bun + Elysia API server.
-  - `apps/desktop`: Tauri desktop shell.
-- Shared packages live in `packages/` (UI, code editor, fs, logger, eslint/ts configs).
+  - `apps/desktop`: Tauri + Rust desktop shell.
+- Shared packages live in `packages/` (UI, code editor, fs, lexer, logger, perf, utils, icons, etc).
 
 ## Build, Dev & Lint
 
 - Install deps: `bun install` (Node ≥ 18, Bun as package manager).
-- Run all apps in dev: `bun run dev`.
-- Example focused dev run: `bun run dev --filter web` or `--filter server`.
+- Run all apps in dev: `bun run dev`. -- never ever do this ask user to do it
+- Example focused dev run: `bun run dev --filter web` or `--filter server`. -- never ever do this ask user to do it
 - Build all: `bun run build`.
 - Lint: `bun run lint` (uses `@repo/eslint-config`).
 - Format: `bun run format` (Prettier for `ts`, `tsx`, `md`).
@@ -30,12 +30,27 @@
 - Indentation: tabs; keep existing single-quote, no-semicolon style.
 - Components: `PascalCase` (e.g. `MainLayout.tsx`).
 - Functions/variables: `camelCase`; files generally `PascalCase.tsx` for components, `camelCase.ts` for utilities.
-- **Icons**: Use icons from `@repo/icons`. Do not use custom SVGs.
+
 - **Never use `any`**: Avoid TypeScript's `any` type; use proper types, `unknown`, or generics instead.
 - **One hook/component per file**: Each hook and component should have its own file; do not define multiple components or hooks in a single file.
+- **Never Nester**: Tolerate only up to three levels of code depth (nesting). Anything beyond requires refactoring.
+  - **Extraction**: Refactor logic into separate functions.
+  - **Early Return**: Use guard clauses to break out early and avoid deep `else` blocks.
+  - **Data Structures**: Use arrays/maps/sets and simple loops instead of deeply nested loops.
+  - **External Libraries**: Use utilities to simplify complex logic instead of manual nested loops.
 - **Never support backward compatibility**: We do not support backward compatibility. Remove any code that exists solely for this purpose.
 - Always fix ESLint and formatting issues before opening a PR.
 - **Enums & Constants**: Avoid regular `enum`. Use `const enum` (for inlining) or `object as const` (for runtime access) instead. While strings with strong TypeScript typing are fine, the `enum` semantic is preferred for clarity.
+
+## Styling & CSS
+
+- **Framework**: We use **Tailwind CSS v4** (`@tailwindcss/vite`).
+- **CSS Files**: Global styles and theme configuration are in `apps/web/src/styles.css` (using `@theme`).
+- **Component Styles**:
+  - Use Tailwind utility classes directly in JSX for structure and layout.
+  - **Extract Complex Styles**: For complex components (e.g., `EditorViewport`, `LineGutter`), define classes in `styles.css` within `@layer utilities` using `@apply`. This keeps the JSX clean and the styles reusable.
+  - **Animations**: Use `@apply` for animation classes defined in CSS.
+- **Icons**: Use icons from `@repo/icons`. Do not use custom SVGs.
 
 ## SolidJS Props & Reactivity
 
@@ -51,6 +66,7 @@
 ## Testing Guidelines
 
 - No global test runner is enforced yet; prefer adding tests close to the code (`*.test.ts` / `*.test.tsx`).
+- **Runners**: We use **Vitest** for unit tests and **Playwright** (`@vitest/browser-playwright`) for browser/benchmark tests.
 - When introducing tests to a package, add a `test` script to that package and document how to run it in the README.
 - Keep tests fast and deterministic; avoid hitting real external services.
 - **Never run browser tasks/tests unless explicitly asked.** If a browser test is needed, ask the user to run it and provide the exact command.
@@ -59,34 +75,6 @@
 
 - **Commits**: Use [Conventional Commits](https://www.conventionalcommits.org/). Keep the title (subject line) short and concise; use the commit description for detailed context, rationale, and technical explanations.
 - Group related changes; avoid large, mixed-topic commits.
-- PRs should include:
-  - A clear description of the change and motivation.
-  - Notes on how you tested it (commands, browsers, platforms).
-  - Screenshots or recordings for noticeable UI changes.
-  - Mention of any breaking changes or migrations.
-
-## Security & Configuration
-
-- Do not commit secrets or `.env` files; `apps/server` loads env via `dotenv`.
-- Document required env vars in an example file (e.g. `apps/server/.env.example`) when adding new configuration.
-
-## Current Capabilities
-
-### apps/web
-
-- Main layout (`apps/web/src/Main.tsx`) wraps the file workspace and terminal in vertically stacked `@repo/ui/resizable` panels whose split sizes persist via `makePersisted` + `dualStorage`.
-- `FsProvider` (`apps/web/src/fs/context/FsProvider.tsx`) builds trees for the `'local' | 'opfs' | 'memory'` sources using `@repo/fs`, caches handles, streams file bytes/text, tracks parse stats, and exposes create/delete/mutation helpers so `TreeView` + `SelectedFilePanel` can lazily load folders/files.
-- File viewing leverages `@repo/code-editor` for text (piece-table-backed editing, cursor/selection virtualization) and `BinaryFileViewer` for hex/ASCII previews with stats from `@repo/utils`; state such as expanded folders, selection, preview bytes, and piece tables persist via `localforage`.
-- The terminal (`apps/web/src/components/Terminal.tsx`) boots `xterm.js` with a local-echo command loop (`help`, `echo`, `clear`), while `FocusProvider` + `StatusBar` surface the active focus area, selected file path, file size, FS source, and loading/error states.
-- `serverRoutesProbe` and the Eden `client` keep the UI aware of Bun API health, logging via `@repo/logger`.
-
-### apps/server
-
-- Bun + Elysia server (`apps/server/src/index.ts`) exposes health (`/`), param echo (`/id/:id`), and validated mirror (`POST /mirror`) routes behind CORS configured from a layered `.env` loader (`apps/server/src/env.ts`) that merges repo-root and app-level env files with zod validation.
-
-### apps/desktop
-
-- Thin Tauri shell (`apps/desktop/src-tauri`) that bundles the web client, wires `tauri_plugin_opener`, and exposes a sample `greet` command; `vibe_lib::run()` is the desktop entry point.
 
 ### Shared packages
 
@@ -98,13 +86,6 @@
 - `@repo/logger`: scoped Consola loggers for `web`, `server`, etc.
 - `@repo/icons`: Solid wrappers around VS Code icon packs built via Bun scripts.
 - `@repo/keyboard`: keymap/parser utilities for editor shortcuts.
-
-## Outstanding TODOs
-
-- apps/web/src/styles.css:9 — Replace the stopgap native scrollbar styling with a full custom scrollbar implementation.
-- apps/web/src/fs/context/FsProvider.tsx:412 — Rework how the last-opened file path syncs to `localStorage`; the current effect is acknowledged as suboptimal.
-- apps/web/src/components/BinaryFileViewer.tsx:129 — Replace TanStack Virtualizer with a lean custom implementation that holds less heap when rendering large binaries.
-- packages/code-editor/src/editor/components/Input.tsx:16 — Optimize the hidden textarea input to avoid slowdown on very large files (hundreds of thousands of lines).
 
 ## Additional Code Conventions & Patterns
 
