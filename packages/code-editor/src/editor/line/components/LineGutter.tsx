@@ -12,8 +12,8 @@ interface LineGutterProps {
 	onFoldClick?: () => void
 }
 
-const getGutterStyle = (lineHeight: number, lineNumber: number) => {
-	const styles: JSX.CSSProperties = { height: `${lineHeight}px` }
+const getGutterStyle = (lineNumber: number) => {
+	const styles: JSX.CSSProperties = {}
 
 	if (DEFAULT_GUTTER_MODE !== 'decimal') {
 		styles['counter-set'] = `line ${lineNumber}`
@@ -32,7 +32,7 @@ export const LineGutter = (props: LineGutterProps) => {
 				'text-zinc-500': !props.isActive,
 				'line-number': DEFAULT_GUTTER_MODE !== 'decimal',
 			}}
-			style={getGutterStyle(props.lineHeight, props.lineNumber)}
+			style={getGutterStyle(props.lineNumber)}
 		>
 			{DEFAULT_GUTTER_MODE === 'decimal' ? props.lineNumber : null}
 
