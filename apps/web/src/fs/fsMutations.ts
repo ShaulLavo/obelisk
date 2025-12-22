@@ -12,6 +12,8 @@ import {
 import { toast } from '@repo/ui/toaster'
 
 type FsMutationDeps = {
+	getState: () => FsState
+	getActiveSource: () => FsSource
 	refresh: (source?: FsSource) => Promise<void>
 	setExpanded: SetStoreFunction<Record<string, boolean>>
 	setSelectedPath: Setter<string | undefined>
@@ -22,10 +24,8 @@ type FsMutationDeps = {
 			current: PieceTableSnapshot | undefined
 		) => PieceTableSnapshot | undefined
 	) => void
-	setLoading: Setter<boolean>
+	setSaving: Setter<boolean>
 	setDirtyPath: (path: string, isDirty: boolean) => void
-	getState: () => FsState
-	getActiveSource: () => FsSource
 }
 
 const buildPath = (parentPath: string, name: string) =>
@@ -38,7 +38,7 @@ export const createFsMutations = ({
 	setSelectedFileSize,
 	setSelectedFileContent,
 	updateSelectedFilePieceTable,
-	setLoading,
+	setSaving,
 	setDirtyPath,
 	getState,
 	refresh,
@@ -83,7 +83,9 @@ export const createFsMutations = ({
 			await refresh()
 		} catch (error) {
 			logger.withTag('fsMutations').error('Create file failed', { error })
-			toast.error(error instanceof Error ? error.message : 'Failed to create file')
+			toast.error(
+				error instanceof Error ? error.message : 'Failed to create file'
+			)
 		}
 	}
 
@@ -105,7 +107,9 @@ export const createFsMutations = ({
 			await refresh()
 		} catch (error) {
 			logger.withTag('fsMutations').error('Delete entry failed', { error })
-			toast.error(error instanceof Error ? error.message : 'Failed to delete entry')
+			toast.error(
+				error instanceof Error ? error.message : 'Failed to delete entry'
+			)
 		}
 	}
 
@@ -126,7 +130,7 @@ export const createFsMutations = ({
 			return
 		}
 
-		setLoading(true)
+		setSaving(true)
 
 		try {
 			const pieceTable = state.pieceTables[filePath]
@@ -165,7 +169,7 @@ export const createFsMutations = ({
 			logger.withTag('fsMutations').error('Save failed', { error })
 			toast.error('Failed to save file')
 		} finally {
-			setLoading(false)
+			setSaving(false)
 		}
 	}
 

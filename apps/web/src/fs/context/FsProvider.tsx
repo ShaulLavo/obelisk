@@ -34,6 +34,7 @@ export function FsProvider(props: { children: JSX.Element }) {
 		setSelectedFileContent,
 		setSelectedFileLoading,
 		setLoading,
+		setSaving,
 		setFileStats,
 		clearParseResults,
 		setPieceTable,
@@ -143,7 +144,7 @@ export function FsProvider(props: { children: JSX.Element }) {
 		setSelectedFileSize,
 		setSelectedFileContent,
 		updateSelectedFilePieceTable,
-		setLoading,
+		setSaving,
 		setDirtyPath,
 		getState: () => state,
 		getActiveSource: () => state.activeSource,
@@ -195,7 +196,11 @@ export function FsProvider(props: { children: JSX.Element }) {
 	const { startObserving, stopObserving } = useFileSystemObserver({
 		state,
 		reloadFile: async (path: string) => {
-			// Reload the file by re-selecting it with forceReload
+			// Only reload the currently selected file
+			// Other files will load fresh from disk when selected
+			if (path !== state.lastKnownFilePath) {
+				return
+			}
 			await selectPath(path, { forceReload: true })
 		},
 		reloadDirectory,

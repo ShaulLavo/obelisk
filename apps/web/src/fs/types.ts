@@ -20,6 +20,7 @@ export type FsState = {
 	selectedFilePreviewBytes?: Uint8Array
 	selectedFileSize?: number
 	loading: boolean
+	saving: boolean
 	backgroundPrefetching: boolean
 	backgroundIndexedFileCount: number
 	lastPrefetchedPath?: string

@@ -10,6 +10,7 @@ export const createFileDisplayState = () => {
 	const [selectedFileContent, setSelectedFileContent] = createSignal('')
 	const [selectedFileLoading, setSelectedFileLoading] = createSignal(false)
 	const [loading, setLoading] = createSignal(false)
+	const [saving, setSaving] = createSignal(false)
 
 	return {
 		selectedFileSize,
@@ -22,5 +23,7 @@ export const createFileDisplayState = () => {
 		setSelectedFileLoading,
 		loading,
 		setLoading,
+		saving,
+		setSaving,
 	}
 }

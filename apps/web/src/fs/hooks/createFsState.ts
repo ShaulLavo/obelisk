@@ -33,6 +33,8 @@ export const createFsState = () => {
 		setSelectedFileLoading,
 		loading,
 		setLoading,
+		saving,
+		setSaving,
 	} = createFileDisplayState()
 	const {
 		backgroundPrefetching,
@@ -116,6 +118,9 @@ export const createFsState = () => {
 		get loading() {
 			return loading()
 		},
+		get saving() {
+			return saving()
+		},
 		get backgroundPrefetching() {
 			return backgroundPrefetching()
 		},
@@ -189,6 +194,7 @@ export const createFsState = () => {
 		setSelectedFileContent,
 		setSelectedFileLoading,
 		setLoading,
+		setSaving,
 		setBackgroundPrefetching,
 		setBackgroundIndexedFileCount,
 		setLastPrefetchedPath,
