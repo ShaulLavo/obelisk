@@ -20,10 +20,17 @@ import type { FsContextValue, SelectPathOptions } from '../context/FsContext'
 import { findNode } from '../runtime/tree'
 import type { FileCacheController } from '../cache/fileCacheController'
 import { parseBufferWithTreeSitter } from '../../treeSitter/workerClient'
-import { viewTransitionBatched } from '@repo/utils/viewTransition'
+import { viewTransition } from '@repo/utils/viewTransition'
 import { toast } from '@repo/ui/toaster'
 
 const textDecoder = new TextDecoder()
+
+export const enum FileSelectionAnimation {
+	Blur = 'blur',
+	None = 'none',
+}
+
+const CURRENT_ANIMATION = FileSelectionAnimation.Blur as FileSelectionAnimation
 
 type UseFileSelectionOptions = {
 	state: FsState
@@ -179,7 +186,7 @@ export const useFileSelection = ({
 					}
 
 					timeSync('apply-selection-state', ({ timeSync }) => {
-						const transition = viewTransitionBatched(() => {
+						const updateState = () => {
 							timeSync('set-selected-path', () => setSelectedPath(path))
 							timeSync('set-selected-file-size', () =>
 								setSelectedFileSize(fileSize)
@@ -199,7 +206,13 @@ export const useFileSelection = ({
 									})
 								)
 							}
-						})
+						}
+
+						if (CURRENT_ANIMATION === FileSelectionAnimation.Blur) {
+							viewTransition(() => batch(updateState))
+						} else {
+							batch(updateState)
+						}
 					})
 				},
 				{

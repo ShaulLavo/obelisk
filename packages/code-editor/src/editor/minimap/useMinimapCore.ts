@@ -7,6 +7,7 @@
  */
 
 import { createEffect, createSignal, on, type Accessor } from 'solid-js'
+import { logger } from '@repo/logger'
 import { useCursor } from '../cursor'
 import { getMinimapLayout } from './minimapUtils'
 import { useScrollState } from './ScrollState'
@@ -61,7 +62,7 @@ export const useMinimapCore = (
 	const worker = useMinimapWorker({
 		onReady: () => setWorkerActive(true),
 		onError: (error) => {
-			console.warn('Minimap worker error:', error)
+			logger.withTag('minimap').warn('Minimap worker error:', error)
 			setWorkerActive(false)
 		},
 	})
