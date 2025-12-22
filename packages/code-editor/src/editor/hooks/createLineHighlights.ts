@@ -1,5 +1,6 @@
 import { createMemo, type Accessor } from 'solid-js'
 import { Lexer, type LineState } from '@repo/lexer'
+import { ENABLE_LEXER } from '../consts'
 import {
 	mergeLineSegments,
 	toLineHighlightSegmentsForLine,
@@ -189,7 +190,7 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 				lineTextLength,
 				candidatesBuffer
 			)
-		} else {
+		} else if (ENABLE_LEXER) {
 			const lineState =
 				lexerStates?.[entry.index] ?? options.lexer.getLineState(entry.index)
 			const { tokens } = options.lexer.tokenizeLine(
@@ -200,6 +201,8 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 				tokens,
 				getHighlightClassForScope
 			)
+		} else {
+			highlightSegments = []
 		}
 
 		const errorSegments = toLineHighlightSegmentsForLine(

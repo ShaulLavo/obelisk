@@ -4,7 +4,10 @@
 import { flattenTree, type LoggerToggleTree } from './flattenToggleTree'
 
 const LOGGER_TOGGLE_TREE = {
-	app: false,
+	app: {
+		$self: false,
+		modal: false
+	},
 	'code-editor': {
 		$self: false,
 		'benchmark-content': false,

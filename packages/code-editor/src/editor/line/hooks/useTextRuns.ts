@@ -21,7 +21,7 @@ export type UseTextRunsOptions = {
 export const useTextRuns = (
 	options: UseTextRunsOptions
 ): Accessor<TextRun[]> => {
-	return createMemo(() => {
+	const runs = createMemo(() => {
 		const text = options.text()
 		if (text.length === 0) {
 			return []
@@ -38,4 +38,6 @@ export const useTextRuns = (
 
 		return buildTextRuns(text, depthMap, highlights, startIndex, endIndex)
 	})
+
+	return runs
 }

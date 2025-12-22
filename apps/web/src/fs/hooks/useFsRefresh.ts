@@ -71,7 +71,7 @@ export const useFsRefresh = ({
 			{
 				id: 'retry',
 				label: 'Retry',
-				variant: 'default',
+				variant: 'default' as const,
 				autoClose: false,
 				onPress: () => {
 					void refresh(source)
@@ -86,6 +86,7 @@ export const useFsRefresh = ({
 			heading: 'Filesystem error',
 			body: message,
 			dismissable: false,
+			contentClass: 'bg-zinc-950 text-zinc-100',
 			actions,
 		})
 	}
