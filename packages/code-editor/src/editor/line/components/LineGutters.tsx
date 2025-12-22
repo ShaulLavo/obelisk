@@ -40,7 +40,7 @@ export const LineGutters = (props: LineGuttersProps) => {
 
 	return (
 		<div
-			class="sticky left-0 z-10 bg-zinc-950"
+			class="editor-gutter-wrapper"
 			style={{
 				width: `${LINE_NUMBER_WIDTH}px`,
 			}}
@@ -79,7 +79,7 @@ export const LineGutters = (props: LineGuttersProps) => {
 								<div
 									data-index={virtualRow.index}
 									data-line={lineIndex()}
-									class="absolute left-0 right-0 flex items-center justify-end"
+									class="editor-gutter-row"
 									style={{
 										transform: `translateY(${virtualRow.start}px)`,
 										'will-change': 'transform',

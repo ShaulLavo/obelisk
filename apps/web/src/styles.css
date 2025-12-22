@@ -104,11 +104,56 @@
 
 @layer utilities {
 	.animate-accordion-down {
-		animation: accordion-down 0.2s ease-out;
+		@apply ease-out;
+		animation: accordion-down 0.2s;
 	}
 
 	.animate-accordion-up {
-		animation: accordion-up 0.2s ease-out;
+		@apply ease-out;
+		animation: accordion-up 0.2s;
+	}
+
+	/* Editor Viewport */
+	.editor-viewport-scroll {
+		@apply relative flex-1 overflow-auto bg-zinc-950/30;
+	}
+
+	/* Line Gutter */
+	.editor-gutter-container {
+		@apply shrink-0 select-none text-[11px] font-semibold tracking-[0.08em] tabular-nums flex items-center justify-between gap-1;
+	}
+	.editor-fold-button {
+		@apply flex h-4 w-4 shrink-0 items-center justify-center rounded text-[10px] text-zinc-400 hover:text-white hover:bg-zinc-800/60 focus-visible:outline focus-visible:outline-zinc-500;
+	}
+
+	/* Line Gutters */
+	.editor-gutter-wrapper {
+		@apply sticky left-0 z-10 bg-zinc-950;
+	}
+	.editor-gutter-row {
+		@apply absolute left-0 right-0 flex items-center justify-end;
+	}
+
+	/* Tree Node */
+	.tree-node-row-highlight {
+		@apply pointer-events-none absolute inset-y-0 right-0 border-b border-t transition-colors duration-150 ease-in-out;
+	}
+	.tree-node-button {
+		@apply relative z-10 flex w-full items-center overflow-hidden rounded text-left text-sm transition;
+	}
+	.tree-node-chevron {
+		@apply w-4 text-center text-[10px] text-zinc-500;
+	}
+	.tree-node-icon {
+		@apply mr-2 flex items-center justify-center;
+	}
+	.tree-node-branch-line {
+		@apply pointer-events-none absolute left-1.5 top-0 bottom-0 z-10 border-l transition-opacity duration-200 ease-linear;
+	}
+
+	/* Line */
+	.editor-line {
+		@apply absolute left-0 top-0 w-full whitespace-pre text-zinc-100 will-change-transform;
 	}
 }
 .transition-display {

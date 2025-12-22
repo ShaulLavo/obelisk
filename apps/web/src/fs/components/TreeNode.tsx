@@ -5,7 +5,6 @@ import { getBracketDepthBorderClass } from '@repo/code-editor'
 import { useFs } from '../../fs/context/FsContext'
 import { VsChevronDown } from '@repo/icons/vs/VsChevronDown'
 import { VsChevronRight } from '@repo/icons/vs/VsChevronRight'
-import { VsFile } from '@repo/icons/vs/VsFile'
 import { FileIcon } from './FileIcon'
 import { VsFolder } from '@repo/icons/vs/VsFolder'
 import { VsFolderOpened } from '@repo/icons/vs/VsFolderOpened'
@@ -117,7 +116,7 @@ export const TreeNode = (props: TreeNodeProps) => {
 			>
 				<span
 					aria-hidden="true"
-					class="pointer-events-none absolute inset-y-0 right-0  border-b border-t transition-colors duration-150 ease-in-out"
+					class="tree-node-row-highlight"
 					style={{ left: `-${indentationOffset()}px` }}
 					classList={{
 						'border-cyan-700': isSelected(),
@@ -137,16 +136,16 @@ export const TreeNode = (props: TreeNodeProps) => {
 						}
 					}}
 					aria-expanded={isDir() ? isOpen() : undefined}
-					class="relative z-10 flex w-full items-center overflow-hidden rounded text-left text-sm transition"
+					class="tree-node-button"
 				>
 					<span
-						class="w-4 text-center text-[10px] text-zinc-500"
+						class="tree-node-chevron"
 						classList={{ 'text-cyan-700': isSelected() }}
 					>
 						{isDir() ? isOpen() ? <VsChevronDown /> : <VsChevronRight /> : ''}
 					</span>
 					<span
-						class="mr-2 flex items-center justify-center"
+						class="tree-node-icon"
 						classList={{ 'text-cyan-700': isSelected() }}
 					>
 						<Show
@@ -172,7 +171,7 @@ export const TreeNode = (props: TreeNodeProps) => {
 					<span
 						ref={setBranchLineRef}
 						aria-hidden="true"
-						class={`pointer-events-none absolute left-1.5 top-0 bottom-0 z-10 border-l transition-opacity duration-200 ease-linear ${childBranchBorderClass()}`}
+						class={`tree-node-branch-line ${childBranchBorderClass()}`}
 						style={{
 							opacity: 0,
 						}}

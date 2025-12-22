@@ -56,16 +56,13 @@ export const Line = (props: LineProps) => {
 				lineElement = el
 			}}
 			data-index={props.virtualRow.index}
-			class="absolute left-0 whitespace-pre text-zinc-100"
+			class="editor-line"
 			classList={{
 				'cursor-text': props.isEditable(),
 			}}
 			style={{
 				transform: `translate(${xOffset}px, ${props.virtualRow.start}px)`,
-				'will-change': 'transform',
-				top: 0,
 				'min-width': `${props.contentWidth}px`,
-				width: '100%',
 				height: `${props.virtualRow.size || props.lineHeight}px`,
 				'tab-size': Math.max(1, props.tabSize),
 			}}

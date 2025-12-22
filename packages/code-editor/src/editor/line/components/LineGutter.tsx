@@ -26,23 +26,20 @@ const getGutterStyle = (lineHeight: number, lineNumber: number) => {
 export const LineGutter = (props: LineGutterProps) => {
 	return (
 		<span
-			class="shrink-0 select-none text-[11px] font-semibold tracking-[0.08em] tabular-nums flex items-center justify-between gap-1 "
+			class="editor-gutter-container"
 			classList={{
 				'text-white': props.isActive,
 				'text-zinc-500': !props.isActive,
+				'line-number': DEFAULT_GUTTER_MODE !== 'decimal',
 			}}
 			style={getGutterStyle(props.lineHeight, props.lineNumber)}
 		>
-			<span
-				class="flex-1 text-right"
-				classList={{ 'line-number': DEFAULT_GUTTER_MODE !== 'decimal' }}
-			>
-				{DEFAULT_GUTTER_MODE === 'decimal' ? props.lineNumber : null}
-			</span>
+			{DEFAULT_GUTTER_MODE === 'decimal' ? props.lineNumber : null}
+
 			<Show when={props.isFoldable} fallback={<span class="w-4 shrink-0" />}>
 				<button
 					type="button"
-					class="flex h-4 w-4 shrink-0 items-center justify-center rounded text-[10px] text-zinc-400 hover:text-white hover:bg-zinc-800/60 focus-visible:outline focus-visible:outline-zinc-500"
+					class="editor-fold-button"
 					aria-label={props.isFolded ? 'Expand fold' : 'Collapse fold'}
 					onMouseDown={(event) => event.stopPropagation()}
 					onClick={(event) => {
