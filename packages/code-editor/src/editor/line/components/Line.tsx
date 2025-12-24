@@ -38,18 +38,9 @@ export const Line = (props: LineProps) => {
 		props.onPreciseClick(props.entry.index, column, event.shiftKey)
 	}
 
-	const columnStart = props.virtualRow.columnStart
-	const columnEnd = props.virtualRow.columnEnd
-	if (Math.random() < 1) console.log('Line render', props.virtualRow.index)
-	const xOffset = columnStart * props.charWidth
-	if (columnEnd < columnStart) {
-		const message = 'Line virtual row column range is invalid'
-		log.warn(message, {
-			lineIndex: props.virtualRow.index,
-			columnStart,
-			columnEnd,
-		})
-	}
+	const columnStart = () => props.virtualRow.columnStart
+	const columnEnd = () => props.virtualRow.columnEnd
+	const xOffset = () => columnStart() * props.charWidth
 
 	return (
 		<div
@@ -62,7 +53,7 @@ export const Line = (props: LineProps) => {
 				'cursor-text': props.isEditable(),
 			}}
 			style={{
-				transform: `translate(${xOffset}px, ${props.virtualRow.start}px)`,
+				transform: `translate(${xOffset()}px, ${props.virtualRow.start}px)`,
 				'min-width': `${props.contentWidth}px`,
 				height: `${props.virtualRow.size || props.lineHeight}px`,
 				'tab-size': Math.max(1, props.tabSize),
@@ -73,8 +64,8 @@ export const Line = (props: LineProps) => {
 				text={props.entry.text}
 				bracketDepths={props.lineBracketDepths}
 				highlightSegments={props.highlights}
-				columnStart={columnStart}
-				columnEnd={columnEnd}
+				columnStart={columnStart()}
+				columnEnd={columnEnd()}
 				cachedRuns={props.cachedRuns}
 			/>
 		</div>
