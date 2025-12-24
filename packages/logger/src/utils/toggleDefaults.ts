@@ -7,10 +7,6 @@ const LOGGER_TOGGLE_TREE = {
 	app: {
 		$self: false,
 		modal: false,
-		pref: {
-			$self: false,
-			global: false,
-		},
 	},
 	'code-editor': {
 		$self: false,
@@ -24,6 +20,8 @@ const LOGGER_TOGGLE_TREE = {
 		'minimap-selection': false,
 		scmParser: false,
 		scrollbar: false,
+		syntax: false,
+		'text-runs': false,
 		virtualizer: false,
 		'virtualizer-2d': false,
 	},
