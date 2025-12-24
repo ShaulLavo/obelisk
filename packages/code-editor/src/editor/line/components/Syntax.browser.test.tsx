@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { createSignal } from 'solid-js'
 import { render } from 'vitest-browser-solid'
 import { Syntax } from './Syntax'
 
@@ -146,6 +147,29 @@ describe('Syntax', () => {
 			// Should have depth data attributes
 			const depthSpans = screen.container.querySelectorAll('[data-depth]')
 			expect(depthSpans.length).toBeGreaterThan(0)
+		})
+	})
+
+	describe('token reuse', () => {
+		it('reuses token nodes when text updates with same run count', async () => {
+			const [text, setText] = createSignal('foo')
+			const highlights = [
+				{ start: 0, end: 3, className: 'keyword', scope: 'keyword' },
+			]
+
+			const screen = render(() => (
+				<Syntax text={text()} highlightSegments={highlights} />
+			))
+
+			const firstSpan = screen.container.querySelector('span')
+			expect(firstSpan).not.toBeNull()
+
+			setText('bar')
+
+			await expect.element(screen.getByText('bar')).toBeVisible()
+
+			const nextSpan = screen.container.querySelector('span')
+			expect(nextSpan).toBe(firstSpan)
 		})
 	})
 })

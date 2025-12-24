@@ -1,8 +1,8 @@
-import { For } from 'solid-js'
+import { Index } from 'solid-js'
 import type { LineBracketDepthMap, LineHighlightSegment } from '../../types'
 import { useTextRuns } from '../hooks/useTextRuns'
-import { Token } from './Token'
 import type { TextRun } from '../utils/textRuns'
+import { Token } from './Token'
 
 type SyntaxProps = {
 	text: string
@@ -28,8 +28,18 @@ export const Syntax = (props: SyntaxProps) => {
 		columnEnd: () => props.columnEnd,
 	})
 
-	// Use cached runs if available, otherwise compute them
 	const runs = () => props.cachedRuns ?? computedRuns()
 
-	return <For each={runs()}>{(run) => <Token {...run} />}</For>
+	return (
+		<Index each={runs()}>
+			{(run) => (
+				<Token
+					text={run().text}
+					depth={run().depth}
+					highlightClass={run().highlightClass}
+					highlightScope={run().highlightScope}
+				/>
+			)}
+		</Index>
+	)
 }
