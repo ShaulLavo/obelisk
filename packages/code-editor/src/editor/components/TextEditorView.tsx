@@ -1,20 +1,16 @@
 import {
 	Show,
 	createEffect,
-	createMemo,
 	createSignal,
 	onCleanup,
 	untrack,
 } from 'solid-js'
+import { loggers } from '@repo/logger'
 import { DEFAULT_TAB_SIZE } from '../consts'
 import { useCursor } from '../cursor'
-import { useHistory } from '../history'
-import { Lexer, type LineState } from '@repo/lexer'
-import { getPieceTableText } from '@repo/utils'
 import {
 	createCursorScrollSync,
 	createMouseSelection,
-	createLineBracketDepths,
 	createTextEditorInput,
 	createTextEditorLayout,
 	createLineHighlights,
@@ -27,10 +23,17 @@ import { Minimap } from '../minimap'
 import type { DocumentIncrementalEdit, EditorProps } from '../types'
 
 export const TextEditorView = (props: EditorProps) => {
+	const log = loggers.codeEditor.withTag('editor')
+	const assert = (
+		condition: boolean,
+		message: string,
+		details?: Record<string, unknown>
+	) => {
+		if (condition) return true
+		log.warn(message, details)
+		return false
+	}
 	const cursor = useCursor()
-	const history = useHistory()
-	const lexer = untrack(() => props.lexer) ?? Lexer.create()
-	let lexerStatesPath: string | undefined
 
 	const tabSize = () => props.tabSize?.() ?? DEFAULT_TAB_SIZE
 	const [scrollElement, setScrollElement] = createSignal<HTMLDivElement | null>(
@@ -46,95 +49,16 @@ export const TextEditorView = (props: EditorProps) => {
 
 	const isEditable = () => props.document.isEditable()
 
-	const syncLexer = createMemo(
-		(previousPath: string | undefined): string | undefined => {
-			const selected = props.isFileSelected()
-			const path = props.document.filePath()
-			void props.documentVersion?.()
-			const lineCount = cursor.lines.lineStarts().length
-
-			const hasPath = Boolean(path)
-			const isReady = selected && hasPath
-
-			if (isReady === false) {
-				const hasPreviousPath = Boolean(previousPath)
-				const hasCachedStates = lexer.getAllLineStates().length > 0
-				const shouldReset = hasPreviousPath || hasCachedStates
-
-				if (shouldReset) {
-					lexerStatesPath = undefined
-					lexer.setLineStates([])
-				}
-				return undefined
-			}
-
-			const hasPathChanged = previousPath !== path
-			const stateCount = lexer.getAllLineStates().length
-			const isCountMismatch = stateCount !== lineCount
-			// Recompute if:
-			// 1. Path changed
-			// 2. We have no states
-			// 3. Line counts don't match (e.g. content loaded but lexer not updated)
-			// 4. We have 1 line (cheap to recompute, handles 1-line file load edge case)
-			const shouldRecomputeAll =
-				hasPathChanged || stateCount === 0 || isCountMismatch || lineCount === 1
-
-			if (shouldRecomputeAll) {
-				lexerStatesPath = path
-
-				const pieceTable = untrack(() => cursor.lines.pieceTable())
-				const content = pieceTable
-					? getPieceTableText(pieceTable)
-					: untrack(() => props.document.content())
-				lexer.computeAllStates(content)
-			} else if (lexerStatesPath !== path) {
-				lexerStatesPath = path
-			}
-
-			return path
-		},
-		undefined,
-		{ equals: (prev, next) => prev === next }
-	)
-
-	const lexerStates = (): LineState[] | undefined => {
-		const isReady = Boolean(syncLexer())
-		if (isReady === false) return undefined
-
-		const states = lexer.getAllLineStates()
-		return states.length > 0 ? states : undefined
-	}
-
-	const applyLexerEdit = (edit: DocumentIncrementalEdit) => {
-		if (isEditable() === false) return
-		const lineCount = cursor.lines.lineStarts().length
-		if (lineCount <= 0) return
-
-		if (lexer.getAllLineStates().length === 0) {
-			const pieceTable = cursor.lines.pieceTable()
-			const content = pieceTable
-				? getPieceTableText(pieceTable)
-				: props.document.content()
-			lexer.computeAllStates(content)
+	const handleIncrementalEdit = (edit: DocumentIncrementalEdit) => {
+		if (
+			!assert(props.isFileSelected(), 'Incremental edit without selection', {
+				path: props.document.filePath(),
+			})
+		) {
 			return
 		}
-
-		lexer.updateStatesFromEdit(
-			edit.startPosition.row,
-			(lineIndex) => cursor.lines.getLineText(lineIndex),
-			lineCount
-		)
-	}
-
-	const handleIncrementalEdit = (edit: DocumentIncrementalEdit) => {
-		applyLexerEdit(edit)
 		props.document.applyIncrementalEdit?.(edit)
 	}
-
-	const disposeHistoryLexerSync = history.subscribeAppliedEdits((edit) => {
-		untrack(() => applyLexerEdit(edit))
-	})
-	onCleanup(disposeHistoryLexerSync)
 
 	const { foldedStarts, toggleFold } = useFoldedStarts({
 		filePath: () => props.document.filePath(),
@@ -247,16 +171,11 @@ export const TextEditorView = (props: EditorProps) => {
 		})
 	})
 
-	const { getLineBracketDepths } = createLineBracketDepths({
-		lexer,
-		lexerStates,
-	})
+	const getLineBracketDepths = () => undefined
 
 	const { getLineHighlights } = createLineHighlights({
-		lexer,
 		highlights: () => props.highlights?.(),
 		errors: () => props.errors?.(),
-		lexerStates,
 		highlightOffset: () => props.highlightOffset?.(),
 	})
 

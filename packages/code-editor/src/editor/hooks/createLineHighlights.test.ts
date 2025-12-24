@@ -1,24 +1,25 @@
 import { describe, expect, it } from 'vitest'
 import { createRoot, createSignal } from 'solid-js'
-import { Lexer } from '@repo/lexer'
 import { createLineHighlights } from './createLineHighlights'
 
 describe('createLineHighlights', () => {
 	it('invalidates cached line highlights when line text changes', () => {
 		createRoot((dispose) => {
-			const lexer = Lexer.create()
-			const { getLineHighlights } = createLineHighlights({ lexer })
+			const [highlights] = createSignal([
+				{ startIndex: 0, endIndex: 5, scope: 'variable' },
+			])
+			const { getLineHighlights } = createLineHighlights({ highlights })
 
 			const entryA = { index: 0, start: 0, length: 5, text: 'hello' }
 			const segmentsA = getLineHighlights(entryA)
-			expect(segmentsA.some((s) => s.scope.includes('variable'))).toBe(true)
+			expect(segmentsA.length).toBeGreaterThan(0)
 
 			const segmentsA2 = getLineHighlights(entryA)
 			expect(segmentsA2).toBe(segmentsA)
 
-			const entryB = { index: 0, start: 0, length: 5, text: '12345' }
+			const entryB = { index: 0, start: 0, length: 5, text: 'world' }
 			const segmentsB = getLineHighlights(entryB)
-			expect(segmentsB.some((s) => s.scope.includes('number'))).toBe(true)
+			expect(segmentsB.length).toBeGreaterThan(0)
 
 			const segmentsB2 = getLineHighlights(entryB)
 			expect(segmentsB2).toBe(segmentsB)
@@ -27,46 +28,39 @@ describe('createLineHighlights', () => {
 		})
 	})
 
-	it('updates highlights below edit when lexer state changes', () => {
+	it('recomputes highlights when highlight offset changes', () => {
 		createRoot((dispose) => {
-			const lexer = Lexer.create()
-
-			const original = 'const x = 1; /*\nfoo\nbar'
-			const initialStates = lexer.computeAllStates(original)
-			const [lexerStates, setLexerStates] = createSignal(initialStates)
-
+			const [highlightOffset, setHighlightOffset] = createSignal({
+				charDelta: 0,
+				lineDelta: 0,
+				fromCharIndex: 0,
+				fromLineRow: 0,
+			})
+			const [highlights] = createSignal([
+				{ startIndex: 0, endIndex: 3, scope: 'variable' },
+			])
 			const { getLineHighlights } = createLineHighlights({
-				lexer,
-				lexerStates,
+				highlights,
+				highlightOffset,
 			})
 
-			const line1Start = original.indexOf('\n') + 1
-			const entryLine1 = { index: 1, start: line1Start, length: 4, text: 'foo' }
+			const entry = { index: 0, start: 0, length: 6, text: 'abcdef' }
+			const segments = getLineHighlights(entry)
+			expect(segments[0]?.start).toBe(0)
 
-			expect(
-				getLineHighlights(entryLine1).some((segment) =>
-					segment.scope.includes('comment.block')
-				)
-			).toBe(true)
+			const cached = getLineHighlights(entry)
+			expect(cached).toBe(segments)
 
-			const cached = getLineHighlights(entryLine1)
-			expect(cached).toBe(getLineHighlights(entryLine1))
+			setHighlightOffset({
+				charDelta: 2,
+				lineDelta: 0,
+				fromCharIndex: 0,
+				fromLineRow: 0,
+			})
 
-			const updated = 'const x = 1; //\nfoo\nbar'
-			const lines = updated.split('\n')
-			const nextStates = lexer.updateStatesFromEdit(
-				0,
-				(lineIndex) => lines[lineIndex] ?? '',
-				lines.length
-			)
-			setLexerStates(nextStates)
-
-			expect(getLineHighlights(entryLine1)).not.toBe(cached)
-			expect(
-				getLineHighlights(entryLine1).some((segment) =>
-					segment.scope.includes('variable')
-				)
-			).toBe(true)
+			const shifted = getLineHighlights(entry)
+			expect(shifted).not.toBe(cached)
+			expect(shifted[0]?.start).toBe(2)
 
 			dispose()
 		})
@@ -74,8 +68,6 @@ describe('createLineHighlights', () => {
 
 	it('handles large number of highlights using spatial index', () => {
 		createRoot((dispose) => {
-			const lexer = Lexer.create()
-
 			// Generate many highlights properly sorted
 			const largeHighlights = Array.from({ length: 5000 }, (_, i) => ({
 				startIndex: i * 10,
@@ -86,7 +78,6 @@ describe('createLineHighlights', () => {
 			const [highlights] = createSignal(largeHighlights)
 
 			const { getLineHighlights } = createLineHighlights({
-				lexer,
 				highlights,
 			})
 

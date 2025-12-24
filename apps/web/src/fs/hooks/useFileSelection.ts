@@ -57,6 +57,16 @@ export const useFileSelection = ({
 	fileCache,
 }: UseFileSelectionOptions) => {
 	let selectRequestId = 0
+	const pieceTableLog = loggers.fs.withTag('piece-table')
+	const assertValue = <T>(
+		value: T | null | undefined,
+		message: string,
+		details?: Record<string, unknown>
+	): value is T => {
+		if (value != null) return true
+		pieceTableLog.warn(message, details)
+		return false
+	}
 
 	const handleReadError = (error: unknown) => {
 		if (error instanceof DOMException && error.name === 'AbortError') return
@@ -244,7 +254,13 @@ export const useFileSelection = ({
 	const updateSelectedFilePieceTable: FsContextValue[1]['updateSelectedFilePieceTable'] =
 		(updater) => {
 			const path = state.lastKnownFilePath
-			if (!path) return
+			if (
+				!assertValue(path, 'Piece table update without active file selection', {
+					selectedPath: state.selectedPath,
+				})
+			) {
+				return
+			}
 
 			const current = state.selectedFilePieceTable
 			const next = updater(current)

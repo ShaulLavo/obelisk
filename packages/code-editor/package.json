@@ -19,7 +19,6 @@
   "dependencies": {
     "@repo/icons": "*",
     "@repo/keyboard": "*",
-    "@repo/lexer": "*",
     "@repo/logger": "*",
     "@repo/perf": "*",
     "@repo/ui": "*",

@@ -23,15 +23,7 @@ export {
 	createLineHighlights,
 	type CreateLineHighlightsOptions,
 } from './createLineHighlights'
-export {
-	createLineBracketDepths,
-	type CreateLineBracketDepthsOptions,
-} from './createLineBracketDepths'
 export { useFoldedStarts, type UseFoldedStartsOptions } from './useFoldedStarts'
-export {
-	useVisibleBracketDepths,
-	type UseVisibleBracketDepthsOptions,
-} from './useVisibleBracketDepths'
 export {
 	useScrollBenchmark,
 	type UseScrollBenchmarkOptions,

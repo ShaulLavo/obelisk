@@ -37,6 +37,3 @@ export const KEY_REPEAT_ACCELERATION_STEPS = 30 // number of repeats before reac
 // Editor layout constants
 export const LINE_NUMBER_WIDTH = 40 // w-10 = 2.5rem = 40px
 export const EDITOR_PADDING_LEFT = 12 // px-3 = 0.75rem = 12px
-
-// Feature flags
-export const ENABLE_LEXER = false // Enable syntax highlighting

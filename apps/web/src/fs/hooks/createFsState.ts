@@ -1,7 +1,6 @@
 /* eslint-disable solid/reactivity */
 import type { FsFileTreeNode, FsTreeNode } from '@repo/fs'
 import { createMemo } from 'solid-js'
-import { getPieceTableText } from '@repo/utils'
 import { findNode } from '../runtime/tree'
 import type { FsState } from '../types'
 import { createTreeState } from './createTreeState'
@@ -110,17 +109,6 @@ export const createFsState = () => {
 			return activeSource()
 		},
 		get selectedFileContent() {
-			const path = lastKnownFilePath()
-			const currentPath = selectedPath()
-			if (!path || currentPath !== path) {
-				return selectedFileContent()
-			}
-
-			const snapshot = pieceTables[path]
-			if (snapshot) {
-				return getPieceTableText(snapshot)
-			}
-
 			return selectedFileContent()
 		},
 		get selectedFileSize() {

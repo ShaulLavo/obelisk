@@ -5,10 +5,6 @@ import Main from './Main'
 import { Providers } from './Providers'
 import { SqliteStudio } from './sqlite-studio/SqliteStudio'
 import { disposeTreeSitterWorker } from './treeSitter/workerClient'
-import { initLexer } from './quickLexer/init'
-
-// Initialize lexer with SCM rules
-initLexer()
 
 const App: Component = () => {
 	onCleanup(() => {

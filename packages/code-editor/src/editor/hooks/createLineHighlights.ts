@@ -1,10 +1,9 @@
 import { createMemo, type Accessor } from 'solid-js'
-import { Lexer, type LineState } from '@repo/lexer'
-import { ENABLE_LEXER } from '../consts'
+import { loggers } from '@repo/logger'
+import { trackMicro } from '@repo/perf'
 import {
 	mergeLineSegments,
 	toLineHighlightSegmentsForLine,
-	getHighlightClassForScope,
 } from '../utils/highlights'
 import type {
 	EditorError,
@@ -20,41 +19,45 @@ type CachedLineHighlights = {
 	start: number
 	length: number
 	text: string
-	lexState: LineState['lexState']
-	bracketDepth: number
-	offset: number
 	segments: LineHighlightSegment[]
 	/** Char offset applied when this cache entry was created */
 	appliedCharDelta?: number
 }
 
 export type CreateLineHighlightsOptions = {
-	lexer: Lexer
 	highlights?: Accessor<EditorSyntaxHighlight[] | undefined>
 	errors?: Accessor<EditorError[] | undefined>
-	lexerStates?: Accessor<LineState[] | undefined>
 	/** Offset for optimistic updates - applied lazily per-line */
 	highlightOffset?: Accessor<HighlightOffset | undefined>
 }
 
 export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
+	const log = loggers.codeEditor.withTag('line-highlights')
+	const assert = (
+		condition: boolean,
+		message: string,
+		details?: Record<string, unknown>
+	) => {
+		if (condition) return true
+		log.warn(message, details)
+		return false
+	}
 	const EMPTY_HIGHLIGHTS: EditorSyntaxHighlight[] = []
 	const EMPTY_ERRORS: ErrorHighlight[] = []
+	const HIGHLIGHT_SORT_LOG_THRESHOLD_MS = 4
 
 	const sortedHighlights = createMemo(() => {
 		const highlights = options.highlights?.()
 		if (!highlights?.length) return EMPTY_HIGHLIGHTS
-		const start = performance.now()
-		const result = highlights
-			.slice()
-			.sort((a, b) => a.startIndex - b.startIndex)
-		const duration = performance.now() - start
-		if (duration > 1) {
-			console.log(
-				`📊 sortedHighlights.sort: ${duration.toFixed(1)}ms (${highlights.length} items)`
-			)
-		}
-		return result
+		return trackMicro(
+			'line-highlights:sort',
+			() => highlights.slice().sort((a, b) => a.startIndex - b.startIndex),
+			{
+				logger: log,
+				threshold: HIGHLIGHT_SORT_LOG_THRESHOLD_MS,
+				metadata: { count: highlights.length },
+			}
+		)
 	})
 
 	const sortedErrorHighlights = createMemo<ErrorHighlight[]>(() => {
@@ -111,7 +114,6 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 	let highlightCache = new Map<number, CachedLineHighlights>()
 	let lastHighlightsRef: EditorSyntaxHighlight[] | undefined
 	let lastErrorsRef: ErrorHighlight[] | undefined
-	let lastLexerStatesRef: LineState[] | undefined
 	const MAX_HIGHLIGHT_CACHE_SIZE = 500
 
 	const getLineHighlights = (entry: LineEntry): LineHighlightSegment[] => {
@@ -120,55 +122,45 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 		const lineTextLength = entry.text.length
 		const highlights = sortedHighlights()
 		const errors = sortedErrorHighlights()
-		const lexerStates = options.lexerStates?.()
 
-		if (
-			highlights !== lastHighlightsRef ||
-			errors !== lastErrorsRef ||
-			lexerStates !== lastLexerStatesRef
-		) {
+		if (highlights !== lastHighlightsRef || errors !== lastErrorsRef) {
 			highlightCache = new Map()
 			lastHighlightsRef = highlights
 			lastErrorsRef = errors
-			lastLexerStatesRef = lexerStates
 			buildSpatialIndex(highlights)
 		}
 
+		assert(lineLength >= lineTextLength, 'Line length shorter than text', {
+			lineStart,
+			lineLength,
+			lineTextLength,
+		})
+
+		const offset = options.highlightOffset?.()
+		const appliedCharDelta =
+			offset && lineStart >= offset.fromCharIndex ? offset.charDelta : 0
 		const cached = highlightCache.get(entry.index)
 		if (
 			cached !== undefined &&
 			cached.start === lineStart &&
 			cached.length === lineLength &&
-			cached.text === entry.text
+			cached.text === entry.text &&
+			cached.appliedCharDelta === appliedCharDelta
 		) {
-			const lineState =
-				lexerStates?.[entry.index] ??
-				options.lexer.getLineState(entry.index) ??
-				Lexer.initialState()
-
-			if (
-				cached.lexState === lineState.lexState &&
-				cached.bracketDepth === lineState.bracketDepth &&
-				cached.offset === lineState.offset
-			) {
-				return cached.segments
-			}
+			return cached.segments
 		}
 
 		let highlightSegments: LineHighlightSegment[]
 		if (highlights.length > 0) {
 			// Get offset for optimistic updates
-			const offset = options.highlightOffset?.()
-
 			// Calculate the lookup position for the spatial index.
 			// If we have an offset and this line is after the edit point,
 			// we need to look up highlights at their OLD positions.
 			let lookupStart = lineStart
-			let charDelta = 0
-			if (offset && lineStart >= offset.fromCharIndex) {
+			let charDelta = appliedCharDelta
+			if (offset && appliedCharDelta !== 0) {
 				// This line is after the edit point, so adjust lookup to old position
-				lookupStart = lineStart - offset.charDelta
-				charDelta = offset.charDelta
+				lookupStart = lineStart - appliedCharDelta
 			}
 
 			const startChunk = Math.floor(lookupStart / SPATIAL_CHUNK_SIZE)
@@ -225,17 +217,6 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 					? { charDelta, fromCharIndex: offset!.fromCharIndex }
 					: undefined
 			)
-		} else if (ENABLE_LEXER) {
-			const lineState =
-				lexerStates?.[entry.index] ?? options.lexer.getLineState(entry.index)
-			const { tokens } = options.lexer.tokenizeLine(
-				entry.text,
-				lineState ?? Lexer.initialState()
-			)
-			highlightSegments = options.lexer.tokensToSegments(
-				tokens,
-				getHighlightClassForScope
-			)
 		} else {
 			highlightSegments = []
 		}
@@ -249,19 +230,12 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 
 		const result = mergeLineSegments(highlightSegments, errorSegments)
 
-		const lineState =
-			lexerStates?.[entry.index] ??
-			options.lexer.getLineState(entry.index) ??
-			Lexer.initialState()
-
 		highlightCache.set(entry.index, {
 			start: lineStart,
 			length: lineLength,
 			text: entry.text,
-			lexState: lineState.lexState,
-			bracketDepth: lineState.bracketDepth,
-			offset: lineState.offset,
 			segments: result,
+			appliedCharDelta,
 		})
 		if (highlightCache.size > MAX_HIGHLIGHT_CACHE_SIZE) {
 			const firstKey = highlightCache.keys().next().value

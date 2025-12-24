@@ -1,7 +1,6 @@
 import type { Accessor } from 'solid-js'
 import type { ParseResult } from '@repo/utils/parse'
 import type { PieceTableSnapshot } from '@repo/utils'
-import type { BracketInfo, Lexer } from '@repo/lexer'
 import type { VisibleContentSnapshot } from './types/visibleContentCache'
 import type { TextRun } from './line/utils/textRuns'
 
@@ -48,6 +47,11 @@ export type FoldRange = {
 	startLine: number
 	endLine: number
 	type: string
+}
+export type BracketInfo = {
+	index: number
+	char: string
+	depth: number
 }
 export type EditorPoint = {
 	row: number
@@ -110,8 +114,6 @@ export type EditorProps = {
 	errors?: Accessor<EditorError[] | undefined>
 	/** Tree-sitter worker for minimap communication */
 	treeSitterWorker?: Worker
-	/** Optional lexer for syntax highlighting fallback. If not provided, defaults to JS/TS lexer. */
-	lexer?: Lexer
 	/** Document version for minimap re-render */
 	documentVersion?: Accessor<number>
 	onSave?: () => void
