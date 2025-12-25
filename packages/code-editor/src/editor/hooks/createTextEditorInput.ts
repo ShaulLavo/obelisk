@@ -538,6 +538,8 @@ export function createTextEditorInput(
 		if (event.key === 'Backspace') {
 			if (!editable) return
 			event.preventDefault()
+			// Start end-to-end trace from keystroke to render
+			startGlobalTrace('keystroke')
 			if (!event.repeat && !deleteKeyRepeat.isActive('Backspace')) {
 				deleteKeyRepeat.start('Backspace', ctrlOrMeta, shiftKey)
 			}

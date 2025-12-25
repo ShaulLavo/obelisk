@@ -1,0 +1,42 @@
+{
+    "description": "TypeScript content with dense syntax highlighting",
+    "language": "typescript",
+    "content": "import { createSignal, createEffect, createMemo, onMount, onCleanup, batch } from 'solid-js'\nimport type { Accessor, Setter, JSX, Component } from 'solid-js'\nimport { createStore, produce, reconcile } from 'solid-js/store'\n\ntype UserRole = 'admin' | 'editor' | 'viewer' | 'guest'\ntype StatusType = 'active' | 'inactive' | 'pending'\n\ninterface User {\n\tid: string\n\tname: string\n\temail: string\n\trole: UserRole\n\tstatus: StatusType\n\tcreatedAt: Date\n}\n\ninterface UserState {\n\tusers: User[]\n\tselectedId: string | null\n\tisLoading: boolean\n}\n\nconst API_BASE_URL = 'https://api.example.com/v1'\nconst MAX_RETRIES = 3\n\nconst generateId = (): string => {\n\treturn `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`\n}\n\nconst formatDate = (date: Date): string => {\n\treturn new Intl.DateTimeFormat('en-US', {\n\t\tyear: 'numeric',\n\t\tmonth: 'long',\n\t\tday: 'numeric',\n\t}).format(date)\n}\n\nconst debounce = <T extends (...args: unknown[]) => void>(\n\tfn: T,\n\tdelay: number\n): ((...args: Parameters<T>) => void) => {\n\tlet timeoutId: ReturnType<typeof setTimeout> | null = null\n\treturn (...args: Parameters<T>) => {\n\t\tif (timeoutId) clearTimeout(timeoutId)\n\t\ttimeoutId = setTimeout(() => fn(...args), delay)\n\t}\n}\n\nasync function fetchWithRetry<T>(url: string, retries = MAX_RETRIES): Promise<T> {\n\ttry {\n\t\tconst response = await fetch(url)\n\t\tif (!response.ok) throw new Error(`HTTP ${response.status}`)\n\t\treturn response.json() as Promise<T>\n\t} catch (error) {\n\t\tif (retries > 0) {\n\t\t\tawait new Promise((r) => setTimeout(r, 1000))\n\t\t\treturn fetchWithRetry<T>(url, retries - 1)\n\t\t}\n\t\tthrow error\n\t}\n}\n\nconst createUserStore = () => {\n\tconst [state, setState] = createStore<UserState>({\n\t\tusers: [],\n\t\tselectedId: null,\n\t\tisLoading: false,\n\t})\n\n\tconst loadUsers = async () => {\n\t\tsetState('isLoading', true)\n\t\ttry {\n\t\t\tconst users = await fetchWithRetry<User[]>(`${API_BASE_URL}/users`)\n\t\t\tsetState('users', reconcile(users))\n\t\t} finally {\n\t\t\tsetState('isLoading', false)\n\t\t}\n\t}\n\n\tconst addUser = (userData: Omit<User, 'id' | 'createdAt'>) => {\n\t\tconst newUser: User = { ...userData, id: generateId(), createdAt: new Date() }\n\t\tsetState('users', (users) => [...users, newUser])\n\t}\n\n\treturn { state, loadUsers, addUser }\n}\n\nexport { createUserStore, generateId, formatDate, debounce }",
+    "highlights": [
+        {
+            "startIndex": 0,
+            "endIndex": 6,
+            "scope": "keyword.control.import"
+        },
+        {
+            "startIndex": 9,
+            "endIndex": 21,
+            "scope": "entity.name.function"
+        },
+        {
+            "startIndex": 23,
+            "endIndex": 35,
+            "scope": "entity.name.function"
+        },
+        {
+            "startIndex": 37,
+            "endIndex": 47,
+            "scope": "entity.name.function"
+        },
+        {
+            "startIndex": 49,
+            "endIndex": 56,
+            "scope": "entity.name.function"
+        },
+        {
+            "startIndex": 58,
+            "endIndex": 67,
+            "scope": "entity.name.function"
+        },
+        {
+            "startIndex": 69,
+            "endIndex": 74,
+            "scope": "entity.name.function"
+        }
+    ]
+}
