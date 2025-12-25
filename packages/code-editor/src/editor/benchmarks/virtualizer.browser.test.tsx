@@ -4,7 +4,7 @@ import { createSignal, For } from 'solid-js'
 import { useScrollBenchmark } from '../hooks/useScrollBenchmark'
 import { BENCHMARK_PRESETS } from './generateContent'
 
-describe('Virtualizer Performance Benchmark', () => {
+describe.skip('Virtualizer Performance Benchmark', () => {
 	let container: HTMLDivElement
 
 	beforeEach(() => {

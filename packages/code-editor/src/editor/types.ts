@@ -41,7 +41,16 @@ export type HighlightOffset = {
 	lineDelta: number
 	fromCharIndex: number
 	fromLineRow: number
+	/** Old end index for the edit range (pre-edit coordinates). */
+	oldEndIndex: number
+	/** New end index for the edit range (post-edit coordinates). */
+	newEndIndex: number
 }
+
+/**
+ * Ordered list of pending edit offsets (oldest -> newest).
+ */
+export type HighlightOffsets = HighlightOffset[]
 
 export type FoldRange = {
 	startLine: number
@@ -108,7 +117,7 @@ export type EditorProps = {
 	activeScopes?: Accessor<string[]>
 	highlights?: Accessor<EditorSyntaxHighlight[] | undefined>
 	/** Offset for optimistic highlight updates - applied lazily per-line */
-	highlightOffset?: Accessor<HighlightOffset | undefined>
+	highlightOffset?: Accessor<HighlightOffsets | undefined>
 	folds?: Accessor<FoldRange[] | undefined>
 	brackets?: Accessor<BracketInfo[] | undefined>
 	errors?: Accessor<EditorError[] | undefined>

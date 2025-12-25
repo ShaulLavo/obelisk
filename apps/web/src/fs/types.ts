@@ -36,10 +36,10 @@ export type FsState = {
 	pieceTables: Record<string, PieceTableSnapshot | undefined>
 	selectedFilePieceTable?: PieceTableSnapshot
 	fileHighlights: Record<string, TreeSitterCapture[] | undefined>
-	/** Pending offset transforms for optimistic updates (O(1) instead of O(n)) */
-	highlightOffsets: Record<string, HighlightTransform | undefined>
+	/** Pending offset transforms for optimistic updates (ordered oldest -> newest) */
+	highlightOffsets: Record<string, HighlightTransform[] | undefined>
 	selectedFileHighlights?: TreeSitterCapture[]
-	selectedFileHighlightOffset?: HighlightTransform
+	selectedFileHighlightOffset?: HighlightTransform[]
 	fileFolds: Record<string, FoldRange[] | undefined>
 	selectedFileFolds?: FoldRange[]
 	fileBrackets: Record<string, BracketInfo[] | undefined>

@@ -4,6 +4,10 @@
 
 # Repository Guidelines
 
+## General Principles
+
+- **Be a Good Citizen**: If you see a problem while working and it's easy to fix, fix it!
+
 ## Project Structure & Modules
 
 - Monorepo managed with Turbo and Bun.

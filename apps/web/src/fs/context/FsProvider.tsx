@@ -124,7 +124,7 @@ export function FsProvider(props: { children: JSX.Element }) {
 		fileCache,
 	})
 
-	// Optimistic highlight offset - O(1) update instead of O(n) array recreation
+	// Optimistic highlight offset - queue edits for lazy per-line shifts
 	const applySelectedFileHighlightOffset = (
 		transform: Parameters<typeof applyHighlightOffset>[1]
 	) => {

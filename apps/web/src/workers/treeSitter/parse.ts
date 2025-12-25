@@ -1,3 +1,4 @@
+import { trackMicro } from '@repo/perf'
 import type { Tree } from 'web-tree-sitter'
 import type {
 	TreeSitterParseResult,
@@ -9,27 +10,108 @@ import { astCache, setCachedEntry } from './cache'
 import { ensureParser } from './parser'
 import { runHighlightQueries, runFoldQueries } from './queries'
 import { collectTreeData } from './treeWalk'
-import {
-	applyTextEdit,
-	isShiftableEdit,
-	getEditCharDelta,
-	getEditLineDelta,
-	shiftCaptures,
-	shiftBrackets,
-	shiftFolds,
-} from './edits'
+import { applyTextEdit } from './edits'
 import { logger } from '../../logger'
 
 const log = logger.withTag('treeSitter')
+const assert = (
+	condition: boolean,
+	message: string,
+	details?: Record<string, unknown>
+) => {
+	if (condition) return true
+	log.warn(message, details)
+	return false
+}
 const textDecoder = new TextDecoder()
+
+type TreeEdit = Omit<TreeSitterEditPayload, 'path' | 'insertedText'>
+
+const applyEditBatch = (
+	path: string,
+	text: string,
+	tree: Pick<Tree, 'edit'>,
+	edits: Omit<TreeSitterEditPayload, 'path'>[]
+) => {
+	let currentText = text
+
+	for (let index = 0; index < edits.length; index++) {
+		const edit = edits[index]
+		if (!edit) continue
+
+		const expectedNewEnd = edit.startIndex + edit.insertedText.length
+		assert(
+			Number.isFinite(edit.startIndex) &&
+				Number.isFinite(edit.oldEndIndex) &&
+				Number.isFinite(edit.newEndIndex) &&
+				edit.startIndex >= 0 &&
+				edit.oldEndIndex >= edit.startIndex &&
+				edit.newEndIndex >= edit.startIndex,
+			'Invalid tree-sitter edit payload',
+			{ path, edit, index }
+		)
+		if (edit.newEndIndex !== expectedNewEnd) {
+			log.warn('Tree-sitter edit new end mismatch', {
+				path,
+				index,
+				expectedNewEnd,
+				edit,
+			})
+		}
+		if (
+			edit.startIndex > currentText.length ||
+			edit.oldEndIndex > currentText.length
+		) {
+			log.warn('Tree-sitter edit out of bounds', {
+				path,
+				index,
+				textLength: currentText.length,
+				edit,
+			})
+		}
+
+		currentText = applyTextEdit(
+			currentText,
+			edit.startIndex,
+			edit.oldEndIndex,
+			edit.insertedText
+		)
+
+		const treeEdit: TreeEdit = {
+			startIndex: edit.startIndex,
+			oldEndIndex: edit.oldEndIndex,
+			newEndIndex: edit.newEndIndex,
+			startPosition: edit.startPosition,
+			oldEndPosition: edit.oldEndPosition,
+			newEndPosition: edit.newEndPosition,
+		}
+		tree.edit(treeEdit)
+	}
+
+	return currentText
+}
 
 export const processTree = async (
 	tree: Tree,
-	languageId: string
+	languageId: string,
+	path?: string
 ): Promise<TreeSitterParseResult> => {
-	const { brackets, errors } = collectTreeData(tree)
-	const captures = runHighlightQueries(tree, languageId)
-	const folds = runFoldQueries(tree, languageId)
+	const metadata = path ? { path, languageId } : { languageId }
+	const { brackets, errors } = trackMicro(
+		'treeSitter:treeWalk',
+		() => collectTreeData(tree),
+		{ threshold: 4, metadata, logger: log }
+	)
+	const captures = trackMicro(
+		'treeSitter:highlights',
+		() => runHighlightQueries(tree, languageId),
+		{ threshold: 4, metadata, logger: log }
+	)
+	const folds = trackMicro(
+		'treeSitter:folds',
+		() => runFoldQueries(tree, languageId),
+		{ threshold: 4, metadata, logger: log }
+	)
 	return {
 		captures,
 		folds,
@@ -51,7 +133,7 @@ export const parseAndCacheText = async (
 
 	const tree = parser.parse(text)
 	if (!tree) return undefined
-	const result = await processTree(tree, languageId)
+	const result = await processTree(tree, languageId, path)
 	setCachedEntry(path, {
 		tree,
 		text,
@@ -99,62 +181,15 @@ export const reparseWithEdit = async (
 		newEndPosition: payload.newEndPosition,
 	})
 
-	const nextTree = parser.parse(updatedText, cached.tree)
+	const nextTree = trackMicro(
+		'treeSitter:parseEdit',
+		() => parser.parse(updatedText, cached.tree),
+		{ threshold: 4, metadata: { path, languageId }, logger: log }
+	)
 	if (!nextTree) return undefined
 
-	// Check if edit is shiftable
-	const hasCachedData = cached.captures && cached.brackets && cached.folds
-	const editIsShiftable =
-		hasCachedData &&
-		isShiftableEdit(
-			payload.insertedText,
-			payload.startIndex,
-			payload.oldEndIndex
-		)
-
-	if (editIsShiftable) {
-		const charDelta = getEditCharDelta(payload)
-		const lineDelta = getEditLineDelta(payload)
-
-		const shiftedCaptures = shiftCaptures(
-			cached.captures!,
-			payload.startIndex,
-			charDelta
-		)
-		const shiftedBrackets = shiftBrackets(
-			cached.brackets!,
-			payload.startIndex,
-			charDelta
-		)
-		const shiftedFolds = shiftFolds(
-			cached.folds!,
-			payload.startPosition.row,
-			lineDelta
-		)
-
-		const { errors } = collectTreeData(nextTree)
-
-		const result: TreeSitterParseResult = {
-			captures: shiftedCaptures,
-			brackets: shiftedBrackets,
-			folds: shiftedFolds,
-			errors,
-		}
-
-		setCachedEntry(path, {
-			tree: nextTree,
-			text: updatedText,
-			captures: shiftedCaptures,
-			brackets: shiftedBrackets,
-			folds: shiftedFolds,
-			languageId,
-		})
-
-		return result
-	}
-
 	// Full reparse with queries
-	const result = await processTree(nextTree, languageId)
+	const result = await processTree(nextTree, languageId, path)
 	setCachedEntry(path, {
 		tree: nextTree,
 		text: updatedText,
@@ -181,95 +216,24 @@ export const reparseWithEditBatch = async (
 	if (!res) return undefined
 	const { parser } = res
 
-	// Check if all edits are shiftable (whitespace-only insertions)
-	const hasCachedData = cached?.captures && cached.brackets && cached.folds
-	const allEditsShiftable =
-		hasCachedData &&
-		edits.every((edit) =>
-			isShiftableEdit(edit.insertedText, edit.startIndex, edit.oldEndIndex)
-		)
+	const metadata = { path, languageId, editCount: edits.length }
+	const currentText = trackMicro(
+		'treeSitter:applyEditBatch',
+		() => applyEditBatch(path, cached.text, cached.tree, edits),
+		{ threshold: 4, metadata, logger: log }
+	)
 
-	let currentText = cached.text
-	let currentTree = cached.tree
-
-	// Apply each edit sequentially to both text and tree
-	for (const edit of edits) {
-		currentText = applyTextEdit(
-			currentText,
-			edit.startIndex,
-			edit.oldEndIndex,
-			edit.insertedText
-		)
-
-		currentTree.edit({
-			startIndex: edit.startIndex,
-			oldEndIndex: edit.oldEndIndex,
-			newEndIndex: edit.newEndIndex,
-			startPosition: edit.startPosition,
-			oldEndPosition: edit.oldEndPosition,
-			newEndPosition: edit.newEndPosition,
-		})
-
-		const nextTree = parser.parse(currentText, currentTree)
-		if (!nextTree) return undefined
-
-		// Clean up old tree if it's not the original cached one
-		if (currentTree !== cached.tree) {
-			currentTree.delete()
-		}
-		currentTree = nextTree
-	}
-
-	// If all edits were shiftable, use index shifting instead of re-querying
-	if (allEditsShiftable) {
-		let shiftedCaptures = cached.captures!
-		let shiftedBrackets = cached.brackets!
-		let shiftedFolds = cached.folds!
-
-		let cumulativeCharDelta = 0
-		let cumulativeLineDelta = 0
-
-		for (const edit of edits) {
-			const charDelta = getEditCharDelta(edit)
-			const lineDelta = getEditLineDelta(edit)
-
-			const adjustedIndex = edit.startIndex + cumulativeCharDelta
-			const adjustedRow = edit.startPosition.row + cumulativeLineDelta
-
-			shiftedCaptures = shiftCaptures(shiftedCaptures, adjustedIndex, charDelta)
-			shiftedBrackets = shiftBrackets(shiftedBrackets, adjustedIndex, charDelta)
-			shiftedFolds = shiftFolds(shiftedFolds, adjustedRow, lineDelta)
-
-			cumulativeCharDelta += charDelta
-			cumulativeLineDelta += lineDelta
-		}
-
-		// Walk tree for errors (still useful to update error locations)
-		const { errors } = collectTreeData(currentTree)
-
-		const result: TreeSitterParseResult = {
-			captures: shiftedCaptures,
-			brackets: shiftedBrackets,
-			folds: shiftedFolds,
-			errors,
-		}
-
-		setCachedEntry(path, {
-			tree: currentTree,
-			text: currentText,
-			captures: shiftedCaptures,
-			brackets: shiftedBrackets,
-			folds: shiftedFolds,
-			languageId,
-		})
-
-		return result
-	}
+	const nextTree = trackMicro(
+		'treeSitter:parseBatch',
+		() => parser.parse(currentText, cached.tree),
+		{ threshold: 4, metadata, logger: log }
+	)
+	if (!nextTree) return undefined
 
 	// Full reparse with queries
-	const result = await processTree(currentTree, languageId)
+	const result = await processTree(nextTree, languageId, path)
 	setCachedEntry(path, {
-		tree: currentTree,
+		tree: nextTree,
 		text: currentText,
 		captures: result.captures,
 		brackets: result.brackets,

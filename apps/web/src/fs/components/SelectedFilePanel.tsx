@@ -1,6 +1,6 @@
 import type {
 	EditorSyntaxHighlight,
-	HighlightOffset,
+	HighlightOffsets,
 	TextEditorDocument,
 } from '@repo/code-editor'
 import { Editor } from '@repo/code-editor'
@@ -18,11 +18,11 @@ import {
 import { useFocusManager } from '~/focus/focusManager'
 import { BinaryFileViewer } from '../../components/BinaryFileViewer'
 import { useFs } from '../../fs/context/FsContext'
-import { logger } from '../../logger'
+
 import { sendIncrementalTreeEdit } from '../../treeSitter/incrementalEdits'
 import { getTreeSitterWorker } from '../../treeSitter/workerClient'
 import { useTabs } from '../hooks/useTabs'
-import { getShiftableWhitespaceEditKind } from '../utils/shiftableEdits'
+
 import { Tabs } from './Tabs'
 import { unwrap } from 'solid-js/store'
 
@@ -46,16 +46,6 @@ type SelectedFilePanelProps = {
 }
 
 export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
-	const log = logger.withTag('editor')
-	const assert = (
-		condition: boolean,
-		message: string,
-		details?: Record<string, unknown>
-	) => {
-		if (condition) return true
-		log.warn(message, details)
-		return false
-	}
 	const [
 		state,
 		{
@@ -113,40 +103,9 @@ export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
 				lineDelta,
 				fromCharIndex: edit.startIndex,
 				fromLineRow: edit.startPosition.row,
+				oldEndIndex: edit.oldEndIndex,
+				newEndIndex: edit.newEndIndex,
 			})
-
-			// Whitespace-only inserts/deletes are shiftable, so offset is accurate.
-			// Skip tree-sitter updates to avoid extra reactive churn.
-			const shiftableKind = getShiftableWhitespaceEditKind(edit)
-			if (shiftableKind) {
-				assert(
-					shiftableKind === 'insert'
-						? edit.deletedText.length === 0
-						: edit.insertedText.length === 0,
-					'Shiftable edit should be pure insert/delete',
-					{
-						path,
-						kind: shiftableKind,
-						startIndex: edit.startIndex,
-						oldEndIndex: edit.oldEndIndex,
-						newEndIndex: edit.newEndIndex,
-						insertedLength: edit.insertedText.length,
-						deletedLength: edit.deletedText.length,
-					}
-				)
-				log.debug('Skipping tree-sitter update for shiftable edit', {
-					path,
-					kind: shiftableKind,
-					startIndex: edit.startIndex,
-					oldEndIndex: edit.oldEndIndex,
-					newEndIndex: edit.newEndIndex,
-					insertedLength: edit.insertedText.length,
-					deletedLength: edit.deletedText.length,
-					charDelta,
-					lineDelta,
-				})
-				return
-			}
 
 			void parsePromise.then((result) => {
 				if (result && path === state.lastKnownFilePath) {
@@ -177,15 +136,18 @@ export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
 	)
 
 	// Convert internal offset to editor HighlightOffset type
-	const editorHighlightOffset = createMemo<HighlightOffset | undefined>(() => {
-		const offset = state.selectedFileHighlightOffset
-		if (!offset) return undefined
-		return {
+	const editorHighlightOffset = createMemo<HighlightOffsets | undefined>(() => {
+		const offsets = state.selectedFileHighlightOffset
+		if (!offsets?.length) return undefined
+		const unwrapped = unwrap(offsets)
+		return unwrapped.map((offset) => ({
 			charDelta: offset.charDelta,
 			lineDelta: offset.lineDelta,
 			fromCharIndex: offset.fromCharIndex,
 			fromLineRow: offset.fromLineRow,
-		}
+			oldEndIndex: offset.oldEndIndex,
+			newEndIndex: offset.newEndIndex,
+		}))
 	})
 
 	const editorErrors = createMemo(() => state.selectedFileErrors)

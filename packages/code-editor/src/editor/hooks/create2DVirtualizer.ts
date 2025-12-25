@@ -221,42 +221,44 @@ export function create2DVirtualizer(
 			horizontalOverscan,
 		})
 
-		let rafId = 0
+		let rafScrollState = 0
 		let scrollTimeoutId: ReturnType<typeof setTimeout>
-		let pendingScrollTop = 0
-		let pendingScrollLeft = 0
 
 		const onScroll = () => {
-			pendingScrollTop = normalizeNumber(element.scrollTop)
-			pendingScrollLeft = normalizeNumber(element.scrollLeft)
+			const currentScrollTop = normalizeNumber(element.scrollTop)
+			const currentScrollLeft = normalizeNumber(element.scrollLeft)
 
-			if (rafId) return
+			// Immediately update scroll position for responsive rendering
+			// This is critical for smooth trackpad scrolling on Mac
+			const prevTop = untrack(scrollTop)
+			const prevLeft = untrack(scrollLeft)
 
-			// Detect scrolling state
-			if (!untrack(isScrolling)) {
-				setIsScrolling(true)
+			if (currentScrollTop !== prevTop || currentScrollLeft !== prevLeft) {
+				batch(() => {
+					setScrollTop(currentScrollTop)
+					setScrollLeft(currentScrollLeft)
+				})
 			}
+
+			// Use RAF only for scroll state management (isScrolling, direction)
+			// These don't affect rendering responsiveness
+			if (!rafScrollState) {
+				rafScrollState = requestAnimationFrame(() => {
+					rafScrollState = 0
+
+					// Detect scrolling state
+					if (!untrack(isScrolling)) {
+						setIsScrolling(true)
+					}
+
+					// Detect direction (vertical only for now as it's more critical)
+					if (currentScrollTop > prevTop) setScrollDirection('forward')
+					else if (currentScrollTop < prevTop) setScrollDirection('backward')
+				})
+			}
+
 			clearTimeout(scrollTimeoutId)
 			scrollTimeoutId = setTimeout(() => setIsScrolling(false), 150)
-
-			rafId = requestAnimationFrame(() => {
-				rafId = 0
-
-				// Detect direction (vertical only for now as it's more critical)
-				const prevTop = untrack(scrollTop)
-				if (pendingScrollTop > prevTop) setScrollDirection('forward')
-				else if (pendingScrollTop < prevTop) setScrollDirection('backward')
-
-				const prevLeft = untrack(scrollLeft)
-				if (pendingScrollTop === prevTop && pendingScrollLeft === prevLeft) {
-					return
-				}
-
-				batch(() => {
-					setScrollTop(pendingScrollTop)
-					setScrollLeft(pendingScrollLeft)
-				})
-			})
 		}
 
 		element.addEventListener('scroll', onScroll, { passive: true })
@@ -270,7 +272,7 @@ export function create2DVirtualizer(
 		onCleanup(() => {
 			element.removeEventListener('scroll', onScroll)
 			resizeObserver.disconnect()
-			if (rafId) cancelAnimationFrame(rafId)
+			if (rafScrollState) cancelAnimationFrame(rafScrollState)
 			clearTimeout(scrollTimeoutId)
 			log.debug('2D Virtualizer detached')
 		})

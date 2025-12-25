@@ -30,12 +30,14 @@ SolidJS front-end for the Vibe workspace: resizable file/tree + terminal UI back
 - `bun run build --filter web` – production build
 - `bun run serve --filter web` – preview the production build
 - `bun run lint --filter web` – eslint (uses `@repo/eslint-config`)
-- Tests: no package-local test script yet; add near new code and document how to run it when introduced.
+- `bun run test --filter web` – unit tests (Vitest, node project)
+- `bun run test --filter web -- --project browser` – browser tests (Playwright)
 
 ## Testing
 
 - Manual: run `bun run dev --filter web`, open the app, verify file browsing (local/OPFS/memory), editor loading, and terminal commands (`help`, `echo`, `clear`).
-- If you add tests, prefer colocated `*.test.ts[x]` files and wire a `test` script in `apps/web/package.json`.
+- Unit: `bun run test --filter web` (or `bun run test` from `apps/web/`).
+- Browser: `bun run test --filter web -- --project browser` (only when you need browser coverage).
 
 ## Notes
 

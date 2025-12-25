@@ -1,53 +1,85 @@
 import { createStore, reconcile } from 'solid-js/store'
+import { logger } from '../../logger'
 import type { TreeSitterCapture } from '../../workers/treeSitterWorkerTypes'
 
 /**
  * Represents a pending offset transformation for highlights.
  * Instead of recreating 10k highlight objects per keystroke,
- * we store this lightweight offset and apply it lazily.
+ * we store lightweight edit offsets and apply them lazily.
  */
 export type HighlightTransform = {
 	charDelta: number
 	lineDelta: number
 	fromCharIndex: number
 	fromLineRow: number
+	oldEndIndex: number
+	newEndIndex: number
 }
 
 export const createHighlightState = () => {
+	const log = logger.withTag('highlights')
+	const assert = (
+		condition: boolean,
+		message: string,
+		details?: Record<string, unknown>
+	) => {
+		if (condition) return true
+		log.warn(message, details)
+		return false
+	}
+
 	const [fileHighlights, setHighlightsStore] = createStore<
 		Record<string, TreeSitterCapture[] | undefined>
 	>({})
 
-	// Track pending offsets per file - O(1) update instead of O(n) array recreation
+	// Track pending offsets per file - avoid shifting all highlights per edit
 	const [highlightOffsets, setHighlightOffsets] = createStore<
-		Record<string, HighlightTransform | undefined>
+		Record<string, HighlightTransform[] | undefined>
 	>({})
 
 	/**
 	 * Apply an offset transformation optimistically.
-	 * This is O(1) - just updates a single object, no array recreation.
-	 * Multiple rapid edits accumulate into a single offset.
+	 * This keeps an ordered queue of edits for lazy per-line shifts.
 	 */
 	const applyHighlightOffset = (
 		path: string,
 		transform: HighlightTransform
 	) => {
 		if (!path) return
-		const existing = highlightOffsets[path]
-		if (existing) {
-			// Accumulate offsets from rapid edits
-			setHighlightOffsets(path, {
-				charDelta: existing.charDelta + transform.charDelta,
-				lineDelta: existing.lineDelta + transform.lineDelta,
-				fromCharIndex: Math.min(
-					existing.fromCharIndex,
-					transform.fromCharIndex
-				),
-				fromLineRow: Math.min(existing.fromLineRow, transform.fromLineRow),
+
+		const normalizedStart = transform.fromCharIndex
+		const normalizedOldEnd = Math.max(normalizedStart, transform.oldEndIndex)
+		const normalizedNewEnd = Math.max(normalizedStart, transform.newEndIndex)
+		const normalizedCharDelta = normalizedNewEnd - normalizedOldEnd
+
+		assert(
+			Number.isFinite(transform.charDelta) &&
+				Number.isFinite(transform.fromCharIndex) &&
+				Number.isFinite(transform.oldEndIndex) &&
+				Number.isFinite(transform.newEndIndex) &&
+				transform.oldEndIndex >= transform.fromCharIndex &&
+				transform.newEndIndex >= transform.fromCharIndex,
+			'Invalid highlight transform',
+			{ path, transform }
+		)
+		if (transform.charDelta !== normalizedCharDelta) {
+			log.warn('Highlight transform delta mismatch', {
+				path,
+				transform,
+				normalizedCharDelta,
 			})
-		} else {
-			setHighlightOffsets(path, transform)
 		}
+
+		const incoming = {
+			...transform,
+			charDelta: normalizedCharDelta,
+			oldEndIndex: normalizedOldEnd,
+			newEndIndex: normalizedNewEnd,
+		}
+
+		const existing = highlightOffsets[path]
+		const nextOffsets = existing ? [...existing, incoming] : [incoming]
+		setHighlightOffsets(path, nextOffsets)
 	}
 
 	/**

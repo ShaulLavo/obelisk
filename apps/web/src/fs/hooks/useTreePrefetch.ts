@@ -11,6 +11,7 @@ import type {
 } from '../prefetch/treePrefetchWorkerTypes'
 import { normalizeDirNodeMetadata } from '../utils/treeNodes'
 import { scheduleMicrotask } from '../utils/schedule'
+import { toast } from '@repo/ui/toaster'
 
 type MakeTreePrefetchOptions = {
 	state: FsState
@@ -56,6 +57,8 @@ export const makeTreePrefetch = ({
 
 	const handlePrefetchError = (payload: PrefetchErrorPayload) => {
 		setPrefetchError(payload.message)
+		// Show a warning toast - prefetch errors are non-blocking
+		toast.warning(payload.message)
 	}
 
 	const runPrefetchTask = (

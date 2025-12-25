@@ -59,15 +59,6 @@ export const StatusBar = () => {
 	})
 
 	const backgroundIndicator = createMemo(() => {
-		if (state.prefetchError) {
-			return {
-				label: state.prefetchError,
-				class:
-					'border-red-900/60 bg-red-900/30 text-red-200 shadow-[0_0_6px_rgba(248,113,113,0.35)]',
-				showSpinner: false,
-			}
-		}
-
 		const indexedFileCount = state.backgroundIndexedFileCount
 
 		if (state.backgroundPrefetching) {

@@ -23,7 +23,7 @@ export class TreePrefetchHandleCloneError extends Error {
 				'Tree prefetch workers require transferable FileSystemDirectoryHandle instances.',
 				'This environment cannot clone those handles between threads (WebKit/Tauri limitation).',
 				'Background directory prefetching is disabled.',
-			].join(' ')
+			].join('\n\n')
 		)
 		this.name = 'TreePrefetchHandleCloneError'
 		if (cause !== undefined) {

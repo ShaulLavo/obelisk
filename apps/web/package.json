@@ -9,7 +9,8 @@
     "build": "vite build",
     "serve": "vite preview",
     "lint": "eslint . --max-warnings 0",
-    "test": "vitest run",
+    "test": "vitest run --project unit",
+    "test:browser": "vitest run --project browser",
     "copy-tree-sitter-assets": "bun scripts/install-tree-sitter-assets.ts",
     "postinstall": "bun run copy-tree-sitter-assets",
     "depcheck": "depcheck",
@@ -31,7 +32,7 @@
     "solid-devtools": "^0.34.3",
     "tree-sitter-cli": "^0.26.3",
     "typescript": "^5.7.2",
-    "vite": "^7.1.4",
+    "vite": "^7.3.0",
     "vite-plugin-solid": "^2.11.8",
     "vitest": "^4.0.16"
   },

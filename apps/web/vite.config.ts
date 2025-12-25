@@ -55,11 +55,21 @@ export default defineConfig(({ mode }) => {
 				{
 					extends: true,
 					test: {
+						name: 'unit',
+						environment: 'node',
+						include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+						exclude: ['**/*.browser.test.*'],
+					},
+				},
+				{
+					extends: true,
+					test: {
 						name: 'browser',
 						css: true,
 						setupFiles: ['./src/setup-browser-tests.ts'],
 						browser: {
 							enabled: true,
+							headless: true,
 							provider: playwright(),
 							instances: [{ browser: 'chromium' }],
 						},
