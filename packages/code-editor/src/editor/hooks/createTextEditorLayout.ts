@@ -6,7 +6,7 @@ import {
 	untrack,
 	type Accessor,
 } from 'solid-js'
-import { loggers } from '@repo/logger'
+
 import { trackMicro } from '@repo/perf'
 import {
 	COLUMN_CHARS_PER_ITEM,
@@ -140,16 +140,6 @@ export const scanLineWidthSlice = (options: {
 export function createTextEditorLayout(
 	options: TextEditorLayoutOptions
 ): TextEditorLayout {
-	const log = loggers.codeEditor.withTag('virtualizer')
-	const assert = (
-		condition: boolean,
-		message: string,
-		details?: Record<string, unknown>
-	) => {
-		if (condition) return true
-		log.warn(message, details)
-		return false
-	}
 	const cursor = useCursor()
 
 	const hasLineEntries = createMemo(() => cursor.lines.lineCount() > 0)
@@ -283,17 +273,7 @@ export function createTextEditorLayout(
 		const end = Math.max(start, Math.min(activeWidthScan.end, lineCount - 1))
 		const nextIndex = Math.max(start, Math.min(activeWidthScan.next, end))
 
-		if (
-			!assert(
-				start <= end && nextIndex >= start && nextIndex <= end,
-				'Width scan cursor is invalid',
-				{
-					start,
-					end,
-					nextIndex,
-				}
-			)
-		) {
+		if (!(start <= end && nextIndex >= start && nextIndex <= end)) {
 			activeWidthScan = null
 			return
 		}
@@ -313,7 +293,6 @@ export function createTextEditorLayout(
 					shouldYield,
 				}),
 			{
-				logger: log,
 				threshold: 8,
 				metadata: {
 					start,
@@ -362,27 +341,18 @@ export function createTextEditorLayout(
 	) => {
 		if (from > to) return
 		if (!Number.isFinite(from) || !Number.isFinite(to)) {
-			assert(false, 'Width scan range is not finite', { from, to })
 			return
 		}
 
 		const lineCount = cursor.lines.lineCount()
-		if (!assert(lineCount > 0, 'Width scan requires lines', { lineCount })) {
+		if (lineCount <= 0) {
 			return
 		}
 
 		const clampedStart = Math.max(0, Math.min(from, lineCount - 1))
 		const clampedEnd = Math.max(clampedStart, Math.min(to, lineCount - 1))
 
-		if (
-			!assert(clampedStart <= clampedEnd, 'Width scan range is invalid', {
-				from,
-				to,
-				clampedStart,
-				clampedEnd,
-				lineCount,
-			})
-		) {
+		if (clampedStart > clampedEnd) {
 			return
 		}
 

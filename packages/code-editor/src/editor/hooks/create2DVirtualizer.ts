@@ -7,7 +7,7 @@ import {
 	untrack,
 	type Accessor,
 } from 'solid-js'
-import { loggers } from '@repo/logger'
+
 import { trackMicro } from '@repo/perf'
 import type { VirtualItem2D } from '../types'
 import {
@@ -160,16 +160,6 @@ export const computeColumnRange = (options: {
 export function create2DVirtualizer(
 	options: Virtualizer2DOptions
 ): Virtualizer2D {
-	const log = loggers.codeEditor.withTag('virtualizer-2d')
-	const assert = (
-		condition: boolean,
-		message: string,
-		details?: Record<string, unknown>
-	) => {
-		if (condition) return true
-		log.warn(message, details)
-		return false
-	}
 	const [scrollTop, setScrollTop] = createSignal(0)
 	const [scrollLeft, setScrollLeft] = createSignal(0)
 	const [viewportHeight, setViewportHeight] = createSignal(0)
@@ -197,41 +187,24 @@ export function create2DVirtualizer(
 		setScrollTop(normalizeNumber(element.scrollTop))
 		setScrollLeft(normalizeNumber(element.scrollLeft))
 
-		let warnedZeroDims = false
 		const updateViewportDims = () => {
 			const height = normalizeNumber(element.clientHeight)
 			const width = normalizeNumber(element.clientWidth)
-			setViewportHeight(height)
-			setViewportWidth(width)
-
-			if (height === 0 || width === 0) {
-				if (warnedZeroDims) return
-				warnedZeroDims = true
-				log.warn('Virtualizer scrollElement has zero dimensions', {
-					height,
-					width,
-				})
-			} else {
-				warnedZeroDims = false
-			}
+			batch(() => {
+				setViewportHeight(height)
+				setViewportWidth(width)
+			})
 		}
-
-		log.debug('2D Virtualizer attached', {
-			overscan,
-			horizontalOverscan,
-		})
 
 		let rafScrollState = 0
 		let scrollTimeoutId: ReturnType<typeof setTimeout>
 
 		const onScroll = () => {
-			const currentScrollTop = normalizeNumber(element.scrollTop)
-			const currentScrollLeft = normalizeNumber(element.scrollLeft)
-
-			// Immediately update scroll position for responsive rendering
-			// This is critical for smooth trackpad scrolling on Mac
 			const prevTop = untrack(scrollTop)
 			const prevLeft = untrack(scrollLeft)
+
+			const currentScrollTop = normalizeNumber(element.scrollTop)
+			const currentScrollLeft = normalizeNumber(element.scrollLeft)
 
 			if (currentScrollTop !== prevTop || currentScrollLeft !== prevLeft) {
 				batch(() => {
@@ -240,18 +213,13 @@ export function create2DVirtualizer(
 				})
 			}
 
-			// Use RAF only for scroll state management (isScrolling, direction)
-			// These don't affect rendering responsiveness
 			if (!rafScrollState) {
 				rafScrollState = requestAnimationFrame(() => {
 					rafScrollState = 0
 
-					// Detect scrolling state
 					if (!untrack(isScrolling)) {
 						setIsScrolling(true)
 					}
-
-					// Detect direction (vertical only for now as it's more critical)
 					if (currentScrollTop > prevTop) setScrollDirection('forward')
 					else if (currentScrollTop < prevTop) setScrollDirection('backward')
 				})
@@ -274,7 +242,6 @@ export function create2DVirtualizer(
 			resizeObserver.disconnect()
 			if (rafScrollState) cancelAnimationFrame(rafScrollState)
 			clearTimeout(scrollTimeoutId)
-			log.debug('2D Virtualizer detached')
 		})
 	})
 
@@ -297,19 +264,7 @@ export function create2DVirtualizer(
 				viewportWidth: viewportWidth(),
 			})
 
-			if (
-				enabled &&
-				count > 0 &&
-				!assert(
-					range.rowStart <= range.rowEnd,
-					'Virtualizer row range is invalid',
-					{
-						rowStart: range.rowStart,
-						rowEnd: range.rowEnd,
-						count,
-					}
-				)
-			) {
+			if (enabled && count > 0 && range.rowStart > range.rowEnd) {
 				return { start: 0, end: 0 }
 			}
 
@@ -346,7 +301,6 @@ export function create2DVirtualizer(
 	const virtualItemCache = new Map<number, VirtualItem2D>()
 	let cachedRowHeight = 0
 	let cachedCharWidth = 0
-	let warnedInvalidLineLength = false
 
 	const virtualItems = createMemo<VirtualItem2D[]>(() => {
 		const enabled = options.enabled()
@@ -373,17 +327,7 @@ export function create2DVirtualizer(
 					cachedCharWidth = charWidth
 				}
 
-				if (
-					!assert(
-						range.start <= range.end,
-						'Virtualizer row range is invalid',
-						{
-							start: range.start,
-							end: range.end,
-							count,
-						}
-					)
-				) {
+				if (range.start > range.end) {
 					virtualItemCache.clear()
 					return []
 				}
@@ -391,18 +335,7 @@ export function create2DVirtualizer(
 				const startIndex = Math.max(0, range.start - overscan)
 				const endIndex = Math.min(count - 1, range.end + overscan)
 
-				if (
-					!assert(
-						startIndex <= endIndex,
-						'Virtualizer overscan range is invalid',
-						{
-							startIndex,
-							endIndex,
-							count,
-							overscan,
-						}
-					)
-				) {
+				if (startIndex > endIndex) {
 					virtualItemCache.clear()
 					return []
 				}
@@ -426,19 +359,13 @@ export function create2DVirtualizer(
 					let lineLen = 0
 					if (Number.isFinite(rawLineLen) && rawLineLen > 0) {
 						lineLen = Math.floor(rawLineLen)
-					} else if (!warnedInvalidLineLength && rawLineLen !== 0) {
-						warnedInvalidLineLength = true
-						log.warn('Invalid line length reported', {
-							lineIndex: i,
-							lineLength: rawLineLen,
-						})
 					}
 
 					// THRESHOLD CHECK:
 					// If line is short, render everything (no horizontal virtualization overhead)
 					// If line is long, slice it
 					let cStart = 0
-					let cEnd = lineLen // Render full line by default
+					let cEnd = lineLen
 
 					if (lineLen > VIRTUALIZATION_THRESHOLD) {
 						cStart = hStart
@@ -450,17 +377,14 @@ export function create2DVirtualizer(
 						// If we scrolled past the end of this specific line
 						if (cStart >= lineLen) {
 							cStart = 0
-							cEnd = 0 // Line not visible horizontally
+							cEnd = 0
 						}
 					}
 
-					// Cache check
 					// We need to invalidate item if column range changed significantly
 					let item = virtualItemCache.get(i)
 					if (item) {
 						if (item.columnStart !== cStart || item.columnEnd !== cEnd) {
-							// Update existing item in place or create new?
-							// Creating new is safer for reactivity
 							item = {
 								index: i,
 								start: i * rowHeight,
@@ -494,7 +418,6 @@ export function create2DVirtualizer(
 				return items
 			},
 			{
-				logger: log,
 				threshold: 8,
 				metadata: {
 					count,
@@ -531,19 +454,18 @@ export function create2DVirtualizer(
 
 		let top = index * rowHeight
 
-		// Adjust based on alignment
 		if (align === 'center') {
 			top -= (height - rowHeight) / 2
 		} else if (align === 'end') {
 			top -= height - rowHeight
 		} else if (align === 'auto') {
 			const currentTop = scrollTop()
-			if (top < currentTop) {
-				// Already correct (align=start implicitly)
-			} else if (top + rowHeight > currentTop + height) {
+			const isAboveViewport = top < currentTop
+			const isBelowViewport = top + rowHeight > currentTop + height
+
+			if (isBelowViewport) {
 				top -= height - rowHeight
-			} else {
-				// Already visible
+			} else if (!isAboveViewport) {
 				return
 			}
 		}

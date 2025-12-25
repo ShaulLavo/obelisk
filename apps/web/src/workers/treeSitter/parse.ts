@@ -14,15 +14,7 @@ import { applyTextEdit } from './edits'
 import { logger } from '../../logger'
 
 const log = logger.withTag('treeSitter')
-const assert = (
-	condition: boolean,
-	message: string,
-	details?: Record<string, unknown>
-) => {
-	if (condition) return true
-	log.warn(message, details)
-	return false
-}
+
 const textDecoder = new TextDecoder()
 
 type TreeEdit = Omit<TreeSitterEditPayload, 'path' | 'insertedText'>
@@ -39,25 +31,6 @@ const applyEditBatch = (
 		const edit = edits[index]
 		if (!edit) continue
 
-		const expectedNewEnd = edit.startIndex + edit.insertedText.length
-		assert(
-			Number.isFinite(edit.startIndex) &&
-				Number.isFinite(edit.oldEndIndex) &&
-				Number.isFinite(edit.newEndIndex) &&
-				edit.startIndex >= 0 &&
-				edit.oldEndIndex >= edit.startIndex &&
-				edit.newEndIndex >= edit.startIndex,
-			'Invalid tree-sitter edit payload',
-			{ path, edit, index }
-		)
-		if (edit.newEndIndex !== expectedNewEnd) {
-			log.warn('Tree-sitter edit new end mismatch', {
-				path,
-				index,
-				expectedNewEnd,
-				edit,
-			})
-		}
 		if (
 			edit.startIndex > currentText.length ||
 			edit.oldEndIndex > currentText.length
@@ -157,8 +130,6 @@ export const reparseWithEdit = async (
 	path: string,
 	payload: TreeSitterEditPayload
 ): Promise<TreeSitterParseResult | undefined> => {
-	return undefined
-
 	const cached = astCache.get(path)
 	if (!cached) return undefined
 	const { languageId } = cached
@@ -190,7 +161,6 @@ export const reparseWithEdit = async (
 	)
 	if (!nextTree) return undefined
 
-	// Full reparse with queries
 	const result = await processTree(nextTree, languageId, path)
 	setCachedEntry(path, {
 		tree: nextTree,
@@ -208,7 +178,6 @@ export const reparseWithEditBatch = async (
 	edits: Omit<TreeSitterEditPayload, 'path'>[]
 ): Promise<TreeSitterParseResult | undefined> => {
 	return undefined
-	/*
 	if (edits.length === 0) return undefined
 	const cached = astCache.get(path)
 	if (!cached) {
@@ -245,5 +214,4 @@ export const reparseWithEditBatch = async (
 		languageId,
 	})
 	return result
-	*/
 }

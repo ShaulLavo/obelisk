@@ -1,5 +1,5 @@
 import { Show, createEffect, createSignal, onCleanup, untrack } from 'solid-js'
-import { loggers } from '@repo/logger'
+
 import { DEFAULT_TAB_SIZE } from '../consts'
 import { useCursor } from '../cursor'
 import {
@@ -17,16 +17,6 @@ import { Minimap } from '../minimap'
 import type { DocumentIncrementalEdit, EditorProps } from '../types'
 
 export const TextEditorView = (props: EditorProps) => {
-	const log = loggers.codeEditor.withTag('editor')
-	const assert = (
-		condition: boolean,
-		message: string,
-		details?: Record<string, unknown>
-	) => {
-		if (condition) return true
-		log.warn(message, details)
-		return false
-	}
 	const cursor = useCursor()
 
 	const tabSize = () => props.tabSize?.() ?? DEFAULT_TAB_SIZE
@@ -44,11 +34,7 @@ export const TextEditorView = (props: EditorProps) => {
 	const isEditable = () => props.document.isEditable()
 
 	const handleIncrementalEdit = (edit: DocumentIncrementalEdit) => {
-		if (
-			!assert(props.isFileSelected(), 'Incremental edit without selection', {
-				path: props.document.filePath(),
-			})
-		) {
+		if (!props.isFileSelected()) {
 			return
 		}
 		props.document.applyIncrementalEdit?.(edit)

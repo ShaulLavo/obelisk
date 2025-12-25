@@ -11,6 +11,7 @@ import {
 	Match,
 	Switch,
 	batch,
+	createEffect,
 	createMemo,
 	createResource,
 	createSignal,
@@ -25,6 +26,7 @@ import { useTabs } from '../hooks/useTabs'
 
 import { Tabs } from './Tabs'
 import { unwrap } from 'solid-js/store'
+import { logger } from '../../logger'
 
 const FONT_OPTIONS = [
 	{
@@ -59,9 +61,10 @@ export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
 			updateSelectedFileScrollPosition,
 			updateSelectedFileVisibleContent,
 			saveFile,
-		},
-	] = useFs()
+	},
+] = useFs()
 	const focus = useFocusManager()
+	const highlightLog = logger.withTag('highlights')
 
 	const isBinary = () => state.selectedFileStats?.contentKind === 'binary'
 
@@ -155,6 +158,15 @@ export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
 	})
 
 	const editorErrors = createMemo(() => state.selectedFileErrors)
+
+	createEffect(() => {
+		highlightLog.debug('[SelectedFilePanel] highlight update', {
+			path: state.lastKnownFilePath,
+			highlightCount: editorHighlights()?.length ?? 0,
+			offsetCount: editorHighlightOffset()?.length ?? 0,
+			isSelected: props.isFileSelected(),
+		})
+	})
 
 	return (
 		<div class="flex h-full flex-col font-mono overflow-hidden">

@@ -1,8 +1,8 @@
-import { For, Show, createEffect, createMemo } from 'solid-js'
+import { For, createEffect } from 'solid-js'
 import { endGlobalTrace, hasGlobalTrace } from '@repo/perf'
 import { useCursor } from '../../cursor'
-import type { LineEntry, LinesProps } from '../../types'
-import { Line } from './Line'
+import type { LinesProps } from '../../types'
+import { LineRow } from './LineRow'
 
 export const Lines = (props: LinesProps) => {
 	const cursor = useCursor()
@@ -24,121 +24,23 @@ export const Lines = (props: LinesProps) => {
 	return (
 		<div class="relative flex-1">
 			<For each={props.rows()}>
-				{(virtualRow) => {
-					const lineIndex = createMemo(() =>
-						props.displayToLine
-							? props.displayToLine(virtualRow.index)
-							: virtualRow.index
-					)
-
-					const isLineValid = createMemo(() => {
-						const idx = lineIndex()
-						return idx >= 0 && idx < cursor.lines.lineCount()
-					})
-
-					const lineText = createMemo(() => {
-						if (!isLineValid()) return ''
-						const idx = lineIndex()
-						return cursor.lines.getLineText(idx)
-					})
-
-					const entry = createMemo<LineEntry | null>(() => {
-						if (!isLineValid()) return null
-						const idx = lineIndex()
-						return {
-							index: idx,
-							start: cursor.lines.getLineStart(idx),
-							length: cursor.lines.getLineLength(idx),
-							text: lineText(),
-						}
-					})
-
-					const highlights = createMemo(
-						() => {
-							const e = entry()
-							if (!e) return undefined
-							return props.getLineHighlights?.(e)
-						},
-						undefined,
-						{
-							equals: (a, b) => {
-								if (a === b) return true
-								if (!a || !b) return false
-								if (a.length !== b.length) return false
-
-								for (let i = 0; i < a.length; i++) {
-									const sA = a[i]
-									const sB = b[i]
-									if (
-										!sA ||
-										!sB ||
-										sA.start !== sB.start ||
-										sA.end !== sB.end ||
-										sA.className !== sB.className
-									) {
-										return false
-									}
-								}
-								return true
-							},
-						}
-					)
-
-					const lineBracketDepths = createMemo(
-						() => {
-							const e = entry()
-							return e ? props.getLineBracketDepths(e) : undefined
-						},
-						undefined,
-						{
-							equals: (a, b) => {
-								if (a === b) return true
-								if (!a || !b) return false
-								const keysA = Object.keys(a)
-								const keysB = Object.keys(b)
-								if (keysA.length !== keysB.length) return false
-
-								for (let i = 0; i < keysA.length; i++) {
-									const key = keysA[i]!
-									// @ts-expect-error - keys are numbers in type but strings in Object.keys
-									if (a[key] !== b[key]) return false
-								}
-								return true
-							},
-						}
-					)
-
-					// Try to get cached runs for instant rendering
-					const cachedRuns = createMemo(() => {
-						const idx = lineIndex()
-						return props.getCachedRuns?.(
-							idx,
-							virtualRow.columnStart,
-							virtualRow.columnEnd
-						)
-					})
-
-					return (
-						<Show when={isLineValid()}>
-							<Line
-								virtualRow={virtualRow}
-								lineIndex={lineIndex()}
-								lineText={lineText()}
-								lineHeight={props.lineHeight()}
-								contentWidth={props.contentWidth()}
-								charWidth={props.charWidth()}
-								tabSize={props.tabSize()}
-								isEditable={props.isEditable}
-								onPreciseClick={props.onPreciseClick}
-								onMouseDown={props.onMouseDown}
-								isActive={props.activeLineIndex() === lineIndex()}
-								lineBracketDepths={lineBracketDepths()}
-								highlights={highlights()}
-								cachedRuns={cachedRuns()}
-							/>
-						</Show>
-					)
-				}}
+				{(virtualRow) => (
+					<LineRow
+						virtualRow={virtualRow}
+						lineHeight={props.lineHeight}
+						contentWidth={props.contentWidth}
+						charWidth={props.charWidth}
+						tabSize={props.tabSize}
+						isEditable={props.isEditable}
+						onPreciseClick={props.onPreciseClick}
+						onMouseDown={props.onMouseDown}
+						activeLineIndex={props.activeLineIndex}
+						getLineBracketDepths={props.getLineBracketDepths}
+						getLineHighlights={props.getLineHighlights}
+						getCachedRuns={props.getCachedRuns}
+						displayToLine={props.displayToLine}
+					/>
+				)}
 			</For>
 		</div>
 	)

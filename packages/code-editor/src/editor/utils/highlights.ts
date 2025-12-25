@@ -1,20 +1,8 @@
-import { loggers } from '@repo/logger'
 import type {
 	EditorSyntaxHighlight,
 	LineEntry,
 	LineHighlightSegment,
 } from '../types'
-
-const log = loggers.codeEditor.withTag('highlights')
-const assert = (
-	condition: boolean,
-	message: string,
-	details?: Record<string, unknown>
-) => {
-	if (condition) return true
-	log.warn(message, details)
-	return false
-}
 
 const EXACT_SCOPE_CLASS: Record<string, string> = {
 	comment: 'text-zinc-500',
@@ -195,7 +183,8 @@ const mapRangeToOldOffset = (
 ): HighlightRange => {
 	const mappedStart = mapBoundaryToOld(rangeStart, offset, 'start')
 	const mappedEnd = mapBoundaryToOld(rangeEnd, offset, 'end')
-	const intersects = rangeStart < offset.newEndIndex && rangeEnd > offset.fromCharIndex
+	const intersects =
+		rangeStart < offset.newEndIndex && rangeEnd > offset.fromCharIndex
 	if (!intersects) {
 		const start = Math.min(mappedStart, mappedEnd)
 		const end = Math.max(mappedStart, mappedEnd)
@@ -228,11 +217,7 @@ export const mapRangeToOldOffsets = (
 	}
 }
 
-const pushRange = (
-	output: HighlightRange[],
-	start: number,
-	end: number
-) => {
+const pushRange = (output: HighlightRange[], start: number, end: number) => {
 	if (end <= start) return
 	output.push({ start, end })
 }
@@ -257,16 +242,11 @@ const applyOffsetToSegments = (
 		}
 
 		if (segmentStart >= offsetOldEnd) {
-			pushRange(
-				output,
-				segmentStart + offsetDelta,
-				segmentEnd + offsetDelta
-			)
+			pushRange(output, segmentStart + offsetDelta, segmentEnd + offsetDelta)
 			continue
 		}
 
-		const spansEdit =
-			segmentStart < offsetStart && segmentEnd > offsetOldEnd
+		const spansEdit = segmentStart < offsetStart && segmentEnd > offsetOldEnd
 		if (spansEdit) {
 			if (offsetNewEnd === offsetStart) {
 				pushRange(output, segmentStart, segmentEnd + offsetDelta)
@@ -277,8 +257,7 @@ const applyOffsetToSegments = (
 			continue
 		}
 
-		const endsInEdit =
-			segmentStart < offsetStart && segmentEnd <= offsetOldEnd
+		const endsInEdit = segmentStart < offsetStart && segmentEnd <= offsetOldEnd
 		if (endsInEdit) {
 			pushRange(output, segmentStart, offsetStart)
 			continue
@@ -332,7 +311,7 @@ export const toLineHighlightSegmentsForLine = (
 	const segments: LineHighlightSegment[] = []
 	const lineEnd = lineStart + lineLength
 	const hasOffsets = offsets !== undefined && offsets.length > 0
-	let splitCount = 0
+
 	let compareLineStart = lineStart
 	let compareLineEnd = lineEnd
 
@@ -340,47 +319,9 @@ export const toLineHighlightSegmentsForLine = (
 	const rangeBufferB: HighlightRange[] = []
 
 	if (hasOffsets) {
-		for (const offset of offsets) {
-			assert(
-				Number.isFinite(offset.charDelta) &&
-					Number.isFinite(offset.fromCharIndex) &&
-					Number.isFinite(offset.oldEndIndex) &&
-					Number.isFinite(offset.newEndIndex) &&
-					offset.fromCharIndex >= 0 &&
-					offset.oldEndIndex >= offset.fromCharIndex &&
-					offset.newEndIndex >= offset.fromCharIndex,
-				'Invalid highlight shift offset',
-				{
-					offset,
-					lineStart,
-					lineLength,
-				}
-			)
-			const offsetDelta = offset.newEndIndex - offset.oldEndIndex
-			if (offset.charDelta !== offsetDelta) {
-				log.warn('Highlight shift delta mismatch', {
-					offset,
-					offsetDelta,
-				})
-			}
-		}
-
 		const mapped = mapRangeToOldOffsets(lineStart, lineEnd, offsets)
 		compareLineStart = mapped.start
 		compareLineEnd = mapped.end
-		assert(
-			Number.isFinite(compareLineStart) &&
-				Number.isFinite(compareLineEnd) &&
-				compareLineEnd >= compareLineStart,
-			'Invalid line comparison range',
-			{
-				compareLineStart,
-				compareLineEnd,
-				lineStart,
-				lineEnd,
-				offsetCount: offsets.length,
-			}
-		)
 	}
 
 	const pushSegment = (
@@ -455,21 +396,10 @@ export const toLineHighlightSegmentsForLine = (
 			rangeBufferA,
 			rangeBufferB
 		)
-		if (shiftedRanges.length > 1) {
-			splitCount += 1
-		}
+
 		for (const range of shiftedRanges) {
 			pushSegment(range.start, range.end, className, highlight.scope)
 		}
-	}
-
-	if (splitCount > 0) {
-		log.debug('Split highlights for optimistic edit offset', {
-			splitCount,
-			offsetCount: offsets?.length ?? 0,
-			lineStart,
-			lineLength,
-		})
 	}
 
 	if (segments.length > 1) {

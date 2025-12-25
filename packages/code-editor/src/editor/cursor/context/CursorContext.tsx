@@ -143,15 +143,6 @@ const applyEditToLineStarts = (
 
 export function CursorProvider(props: CursorProviderProps) {
 	const log = loggers.codeEditor.withTag('cursor')
-	const assert = (
-		condition: boolean,
-		message: string,
-		details?: Record<string, unknown>
-	) => {
-		if (condition) return true
-		log.warn(message, details)
-		return false
-	}
 	const [documentLength, setDocumentLength] = createSignal(0)
 	const [lineStarts, setLineStarts] = createSignal<number[]>([])
 	const [activePieceTable, setActivePieceTable] = createSignal<
@@ -228,38 +219,13 @@ export function CursorProvider(props: CursorProviderProps) {
 		})
 
 		const nextLineCount = lineStarts().length
-		if (
-			!assert(
-				nextLineCount === Math.max(0, prevLineCount + lineDelta),
-				'Line count delta mismatch after edit',
-				{
-					startIndex,
-					prevLineCount,
-					nextLineCount,
-					lineDelta,
-					deletedLineBreaks,
-					insertedLineBreaks,
-				}
-			)
-		) {
+		if (nextLineCount !== Math.max(0, prevLineCount + lineDelta)) {
 			lineTextCache.clear()
-			log.debug('Cleared line text cache after line delta mismatch', {
-				startIndex,
-			})
 			return
 		}
 
-		if (
-			!assert(startLine <= endLine, 'Invalid line cache invalidation range', {
-				startLine,
-				endLine,
-			})
-		) {
+		if (startLine > endLine) {
 			lineTextCache.clear()
-			log.debug('Cleared line text cache after invalid range', {
-				startLine,
-				endLine,
-			})
 			return
 		}
 
@@ -270,16 +236,10 @@ export function CursorProvider(props: CursorProviderProps) {
 			return
 		}
 
-		const retained = updateLineTextCache(lineTextCache, {
+		updateLineTextCache(lineTextCache, {
 			startLine,
 			endLine,
 			lineDelta,
-		})
-		log.debug('Shifted line text cache after edit', {
-			startLine,
-			endLine,
-			lineDelta,
-			retained,
 		})
 	}
 

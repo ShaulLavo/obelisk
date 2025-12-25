@@ -1,5 +1,5 @@
 import { createMemo, untrack, type Accessor } from 'solid-js'
-import { loggers } from '@repo/logger'
+
 import {
 	mergeLineSegments,
 	mapRangeToOldOffsets,
@@ -29,16 +29,6 @@ export type CreateLineHighlightsOptions = {
 }
 
 export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
-	const log = loggers.codeEditor.withTag('line-highlights')
-	const assert = (
-		condition: boolean,
-		message: string,
-		details?: Record<string, unknown>
-	) => {
-		if (condition) return true
-		log.warn(message, details)
-		return false
-	}
 	const EMPTY_HIGHLIGHTS: EditorSyntaxHighlight[] = []
 	const EMPTY_ERRORS: ErrorHighlight[] = []
 	const EMPTY_OFFSETS: HighlightOffsets = []
@@ -69,7 +59,7 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 
 	const getValidatedOffsets = (): HighlightOffsets => {
 		const offsets = options.highlightOffset
-			? untrack(options.highlightOffset) ?? EMPTY_OFFSETS
+			? (untrack(options.highlightOffset) ?? EMPTY_OFFSETS)
 			: EMPTY_OFFSETS
 
 		if (offsets === lastOffsetsRef) {
@@ -87,49 +77,7 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 		lineIndexCache = new Map()
 		dirtyHighlightCache.clear()
 
-		let lineDeltaCount = 0
-		for (const offset of offsets) {
-			assert(
-				Number.isFinite(offset.charDelta) &&
-					Number.isFinite(offset.fromCharIndex) &&
-					Number.isFinite(offset.oldEndIndex) &&
-					Number.isFinite(offset.newEndIndex) &&
-					Number.isFinite(offset.fromLineRow) &&
-					Number.isFinite(offset.oldEndRow) &&
-					Number.isFinite(offset.newEndRow) &&
-					offset.fromCharIndex >= 0 &&
-					offset.fromLineRow >= 0 &&
-					offset.oldEndRow >= offset.fromLineRow &&
-					offset.newEndRow >= offset.fromLineRow &&
-					offset.oldEndIndex >= offset.fromCharIndex &&
-					offset.newEndIndex >= offset.fromCharIndex,
-				'Invalid highlight offset',
-				{ offset }
-			)
-			const offsetCharDelta = offset.newEndIndex - offset.oldEndIndex
-			if (offset.charDelta !== offsetCharDelta) {
-				log.warn('Highlight offset delta mismatch', {
-					offset,
-					offsetCharDelta,
-				})
-			}
-			const offsetLineDelta = offset.newEndRow - offset.oldEndRow
-			if (offset.lineDelta !== offsetLineDelta) {
-				log.warn('Highlight offset line delta mismatch', {
-					offset,
-					offsetLineDelta,
-				})
-			}
-			if (offset.lineDelta !== 0) {
-				lineDeltaCount += 1
-			}
-		}
-
 		validatedOffsetsRef = offsets
-		log.debug('Highlight offsets updated', {
-			offsetCount: offsets.length,
-			lineDeltaCount,
-		})
 		return validatedOffsetsRef
 	}
 
@@ -160,12 +108,7 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 			mappedIndex -= offset.lineDelta
 		}
 
-		if (
-			!assert(Number.isFinite(mappedIndex), 'Mapped line index invalid', {
-				lineIndex,
-				mappedIndex,
-			})
-		) {
+		if (!Number.isFinite(mappedIndex)) {
 			if (lineIndexCache) lineIndexCache.set(lineIndex, null)
 			return null
 		}
@@ -226,10 +169,6 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 		const errors = sortedErrorHighlights()
 
 		if (highlights !== lastHighlightsRef || errors !== lastErrorsRef) {
-			log.debug('Highlight sources changed, clearing cache', {
-				highlightCount: highlights.length,
-				errorCount: errors.length,
-			})
 			highlightCache = new Map()
 			dirtyHighlightCache.clear()
 			lineIndexCache = null
@@ -237,12 +176,6 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 			lastErrorsRef = errors
 			buildSpatialIndex(highlights)
 		}
-
-		assert(lineLength >= lineTextLength, 'Line length shorter than text', {
-			lineStart,
-			lineLength,
-			lineTextLength,
-		})
 
 		const offsets = getValidatedOffsets()
 		const hasOffsets = offsets.length > 0
@@ -257,20 +190,10 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 			cached.length === lineLength &&
 			cached.text === entry.text
 		) {
-			assert(
-				cached.text.length <= lineLength,
-				'Cached line text exceeds length',
-				{
-					lineStart,
-					lineLength,
-					lineTextLength: cached.text.length,
-				}
-			)
 			return cached.segments
 		}
 
 		let highlightSegments: LineHighlightSegment[]
-		let candidateCount = 0
 		if (highlights.length > 0) {
 			// Get offset for optimistic updates
 			// Calculate the lookup position for the spatial index.
@@ -282,13 +205,6 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 			let lookupEnd = lookupRange.end
 			if (lookupStart < 0) lookupStart = 0
 			if (lookupEnd < lookupStart) {
-				assert(false, 'Invalid highlight lookup range', {
-					lineStart,
-					lineLength,
-					offsetCount: offsets.length,
-					lookupStart,
-					lookupEnd,
-				})
 				lookupEnd = lookupStart
 			}
 
@@ -332,7 +248,6 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 				// We must truncate the buffer to correct length for the callee.
 				candidatesBuffer.length = uniqueCount
 			}
-			candidateCount = candidatesBuffer.length
 
 			// 5. Apply offset to candidates if needed (shift to new positions)
 			// We pass the offset info to toLineHighlightSegmentsForLine to adjust
@@ -346,16 +261,6 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 			)
 		} else {
 			highlightSegments = []
-		}
-
-		if (hasOffsets && candidateCount > 0 && highlightSegments.length === 0) {
-			log.debug('Offset produced no highlight segments', {
-				lineStart,
-				lineLength,
-				lineEnd,
-				offsetCount: offsets.length,
-				candidateCount,
-			})
 		}
 
 		const errorSegments = toLineHighlightSegmentsForLine(

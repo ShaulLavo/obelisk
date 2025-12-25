@@ -1,26 +1,20 @@
 import { Show, createMemo } from 'solid-js'
-import { loggers } from '@repo/logger'
 import type { LineProps } from '../../types'
 import { calculateColumnFromClick } from '../../utils'
 import { Syntax } from './Syntax'
 
-const log = loggers.codeEditor.withTag('line')
-
 export const Line = (props: LineProps) => {
 	let lineElement: HTMLDivElement | null = null
-	const assert = (
-		condition: boolean,
-		message: string,
-		details?: Record<string, unknown>
-	) => {
-		if (condition) return true
-		log.warn(message, details)
-		return false
-	}
 
 	const handleMouseDown = (event: MouseEvent) => {
 		if (event.button !== 0) {
 			return
+		}
+
+		if (!props.onMouseDown) {
+			if (event.shiftKey || event.ctrlKey || event.metaKey) {
+				return
+			}
 		}
 
 		let column = props.lineText.length
@@ -41,10 +35,6 @@ export const Line = (props: LineProps) => {
 			return
 		}
 
-		if (event.shiftKey || event.ctrlKey || event.metaKey) {
-			return
-		}
-
 		props.onPreciseClick(props.lineIndex, column, event.shiftKey)
 	}
 
@@ -53,13 +43,7 @@ export const Line = (props: LineProps) => {
 	const columnRange = createMemo(() => {
 		const start = columnStart()
 		const end = columnEnd()
-		if (
-			!assert(end >= start, 'Line virtual row column range is invalid', {
-				lineIndex: props.lineIndex,
-				columnStart: start,
-				columnEnd: end,
-			})
-		) {
+		if (end < start) {
 			return null
 		}
 		return { start, end }

@@ -62,125 +62,125 @@ export const useFileSystemObserver = ({
 				path: fullPath,
 			})
 
-			switch (record.type) {
-				case 'appeared': {
-					// New file or folder appeared - reload parent directory
-					const parentPath = getParentPath(fullPath)
-					if (!processedPaths.has(parentPath)) {
-						processedPaths.add(parentPath)
-						try {
-							await reloadDirectory(parentPath)
-						} catch (error) {
-							loggers.fs.error(
-								'[FileSystemObserver] Failed to reload directory after appear:',
-								parentPath,
-								error
-							)
-						}
-					}
-					break
-				}
+			// switch (record.type) {
+			// 	case 'appeared': {
+			// 		// New file or folder appeared - reload parent directory
+			// 		const parentPath = getParentPath(fullPath)
+			// 		if (!processedPaths.has(parentPath)) {
+			// 			processedPaths.add(parentPath)
+			// 			try {
+			// 				await reloadDirectory(parentPath)
+			// 			} catch (error) {
+			// 				loggers.fs.error(
+			// 					'[FileSystemObserver] Failed to reload directory after appear:',
+			// 					parentPath,
+			// 					error
+			// 				)
+			// 			}
+			// 		}
+			// 		break
+			// 	}
 
-				case 'disappeared': {
-					// File or folder was deleted - reload parent directory
-					const parentPath = getParentPath(fullPath)
-					if (!processedPaths.has(parentPath)) {
-						processedPaths.add(parentPath)
-						try {
-							await reloadDirectory(parentPath)
-						} catch (error) {
-							loggers.fs.error(
-								'[FileSystemObserver] Failed to reload directory after disappear:',
-								parentPath,
-								error
-							)
-						}
-					}
-					break
-				}
+			// 	case 'disappeared': {
+			// 		// File or folder was deleted - reload parent directory
+			// 		const parentPath = getParentPath(fullPath)
+			// 		if (!processedPaths.has(parentPath)) {
+			// 			processedPaths.add(parentPath)
+			// 			try {
+			// 				await reloadDirectory(parentPath)
+			// 			} catch (error) {
+			// 				loggers.fs.error(
+			// 					'[FileSystemObserver] Failed to reload directory after disappear:',
+			// 					parentPath,
+			// 					error
+			// 				)
+			// 			}
+			// 		}
+			// 		break
+			// 	}
 
-				case 'modified': {
-					// File content changed - check if it's the currently selected file
-					const node = state.tree ? findNode(state.tree, fullPath) : undefined
+			// 	case 'modified': {
+			// 		// File content changed - check if it's the currently selected file
+			// 		const node = state.tree ? findNode(state.tree, fullPath) : undefined
 
-					if (node?.kind === 'file') {
-						// TODO: Handle case where user has local edits
-						// For now, we skip reloading if there are unsaved changes
-						if (hasLocalEdits(fullPath)) {
-							loggers.fs.debug(
-								'[FileSystemObserver] Skipping reload - file has local edits:',
-								fullPath
-							)
-							// TODO: Show a notification to user that file changed on disk
-							// TODO: Offer merge/reload/keep options
-							continue
-						}
+			// 		if (node?.kind === 'file') {
+			// 			// TODO: Handle case where user has local edits
+			// 			// For now, we skip reloading if there are unsaved changes
+			// 			if (hasLocalEdits(fullPath)) {
+			// 				loggers.fs.debug(
+			// 					'[FileSystemObserver] Skipping reload - file has local edits:',
+			// 					fullPath
+			// 				)
+			// 				// TODO: Show a notification to user that file changed on disk
+			// 				// TODO: Offer merge/reload/keep options
+			// 				continue
+			// 			}
 
-						processedPaths.add(fullPath)
-						try {
-							await reloadFile(fullPath)
-						} catch (error) {
-							loggers.fs.error(
-								'[FileSystemObserver] Failed to reload modified file:',
-								fullPath,
-								error
-							)
-						}
-					}
-					break
-				}
+			// 			processedPaths.add(fullPath)
+			// 			try {
+			// 				await reloadFile(fullPath)
+			// 			} catch (error) {
+			// 				loggers.fs.error(
+			// 					'[FileSystemObserver] Failed to reload modified file:',
+			// 					fullPath,
+			// 					error
+			// 				)
+			// 			}
+			// 		}
+			// 		break
+			// 	}
 
-				case 'moved': {
-					// File/folder was moved within the watched scope
-					// Reload both the old and new parent directories
-					const newParentPath = getParentPath(fullPath)
-					const oldPath = record.relativePathMovedFrom?.join('/')
-					const oldParentPath = oldPath ? getParentPath(oldPath) : undefined
+			// 	case 'moved': {
+			// 		// File/folder was moved within the watched scope
+			// 		// Reload both the old and new parent directories
+			// 		const newParentPath = getParentPath(fullPath)
+			// 		const oldPath = record.relativePathMovedFrom?.join('/')
+			// 		const oldParentPath = oldPath ? getParentPath(oldPath) : undefined
 
-					if (!processedPaths.has(newParentPath)) {
-						processedPaths.add(newParentPath)
-						try {
-							await reloadDirectory(newParentPath)
-						} catch (error) {
-							loggers.fs.error(
-								'[FileSystemObserver] Failed to reload directory after move (new):',
-								newParentPath,
-								error
-							)
-						}
-					}
+			// 		if (!processedPaths.has(newParentPath)) {
+			// 			processedPaths.add(newParentPath)
+			// 			try {
+			// 				await reloadDirectory(newParentPath)
+			// 			} catch (error) {
+			// 				loggers.fs.error(
+			// 					'[FileSystemObserver] Failed to reload directory after move (new):',
+			// 					newParentPath,
+			// 					error
+			// 				)
+			// 			}
+			// 		}
 
-					if (oldParentPath && !processedPaths.has(oldParentPath)) {
-						processedPaths.add(oldParentPath)
-						try {
-							await reloadDirectory(oldParentPath)
-						} catch (error) {
-							loggers.fs.error(
-								'[FileSystemObserver] Failed to reload directory after move (old):',
-								oldParentPath,
-								error
-							)
-						}
-					}
-					break
-				}
+			// 		if (oldParentPath && !processedPaths.has(oldParentPath)) {
+			// 			processedPaths.add(oldParentPath)
+			// 			try {
+			// 				await reloadDirectory(oldParentPath)
+			// 			} catch (error) {
+			// 				loggers.fs.error(
+			// 					'[FileSystemObserver] Failed to reload directory after move (old):',
+			// 					oldParentPath,
+			// 					error
+			// 				)
+			// 			}
+			// 		}
+			// 		break
+			// 	}
 
-				case 'errored': {
-					loggers.fs.warn(
-						'[FileSystemObserver] Observation error occurred:',
-						fullPath
-					)
-					break
-				}
+			// 	case 'errored': {
+			// 		loggers.fs.warn(
+			// 			'[FileSystemObserver] Observation error occurred:',
+			// 			fullPath
+			// 		)
+			// 		break
+			// 	}
 
-				case 'unknown': {
-					// Events may have been missed - do a full refresh of the root
-					loggers.fs.warn(
-						'[FileSystemObserver] Unknown events - consider full refresh'
-					)
-					break
-				}
-			}
+			// 	case 'unknown': {
+			// 		// Events may have been missed - do a full refresh of the root
+			// 		loggers.fs.warn(
+			// 			'[FileSystemObserver] Unknown events - consider full refresh'
+			// 		)
+			// 		break
+			// 	}
+			// }
 		}
 	}
 

@@ -86,7 +86,6 @@ export const useFsRefresh = ({
 			heading: 'Filesystem error',
 			body: message,
 			dismissable: false,
-			contentClass: 'bg-zinc-950 text-zinc-100',
 			actions,
 		})
 	}

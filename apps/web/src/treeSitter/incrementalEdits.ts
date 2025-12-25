@@ -7,15 +7,6 @@ import { applyTreeSitterEditBatch } from './workerClient'
 import { logger } from '../logger'
 
 const log = logger.withTag('treeSitter')
-const assert = (
-	condition: boolean,
-	message: string,
-	details?: Record<string, unknown>
-) => {
-	if (condition) return true
-	log.warn(message, details)
-	return false
-}
 
 /**
  * Small debounce delay to batch rapid keystrokes.
@@ -57,23 +48,6 @@ export const sendIncrementalTreeEdit = (
 		oldEndPosition: edit.oldEndPosition,
 		newEndPosition: edit.newEndPosition,
 		insertedText: edit.insertedText,
-	}
-	const expectedNewEnd = edit.startIndex + edit.insertedText.length
-	assert(
-		Number.isFinite(edit.startIndex) &&
-			Number.isFinite(edit.oldEndIndex) &&
-			Number.isFinite(edit.newEndIndex) &&
-			edit.oldEndIndex >= edit.startIndex &&
-			edit.newEndIndex >= edit.startIndex,
-		'Invalid incremental edit payload',
-		{ path, edit }
-	)
-	if (edit.newEndIndex !== expectedNewEnd) {
-		log.warn('Incremental edit new end mismatch', {
-			path,
-			edit,
-			expectedNewEnd,
-		})
 	}
 
 	// If there's an existing pending batch for a different path, flush it
@@ -122,10 +96,6 @@ export const sendIncrementalTreeEdit = (
 			const batchStartedAt = pendingBatchStartedAt || performance.now()
 			const batchId = pendingBatchId
 			const editCount = batch.edits.length
-			assert(editCount > 0, 'Tree-sitter batch missing edits', {
-				path: batch.path,
-				batchId,
-			})
 
 			// Increment request ID to track this specific request
 			const requestId = ++currentRequestId

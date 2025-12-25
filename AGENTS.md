@@ -1,10 +1,8 @@
-> [!IMPORTANT]
-> **When writing code: write logs, asserts, and tests.**
-> **Always opt in for adding logs and other debug tools and asking the user for input when not sure.**
-
 # Repository Guidelines
 
 ## General Principles
+
+> **Always opt in for adding logs and other debug tools and asking the user for input when not sure.**
 
 - **Be a Good Citizen**: If you see a problem while working and it's easy to fix, fix it!
 

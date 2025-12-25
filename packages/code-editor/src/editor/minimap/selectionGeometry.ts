@@ -1,5 +1,3 @@
-import { loggers } from '@repo/logger'
-
 export type MinimapSelectionRect = {
 	line: number
 	x: number
@@ -27,18 +25,6 @@ export type MinimapSelectionMetrics = {
 
 type LineLengthProvider = (line: number) => number
 
-const log = loggers.codeEditor.withTag('minimap-selection')
-
-const assert = (
-	condition: boolean,
-	message: string,
-	details?: Record<string, unknown>
-) => {
-	if (condition) return true
-	log.warn(message, details)
-	return false
-}
-
 const clampColumn = (column: number, maxColumn: number): number => {
 	if (!Number.isFinite(column)) return 0
 	return Math.max(0, Math.min(column, maxColumn))
@@ -65,77 +51,35 @@ export const computeMinimapSelectionRects = (
 		clipWidth,
 	} = metrics
 
-	if (
-		!assert(
-			Number.isFinite(rowHeight) && rowHeight > 0,
-			'Minimap selection row height must be positive',
-			{ rowHeight }
-		)
-	) {
+	if (!Number.isFinite(rowHeight) || rowHeight <= 0) {
 		return []
 	}
 
-	if (
-		!assert(
-			Number.isFinite(charWidth) && charWidth > 0,
-			'Minimap selection char width must be positive',
-			{ charWidth }
-		)
-	) {
+	if (!Number.isFinite(charWidth) || charWidth <= 0) {
 		return []
 	}
 
-	if (
-		!assert(
-			Number.isFinite(maxChars) && maxChars > 0,
-			'Minimap selection max chars must be positive',
-			{ maxChars }
-		)
-	) {
+	if (!Number.isFinite(maxChars) || maxChars <= 0) {
 		return []
 	}
 
-	if (
-		!assert(
-			Number.isFinite(clipWidth) && clipWidth > 0,
-			'Minimap selection clip width must be positive',
-			{ clipWidth }
-		)
-	) {
+	if (!Number.isFinite(clipWidth) || clipWidth <= 0) {
 		return []
 	}
 
-	if (
-		!assert(
-			Number.isFinite(deviceHeight) && deviceHeight >= 0,
-			'Minimap selection device height must be valid',
-			{ deviceHeight }
-		)
-	) {
+	if (!Number.isFinite(deviceHeight) || deviceHeight < 0) {
 		return []
 	}
 
 	if (!Number.isFinite(scrollOffset) || scrollOffset < 0) {
-		assert(false, 'Minimap selection scroll offset must be non-negative', {
-			scrollOffset,
-		})
 		return []
 	}
 
 	if (startLine > endLine) {
-		assert(false, 'Minimap selection lines are out of order', {
-			startLine,
-			endLine,
-		})
 		return []
 	}
 
 	if (startLine === endLine && startColumn > endColumn) {
-		assert(false, 'Minimap selection columns are out of order', {
-			startLine,
-			startColumn,
-			endColumn,
-		})
 		return []
 	}
 

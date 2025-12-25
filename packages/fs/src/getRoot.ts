@@ -198,9 +198,7 @@ export async function getLocalRoot(
 	if (localRootPromise) return localRootPromise
 
 	assertHasDirectoryPicker(window)
-	const pickerWindow = window as DirectoryPickerWindow
-
-	localRootPromise = resolveLocalRoot(pickerWindow, options).catch((err) => {
+	localRootPromise = resolveLocalRoot(window, options).catch((err) => {
 		localRootPromise = null
 		throw err
 	})

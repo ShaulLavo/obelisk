@@ -1,3 +1,4 @@
+import { batch } from 'solid-js'
 import { createStore, reconcile } from 'solid-js/store'
 import { logger } from '../../logger'
 import type { TreeSitterCapture } from '../../workers/treeSitterWorkerTypes'
@@ -20,15 +21,6 @@ export type HighlightTransform = {
 
 export const createHighlightState = () => {
 	const log = logger.withTag('highlights')
-	const assert = (
-		condition: boolean,
-		message: string,
-		details?: Record<string, unknown>
-	) => {
-		if (condition) return true
-		log.warn(message, details)
-		return false
-	}
 
 	const [fileHighlights, setHighlightsStore] = createStore<
 		Record<string, TreeSitterCapture[] | undefined>
@@ -38,6 +30,31 @@ export const createHighlightState = () => {
 	const [highlightOffsets, setHighlightOffsets] = createStore<
 		Record<string, HighlightTransform[] | undefined>
 	>({})
+
+	let highlightUpdateId = 0
+
+	const summarizeHighlights = (highlights?: TreeSitterCapture[]) => {
+		if (!highlights?.length) {
+			return { count: 0 }
+		}
+
+		const first = highlights[0]
+		const last = highlights[highlights.length - 1]
+
+		if (!first || !last) {
+			return { count: highlights.length }
+		}
+
+		return {
+			count: highlights.length,
+			firstStart: first.startIndex,
+			firstEnd: first.endIndex,
+			firstScope: first.scope,
+			lastStart: last.startIndex,
+			lastEnd: last.endIndex,
+			lastScope: last.scope,
+		}
+	}
 
 	/**
 	 * Apply an offset transformation optimistically.
@@ -54,31 +71,6 @@ export const createHighlightState = () => {
 		const normalizedNewEnd = Math.max(normalizedStart, transform.newEndIndex)
 		const normalizedCharDelta = normalizedNewEnd - normalizedOldEnd
 
-		assert(
-			Number.isFinite(transform.charDelta) &&
-				Number.isFinite(transform.lineDelta) &&
-				Number.isFinite(transform.fromCharIndex) &&
-				Number.isFinite(transform.fromLineRow) &&
-				Number.isFinite(transform.oldEndIndex) &&
-				Number.isFinite(transform.newEndIndex) &&
-				Number.isFinite(transform.oldEndRow) &&
-				Number.isFinite(transform.newEndRow) &&
-				transform.oldEndIndex >= transform.fromCharIndex &&
-				transform.newEndIndex >= transform.fromCharIndex &&
-				transform.fromLineRow >= 0 &&
-				transform.oldEndRow >= transform.fromLineRow &&
-				transform.newEndRow >= transform.fromLineRow,
-			'Invalid highlight transform',
-			{ path, transform }
-		)
-		if (transform.charDelta !== normalizedCharDelta) {
-			log.warn('Highlight transform delta mismatch', {
-				path,
-				transform,
-				normalizedCharDelta,
-			})
-		}
-
 		const normalizedOldEndRow = Math.max(
 			transform.fromLineRow,
 			transform.oldEndRow
@@ -88,14 +80,6 @@ export const createHighlightState = () => {
 			transform.newEndRow
 		)
 		const normalizedLineDelta = normalizedNewEndRow - normalizedOldEndRow
-
-		if (transform.lineDelta !== normalizedLineDelta) {
-			log.warn('Highlight transform line delta mismatch', {
-				path,
-				transform,
-				normalizedLineDelta,
-			})
-		}
 
 		const incoming = {
 			...transform,
@@ -119,15 +103,42 @@ export const createHighlightState = () => {
 	const setHighlights = (path: string, highlights?: TreeSitterCapture[]) => {
 		if (!path) return
 
-		// Clear pending offset - we have real data now
-		setHighlightOffsets(path, undefined)
+		const nextHighlights = highlights?.length ? highlights : undefined
+		const existingHighlights = fileHighlights[path]
+		const offsetCount = highlightOffsets[path]?.length ?? 0
+		const updateId = ++highlightUpdateId
 
-		if (!highlights?.length) {
-			setHighlightsStore(path, undefined)
+		log.debug('[setHighlights] start', {
+			path,
+			updateId,
+			offsetCount,
+			existing: summarizeHighlights(existingHighlights),
+			next: summarizeHighlights(nextHighlights),
+		})
+
+		// Clear pending offset - we have real data now
+		const shouldClearOffsets = offsetCount > 0
+		const hasNextHighlights = !!nextHighlights
+		const hasExistingHighlights = !!existingHighlights?.length
+
+		if (!shouldClearOffsets && !hasNextHighlights && !hasExistingHighlights) {
+			log.debug('[setHighlights] noop', { path, updateId })
 			return
 		}
 
-		setHighlightsStore(path, highlights)
+		batch(() => {
+			if (shouldClearOffsets) {
+				setHighlightOffsets(path, undefined)
+			}
+			setHighlightsStore(path, nextHighlights)
+		})
+
+		log.debug('[setHighlights] end', {
+			path,
+			updateId,
+			offsetCount,
+			nextCount: nextHighlights?.length ?? 0,
+		})
 	}
 
 	const clearHighlights = () => {

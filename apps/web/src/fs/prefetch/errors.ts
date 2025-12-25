@@ -27,7 +27,7 @@ export class TreePrefetchHandleCloneError extends Error {
 		)
 		this.name = 'TreePrefetchHandleCloneError'
 		if (cause !== undefined) {
-			;(this as Error & { cause?: unknown }).cause = cause
+			this.cause = cause
 		}
 	}
 }
