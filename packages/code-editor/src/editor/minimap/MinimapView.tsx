@@ -6,7 +6,7 @@
 
 import { AutoHideVisibility, AutoHideWrapper } from '@repo/ui/auto-hide-wrapper'
 import { clsx } from 'clsx'
-import { createSignal } from 'solid-js'
+import { createEffect, createSignal } from 'solid-js'
 import { useCursor } from '../cursor'
 import { MinimapCanvas } from './MinimapCanvas'
 import { MinimapOverlay } from './MinimapOverlay'
@@ -74,7 +74,7 @@ export const MinimapView = (props: MinimapProps) => {
 			<AutoHideWrapper
 				visibility={computedVisibility()}
 				class={clsx(
-					"absolute right-[14px] top-0 h-full z-50 group before:absolute before:-left-1 before:top-0 before:h-full before:w-[4px] before:content-[''] border-l border-white/5",
+					"absolute right-[14px] top-0 h-full z-50 group before:absolute before:-left-2 before:top-0 before:h-full before:w-[8px] before:content-[''] border-l border-white/5",
 					computedVisibility() === AutoHideVisibility.SHOW
 						? 'bg-zinc-950/90'
 						: 'bg-zinc-950/20 hover:bg-zinc-950/90'
