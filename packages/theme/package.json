@@ -1,0 +1,19 @@
+{
+    "name": "@repo/theme",
+    "version": "0.0.0",
+    "private": true,
+    "exports": {
+        ".": "./src/index.ts"
+    },
+    "dependencies": {
+        "@solid-primitives/deep": "^0.3.3"
+    },
+    "peerDependencies": {
+        "solid-js": "^1.9.0",
+        "@kobalte/core": "^0.13.0"
+    },
+    "devDependencies": {
+        "@repo/typescript-config": "*",
+        "typescript": "5.9.2"
+    }
+}

@@ -17,7 +17,7 @@ const Main: Component = () => {
 	)
 
 	return (
-		<main class="h-screen max-h-screen overflow-hidden bg-[#0b0c0f] text-zinc-100">
+		<main class="h-screen max-h-screen overflow-hidden bg-background text-foreground">
 			<div class="flex h-full min-h-0 flex-col">
 				<Resizable
 					orientation="vertical"
@@ -31,7 +31,7 @@ const Main: Component = () => {
 						initialSize={verticalPanelSize()[0] ?? 0.65}
 						minSize={0.01}
 						collapsible
-						class="min-h-0"
+						class="min-h-0 overflow-auto border-r border-border/30 bg-muted/60"
 					>
 						<Fs />
 					</ResizablePanel>
@@ -43,7 +43,7 @@ const Main: Component = () => {
 						initialSize={verticalPanelSize()[1] ?? 0.35}
 						minSize={0.01}
 						collapsible
-						class="min-h-0"
+						class="flex-1 min-h-0 overflow-auto bg-background/30"
 					>
 						<Terminal />
 					</ResizablePanel>

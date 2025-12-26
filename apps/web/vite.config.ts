@@ -26,6 +26,10 @@ export default defineConfig(({ mode }) => {
 		resolve: {
 			alias: {
 				'~': path.resolve(__dirname, './src'),
+				'@repo/theme': path.resolve(
+					__dirname,
+					'../../packages/theme/src/index.ts'
+				),
 			},
 		},
 		server: {

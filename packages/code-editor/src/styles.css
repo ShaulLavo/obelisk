@@ -5,4 +5,140 @@
 	.line-number::before {
 		content: counter(line, var(--gutter-style, decimal));
 	}
+
+	.syntax-comment {
+		color: var(--syntax-comment);
+	}
+	.syntax-keyword {
+		color: var(--syntax-keyword);
+	}
+	.syntax-keyword-declaration {
+		color: var(--syntax-keyword-declaration);
+	}
+	.syntax-keyword-import {
+		color: var(--syntax-keyword-import);
+	}
+	.syntax-keyword-type {
+		color: var(--syntax-keyword-type);
+	}
+	.syntax-keyword-control {
+		color: var(--syntax-keyword-control);
+	}
+	.syntax-keyword-operator {
+		color: var(--syntax-keyword-operator);
+	}
+	.syntax-type {
+		color: var(--syntax-type);
+	}
+	.syntax-type-builtin {
+		color: var(--syntax-type-builtin);
+	}
+	.syntax-type-parameter {
+		color: var(--syntax-type-parameter);
+	}
+	.syntax-type-definition {
+		color: var(--syntax-type-definition);
+	}
+	.syntax-function {
+		color: var(--syntax-function);
+	}
+	.syntax-method {
+		color: var(--syntax-method);
+	}
+	.syntax-string {
+		color: var(--syntax-string);
+	}
+	.syntax-number {
+		color: var(--syntax-number);
+	}
+	.syntax-operator {
+		color: var(--syntax-operator);
+	}
+	.syntax-punctuation {
+		color: var(--syntax-punctuation);
+	}
+	.syntax-punctuation-bracket {
+		color: var(--syntax-punctuation-bracket);
+	}
+	.syntax-variable {
+		color: var(--syntax-variable);
+	}
+	.syntax-variable-parameter {
+		color: var(--syntax-variable-parameter);
+	}
+	.syntax-variable-builtin {
+		color: var(--syntax-variable-builtin);
+	}
+	.syntax-constant {
+		color: var(--syntax-constant);
+	}
+	.syntax-property {
+		color: var(--syntax-property);
+	}
+	.syntax-attribute {
+		color: var(--syntax-attribute);
+	}
+	.syntax-namespace {
+		color: var(--syntax-namespace);
+	}
+	.syntax-error {
+		color: var(--syntax-error);
+		text-decoration: underline wavy;
+		text-decoration-color: var(--syntax-error);
+		text-decoration-thickness: 1px;
+		text-underline-offset: 2px;
+	}
+	.syntax-missing {
+		color: var(--syntax-missing);
+		text-decoration: underline wavy;
+		text-decoration-color: var(--syntax-missing);
+		text-decoration-thickness: 1px;
+		text-underline-offset: 2px;
+	}
+
+	.bracket-depth-0 {
+		color: var(--brackets-0);
+	}
+	.bracket-depth-1 {
+		color: var(--brackets-1);
+	}
+	.bracket-depth-2 {
+		color: var(--brackets-2);
+	}
+	.bracket-depth-3 {
+		color: var(--brackets-3);
+	}
+	.bracket-depth-4 {
+		color: var(--brackets-4);
+	}
+	.bracket-depth-5 {
+		color: var(--brackets-5);
+	}
+
+	.bracket-border-0 {
+		border-color: var(--brackets-0);
+	}
+	.bracket-border-1 {
+		border-color: var(--brackets-1);
+	}
+	.bracket-border-2 {
+		border-color: var(--brackets-2);
+	}
+	.bracket-border-3 {
+		border-color: var(--brackets-3);
+	}
+	.bracket-border-4 {
+		border-color: var(--brackets-4);
+	}
+	.bracket-border-5 {
+		border-color: var(--brackets-5);
+	}
+
+	.selection-rect {
+		background-color: var(--editor-selection);
+	}
+
+	.whitespace-marker {
+		color: var(--editor-whitespace-marker);
+	}
 }

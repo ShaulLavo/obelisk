@@ -9,6 +9,7 @@ import { FocusProvider } from './focus/focusManager'
 import { FsProvider } from './fs/context/FsProvider'
 import { KeymapProvider } from './keymap/KeymapContext'
 import { Modal } from '@repo/ui/modal'
+import { ThemeProvider } from '@repo/theme'
 
 export const storageManager = createLocalStorageManager('ui-theme')
 
@@ -17,13 +18,15 @@ export const Providers: ParentComponent = (props) => {
 		<>
 			<ColorModeScript storageType={storageManager.type} />
 			<ColorModeProvider storageManager={storageManager}>
-				<KeymapProvider>
-					<FocusProvider>
-						<ThemedToaster />
-						<Modal />
-						<FsProvider>{props.children}</FsProvider>
-					</FocusProvider>
-				</KeymapProvider>
+				<ThemeProvider>
+					<KeymapProvider>
+						<FocusProvider>
+							<ThemedToaster />
+							<Modal />
+							<FsProvider>{props.children}</FsProvider>
+						</FocusProvider>
+					</KeymapProvider>
+				</ThemeProvider>
 			</ColorModeProvider>
 		</>
 	)

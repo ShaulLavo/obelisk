@@ -4,33 +4,32 @@
 @config '../../../packages/ui/tailwind.config.ts';
 
 @theme {
-	--color-background: var(--background);
-	--color-foreground: var(--foreground);
-	--color-border: var(--border);
-	--color-muted: var(--muted);
-	--color-muted-foreground: var(--muted-foreground);
-	--color-accent: var(--accent);
-	--color-accent-foreground: var(--accent-foreground);
+	--color-background: var(--editor-background);
+	--color-foreground: var(--editor-foreground);
+	--color-border: var(--editor-line-number);
+	--color-muted: var(--editor-gutter-background);
+	--color-muted-foreground: var(--editor-line-number);
+	--color-accent: var(--syntax-keyword);
+	--color-accent-foreground: var(--editor-background);
+
+	--font-mono: 'JetBrains Mono Variable', monospace;
+	--font-serif: 'Geist Variable', sans-serif;
+	--font-sans: 'Google Sans Flex', sans-serif;
 }
 
 @custom-variant dark (&:is(.dark *));
 
 :root {
-	--background: 240 10% 3.9%;
-	--foreground: 0 0% 98%;
-	--border: 240 3.7% 15.9%;
-	--muted: 240 3.7% 15.9%;
-	--muted-foreground: 240 5% 64.9%;
-	--accent: 240 3.7% 15.9%;
-	--accent-foreground: 0 0% 98%;
 	--popover: 240 10% 3.9%;
 	--popover-foreground: 0 0% 98%;
 	--card: 240 10% 3.9%;
 	--card-foreground: 0 0% 98%;
+}
 
-	--font-mono: 'JetBrains Mono Variable', monospace;
-	--font-serif: 'Geist Variable', sans-serif;
-	--font-sans: 'Google Sans Flex', sans-serif;
+/* Apply theme CSS vars to body - these are set dynamically by ThemeProvider */
+body {
+	background-color: var(--editor-background, hsl(240 10% 3.9%));
+	color: var(--editor-foreground, hsl(0 0% 98%));
 }
 
 /* ghostty-web: ensure the terminal canvas doesn't behave like inline content */
@@ -115,7 +114,8 @@
 
 	/* Editor Viewport */
 	.editor-viewport-scroll {
-		@apply relative flex-1 overflow-auto bg-zinc-950/30;
+		@apply relative flex-1 overflow-auto;
+		background-color: var(--editor-background);
 	}
 
 	/* Line Gutter */
@@ -123,12 +123,18 @@
 		@apply shrink-0 select-none text-[11px] font-semibold tracking-[0.08em] tabular-nums flex items-center justify-between gap-1;
 	}
 	.editor-fold-button {
-		@apply flex h-4 w-4 shrink-0 items-center justify-center rounded text-[10px] text-zinc-400 hover:text-white hover:bg-zinc-800/60 focus-visible:outline focus-visible:outline-zinc-500;
+		@apply flex h-4 w-4 shrink-0 items-center justify-center rounded text-[10px];
+		color: var(--editor-line-number);
+	}
+	.editor-fold-button:hover {
+		color: var(--editor-line-number-active);
+		background-color: var(--editor-cursor-line);
 	}
 
 	/* Line Gutters */
 	.editor-gutter-wrapper {
-		@apply sticky left-0 z-10 bg-zinc-950;
+		@apply sticky left-0 z-10;
+		background-color: var(--editor-gutter-background);
 	}
 	.editor-gutter-row {
 		@apply absolute left-0 right-0 flex items-center justify-end;
@@ -136,7 +142,7 @@
 
 	/* Tree Node */
 	.tree-node-row-highlight {
-		@apply pointer-events-none absolute inset-y-0 right-0 border-b border-t transition-colors duration-150 ease-in-out;
+		@apply pointer-events-none absolute inset-y-0 right-0 border-b border-t;
 	}
 	.tree-node-button {
 		@apply relative z-10 flex w-full items-center overflow-hidden rounded text-left text-sm transition;
@@ -153,7 +159,8 @@
 
 	/* Line */
 	.editor-line {
-		@apply absolute left-0 top-0 w-full whitespace-pre text-zinc-100 will-change-transform;
+		@apply absolute left-0 top-0 w-full whitespace-pre will-change-transform;
+		color: var(--editor-foreground);
 	}
 }
 .transition-display {
