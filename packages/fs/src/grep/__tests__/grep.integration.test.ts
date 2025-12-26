@@ -5,6 +5,11 @@
  * - Memory File System (simulating OPFS)
  * - Mocked Web Worker (using direct logic execution)
  * - GrepCoordinator
+ *
+ * TODO: Add true E2E integration test using Vitest Browser Mode to verify:
+ * - Real Worker instantiation and message passing (serialization checks)
+ * - Terminal + Grep integration in a real browser environment
+ * - True parallel execution
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
