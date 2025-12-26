@@ -48,6 +48,7 @@
     "@repo/keyboard": "*",
     "@repo/logger": "*",
     "@repo/perf": "*",
+    "@repo/theme": "*",
     "@repo/ui": "*",
     "@repo/utils": "*",
     "@solid-primitives/bounds": "^0.1.3",

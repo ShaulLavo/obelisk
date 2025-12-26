@@ -21,6 +21,7 @@
     "@repo/keyboard": "*",
     "@repo/logger": "*",
     "@repo/perf": "*",
+    "@repo/theme": "*",
     "@repo/ui": "*",
     "@repo/utils": "*",
     "@solid-primitives/map": "^0.7.2",

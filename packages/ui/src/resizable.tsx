@@ -46,7 +46,7 @@ const ResizableHandle = <T extends ValidComponent = 'button'>(
 	return (
 		<ResizablePrimitive.Handle
 			class={cn(
-				'group relative flex basis-0 shrink-0 cursor-col-resize items-center justify-center px-0.5 -mx-0.5 transition-colors data-[orientation=vertical]:h-auto data-[orientation=vertical]:w-full data-[orientation=vertical]:cursor-row-resize data-[orientation=vertical]:px-0 data-[orientation=vertical]:py-1 data-[orientation=vertical]:-my-1',
+				'group relative flex basis-0 shrink-0 cursor-col-resize items-center justify-center px-0.5 -mx-0.5 transition-colors data-[orientation=vertical]:h-auto data-[orientation=vertical]:w-full data-[orientation=vertical]:cursor-row-resize data-[orientation=vertical]:px-0 data-[orientation=vertical]:py-0.5 data-[orientation=vertical]:-my-0.5',
 				local.class
 			)}
 			{...others}
@@ -54,7 +54,7 @@ const ResizableHandle = <T extends ValidComponent = 'button'>(
 			{local.children ?? (
 				<div
 					class={cn(
-						'pointer-events-none absolute inset-0 bg-zinc-800/90 opacity-0 transition group-hover:opacity-100 group-data-active:opacity-100 group-data-dragging:opacity-100 z-30',
+						'pointer-events-none absolute inset-0 bg-muted-foreground/50 opacity-0 transition group-hover:opacity-100 group-data-active:opacity-100 group-data-dragging:opacity-100 z-30',
 						local.indicatorClass
 					)}
 				/>

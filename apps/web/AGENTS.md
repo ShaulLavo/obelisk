@@ -36,7 +36,7 @@
 - When adding tests, prefer Vitest colocated next to source files (e.g. `ComponentName.test.tsx`).
 - Write tests for new business logic in `src/fs`, `src/utils`, and `src/terminal`.
 - Aim for meaningful coverage of critical flows (FS operations, terminal interactions) rather than raw percentages.
-- **Never run browser tasks/tests unless explicitly asked.** If a browser test is needed, ask the user to run it and provide the exact command.
+- **NEVER EVER EVER try to open the browser (browser subagent / read_browser_page / etc.). It is extremely bugged.** Never run browser tasks/tests unless explicitly asked. If a browser test is needed, ask the user to run it and provide the exact command.
 
 ## Commit & Pull Requests
 

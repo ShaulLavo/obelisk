@@ -70,7 +70,7 @@
 - **Runners**: We use **Vitest** for unit tests and **Playwright** (`@vitest/browser-playwright`) for browser/benchmark tests.
 - When introducing tests to a package, add a `test` script to that package and document how to run it in the README.
 - Keep tests fast and deterministic; avoid hitting real external services.
-- **Never run browser tasks/tests unless explicitly asked.** If a browser test is needed, ask the user to run it and provide the exact command.
+- **NEVER EVER EVER try to open the browser (browser subagent / read_browser_page / etc.). It is extremely bugged.** Never run browser tasks/tests unless explicitly asked. If a browser test is needed, ask the user to run it and provide the exact command.
 
 ## Commit & Pull Request Guidelines
 
