@@ -28,8 +28,8 @@ export const LineGutter = (props: LineGutterProps) => {
 		<span
 			class="editor-gutter-container"
 			classList={{
-				'text-white': props.isActive,
-				'text-zinc-500': !props.isActive,
+				'text-[var(--editor-line-number-active)]': props.isActive,
+				'text-[var(--editor-line-number)]': !props.isActive,
 				'line-number': DEFAULT_GUTTER_MODE !== 'decimal',
 			}}
 			style={getGutterStyle(props.lineNumber)}

@@ -1,5 +1,4 @@
 import { For } from 'solid-js'
-import { SELECTION_COLOR } from '../constants'
 import type { SelectionLayerProps } from '../types'
 import { useSelectionBounds } from '../hooks/useSelectionBounds'
 import { useSelectionRects } from '../hooks/useSelectionRects'
@@ -16,13 +15,12 @@ export const SelectionLayer = (props: SelectionLayerProps) => {
 			<For each={selectionRects()}>
 				{(rect) => (
 					<div
-						class="absolute"
+						class="selection-rect absolute"
 						style={{
 							left: `${rect.x}px`,
 							top: `${rect.y}px`,
 							width: `${rect.width}px`,
 							height: `${rect.height}px`,
-							'background-color': SELECTION_COLOR,
 						}}
 					/>
 				)}

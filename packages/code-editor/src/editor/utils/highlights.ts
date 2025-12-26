@@ -4,35 +4,68 @@ import type {
 	LineHighlightSegment,
 } from '../types'
 
+/**
+ * Maps tree-sitter scopes to CSS class names.
+ * Classes are defined in packages/code-editor/src/styles.css and read CSS vars.
+ */
+
+// Exact scope -> CSS class mapping
 const EXACT_SCOPE_CLASS: Record<string, string> = {
-	comment: 'text-zinc-500',
-	'comment.block': 'text-zinc-500',
-	'comment.line': 'text-zinc-500',
-	// Declaration keywords (let, const, var, function, class) - purple/violet for structure
-	'keyword.declaration': 'text-violet-400',
-	// Import/export keywords - magenta/pink for module boundaries
-	'keyword.import': 'text-pink-400',
-	// Type/interface keywords - cyan for type system structure
-	'keyword.type': 'text-cyan-400',
-	// Control flow keywords (if, else, for, return, etc.) - emerald for flow
-	'keyword.control': 'text-emerald-300',
-	'keyword.operator': 'text-emerald-300',
-	// Type system
-	'type.builtin': 'text-sky-300',
-	'type.parameter': 'text-teal-300',
-	'type.definition': 'text-sky-400',
-	// Variables
-	'variable.parameter': 'text-pink-300',
-	'variable.builtin': 'text-orange-300',
-	'punctuation.bracket': 'text-zinc-300',
-	// Errors
-	error:
-		'underline decoration-wavy decoration-red-500 underline-offset-2 decoration-[1px]',
-	missing:
-		'underline decoration-wavy decoration-red-500 underline-offset-2 decoration-[1px]',
+	comment: 'syntax-comment',
+	'comment.block': 'syntax-comment',
+	'comment.line': 'syntax-comment',
+	'keyword.declaration': 'syntax-keyword-declaration',
+	'keyword.import': 'syntax-keyword-import',
+	'keyword.type': 'syntax-keyword-type',
+	'keyword.control': 'syntax-keyword-control',
+	'keyword.operator': 'syntax-keyword-operator',
+	'type.builtin': 'syntax-type-builtin',
+	'type.parameter': 'syntax-type-parameter',
+	'type.definition': 'syntax-type-definition',
+	'variable.parameter': 'syntax-variable-parameter',
+	'variable.builtin': 'syntax-variable-builtin',
+	'punctuation.bracket': 'syntax-punctuation-bracket',
+	error: 'syntax-error',
+	missing: 'syntax-missing',
 }
 
-// ...
+// Prefix fallback mapping
+const PREFIX_SCOPE_CLASS: Record<string, string> = {
+	keyword: 'syntax-keyword',
+	type: 'syntax-type',
+	function: 'syntax-function',
+	method: 'syntax-method',
+	property: 'syntax-property',
+	string: 'syntax-string',
+	number: 'syntax-number',
+	operator: 'syntax-operator',
+	comment: 'syntax-comment',
+	constant: 'syntax-constant',
+	variable: 'syntax-variable',
+	punctuation: 'syntax-punctuation',
+	attribute: 'syntax-attribute',
+	namespace: 'syntax-namespace',
+}
+
+/**
+ * Get the CSS class name for a tree-sitter scope.
+ */
+export const getHighlightClassForScope = (
+	scope: string
+): string | undefined => {
+	if (!scope) return undefined
+
+	// Try exact match first
+	const exactClass = EXACT_SCOPE_CLASS[scope]
+	if (exactClass) return exactClass
+
+	// Fall back to prefix match
+	const prefix = scope.split('.')[0] ?? ''
+	const prefixClass = PREFIX_SCOPE_CLASS[prefix]
+	if (prefixClass) return prefixClass
+
+	return undefined
+}
 
 export const mergeLineSegments = (
 	segsA: LineHighlightSegment[] | undefined,
@@ -87,34 +120,6 @@ export const mergeLineSegments = (
 	return result
 }
 
-const PREFIX_SCOPE_CLASS: Record<string, string> = {
-	keyword: 'text-emerald-300',
-	type: 'text-sky-300',
-	function: 'text-rose-200',
-	method: 'text-rose-200',
-	property: 'text-purple-200',
-	string: 'text-amber-200',
-	number: 'text-indigo-200',
-	operator: 'text-zinc-300',
-	comment: 'text-zinc-500',
-	constant: 'text-fuchsia-300',
-	variable: 'text-zinc-200',
-	punctuation: 'text-zinc-300',
-	attribute: 'text-teal-200',
-	namespace: 'text-cyan-200',
-}
-
-export const getHighlightClassForScope = (
-	scope: string
-): string | undefined => {
-	if (!scope) return undefined
-	if (EXACT_SCOPE_CLASS[scope]) {
-		return EXACT_SCOPE_CLASS[scope]
-	}
-	const prefix = scope.split('.')[0] ?? ''
-	return PREFIX_SCOPE_CLASS[prefix]
-}
-
 const clampToLine = (
 	entry: LineEntry,
 	absoluteStart: number,
@@ -151,10 +156,6 @@ const clampToLineMeta = (
 	return [relativeStart, relativeEnd]
 }
 
-/**
- * Offset transformation to apply to highlights.
- * Applied inline during segment creation to avoid object allocation.
- */
 export type HighlightShiftOffset = {
 	charDelta: number
 	fromCharIndex: number

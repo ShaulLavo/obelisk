@@ -34,3 +34,12 @@ export {
 	useVisibleContentCache,
 	type UseVisibleContentCacheOptions,
 } from './useVisibleContentCache'
+export {
+	createFixedRowVirtualizer,
+	type FixedRowVirtualizer,
+	type FixedRowVirtualizerOptions,
+	type ScrollAlignment,
+	type ScrollDirection,
+	type ScrollToIndexOptions,
+	type ScrollToOffsetOptions,
+} from './createFixedRowVirtualizer'

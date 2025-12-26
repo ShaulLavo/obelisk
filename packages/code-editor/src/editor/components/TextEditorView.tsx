@@ -14,7 +14,7 @@ import {
 } from '../hooks'
 import { EditorViewport } from './EditorViewport'
 import { Minimap } from '../minimap'
-import type { DocumentIncrementalEdit, EditorProps } from '../types'
+import type { DocumentIncrementalEdit, EditorProps, LineEntry } from '../types'
 
 export const TextEditorView = (props: EditorProps) => {
 	const cursor = useCursor()
@@ -151,14 +151,42 @@ export const TextEditorView = (props: EditorProps) => {
 		})
 	})
 
-	const getLineBracketDepths = () => undefined
+	const getLineBracketDepths = (entry: LineEntry) => {
+		const brackets = props.brackets?.()
+		if (!brackets || brackets.length === 0) return undefined
+
+		const map: Record<number, number> = {}
+		let found = false
+
+		// Binary search for the first bracket in the line
+		let low = 0
+		let high = brackets.length
+		while (low < high) {
+			const mid = (low + high) >>> 1
+			if (brackets[mid]!.index < entry.start) {
+				low = mid + 1
+			} else {
+				high = mid
+			}
+		}
+
+		// Collect all brackets within the line
+		for (let i = low; i < brackets.length; i++) {
+			const b = brackets[i]!
+			if (b.index >= entry.start + entry.length) break
+			map[b.index - entry.start] = b.depth
+			found = true
+		}
+
+		return found ? map : undefined
+	}
 
 	const { getLineHighlights } = createLineHighlights({
 		highlights: () => props.highlights?.(),
 		errors: () => props.errors?.(),
 		highlightOffset: () => props.highlightOffset?.(),
 	})
-
+	// const getLineHighlights = () => undefined
 	// Helper to get line entry for caching
 	const getLineEntry = (lineIndex: number) => {
 		if (lineIndex < 0 || lineIndex >= cursor.lines.lineCount()) {

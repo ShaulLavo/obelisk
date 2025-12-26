@@ -2,7 +2,7 @@ import { For } from 'solid-js'
 import type { Accessor } from 'solid-js'
 import { VsArrowRight } from '@repo/icons/vs/VsArrowRight'
 import { VsCircleSmallFilled } from '@repo/icons/vs/VsCircleSmallFilled'
-import { MARKER_COLOR, MARKER_SIZE } from '../constants'
+import { MARKER_SIZE } from '../constants'
 import type { WhitespaceMarker } from '../types'
 
 type WhitespaceMarkersProps = {
@@ -13,13 +13,12 @@ export const WhitespaceMarkers = (props: WhitespaceMarkersProps) => (
 	<For each={props.markers()}>
 		{(marker) => (
 			<div
-				class="pointer-events-none absolute"
+				class="whitespace-marker pointer-events-none absolute"
 				style={{
 					left: `${marker.x}px`,
 					top: `${marker.y}px`,
 					width: `${MARKER_SIZE}px`,
 					height: `${MARKER_SIZE}px`,
-					color: MARKER_COLOR,
 					transform:
 						marker.align === 'center'
 							? 'translate(-50%, -50%)'
