@@ -4,6 +4,7 @@ export {
 	getMemoryRoot,
 	MemoryDirectoryHandle,
 	MemoryFileHandle,
+	pickNewLocalRoot,
 } from './getRoot'
 export { createFs, createStorage, VDir, VFile } from './vfs'
 export {

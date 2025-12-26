@@ -239,5 +239,23 @@ async function requestHandlePermission(
 	}
 }
 
+/**
+ * Clears any persisted local directory handle and prompts the user to pick a new one.
+ * Returns the newly selected directory handle.
+ */
+export async function pickNewLocalRoot(
+	options?: GetRootOptions
+): Promise<FileSystemDirectoryHandle> {
+	// Clear cached promise and persisted handle
+	localRootPromise = null
+	await clearPersistedHandle(LOCAL_ROOT_KEY)
+
+	assertHasDirectoryPicker(window)
+	const handle = await pickDirectoryWithRetry(window, options)
+	await persistHandle(LOCAL_ROOT_KEY, handle)
+	localRootPromise = Promise.resolve(handle)
+	return handle
+}
+
 export { getMemoryRoot, MemoryDirectoryHandle, MemoryFileHandle }
 export type { MemHandle }

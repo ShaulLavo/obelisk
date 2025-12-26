@@ -20,8 +20,9 @@ import { useFsRefresh } from '../hooks/useFsRefresh'
 import { createFileCacheController } from '../cache/fileCacheController'
 import { LocalDirectoryFallbackModal } from '../components/LocalDirectoryFallbackModal'
 import { findNode } from '../runtime/tree'
-import { getRootHandle } from '../runtime/fsRuntime'
+import { getRootHandle, invalidateFs } from '../runtime/fsRuntime'
 import { useFileSystemObserver } from '../hooks/useFileSystemObserver'
+import { pickNewLocalRoot as doPick } from '@repo/fs'
 export function FsProvider(props: { children: JSX.Element }) {
 	const {
 		state,
@@ -259,6 +260,15 @@ export function FsProvider(props: { children: JSX.Element }) {
 
 	const isSelectedPath = createSelector(() => state.selectedPath)
 
+	const pickNewRoot = async () => {
+		// Only works for 'local' source
+		if (state.activeSource !== 'local') return
+		await doPick()
+		// Invalidate fsRuntime cache so refresh uses the new handle
+		invalidateFs('local')
+		await refresh('local')
+	}
+
 	const value: FsContextValue = [
 		state,
 		{
@@ -282,6 +292,7 @@ export function FsProvider(props: { children: JSX.Element }) {
 			fileCache,
 			saveFile,
 			setDirtyPath,
+			pickNewRoot,
 		},
 	]
 

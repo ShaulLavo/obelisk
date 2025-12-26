@@ -55,6 +55,7 @@ export type FsActions = {
 	fileCache: FileCacheController
 	saveFile: (path?: string) => Promise<void>
 	setDirtyPath: (path: string, isDirty: boolean) => void
+	pickNewRoot: () => Promise<void>
 }
 
 export type FsContextValue = [FsState, FsActions]

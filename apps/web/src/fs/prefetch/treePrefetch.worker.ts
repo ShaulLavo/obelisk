@@ -9,7 +9,6 @@ import { normalizeDirNodeMetadata } from '../utils/treeNodes'
 import type {
 	PrefetchTarget,
 	TreePrefetchWorkerApi,
-	TreePrefetchWorkerInitPayload,
 } from './treePrefetchWorkerTypes'
 
 let ctx: FsContext | undefined

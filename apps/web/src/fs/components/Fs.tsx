@@ -1,6 +1,6 @@
 import { Resizable, ResizableHandle, ResizablePanel } from '@repo/ui/resizable'
 import { makePersisted } from '@solid-primitives/storage'
-import { createEffect, createSignal, onCleanup, onMount } from 'solid-js'
+import { createSignal, onCleanup, onMount } from 'solid-js'
 import { useFocusManager } from '~/focus/focusManager'
 import { dualStorage } from '@repo/utils/DualStorage'
 import { useFs } from '../../fs/context/FsContext'
@@ -14,7 +14,7 @@ import { TreeView } from './TreeView'
 // ]
 
 export const Fs = () => {
-	const [state] = useFs()
+	const [state, actions] = useFs()
 	const focus = useFocusManager()
 	let treePanel: HTMLDivElement = null!
 	const storage = typeof window === 'undefined' ? undefined : dualStorage
@@ -35,6 +35,9 @@ export const Fs = () => {
 
 	return (
 		<div class="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-zinc-800/70 bg-zinc-950/60 shadow-xl">
+			<button type="button" onClick={() => void actions.pickNewRoot()}>
+				Pick New Folder
+			</button>
 			<Resizable
 				class="flex flex-1 min-h-0"
 				orientation="horizontal"
