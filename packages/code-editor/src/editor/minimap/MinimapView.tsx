@@ -32,8 +32,8 @@ export const MinimapView = (props: MinimapProps) => {
 	// Overlay hook for cursor/selection/error rendering
 	const overlay = useMinimapOverlay({
 		container: core.container,
-		scrollElement: props.scrollElement,
-		errors: props.errors,
+		scrollElement: () => props.scrollElement(),
+		errors: () => props.errors?.(),
 		visible: core.overlayVisible,
 		isDark: core.isDark,
 	})

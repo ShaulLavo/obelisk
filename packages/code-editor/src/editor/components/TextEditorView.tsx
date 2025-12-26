@@ -23,6 +23,9 @@ export const TextEditorView = (props: EditorProps) => {
 	const [scrollElement, setScrollElement] = createSignal<HTMLDivElement | null>(
 		null
 	)
+	// Perf isolation: disable minimap during scroll benchmarking.
+	const showMinimap = () => true
+	const showHighlights = () => true
 
 	useScrollBenchmark({ scrollElement })
 
@@ -182,9 +185,10 @@ export const TextEditorView = (props: EditorProps) => {
 	}
 
 	const { getLineHighlights } = createLineHighlights({
-		highlights: () => props.highlights?.(),
+		highlights: () => (showHighlights() ? props.highlights?.() : undefined),
 		errors: () => props.errors?.(),
-		highlightOffset: () => props.highlightOffset?.(),
+		highlightOffset: () =>
+			showHighlights() ? props.highlightOffset?.() : undefined,
 	})
 	// const getLineHighlights = () => undefined
 	// Helper to get line entry for caching
@@ -215,9 +219,11 @@ export const TextEditorView = (props: EditorProps) => {
 
 	// Mark live content as available when we have highlights (or when file is ready)
 	createEffect(() => {
-		const hasHighlights = props.highlights?.()?.length ?? 0
+		const highlightCount = showHighlights()
+			? (props.highlights?.()?.length ?? 0)
+			: 0
 		const hasContent = cursor.lines.lineCount() > 0
-		if (hasContent && (hasHighlights > 0 || props.isFileSelected())) {
+		if (hasContent && (highlightCount > 0 || props.isFileSelected())) {
 			markLiveContentAvailable()
 		}
 	})
@@ -253,14 +259,16 @@ export const TextEditorView = (props: EditorProps) => {
 					onToggleFold={toggleFold}
 					onLineMouseDown={handleLineMouseDown}
 				/>
-				<Minimap
-					scrollElement={scrollElement}
-					errors={props.errors}
-					treeSitterWorker={props.treeSitterWorker}
-					filePath={props.document.filePath()}
-					version={props.documentVersion}
-					content={props.document.content}
-				/>
+				<Show when={showMinimap()}>
+					<Minimap
+						scrollElement={scrollElement}
+						errors={props.errors}
+						treeSitterWorker={props.treeSitterWorker}
+						filePath={props.document.filePath()}
+						version={props.documentVersion}
+						content={props.document.content}
+					/>
+				</Show>
 			</div>
 		</Show>
 	)
