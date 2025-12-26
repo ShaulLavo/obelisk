@@ -12,6 +12,7 @@ import { VFile } from './vfile'
 import { VDir } from './vdir'
 
 const TMP_DIR_NAME = '.tmp'
+const DIR_HANDLE_CACHE_SIZE = 128
 
 type PermissionDescriptor = { mode?: 'read' | 'readwrite' }
 
@@ -24,10 +25,72 @@ type PermissionCapableDirectoryHandle = FileSystemDirectoryHandle & {
 	) => Promise<PermissionState>
 }
 
+/**
+ * Simple LRU cache for directory handles.
+ * Uses a Map (which maintains insertion order) and moves accessed items to the end.
+ *
+ * TODO: Future optimizations:
+ * - Add FileSystemFileHandle pooling for "hot files" (frequently accessed files)
+ *   to skip the getFileHandle() call on repeated access.
+ * - Integrate with useFileSystemObserver to automatically invalidate cache entries
+ *   when files/directories are renamed, moved, or deleted externally.
+ */
+class DirHandleCache {
+	readonly #maxSize: number
+	readonly #cache = new Map<string, FileSystemDirectoryHandle>()
+
+	constructor(maxSize: number) {
+		this.#maxSize = maxSize
+	}
+
+	get(key: string): FileSystemDirectoryHandle | undefined {
+		const value = this.#cache.get(key)
+		if (value !== undefined) {
+			// Move to end (most recently used)
+			this.#cache.delete(key)
+			this.#cache.set(key, value)
+		}
+		return value
+	}
+
+	set(key: string, value: FileSystemDirectoryHandle): void {
+		// Remove oldest if at capacity
+		if (this.#cache.size >= this.#maxSize) {
+			const oldest = this.#cache.keys().next().value
+			if (oldest !== undefined) {
+				this.#cache.delete(oldest)
+			}
+		}
+		this.#cache.set(key, value)
+	}
+
+	/** Invalidate all entries under a path prefix */
+	invalidatePrefix(prefix: string): void {
+		const toDelete: string[] = []
+		for (const key of this.#cache.keys()) {
+			if (key === prefix || key.startsWith(prefix + '/')) {
+				toDelete.push(key)
+			}
+		}
+		for (const key of toDelete) {
+			this.#cache.delete(key)
+		}
+	}
+
+	clear(): void {
+		this.#cache.clear()
+	}
+}
+
 export class FsContextImpl implements FsContextInternal {
 	readonly root: FileSystemDirectoryHandle
 	readonly #baseSegments: string[]
 	readonly #normalizePaths: boolean
+	readonly #dirHandleCache = new DirHandleCache(DIR_HANDLE_CACHE_SIZE)
+	readonly #pendingOperations = new Map<
+		string,
+		Promise<FileSystemDirectoryHandle>
+	>()
 
 	constructor(root: FileSystemDirectoryHandle, options?: FsContextOptions) {
 		this.root = root
@@ -45,6 +108,17 @@ export class FsContextImpl implements FsContextInternal {
 	dir(path = ''): VDir {
 		const resolved = this.#resolvePath(path)
 		return new VDir(this, resolved.relative)
+	}
+
+	async readTextFiles(paths: string[]): Promise<Map<string, string>> {
+		const results = new Map<string, string>()
+		await Promise.all(
+			paths.map(async (path) => {
+				const content = await this.file(path).text()
+				results.set(path, content)
+			})
+		)
+		return results
 	}
 
 	async write(
@@ -164,11 +238,60 @@ export class FsContextImpl implements FsContextInternal {
 		segments: string[],
 		create: boolean
 	): Promise<FileSystemDirectoryHandle> {
-		let current: FileSystemDirectoryHandle = this.root
-		for (const segment of segments) {
-			current = await current.getDirectoryHandle(segment, { create })
+		// Fast path: empty segments means root
+		if (segments.length === 0) {
+			return this.root
 		}
-		return current
+
+		const fullPath = segments.join('/')
+
+		// 1. Check Cache
+		const cached = this.#dirHandleCache.get(fullPath)
+		if (cached) {
+			return cached
+		}
+
+		// 2. Check In-Flight Requests (Request Coalescing)
+		// We use a unique key for the operation to dedupe parallel quests
+		const opKey = `${fullPath}:${create}`
+		const pending = this.#pendingOperations.get(opKey)
+		if (pending) {
+			return pending
+		}
+
+		// 3. Perform Operation
+		const operation = (async () => {
+			try {
+				// Find longest cached prefix to minimize tree walking
+				let startIndex = 0
+				let current: FileSystemDirectoryHandle = this.root
+
+				for (let i = segments.length - 1; i >= 0; i--) {
+					const prefixPath = segments.slice(0, i).join('/')
+					const prefixHandle = this.#dirHandleCache.get(prefixPath)
+					if (prefixHandle) {
+						current = prefixHandle
+						startIndex = i
+						break
+					}
+				}
+
+				// Walk from the cached prefix (or root) to the target
+				for (let i = startIndex; i < segments.length; i++) {
+					current = await current.getDirectoryHandle(segments[i]!, { create })
+					// Cache intermediate paths as we walk
+					const intermediatePath = segments.slice(0, i + 1).join('/')
+					this.#dirHandleCache.set(intermediatePath, current)
+				}
+
+				return current
+			} finally {
+				this.#pendingOperations.delete(opKey)
+			}
+		})()
+
+		this.#pendingOperations.set(opKey, operation)
+		return operation
 	}
 
 	async #getFileHandle(
@@ -186,10 +309,8 @@ export class FsContextImpl implements FsContextInternal {
 	}
 
 	async #ensureDirectory(segments: string[]): Promise<void> {
-		let current: FileSystemDirectoryHandle = this.root
-		for (const segment of segments) {
-			current = await current.getDirectoryHandle(segment, { create: true })
-		}
+		// Reuse the cached getter which handles creation
+		await this.#getDirectoryHandle(segments, true)
 	}
 
 	async #pathExistsAsFile(segments: string[]): Promise<boolean> {
@@ -255,6 +376,21 @@ export class FsContextImpl implements FsContextInternal {
 	async pathExistsAsDirectory(relativePath: string): Promise<boolean> {
 		const resolved = this.resolveRelative(relativePath)
 		return this.#pathExistsAsDirectory(resolved.absoluteSegments)
+	}
+
+	/**
+	 * Invalidate cached directory handles under the given path.
+	 * Call this when external changes occur (e.g., from FileSystemObserver).
+	 */
+	invalidateCacheForPath(path: string): void {
+		const resolved = this.resolveRelative(path)
+		const absolutePath = resolved.absoluteSegments.join('/')
+		this.#dirHandleCache.invalidatePrefix(absolutePath)
+	}
+
+	/** Clear the entire directory handle cache */
+	clearCache(): void {
+		this.#dirHandleCache.clear()
 	}
 }
 
