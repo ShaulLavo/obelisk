@@ -27,6 +27,27 @@ const getClient = (): Sqlite3Client => {
 	return client
 }
 
+const ensureSchema = async () => {
+	const c = getClient()
+	await c.execute(`
+		CREATE TABLE IF NOT EXISTS files (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			path TEXT UNIQUE NOT NULL,
+			path_lc TEXT NOT NULL,
+			basename_lc TEXT NOT NULL,
+			dir_lc TEXT NOT NULL,
+			kind TEXT NOT NULL,
+			recency INTEGER DEFAULT 0
+		)
+	`)
+	await c.execute(
+		'CREATE INDEX IF NOT EXISTS idx_files_path_lc ON files(path_lc)'
+	)
+	await c.execute(
+		'CREATE INDEX IF NOT EXISTS idx_files_basename_lc ON files(basename_lc)'
+	)
+}
+
 const performInit = async (): Promise<{
 	version: string
 	opfsEnabled: boolean
@@ -48,6 +69,8 @@ const performInit = async (): Promise<{
 		url: opfsEnabled ? 'file:/vibe.sqlite3' : ':memory:',
 	}
 	;[client, db] = createClient(clientCofig, sqlite3)
+
+	await ensureSchema()
 
 	log(
 		`[SQLite] v${sqlite3.version.libVersion} initialized. OPFS: ${opfsEnabled}, URL: ${clientCofig.url}`
@@ -97,11 +120,86 @@ const run = async <T = Record<string, unknown>>(
 	}
 }
 
+export type FileMetadata = {
+	path: string
+	kind: string
+}
+
+const batchInsertFiles = async (files: FileMetadata[]): Promise<void> => {
+	if (files.length === 0) return
+	const c = getClient()
+
+	const placeholders = files.map(() => '(?, ?, ?, ?, ?)').join(',')
+	const args: (string | number)[] = []
+
+	for (const file of files) {
+		const path_lc = file.path.toLowerCase()
+		const basename_lc = file.path.split('/').pop()?.toLowerCase() ?? ''
+		const dir_lc = file.path
+			.substring(0, file.path.lastIndexOf('/'))
+			.toLowerCase()
+
+		args.push(file.path, path_lc, basename_lc, dir_lc, file.kind)
+	}
+
+	try {
+		await c.execute({
+			sql: `INSERT OR IGNORE INTO files (path, path_lc, basename_lc, dir_lc, kind) VALUES ${placeholders}`,
+			args,
+		})
+	} catch (e) {
+		log('Batch insert failed', e)
+		throw e
+	}
+}
+
+export type SearchResult = {
+	id: number
+	path: string
+	kind: string
+	recency: number
+}
+
+const searchFiles = async (
+	query: string,
+	limit = 50
+): Promise<SearchResult[]> => {
+	const c = getClient()
+	const q = `%${query.toLowerCase()}%`
+
+	const result = await c.execute({
+		sql: `
+			SELECT id, path, kind, recency 
+			FROM files 
+			WHERE path_lc LIKE ? 
+			ORDER BY 
+				CASE 
+					WHEN basename_lc LIKE ? THEN 1 
+					WHEN path_lc LIKE ? THEN 2 
+					ELSE 3 
+				END,
+				recency DESC,
+				path_lc ASC
+			LIMIT ?
+		`,
+		args: [q, q, `${q}%`, limit],
+	})
+
+	return result.rows.map(
+		(row) =>
+			({
+				id: row[0],
+				path: row[1],
+				kind: row[2],
+				recency: row[3],
+			}) as SearchResult
+	)
+}
+
 const reset = async (): Promise<void> => {
 	// 1. Close the database connection
 	if (db) {
 		try {
-			// @ts-expect-error - close might not be in the type definition but is available
 			db.close()
 		} catch (e) {
 			log('[SQLite] Error closing DB:', e)
@@ -132,6 +230,8 @@ const workerApi = {
 	exec,
 	run,
 	reset,
+	batchInsertFiles,
+	searchFiles,
 }
 
 export type SqliteWorkerApi = typeof workerApi

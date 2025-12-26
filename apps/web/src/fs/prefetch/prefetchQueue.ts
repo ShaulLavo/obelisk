@@ -11,6 +11,11 @@ import type {
 	TreePrefetchWorkerCallbacks,
 	DeferredDirMetadata,
 } from './treePrefetchWorkerTypes'
+import {
+	batchInsertFiles,
+	initSqlite,
+	type FileMetadata,
+} from '../../workers/sqliteClient'
 
 const LOAD_LATER_SEGMENTS = new Set([
 	'node_modules',
@@ -28,6 +33,7 @@ const MAX_PREFETCHED_DIRS = Infinity
 const STATUS_SAMPLE_INTERVAL = 50
 const BATCH_SIZE = 8
 const BATCH_DELAY_MS = 4
+const INDEX_BATCH_SIZE = 100
 
 const prefetchLogger = logger.withTag('prefetch')
 const now = () =>
@@ -82,11 +88,18 @@ export class PrefetchQueue {
 	private primaryPhaseLogged = false
 	private deferredPhaseLogged = false
 
+	private indexBatch: FileMetadata[] = []
+	private indexFlushPromise: Promise<void> | null = null
+
 	constructor(private readonly options: PrefetchQueueOptions) {
 		this.workerCount = Math.max(1, Math.floor(options.workerCount))
 		if (this.workerCount < 1) {
 			throw new Error('PrefetchQueue requires at least one worker')
 		}
+		// Ensure SQLite is initialized for indexing
+		void initSqlite().catch((err) => {
+			prefetchLogger.error('Failed to initialize SQLite for indexing', err)
+		})
 	}
 
 	async resetForSource(source: FsSource) {
@@ -142,6 +155,7 @@ export class PrefetchQueue {
 				// no-op
 			}
 		}
+		await this.flushIndexBatch() // Flush remaining items
 		this.primaryQueue.clear()
 		this.deferredQueue.clear()
 		this.loadedDirPaths.clear()
@@ -447,15 +461,47 @@ export class PrefetchQueue {
 		const path = dir.path ?? ''
 		this.loadedDirPaths.add(path)
 		const children = dir.children
+
+		const filesToIndex: FileMetadata[] = []
+
 		const fileCount = !children
 			? 0
 			: children.reduce((count, child) => {
-					return child.kind === 'file' ? count + 1 : count
+					if (child.kind === 'file') {
+						filesToIndex.push({ path: child.path, kind: 'file' })
+						return count + 1
+					} else if (child.kind === 'dir') {
+						filesToIndex.push({ path: child.path, kind: 'dir' })
+					}
+					return count
 				}, 0)
+
+		if (filesToIndex.length > 0) {
+			this.indexBatch.push(...filesToIndex)
+			if (this.indexBatch.length >= INDEX_BATCH_SIZE) {
+				void this.flushIndexBatch()
+			}
+		}
+
 		const previous = this.loadedDirFileCounts.get(path) ?? 0
 		if (fileCount === previous) return
 		this.loadedDirFileCounts.set(path, fileCount)
 		this.indexedFileCount += fileCount - previous
+	}
+
+	private async flushIndexBatch() {
+		if (this.indexBatch.length === 0) return
+		// If a flush is already happening, we might want to wait or chain?
+		// For simplicity, we just fire and forget (void) in usage, but here guard against simple race if needed.
+		// Actually comlink handles queueing.
+		const batch = [...this.indexBatch]
+		this.indexBatch = []
+
+		try {
+			await batchInsertFiles(batch)
+		} catch (err) {
+			prefetchLogger.error('Failed to batch insert files to SQLite', err)
+		}
 	}
 
 	private ingestLoadedSubtree(node: FsDirTreeNode) {
@@ -518,6 +564,8 @@ export class PrefetchQueue {
 		if (hasWork) {
 			return
 		}
+
+		void this.flushIndexBatch() // Flush at the end of a run
 
 		const processedDelta = this.processedCount - this.loggedProcessedCount
 		if (processedDelta <= 0) {
