@@ -41,3 +41,13 @@ export type {
 	FileSystemObserverCallback,
 	FileSystemObserverOptions,
 } from './FileSystemObserver'
+
+// Grep module
+export { grep, grepStream, GrepCoordinator } from './grep'
+export type {
+	GrepOptions,
+	GrepMatch,
+	GrepFileResult,
+	GrepProgress,
+	GrepProgressCallback,
+} from './grep'

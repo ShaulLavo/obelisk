@@ -17,6 +17,8 @@
 
 ## Build, Dev & Lint
 
+> **STRICT RULE**: You MUST use `bun` for all package management and script execution tasks. Do NOT use `npm`, `pnpm`, `node`, or `npx`. Failure to comply results in immediate termination.
+
 - Install deps: `bun install` (Node ≥ 18, Bun as package manager).
 - Run all apps in dev: `bun run dev`. -- never ever do this ask user to do it
 - Example focused dev run: `bun run dev --filter web` or `--filter server`. -- never ever do this ask user to do it

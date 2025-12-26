@@ -9,6 +9,7 @@
     "@repo/logger": "*",
     "@repo/perf": "*",
     "@repo/utils": "*",
+    "comlink": "^4.4.2",
     "localforage": "^1.10.0",
     "nanoid": "^5.0.9"
   },

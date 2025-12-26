@@ -53,6 +53,7 @@ export interface FsContext {
 	readonly root: FileSystemDirectoryHandle
 	file(path: string, mode?: OpenMode): VFile
 	dir(path?: string): VDir
+	readTextFiles(paths: string[]): Promise<Map<string, string>>
 	// Low-level helpers primarily used by tree building utilities
 	getDirectoryHandleForRelative(
 		path: string,
