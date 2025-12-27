@@ -219,8 +219,8 @@ export const useFileSelection = ({
 						}
 
 						if (CURRENT_ANIMATION === FileSelectionAnimation.Blur) {
-							// viewTransitionBatched(updateState)
-							batch(updateState)
+							viewTransitionBatched(updateState)
+							// batch(updateState)
 						} else {
 							batch(updateState)
 						}

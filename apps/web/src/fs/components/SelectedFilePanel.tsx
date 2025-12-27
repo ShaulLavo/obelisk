@@ -61,8 +61,8 @@ export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
 			updateSelectedFileScrollPosition,
 			updateSelectedFileVisibleContent,
 			saveFile,
-	},
-] = useFs()
+		},
+	] = useFs()
 	const focus = useFocusManager()
 	const highlightLog = logger.withTag('highlights')
 
@@ -135,17 +135,18 @@ export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
 			}
 			// IMPORTANT: Unwrap the proxy to ensure downstream sorting is fast
 			const unwrapped = unwrap(captures)
-			const next: EditorSyntaxHighlight[] = new Array(unwrapped.length)
+			const next: EditorSyntaxHighlight[] = []
 			for (let i = 0; i < unwrapped.length; i += 1) {
 				const capture = unwrapped[i]
+				if (!capture) continue
 				const className =
 					capture.className ?? getHighlightClassForScope(capture.scope)
-				next[i] = {
+				next.push({
 					startIndex: capture.startIndex,
 					endIndex: capture.endIndex,
 					scope: capture.scope,
 					className,
-				}
+				})
 			}
 			return next
 		}
