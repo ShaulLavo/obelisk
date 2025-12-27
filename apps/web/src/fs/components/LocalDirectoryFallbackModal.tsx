@@ -100,8 +100,7 @@ export const LocalDirectoryFallbackModal: Component = () => {
 				variant: 'outline',
 				autoClose: false,
 				disabled: () => processing(),
-				class:
-					'border-zinc-600 bg-transparent text-zinc-200 hover:bg-zinc-800/80',
+				class: 'text-muted-foreground',
 				onPress: handleCancel,
 			},
 			{
@@ -116,7 +115,7 @@ export const LocalDirectoryFallbackModal: Component = () => {
 				autoClose: false,
 				disabled: () => processing(),
 				class:
-					'border-blue-500 bg-blue-600/20 text-blue-100 hover:bg-blue-500/30 disabled:opacity-60',
+					'border-blue-500 bg-blue-100 text-blue-900 hover:bg-blue-200 dark:bg-blue-600/20 dark:text-blue-100 dark:hover:bg-blue-500/30 disabled:opacity-60',
 				onPress: () => startImport('memory'),
 			},
 		]
@@ -131,7 +130,7 @@ export const LocalDirectoryFallbackModal: Component = () => {
 				autoClose: false,
 				disabled: () => processing(),
 				class:
-					'border-emerald-500 bg-emerald-600/30 text-emerald-100 hover:bg-emerald-500/40 disabled:opacity-60',
+					'border-emerald-500 bg-emerald-100 text-emerald-900 hover:bg-emerald-200 dark:bg-emerald-600/30 dark:text-emerald-100 dark:hover:bg-emerald-500/40 disabled:opacity-60',
 				onPress: () => startImport('opfs'),
 			})
 		}
@@ -139,39 +138,39 @@ export const LocalDirectoryFallbackModal: Component = () => {
 		modalId = modal({
 			heading: 'Import a folder',
 			body: (
-				<div class="space-y-3 text-xs text-zinc-300">
-					<p class="text-sm text-zinc-200">{description()}</p>
+				<div class="space-y-3 text-xs text-muted-foreground">
+					<p class="text-sm text-foreground">{description()}</p>
 					{singleMode() ? (
 						<>
-							<p class="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-100">
+							<p class="rounded-md border border-amber-200 bg-amber-100 px-3 py-2 text-[11px] text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100">
 								This browser only supports the temporary memory import. Load a
 								folder to edit it for this session; the workspace will reset as
 								soon as you reload and changes won't sync to disk.
 							</p>
-							<p class="text-[11px] text-zinc-400">
+							<p class="text-[11px] text-muted-foreground">
 								For persistent access, open this app in a Chromium-based
 								browser.
 							</p>
 						</>
 					) : (
 						<>
-							<p class="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-100">
+							<p class="rounded-md border border-amber-200 bg-amber-100 px-3 py-2 text-[11px] text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100">
 								Load the folder into memory for a one-off editing session (it
 								resets the moment you reload), or copy it into browser storage
 								(OPFS) to keep it across reloads. Important: OPFS is sandboxed,
 								so changes are saved in the browser but will NOT update your
 								original files on disk.
 							</p>
-							<p class="text-[11px] text-zinc-400">
+							<p class="text-[11px] text-muted-foreground">
 								Persisting replaces the existing OPFS workspace for this app.
 							</p>
 						</>
 					)}
-					{error() && <p class="text-sm text-red-400">{error()}</p>}
+					{error() && <p class="text-sm text-destructive">{error()}</p>}
 				</div>
 			),
 			dismissable: false,
-			contentClass: 'bg-zinc-950/95 text-zinc-100',
+			// contentClass: 'bg-zinc-950/95 text-zinc-100',
 			actions,
 		})
 

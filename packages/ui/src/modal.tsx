@@ -51,10 +51,10 @@ const Modal: Component = () => {
 				{(state) => (
 					<DialogPrimitive.Portal>
 						<div class="fixed inset-0 z-50 flex items-start justify-center sm:items-center">
-							<DialogPrimitive.Overlay class="fixed inset-0 z-50 bg-black/50 backdrop-blur-[2px] data-[expanded]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[expanded]:fade-in-0" />
+							<DialogPrimitive.Overlay class="fixed inset-0 z-50 bg-background/80 backdrop-blur-[2px] data-[expanded]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[expanded]:fade-in-0" />
 							<DialogPrimitive.Content
 								class={cn(
-									'fixed left-1/2 top-1/2 z-50 grid max-h-screen w-full max-w-md -translate-x-1/2 -translate-y-1/2 gap-3 overflow-y-auto rounded-md bg-zinc-900 p-4 shadow-xl duration-200 data-[expanded]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[expanded]:fade-in-0 data-[closed]:zoom-out-95 data-[expanded]:zoom-in-95 data-[closed]:slide-out-to-left-1/2 data-[closed]:slide-out-to-top-[48%] data-[expanded]:slide-in-from-left-1/2 data-[expanded]:slide-in-from-top-[48%]',
+									'fixed left-1/2 top-1/2 z-50 grid max-h-screen w-full max-w-md -translate-x-1/2 -translate-y-1/2 gap-3 overflow-y-auto rounded-md border border-border bg-background p-4 shadow-xl duration-200 data-[expanded]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[expanded]:fade-in-0 data-[closed]:zoom-out-95 data-[expanded]:zoom-in-95 data-[closed]:slide-out-to-left-1/2 data-[closed]:slide-out-to-top-[48%] data-[expanded]:slide-in-from-left-1/2 data-[expanded]:slide-in-from-top-[48%]',
 									state().options.contentClass
 								)}
 								onEscapeKeyDown={preventDismiss}
@@ -63,14 +63,14 @@ const Modal: Component = () => {
 								onInteractOutside={preventDismiss}
 							>
 								<div class="flex flex-col gap-1 text-left">
-									<DialogPrimitive.Title class="text-base font-medium text-zinc-100 leading-tight">
+									<DialogPrimitive.Title class="text-base font-medium text-foreground leading-tight">
 										{resolveValue(state().options.heading)}
 									</DialogPrimitive.Title>
 									<Show when={resolveValue(state().options.body)}>
 										{(body) => (
 											<DialogPrimitive.Description
 												as="div"
-												class="text-sm text-zinc-400 whitespace-pre-wrap leading-relaxed"
+												class="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed"
 											>
 												{body()}
 											</DialogPrimitive.Description>
@@ -96,7 +96,7 @@ const Modal: Component = () => {
 									</div>
 								</Show>
 								<Show when={isDismissable()}>
-									<DialogPrimitive.CloseButton class="absolute right-3 top-3 rounded p-0.5 text-zinc-400 transition-colors hover:text-zinc-200 hover:bg-white/5 focus:outline-none">
+									<DialogPrimitive.CloseButton class="absolute right-3 top-3 rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent hover:text-accent-foreground focus:outline-none">
 										<VsClose class="size-4" />
 										<span class="sr-only">Close</span>
 									</DialogPrimitive.CloseButton>
