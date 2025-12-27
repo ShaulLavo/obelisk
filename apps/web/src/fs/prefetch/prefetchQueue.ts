@@ -86,7 +86,6 @@ export class PrefetchQueue {
 		if (this.workerCount < 1) {
 			throw new Error('PrefetchQueue requires at least one worker')
 		}
-		// Ensure SQLite is initialized for indexing
 		void initSqlite().catch((err) => {
 			prefetchLogger.error('Failed to initialize SQLite for indexing', err)
 		})
@@ -101,7 +100,7 @@ export class PrefetchQueue {
 			try {
 				await draining
 			} catch {
-				// Ignore drain failures during reset; errors are surfaced via callbacks
+				// no-op
 			}
 		}
 		this.stopRequested = false
@@ -145,7 +144,7 @@ export class PrefetchQueue {
 				// no-op
 			}
 		}
-		await this.flushIndexBatch() // Flush remaining items
+		await this.flushIndexBatch()
 		this.primaryQueue.clear()
 		this.deferredQueue.clear()
 		this.loadedDirPaths.clear()
@@ -306,7 +305,6 @@ export class PrefetchQueue {
 
 	private flushPhaseResults(priority: PrefetchPriority) {
 		if (priority === 'deferred') {
-			// Deferred nodes stay off the client tree; nothing to flush.
 			this.pendingResults.deferred.length = 0
 			return
 		}
@@ -481,9 +479,6 @@ export class PrefetchQueue {
 
 	private async flushIndexBatch() {
 		if (this.indexBatch.length === 0) return
-		// If a flush is already happening, we might want to wait or chain?
-		// For simplicity, we just fire and forget (void) in usage, but here guard against simple race if needed.
-		// Actually comlink handles queueing.
 		const batch = [...this.indexBatch]
 		this.indexBatch = []
 
@@ -555,7 +550,7 @@ export class PrefetchQueue {
 			return
 		}
 
-		void this.flushIndexBatch() // Flush at the end of a run
+		void this.flushIndexBatch()
 
 		const processedDelta = this.processedCount - this.loggedProcessedCount
 		if (processedDelta <= 0) {

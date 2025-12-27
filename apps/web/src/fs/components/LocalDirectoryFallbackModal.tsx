@@ -219,7 +219,6 @@ export const LocalDirectoryFallbackModal: Component = () => {
 			pending.resolve({ handle, nextSource })
 			reset()
 		} catch (err) {
-			// If user cancelled the confirmation, just reset the pending mode
 			if (err instanceof Error && err.message.includes('cancelled by user')) {
 				if (pending) {
 					pending.reject(err)

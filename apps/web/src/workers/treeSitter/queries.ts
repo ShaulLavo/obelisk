@@ -39,13 +39,11 @@ export const runHighlightQueries = (
 const hasFoldableBody = (node: NonNullable<SyntaxNode>): boolean => {
 	const type = node.type
 
-	// Arrow functions: only foldable if body is a statement_block
 	if (type === 'arrow_function') {
 		const body = node.childForFieldName('body')
 		return body?.type === 'statement_block'
 	}
 
-	// Control flow statements: only foldable if they have a statement_block
 	const controlFlowTypes = [
 		'if_statement',
 		'for_statement',
@@ -55,13 +53,9 @@ const hasFoldableBody = (node: NonNullable<SyntaxNode>): boolean => {
 	]
 
 	if (controlFlowTypes.includes(type)) {
-		// Check for any statement_block child (consequence, body, etc.)
 		for (let i = 0; i < node.childCount; i++) {
 			const child = node.child(i)
 			if (child?.type === 'statement_block') {
-				// Additionally check that the block has content (not just `{}`)
-				// A block with just `{` and `}` has 2 or fewer children
-				// and the named children count will be 0
 				if (child.namedChildCount > 0) {
 					return true
 				}
@@ -70,7 +64,6 @@ const hasFoldableBody = (node: NonNullable<SyntaxNode>): boolean => {
 		return false
 	}
 
-	// All other node types are foldable by default
 	return true
 }
 
@@ -89,7 +82,6 @@ export const runFoldQueries = (tree: Tree, languageId: string): FoldRange[] => {
 				const endLine = node.endPosition.row
 				if (endLine <= startLine) continue
 
-				// Check if node has actual foldable content
 				if (!hasFoldableBody(node)) continue
 
 				const key = `${startLine}:${endLine}:${node.type}`

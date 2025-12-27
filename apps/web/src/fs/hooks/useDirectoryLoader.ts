@@ -105,19 +105,13 @@ export const useDirectoryLoader = ({
 		}
 	}
 
-	/**
-	 * Force reload a directory from disk, regardless of its current loaded state.
-	 * Used by FileSystemObserver to refresh directories when changes are detected.
-	 */
 	const reloadDirectory = async (path: string): Promise<void> => {
 		if (!state.tree) return
 
-		// For root path, reload from root
 		const targetPath = path || ''
 		const existing = findNode(state.tree, targetPath)
 		if (!existing || existing.kind !== 'dir') return
 
-		// Cancel any inflight load for this path
 		subtreeLoads.delete(targetPath)
 
 		const expandedSnapshot = { ...state.expanded }

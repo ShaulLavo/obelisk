@@ -20,7 +20,6 @@ const buildMinimapTokens = (
 	const buffer = new ArrayBuffer(totalTokens * 2)
 	const tokens = new Uint16Array(buffer)
 
-	// Build line start offsets for fast lookup
 	const lineStarts: number[] = new Array(lineCount)
 	let offset = 0
 	for (let i = 0; i < lineCount; i++) {
@@ -28,7 +27,6 @@ const buildMinimapTokens = (
 		offset += lines[i]!.length + 1 // +1 for newline
 	}
 
-	// Process each line
 	let captureIndex = 0
 
 	for (let lineIndex = 0; lineIndex < lineCount; lineIndex++) {
@@ -47,14 +45,12 @@ const buildMinimapTokens = (
 		const tokenOffset = lineIndex * maxChars
 		const sampleLength = Math.min(lineText.length, maxChars)
 
-		// 1. Fill base characters
 		for (let i = 0; i < sampleLength; i++) {
 			const code = lineText.charCodeAt(i)
 			// Color 0, char code in low byte
 			tokens[tokenOffset + i] = code
 		}
 
-		// 2. Iterate relevant captures for this line and paint the colors
 		let idx = captureIndex
 		while (idx < captures.length && captures[idx]!.startIndex < lineEnd) {
 			const capture = captures[idx]!

@@ -1,4 +1,8 @@
-import type { SyncStorageBackend, AsyncStorageBackend, TierRoutingConfig, CacheEntryMetadata } from './backends/types'
+import type {
+	SyncStorageBackend,
+	AsyncStorageBackend,
+	TierRoutingConfig,
+} from './backends/types'
 import { DEFAULT_ROUTING } from './backends/types'
 import type { FileCacheEntry } from './fileCacheController'
 
@@ -19,7 +23,7 @@ export interface TierRouterOptions {
 /**
  * Manages routing of cache entries to appropriate storage tiers and handles
  * lookup order (Hot → Warm → Cold) with promotion from cold to hot on access.
- * 
+ *
  * FileSystemAccessHandle objects can ONLY be cached in IndexedDB (not localStorage/memory)
  * due to serialization constraints.
  */
@@ -39,7 +43,9 @@ export class TierRouter {
 	/**
 	 * Determines which tier a data type should be stored in based on routing configuration.
 	 */
-	private getTierForDataType(dataType: keyof FileCacheEntry): 'hot' | 'warm' | 'cold' {
+	private getTierForDataType(
+		dataType: keyof FileCacheEntry
+	): 'hot' | 'warm' | 'cold' {
 		if (this.routing.hotOnly.includes(dataType)) {
 			return 'hot'
 		}
@@ -58,7 +64,9 @@ export class TierRouter {
 	 */
 	private getBackendForTier(tier: 'hot' | 'warm'): SyncStorageBackend<unknown>
 	private getBackendForTier(tier: 'cold'): AsyncStorageBackend<unknown>
-	private getBackendForTier(tier: 'hot' | 'warm' | 'cold'): SyncStorageBackend<unknown> | AsyncStorageBackend<unknown> {
+	private getBackendForTier(
+		tier: 'hot' | 'warm' | 'cold'
+	): SyncStorageBackend<unknown> | AsyncStorageBackend<unknown> {
 		switch (tier) {
 			case 'hot':
 				return this.hot
@@ -73,14 +81,21 @@ export class TierRouter {
 	 * Generates a cache key for a specific path and data type.
 	 * Format: "v1:{path}:{dataType}"
 	 */
-	private generateCacheKey(path: string, dataType: keyof FileCacheEntry): string {
+	private generateCacheKey(
+		path: string,
+		dataType: keyof FileCacheEntry
+	): string {
 		return `v1:${path}:${dataType}`
 	}
 
 	/**
 	 * Stores a value in the appropriate tier based on data type routing.
 	 */
-	async set(path: string, dataType: keyof FileCacheEntry, value: unknown): Promise<void> {
+	async set(
+		path: string,
+		dataType: keyof FileCacheEntry,
+		value: unknown
+	): Promise<void> {
 		const tier = this.getTierForDataType(dataType)
 		const key = this.generateCacheKey(path, dataType)
 
@@ -93,10 +108,8 @@ export class TierRouter {
 				backend.set(key, value)
 			}
 		} catch (error) {
-			// Graceful fallback: if target tier fails, try other tiers
 			console.warn(`Failed to store ${key} in ${tier} tier:`, error)
-			
-			// Try fallback tiers
+
 			if (tier === 'cold') {
 				try {
 					this.warm.set(key, value)
@@ -107,7 +120,6 @@ export class TierRouter {
 				try {
 					this.hot.set(key, value)
 				} catch {
-					// If both hot and warm fail, don't try cold as it might not be appropriate
 					console.error(`Failed to store ${key} in any available tier`)
 				}
 			}
@@ -118,10 +130,12 @@ export class TierRouter {
 	 * Retrieves a value following tier lookup order (Hot → Warm → Cold).
 	 * Promotes cold cache entries to hot cache on access.
 	 */
-	async get(path: string, dataType: keyof FileCacheEntry): Promise<unknown | null> {
+	async get(
+		path: string,
+		dataType: keyof FileCacheEntry
+	): Promise<unknown | null> {
 		const key = this.generateCacheKey(path, dataType)
-		
-		// Check hot cache first (synchronous)
+
 		try {
 			const hotResult = this.hot.get(key)
 			if (hotResult !== null) {
@@ -131,11 +145,9 @@ export class TierRouter {
 			console.warn(`Failed to get ${key} from hot cache:`, error)
 		}
 
-		// Check warm cache second (synchronous)
 		try {
 			const warmResult = this.warm.get(key)
 			if (warmResult !== null) {
-				// Promote to hot cache for faster subsequent access
 				try {
 					this.hot.set(key, warmResult)
 				} catch (error) {
@@ -147,11 +159,9 @@ export class TierRouter {
 			console.warn(`Failed to get ${key} from warm cache:`, error)
 		}
 
-		// Check cold cache last (asynchronous)
 		try {
 			const coldResult = await this.cold.get(key)
 			if (coldResult !== null) {
-				// Promote to hot cache for faster subsequent access
 				try {
 					this.hot.set(key, coldResult)
 				} catch (error) {
@@ -171,18 +181,24 @@ export class TierRouter {
 	 */
 	async remove(path: string, dataType: keyof FileCacheEntry): Promise<void> {
 		const key = this.generateCacheKey(path, dataType)
-		
+
 		// Remove from all tiers, continue even if some fail
 		const promises = [
-			Promise.resolve().then(() => this.hot.remove(key)).catch(error => 
-				console.warn(`Failed to remove ${key} from hot cache:`, error)
-			),
-			Promise.resolve().then(() => this.warm.remove(key)).catch(error => 
-				console.warn(`Failed to remove ${key} from warm cache:`, error)
-			),
-			this.cold.remove(key).catch(error => 
-				console.warn(`Failed to remove ${key} from cold cache:`, error)
-			)
+			Promise.resolve()
+				.then(() => this.hot.remove(key))
+				.catch((error) =>
+					console.warn(`Failed to remove ${key} from hot cache:`, error)
+				),
+			Promise.resolve()
+				.then(() => this.warm.remove(key))
+				.catch((error) =>
+					console.warn(`Failed to remove ${key} from warm cache:`, error)
+				),
+			this.cold
+				.remove(key)
+				.catch((error) =>
+					console.warn(`Failed to remove ${key} from cold cache:`, error)
+				),
 		]
 
 		await Promise.all(promises)
@@ -193,7 +209,7 @@ export class TierRouter {
 	 */
 	async has(path: string, dataType: keyof FileCacheEntry): Promise<boolean> {
 		const key = this.generateCacheKey(path, dataType)
-		
+
 		try {
 			// Check in order: hot → warm → cold
 			if (this.hot.has(key)) return true
@@ -202,7 +218,7 @@ export class TierRouter {
 		} catch (error) {
 			console.warn(`Failed to check existence of ${key}:`, error)
 		}
-		
+
 		return false
 	}
 
@@ -212,12 +228,19 @@ export class TierRouter {
 	async clearPath(path: string): Promise<void> {
 		// Get all possible data types from FileCacheEntry
 		const dataTypes: Array<keyof FileCacheEntry> = [
-			'pieceTable', 'stats', 'previewBytes', 'highlights', 'folds', 
-			'brackets', 'errors', 'scrollPosition', 'visibleContent'
+			'pieceTable',
+			'stats',
+			'previewBytes',
+			'highlights',
+			'folds',
+			'brackets',
+			'errors',
+			'scrollPosition',
+			'visibleContent',
 		]
 
 		// Remove each data type for this path
-		const promises = dataTypes.map(dataType => this.remove(path, dataType))
+		const promises = dataTypes.map((dataType) => this.remove(path, dataType))
 		await Promise.all(promises)
 	}
 
@@ -226,15 +249,15 @@ export class TierRouter {
 	 */
 	async clearAll(): Promise<void> {
 		const promises = [
-			Promise.resolve().then(() => this.hot.clear()).catch(error => 
-				console.warn('Failed to clear hot cache:', error)
-			),
-			Promise.resolve().then(() => this.warm.clear()).catch(error => 
-				console.warn('Failed to clear warm cache:', error)
-			),
-			this.cold.clear().catch(error => 
-				console.warn('Failed to clear cold cache:', error)
-			)
+			Promise.resolve()
+				.then(() => this.hot.clear())
+				.catch((error) => console.warn('Failed to clear hot cache:', error)),
+			Promise.resolve()
+				.then(() => this.warm.clear())
+				.catch((error) => console.warn('Failed to clear warm cache:', error)),
+			this.cold
+				.clear()
+				.catch((error) => console.warn('Failed to clear cold cache:', error)),
 		]
 
 		await Promise.all(promises)
@@ -248,7 +271,7 @@ export class TierRouter {
 			const [hotKeys, warmKeys, coldKeys] = await Promise.all([
 				Promise.resolve(this.hot.keys()).catch(() => []),
 				Promise.resolve(this.warm.keys()).catch(() => []),
-				this.cold.keys().catch(() => [])
+				this.cold.keys().catch(() => []),
 			])
 
 			// Deduplicate keys
@@ -268,13 +291,13 @@ export class TierRouter {
 			const [hotSize, warmSize, coldSize] = await Promise.all([
 				Promise.resolve(this.hot.estimateSize?.() ?? 0),
 				Promise.resolve(this.warm.estimateSize?.() ?? 0),
-				this.cold.estimateSize?.() ?? Promise.resolve(0)
+				this.cold.estimateSize?.() ?? Promise.resolve(0),
 			])
 
 			return {
 				hot: hotSize,
 				warm: warmSize,
-				cold: coldSize
+				cold: coldSize,
 			}
 		} catch (error) {
 			console.warn('Failed to get cache stats:', error)

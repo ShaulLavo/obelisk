@@ -8,10 +8,6 @@ const isTest =
 
 export const DEFAULT_SOURCE: FsSource = isTest ? 'memory' : 'local'
 
-/**
- * Segments that should be excluded from prefetching and grep searches.
- * These are typically large directories that slow down operations.
- */
 export const IGNORED_SEGMENTS = new Set([
 	'node_modules',
 	'.git',

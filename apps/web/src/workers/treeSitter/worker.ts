@@ -26,9 +26,6 @@ const api: TreeSitterWorkerApi = {
 		await ensureParser()
 	},
 	async parse(source) {
-		// This old parse method assumes TSX or default language which is not ideal anymore
-		// But it's usually not used?
-		// We'll default to typescript if called without context, or just fail.
 		const res = await ensureParser('typescript')
 		if (!res) return undefined
 		const { parser } = res
@@ -86,8 +83,6 @@ self.addEventListener('message', (event: MessageEvent) => {
 		event.data.port instanceof MessagePort
 	) {
 		log.info('Received port connection from minimap worker')
-		// Explicit MessagePort transfers make origin checks unnecessary in this same-origin worker context.
-		// Expose the API on the port for direct worker-to-worker communication
 		expose(api, event.data.port)
 	}
 })

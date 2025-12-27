@@ -3,10 +3,8 @@ import { logger } from '../../logger'
 
 const log = logger.withTag('treeSitter')
 
-// AST cache: path -> cached tree entry
 export const astCache = new Map<string, CachedTreeEntry>()
 
-// Minimap ready subscribers
 const minimapReadySubscribers = new Map<
 	number,
 	(payload: { path: string }) => void

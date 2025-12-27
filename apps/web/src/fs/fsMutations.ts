@@ -118,7 +118,6 @@ export const createFsMutations = ({
 		const filePath = path ?? state.lastKnownFilePath
 		if (!filePath) return
 
-		// Only allow saving the currently selected file for now
 		if (path && path !== state.lastKnownFilePath) {
 			toast.error('Can only save the currently selected file')
 			return
@@ -134,7 +133,7 @@ export const createFsMutations = ({
 
 		try {
 			const pieceTable = state.pieceTables[filePath]
-			// Materialize content from piece table if available, else use raw content
+
 			const content = pieceTable
 				? getPieceTableText(pieceTable)
 				: state.selectedFileContent
@@ -142,26 +141,17 @@ export const createFsMutations = ({
 			const ctx = await ensureFs(getActiveSource())
 			await ctx.write(filePath, content)
 
-			// Create a new flat piece table from the saved content
-			// This prevents the "dirty" state from re-appearing due to history mismatch
-			// and optimizes the piece table structure.
-			// History relies on DocumentIncrementalEdit, which is independent of the underlying snapshot structure,
-			// so undo/redo stack remains valid.
 			const newSnapshot = createPieceTableSnapshot(content)
 
 			batch(() => {
-				// Update the piece table for this file
 				updateSelectedFilePieceTable(() => newSnapshot)
 
-				// Update file size
 				if (filePath === state.selectedPath) {
 					setSelectedFileSize(new Blob([content]).size)
 				}
 
-				// Update raw content cache
 				setSelectedFileContent(content)
 
-				// Clear dirty state
 				setDirtyPath(filePath, false)
 			})
 			toast.success('File saved')

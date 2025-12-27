@@ -57,7 +57,6 @@ export const makeTreePrefetch = ({
 
 	const handlePrefetchError = (payload: PrefetchErrorPayload) => {
 		setPrefetchError(payload.message)
-		// Show a warning toast - prefetch errors are non-blocking
 		toast.warning(payload.message)
 	}
 

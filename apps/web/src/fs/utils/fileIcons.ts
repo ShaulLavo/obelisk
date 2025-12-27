@@ -58,8 +58,7 @@ export const getIconForFile = (name: string): Component<IconProps> => {
 		case 'h':
 			return MtCpp
 		default:
-			// Check for specific filenames
 			if (name === 'package.json') return MtNodejs
-			return VsFile as Component<IconProps> // VsFile might strictly be typed slightly differently but compatible
+			return VsFile as Component<IconProps>
 	}
 }

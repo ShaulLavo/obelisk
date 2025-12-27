@@ -17,52 +17,57 @@ export interface MetadataStoreOptions {
 export interface CacheMetadataStoreInterface {
 	/** Get metadata for a cache entry */
 	getMetadata(path: string): CacheEntryMetadata | null
-	
+
 	/** Set metadata for a cache entry */
 	setMetadata(path: string, metadata: CacheEntryMetadata): void
-	
+
 	/** Remove metadata for a cache entry */
 	removeMetadata(path: string): void
-	
+
 	/** Check if cached data is stale compared to file mtime */
 	isStale(path: string, currentMtime?: number): boolean
-	
+
 	/** Update last access time for LRU tracking */
 	updateLastAccess(path: string): void
-	
+
 	/** Get LRU ordered list of paths (oldest first) */
 	getLRUOrder(): string[]
-	
+
 	/** Clear all metadata */
 	clear(): void
-	
+
 	/** Get all tracked paths */
 	getAllPaths(): string[]
-	
+
 	/** Persist metadata to localStorage */
 	persist(): void
-	
+
 	/** Load metadata from localStorage */
 	load(): void
-	
+
 	/** Get current metadata store stats */
-	getStats(): { entryCount: number; oldestAccess: number | null; newestAccess: number | null }
+	getStats(): {
+		entryCount: number
+		oldestAccess: number | null
+		newestAccess: number | null
+	}
 }
 
 /**
  * Creates a cache metadata store that persists entry metadata to localStorage
  * for fast startup and provides staleness checking against file modification times.
  */
-export function createCacheMetadataStore(options: MetadataStoreOptions = {}): CacheMetadataStoreInterface {
+export function createCacheMetadataStore(
+	options: MetadataStoreOptions = {}
+): CacheMetadataStoreInterface {
 	const keyPrefix = options.keyPrefix ?? 'fc-meta:'
 	const maxEntries = options.maxEntries ?? 10000
 	const storageKey = `${keyPrefix}store`
-	
-	// In-memory metadata store
+
 	let metadataStore: CacheMetadataStore = {
 		entries: {},
 		lruOrder: [],
-		version: 1
+		version: 1,
 	}
 
 	const getMetadata = (path: string): CacheEntryMetadata | null => {
@@ -70,20 +75,14 @@ export function createCacheMetadataStore(options: MetadataStoreOptions = {}): Ca
 	}
 
 	const setMetadata = (path: string, metadata: CacheEntryMetadata): void => {
-		// Update metadata
 		metadataStore.entries[path] = { ...metadata }
-		
-		// Update LRU order
 		updateLRUOrder(path)
-		
-		// Enforce max entries limit
 		enforceMaxEntries()
 	}
 
 	const removeMetadata = (path: string): void => {
 		delete metadataStore.entries[path]
-		
-		// Remove from LRU order
+
 		const index = metadataStore.lruOrder.indexOf(path)
 		if (index !== -1) {
 			metadataStore.lruOrder.splice(index, 1)
@@ -91,13 +90,11 @@ export function createCacheMetadataStore(options: MetadataStoreOptions = {}): Ca
 	}
 
 	const updateLRUOrder = (path: string): void => {
-		// Remove from current position
 		const index = metadataStore.lruOrder.indexOf(path)
 		if (index !== -1) {
 			metadataStore.lruOrder.splice(index, 1)
 		}
-		
-		// Add to end (most recently used)
+
 		metadataStore.lruOrder.push(path)
 	}
 
@@ -132,7 +129,7 @@ export function createCacheMetadataStore(options: MetadataStoreOptions = {}): Ca
 		if (metadata) {
 			setMetadata(path, {
 				...metadata,
-				lastAccess: Date.now()
+				lastAccess: Date.now(),
 			})
 		}
 	}
@@ -145,7 +142,7 @@ export function createCacheMetadataStore(options: MetadataStoreOptions = {}): Ca
 		metadataStore = {
 			entries: {},
 			lruOrder: [],
-			version: 1
+			version: 1,
 		}
 	}
 
@@ -167,8 +164,7 @@ export function createCacheMetadataStore(options: MetadataStoreOptions = {}): Ca
 			const stored = localStorage.getItem(storageKey)
 			if (stored) {
 				const parsed = JSON.parse(stored) as CacheMetadataStore
-				
-				// Validate version compatibility
+
 				if (parsed.version === 1) {
 					metadataStore = parsed
 				} else {
@@ -185,10 +181,10 @@ export function createCacheMetadataStore(options: MetadataStoreOptions = {}): Ca
 	const getStats = () => {
 		const paths = getAllPaths()
 		const entryCount = paths.length
-		
+
 		let oldestAccess: number | null = null
 		let newestAccess: number | null = null
-		
+
 		for (const path of paths) {
 			const metadata = getMetadata(path)
 			if (metadata) {
@@ -201,7 +197,7 @@ export function createCacheMetadataStore(options: MetadataStoreOptions = {}): Ca
 				}
 			}
 		}
-		
+
 		return { entryCount, oldestAccess, newestAccess }
 	}
 
@@ -219,7 +215,7 @@ export function createCacheMetadataStore(options: MetadataStoreOptions = {}): Ca
 		getAllPaths,
 		persist,
 		load,
-		getStats
+		getStats,
 	}
 }
 
@@ -233,7 +229,7 @@ export function createCacheEntryMetadata(
 	return {
 		lastAccess: Date.now(),
 		mtime,
-		tier
+		tier,
 	}
 }
 
@@ -250,7 +246,7 @@ export function touchCacheEntry(
 		metadataStore.setMetadata(path, {
 			...existing,
 			lastAccess: Date.now(),
-			tier
+			tier,
 		})
 	}
 }
@@ -263,7 +259,7 @@ export function cleanStaleMetadata(
 	getCurrentMtime: (path: string) => number | undefined
 ): string[] {
 	const stalePaths: string[] = []
-	
+
 	for (const path of metadataStore.getAllPaths()) {
 		const currentMtime = getCurrentMtime(path)
 		if (metadataStore.isStale(path, currentMtime)) {
@@ -271,6 +267,6 @@ export function cleanStaleMetadata(
 			metadataStore.removeMetadata(path)
 		}
 	}
-	
+
 	return stalePaths
 }

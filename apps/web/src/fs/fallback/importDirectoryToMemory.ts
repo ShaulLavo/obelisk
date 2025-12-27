@@ -10,13 +10,8 @@ import {
 	normalizeEntries,
 } from './importDirectoryEntries'
 
-/** Default number of concurrent file operations */
 const DEFAULT_CONCURRENCY = 16
 
-/**
- * Simple semaphore for bounded concurrency.
- * Limits the number of concurrent async operations.
- */
 class Semaphore {
 	private queue: (() => void)[] = []
 	private running = 0
@@ -52,10 +47,6 @@ class Semaphore {
 	}
 }
 
-/**
- * Cache for directory handles to avoid redundant lookups.
- * Maps normalized path strings to directory handles.
- */
 const dirCache = new Map<string, Promise<MemoryDirectoryHandle>>()
 
 const ensureDirectory = async (
@@ -68,7 +59,6 @@ const ensureDirectory = async (
 	const cached = dirCache.get(key)
 	if (cached) return cached
 
-	// Build up the path incrementally to populate cache for parent dirs too
 	const promise = (async () => {
 		let current = root
 		let pathSoFar = ''
@@ -145,14 +135,12 @@ export async function importDirectoryToMemory(
 	const rootName = sharedTop ?? DEFAULT_ROOT_NAME
 	const root = (await getMemoryRoot(rootName)) as MemoryDirectoryHandle
 
-	// Clear directory cache for this import
 	dirCache.clear()
 
 	const semaphore = new Semaphore(concurrency)
 	const total = entries.length
 	let completed = 0
 
-	// Process all files with bounded concurrency
 	const tasks = entries.map((entry) =>
 		semaphore.run(async () => {
 			const segments = deriveRelativeSegments(entry, sharedTop)
@@ -164,10 +152,8 @@ export async function importDirectoryToMemory(
 
 	const results = await Promise.allSettled(tasks)
 
-	// Clear cache after import
 	dirCache.clear()
 
-	// Collect and report any errors
 	const errors = results
 		.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
 		.map((r) => r.reason)

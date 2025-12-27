@@ -7,7 +7,6 @@ const isValidDirectoryHandle = (
 	handle: unknown
 ): handle is FileSystemDirectoryHandle => {
 	if (!handle || typeof handle !== 'object') return false
-	// Memory handles lose their methods after IndexedDB serialization
 	const h = handle as { entries?: unknown; [Symbol.asyncIterator]?: unknown }
 	return (
 		typeof h.entries === 'function' ||

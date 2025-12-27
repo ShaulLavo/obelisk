@@ -9,18 +9,8 @@ type DirectoryWithEntries = FileSystemDirectoryHandle & {
 	entries?: () => AsyncIterableIterator<[string, FileSystemHandle]>
 }
 
-/** Options for controlling import behavior */
 export interface ImportOptions {
-	/**
-	 * If true, files are merged into the existing directory without clearing.
-	 * Existing files with the same path will be overwritten.
-	 */
 	skipClear?: boolean
-	/**
-	 * If provided, this function is called before any destructive operation.
-	 * If it returns false or rejects, the import is cancelled.
-	 * Only called when skipClear is false (destructive import).
-	 */
 	confirmDestructive?: () => boolean | Promise<boolean>
 }
 
@@ -47,10 +37,6 @@ const clearDirectory = async (
 	}
 }
 
-/**
- * Safely removes a directory entry if it exists.
- * Returns true if removed, false if it didn't exist.
- */
 const safeRemoveEntry = async (
 	parent: FileSystemDirectoryHandle,
 	name: string
@@ -59,14 +45,10 @@ const safeRemoveEntry = async (
 		await parent.removeEntry(name, { recursive: true })
 		return true
 	} catch {
-		// Entry doesn't exist or already removed
 		return false
 	}
 }
 
-/**
- * Checks if a directory exists and has entries.
- */
 const directoryHasEntries = async (
 	parent: FileSystemDirectoryHandle,
 	name: string
@@ -83,9 +65,6 @@ const directoryHasEntries = async (
 	}
 }
 
-/**
- * Recursively copies all contents from source to destination directory.
- */
 const copyDirectoryContents = async (
 	source: FileSystemDirectoryHandle,
 	destination: FileSystemDirectoryHandle
@@ -142,18 +121,6 @@ const writeFileToOpfs = async (
 	await writable.close()
 }
 
-/**
- * Imports a directory to OPFS with safe write semantics.
- *
- * By default (skipClear: false), this performs a destructive import:
- * 1. Writes all files to a temporary directory first
- * 2. If all writes succeed, backs up the existing appRoot
- * 3. Atomically moves temp directory contents to appRoot
- * 4. Cleans up backup on success
- * 5. On any failure, restores from backup and cleans up temp
- *
- * With skipClear: true, files are merged into the existing directory.
- */
 export async function importDirectoryToOpfs(
 	files: FileList,
 	options: ImportOptions = {}
@@ -174,7 +141,6 @@ export async function importDirectoryToOpfs(
 	}
 	const storageRoot = await storage.getDirectory()
 
-	// If skipClear is true, we just merge files into the existing directory
 	if (skipClear) {
 		const appRoot = await storageRoot.getDirectoryHandle(OPFS_ROOT_NAME, {
 			create: true,
@@ -187,7 +153,6 @@ export async function importDirectoryToOpfs(
 		return appRoot
 	}
 
-	// Destructive import - check for confirmation if existing data would be lost
 	const hasExistingData = await directoryHasEntries(storageRoot, OPFS_ROOT_NAME)
 	if (hasExistingData && confirmDestructive) {
 		const confirmed = await confirmDestructive()
@@ -196,25 +161,20 @@ export async function importDirectoryToOpfs(
 		}
 	}
 
-	// Clean up any leftover temp/backup directories from previous failed imports
 	await safeRemoveEntry(storageRoot, TEMP_DIR_NAME)
 	await safeRemoveEntry(storageRoot, BACKUP_DIR_NAME)
 
-	// Create temporary directory for writing new files
 	const tempDir = await storageRoot.getDirectoryHandle(TEMP_DIR_NAME, {
 		create: true,
 	})
 
 	const sharedTop = getSharedTopSegment(entries)
 	try {
-		// Write all files to temp directory first
 		for (const entry of entries) {
 			const segments = deriveRelativeSegments(entry, sharedTop)
 			await writeFileToOpfs(tempDir, segments, entry.file)
 		}
 
-		// All writes succeeded - now do the atomic swap
-		// Step 1: Create backup of existing appRoot (if it has data)
 		if (hasExistingData) {
 			const appRoot = await storageRoot.getDirectoryHandle(OPFS_ROOT_NAME)
 			const backupDir = await storageRoot.getDirectoryHandle(BACKUP_DIR_NAME, {
@@ -224,20 +184,17 @@ export async function importDirectoryToOpfs(
 		}
 
 		try {
-			// Step 2: Clear appRoot and copy temp contents to it
 			const appRoot = await storageRoot.getDirectoryHandle(OPFS_ROOT_NAME, {
 				create: true,
 			})
 			await clearDirectory(appRoot)
 			await copyDirectoryContents(tempDir, appRoot)
 
-			// Step 3: Clean up temp and backup directories on success
 			await safeRemoveEntry(storageRoot, TEMP_DIR_NAME)
 			await safeRemoveEntry(storageRoot, BACKUP_DIR_NAME)
 
 			return appRoot
 		} catch (swapError) {
-			// Swap failed - try to restore from backup
 			if (hasExistingData) {
 				try {
 					const appRoot = await storageRoot.getDirectoryHandle(OPFS_ROOT_NAME, {
@@ -248,7 +205,6 @@ export async function importDirectoryToOpfs(
 						await storageRoot.getDirectoryHandle(BACKUP_DIR_NAME)
 					await copyDirectoryContents(backupDir, appRoot)
 				} catch (restoreError) {
-					// If restore also fails, throw a combined error
 					throw new Error(
 						`Import failed and restore from backup also failed. ` +
 							`Original error: ${swapError instanceof Error ? swapError.message : String(swapError)}. ` +
@@ -257,13 +213,11 @@ export async function importDirectoryToOpfs(
 					)
 				}
 			}
-			// Clean up temp directory
 			await safeRemoveEntry(storageRoot, TEMP_DIR_NAME)
 			await safeRemoveEntry(storageRoot, BACKUP_DIR_NAME)
 			throw swapError
 		}
 	} catch (writeError) {
-		// Writing to temp directory failed - clean up temp and keep original intact
 		await safeRemoveEntry(storageRoot, TEMP_DIR_NAME)
 		throw writeError
 	}

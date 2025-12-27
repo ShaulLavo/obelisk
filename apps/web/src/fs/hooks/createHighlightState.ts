@@ -3,11 +3,6 @@ import { createStore, reconcile } from 'solid-js/store'
 import { logger } from '../../logger'
 import type { TreeSitterCapture } from '../../workers/treeSitterWorkerTypes'
 
-/**
- * Represents a pending offset transformation for highlights.
- * Instead of recreating 10k highlight objects per keystroke,
- * we store lightweight edit offsets and apply them lazily.
- */
 export type HighlightTransform = {
 	charDelta: number
 	lineDelta: number
@@ -56,10 +51,6 @@ export const createHighlightState = () => {
 		}
 	}
 
-	/**
-	 * Apply an offset transformation optimistically.
-	 * This keeps an ordered queue of edits for lazy per-line shifts.
-	 */
 	const applyHighlightOffset = (
 		path: string,
 		transform: HighlightTransform
@@ -96,10 +87,6 @@ export const createHighlightState = () => {
 		setHighlightOffsets(path, nextOffsets)
 	}
 
-	/**
-	 * Set highlights from tree-sitter.
-	 * This clears any pending offset since we now have accurate data.
-	 */
 	const setHighlights = (path: string, highlights?: TreeSitterCapture[]) => {
 		if (!path) return
 

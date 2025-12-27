@@ -5,11 +5,8 @@ import { logger } from '../../logger'
 
 const log = logger.withTag('treeSitter')
 
-// Parser singleton
 let parserInstance: Parser | null = null
 let parserInitPromise: Promise<void> | null = null
-
-// Caches
 export const languageCache = new Map<string, Language>()
 export const queryCache = new Map<
 	string,
