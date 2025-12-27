@@ -12,7 +12,6 @@ type SyntaxProps = {
 	columnEnd?: number
 	cachedRuns?: TextRun[]
 
-	// Props for the container div
 	lineIndex: number
 	isEditable: Accessor<boolean>
 	style: JSX.CSSProperties | string

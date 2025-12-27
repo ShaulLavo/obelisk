@@ -1,9 +1,3 @@
-/**
- * MinimapView component.
- * Main minimap view that composes all hooks and child components.
- * Must be rendered inside ScrollStateProvider.
- */
-
 import { AutoHideVisibility, AutoHideWrapper } from '@repo/ui/auto-hide-wrapper'
 import { clsx } from 'clsx'
 import { createSignal } from 'solid-js'
@@ -18,18 +12,12 @@ import { useMinimapOverlay } from './useMinimapOverlay'
 
 const MINIMAP_VISIBILITY = AutoHideVisibility.SHOW
 
-/**
- * Main minimap view component.
- * Requires ScrollStateProvider context.
- */
 export const MinimapView = (props: MinimapProps) => {
 	const cursor = useCursor()
 	const [isDragging, setIsDragging] = createSignal(false)
 
-	// Core hook for worker, resize, and scroll sync
 	const core = useMinimapCore(props, () => overlay.scheduleRender())
 
-	// Overlay hook for cursor/selection/error rendering
 	const overlay = useMinimapOverlay({
 		container: core.container,
 		scrollElement: () => props.scrollElement(),
@@ -38,7 +26,6 @@ export const MinimapView = (props: MinimapProps) => {
 		isDark: core.isDark,
 	})
 
-	// Interaction hook for pointer events
 	const interaction = useMinimapInteraction({
 		scrollElement: () => props.scrollElement() ?? undefined,
 		getCanvasSizeCss: () => {
@@ -53,7 +40,6 @@ export const MinimapView = (props: MinimapProps) => {
 		getLineCount: () => cursor.lines.lineCount(),
 	})
 
-	// Pointer event handlers with drag state sync
 	const handlePointerDown = (e: PointerEvent) => {
 		e.preventDefault()
 		interaction.handlePointerDown(e)

@@ -1,11 +1,3 @@
-/**
- * Core hook for minimap orchestration.
- * Composes smaller focused hooks and manages worker initialization.
- *
- * NOTE: The render effect is kept inline here because Solid.js props
- * lose reactivity when passed through intermediate options objects.
- */
-
 import { createEffect, createSignal, on, type Accessor } from 'solid-js'
 import { logger } from '@repo/logger'
 import { useCursor } from '../cursor'
@@ -40,10 +32,6 @@ export type MinimapCoreController = {
 	isDark: Accessor<boolean>
 }
 
-/**
- * Creates the core minimap orchestration logic.
- * Composes width, resize, and scroll hooks.
- */
 export const useMinimapCore = (
 	props: UseMinimapCoreOptions,
 	onOverlayRender?: () => void
@@ -65,7 +53,6 @@ export const useMinimapCore = (
 	let hasRenderedBase = false
 	let lastRenderedPath: string | null = null
 
-	// Initialize worker
 	const worker = useMinimapWorker({
 		onReady: () => setWorkerActive(true),
 		onError: (error) => {
@@ -74,7 +61,6 @@ export const useMinimapCore = (
 		},
 	})
 
-	// Connect scroll element to shared state
 	createEffect(() => {
 		const element = props.scrollElement()
 		if (element) {
@@ -82,12 +68,10 @@ export const useMinimapCore = (
 		}
 	})
 
-	// Update line count in shared state
 	createEffect(() => {
 		setLineCount(cursor.lines.lineCount())
 	})
 
-	// Update container height in shared state
 	createEffect(() => {
 		const cont = container()
 		if (cont) {
@@ -95,7 +79,6 @@ export const useMinimapCore = (
 		}
 	})
 
-	// Initialize worker when canvas and container are ready
 	let workerInitialized = false
 	createEffect(() => {
 		const canvas = baseCanvas()
@@ -110,7 +93,6 @@ export const useMinimapCore = (
 		void worker.init(canvas, layout, createMinimapPalette(theme), bgColor)
 	})
 
-	// Update palette when theme changes
 	createEffect(() => {
 		if (!workerActive()) return
 		const palette = createMinimapPalette(theme)
@@ -141,7 +123,6 @@ export const useMinimapCore = (
 		},
 	})
 
-	// Render orchestration - INLINE to preserve props reactivity
 	createEffect(
 		on(
 			() =>
@@ -155,7 +136,6 @@ export const useMinimapCore = (
 			async ([active, treeSitterWorker, filePath, version, content]) => {
 				if (!active) return
 
-				// Connect tree-sitter if changed
 				if (
 					treeSitterWorker &&
 					connectedTreeSitterWorker !== treeSitterWorker
@@ -164,7 +144,6 @@ export const useMinimapCore = (
 					connectedTreeSitterWorker = treeSitterWorker
 				}
 
-				// Clear if no tree-sitter or file path
 				if (!treeSitterWorker || !filePath) {
 					hasRenderedBase = false
 					lastRenderedPath = null
@@ -173,7 +152,6 @@ export const useMinimapCore = (
 					return
 				}
 
-				// Handle path changes
 				const isNewPath = lastRenderedPath !== filePath
 				if (isNewPath) {
 					hasRenderedBase = false
@@ -182,10 +160,8 @@ export const useMinimapCore = (
 					await worker.clear()
 				}
 
-				// Try path-based render first
 				let rendered = await worker.renderFromPath(filePath, version ?? 0)
 
-				// Fallback to text-based render
 				if (!rendered && content) {
 					rendered = await worker.renderFromText(content, version ?? 0)
 				}
@@ -202,7 +178,6 @@ export const useMinimapCore = (
 		)
 	)
 
-	// Scroll synchronization
 	useMinimapScroll({
 		scrollElement: props.scrollElement,
 		container,
@@ -211,7 +186,6 @@ export const useMinimapCore = (
 		onScroll: onOverlayRender,
 	})
 
-	// Background color accessor (avoid deep tracking for a single field)
 	const backgroundColor = () => theme.editor.background
 
 	return {

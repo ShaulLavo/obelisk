@@ -1,18 +1,3 @@
-/**
- * Minimap Renderer Worker
- *
- * Renders the minimap base layer to an OffscreenCanvas.
- * Uses Comlink for clean RPC-style communication.
- * Can communicate directly with Tree-sitter worker for token summaries.
- *
- * Implements VS Code-style character rendering with:
- * - Prebaked atlas data for scales 1 and 2
- * - Brightness normalization in downsampling
- * - True background color blending
- * - Partial repainting (only changed lines)
- * - Light/Normal font variants for theme support
- */
-
 import { expose, proxy, wrap, type Remote } from 'comlink'
 import { loggers } from '@repo/logger'
 import { MINIMAP_DEFAULT_PALETTE } from '../tokenSummary'
@@ -34,16 +19,11 @@ import {
 
 const log = loggers.codeEditor.withTag('minimap')
 
-// ============================================================================
-// Worker State
-// ============================================================================
-
 let canvas: OffscreenCanvas | null = null
 let ctx: OffscreenCanvasRenderingContext2D | null = null
 let layout: MinimapLayout | null = null
 let palette: Uint32Array = MINIMAP_DEFAULT_PALETTE
 
-// Background color state (defaults to zinc-900)
 let bgR = 24
 let bgG = 24
 let bgB = 27
@@ -53,29 +33,19 @@ const updateBgFromPacked = (packed: number) => {
 	bgG = (packed >> 8) & 0xff
 	bgB = (packed >> 16) & 0xff
 }
-
-// Scroll state
 let scrollY = 0
 let lastSummary: MinimapTokenSummary | null = null
 
-// Tree-sitter worker proxy for direct communication
 let treeSitterWorker: Remote<TreeSitterMinimapApi> | null = null
 let minimapSubscriptionId: number | null = null
 
-// Per-path summary cache for instant tab switching
 const summaryCache = new Map<
 	string,
 	{ summary: MinimapTokenSummary; scrollY: number }
 >()
 let currentPath: string | null = null
 
-// ============================================================================
-// Worker API
-// ============================================================================
 const api = {
-	/**
-	 * Initialize with OffscreenCanvas and layout
-	 */
 	init(
 		offscreen: OffscreenCanvas,
 		newLayout: MinimapLayout,
@@ -99,13 +69,9 @@ const api = {
 			throw new Error('Failed to get 2D context from OffscreenCanvas')
 		}
 
-		// Reset partial repaint state
 		resetPartialRepaintState()
 	},
 
-	/**
-	 * Connect to Tree-sitter worker for direct communication
-	 */
 	async connectTreeSitter(port: MessagePort) {
 		try {
 			log.info('connectTreeSitter called')
@@ -132,9 +98,6 @@ const api = {
 		}
 	},
 
-	/**
-	 * Update layout
-	 */
 	updateLayout(newLayout: MinimapLayout) {
 		layout = newLayout
 		if (canvas) {
@@ -149,9 +112,6 @@ const api = {
 		}
 	},
 
-	/**
-	 * Update scroll position
-	 */
 	updateScroll(scrollTop: number) {
 		if (scrollY === scrollTop) return
 
@@ -171,16 +131,13 @@ const api = {
 		}
 	},
 
-	/**
-	 * Update color palette
-	 */
 	updatePalette(newPalette: Uint32Array, bgColor?: number) {
 		palette = newPalette
 		if (bgColor !== undefined) {
 			updateBgFromPacked(bgColor)
 		}
 		invalidateCache() // Force full repaint on palette change
-		// Trigger immediate re-render if we have data
+
 		if (lastSummary && ctx && layout) {
 			renderFromSummary(
 				lastSummary,
@@ -196,18 +153,12 @@ const api = {
 		}
 	},
 
-	/**
-	 * Set font variant (light for light themes, normal for dark themes)
-	 */
 	setDark(isDark: boolean) {
 		if (setDarkAtlas(isDark)) {
 			invalidateCache() // Force full repaint on variant change
 		}
 	},
 
-	/**
-	 * Render from token summary (binary format)
-	 */
 	renderSummary(summary: MinimapTokenSummary) {
 		if (!ctx || !layout) {
 			log.warn('Missing context/layout')
@@ -217,12 +168,6 @@ const api = {
 		renderFromSummary(summary, ctx, layout, palette, scrollY, bgR, bgG, bgB)
 	},
 
-	/**
-	 * Request summary from Tree-sitter and render
-	 * Returns immediately if no tree-sitter cache is available.
-	 * The caller should fall back to renderFromText for unsupported languages.
-	 
-	 */
 	async renderFromPath(path: string, version: number) {
 		const nonce = incrementRenderNonce()
 		if (!treeSitterWorker) {
@@ -294,9 +239,6 @@ const api = {
 		return false
 	},
 
-	/**
-	 * Render minimap from plain text (fallback for unsupported languages)
-	 */
 	async renderFromText(text: string, version: number) {
 		if (!treeSitterWorker) {
 			log.warn('Tree-sitter worker not connected')
@@ -337,18 +279,12 @@ const api = {
 		return false
 	},
 
-	/**
-	 * Clear the canvas
-	 */
 	clear() {
 		if (!ctx || !canvas || !layout) return
 		ctx.clearRect(0, 0, layout.size.deviceWidth, layout.size.deviceHeight)
 		resetPartialRepaintState()
 	},
 
-	/**
-	 * Dispose and cleanup
-	 */
 	dispose() {
 		canvas = null
 		ctx = null

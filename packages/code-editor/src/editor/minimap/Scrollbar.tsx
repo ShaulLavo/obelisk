@@ -1,10 +1,3 @@
-/**
- * Custom Scrollbar Component
- *
- * Reactive scrollbar that consumes shared scroll state.
- * Works standalone or alongside the minimap.
- */
-
 import { clsx } from 'clsx'
 import { createEffect, createSignal, onCleanup, type JSX } from 'solid-js'
 import { loggers } from '@repo/logger'
@@ -13,11 +6,8 @@ import { useTheme } from '@repo/theme'
 import styles from './Scrollbar.module.css'
 
 export type ScrollbarProps = {
-	/** Width of the scrollbar in pixels */
 	width?: number
-	/** Custom class name */
 	class?: string
-	/** Custom styles */
 	style?: JSX.CSSProperties
 }
 

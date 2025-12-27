@@ -1,10 +1,4 @@
-/**
- * MinimapCanvas component.
- * A simple canvas element for the base minimap rendering (worker-rendered).
- */
-
 export type MinimapCanvasProps = {
-	/** Ref setter for the base canvas */
 	setCanvas: (el: HTMLCanvasElement | null) => void
 }
 

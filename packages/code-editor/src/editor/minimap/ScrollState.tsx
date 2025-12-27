@@ -1,10 +1,3 @@
-/**
- * Shared Scroll State
- *
- * Single source of truth for scroll position.
- * Used by Editor, Minimap, and Scrollbar for synchronized scroll rendering.
- */
-
 import {
 	createContext,
 	createSignal,
@@ -17,28 +10,18 @@ import { MINIMAP_ROW_HEIGHT_CSS } from './constants'
 import { getMinimapScrollState, type MinimapScrollState } from './scrollUtils'
 
 export type ScrollStateStore = MinimapScrollState & {
-	/** Current scroll ratio (0-1) */
 	scrollRatio: number
-	/** Total line count */
 	lineCount: number
-	/** Container height (CSS pixels) */
 	containerHeight: number
 }
 
 type ScrollContextValue = {
-	/** Current scroll state (reactive store) */
 	scrollState: ScrollStateStore
-	/** Store setter for direct updates */
 	setScrollState: SetStoreFunction<ScrollStateStore>
-	/** Set the scroll element to listen to */
 	setScrollElement: (element: HTMLElement | null) => void
-	/** Set line count for calculations */
 	setLineCount: (count: number) => void
-	/** Set container height for calculations */
 	setContainerHeight: (height: number) => void
-	/** Current scroll element */
 	getScrollElement: () => HTMLElement | null
-	/** Reactive scroll element accessor */
 	scrollElement: () => HTMLElement | null
 }
 
@@ -79,8 +62,6 @@ export const ScrollStateProvider: ParentComponent = (props) => {
 			totalMinimapHeight
 		)
 
-		// Calculate scroll ratio using FULL scroll range (including overscroll)
-		// This matches the logic in scrollUtils.ts getMinimapScrollState
 		const scrollHeight = scrollElement.scrollHeight
 		const clientHeight = scrollElement.clientHeight
 		const maxScroll = Math.max(0, scrollHeight - clientHeight)
@@ -108,7 +89,6 @@ export const ScrollStateProvider: ParentComponent = (props) => {
 		if (element) {
 			scrollHandler = () => updateScrollState()
 			element.addEventListener('scroll', scrollHandler, { passive: true })
-			// Initial update
 			updateScrollState()
 		}
 	}

@@ -1,10 +1,4 @@
-/**
- * MinimapOverlay component.
- * A simple canvas element for rendering the minimap overlay (cursor, selections, errors).
- */
-
 export type MinimapOverlayProps = {
-	/** Ref setter for the overlay canvas */
 	setCanvas: (el: HTMLCanvasElement | null) => void
 }
 

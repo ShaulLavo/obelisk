@@ -12,7 +12,6 @@ export const AnimatedModeToggle = (props: AnimatedModeToggleProps) => {
 	const handleClick = async () => {
 		if (!buttonRef) return
 
-		// Check for View Transitions API support
 		if (!document.startViewTransition) {
 			const modes: ThemeMode[] = ['light', 'dark', 'system']
 			const nextMode = modes[(modes.indexOf(mode()) + 1) % modes.length]
@@ -20,7 +19,6 @@ export const AnimatedModeToggle = (props: AnimatedModeToggleProps) => {
 			return
 		}
 
-		// Add class to scope CSS and disable CSS transitions during capture
 		document.documentElement.classList.add('theme-transitioning')
 		const style = document.createElement('style')
 		style.innerHTML = '* { transition: none !important; }'
@@ -35,21 +33,17 @@ export const AnimatedModeToggle = (props: AnimatedModeToggleProps) => {
 		try {
 			await transition.ready
 
-			// Clean up after snapshot
 			style.remove()
 
-			// Get button's center position
 			const { top, left, width, height } = buttonRef.getBoundingClientRect()
 			const x = left + width / 2
 			const y = top + height / 2
 
-			// Calculate max radius to cover entire screen
 			const maxRadius = Math.hypot(
 				Math.max(left, window.innerWidth - left),
 				Math.max(top, window.innerHeight - top)
 			)
 
-			// Animate the new view with expanding circle
 			document.documentElement.animate(
 				{
 					clipPath: [
@@ -64,11 +58,9 @@ export const AnimatedModeToggle = (props: AnimatedModeToggleProps) => {
 				}
 			)
 
-			// Wait for the entire view transition to complete before cleanup
 			await transition.finished
 			document.documentElement.classList.remove('theme-transitioning')
 		} catch {
-			// Transition was skipped, clean up
 			style.remove()
 			document.documentElement.classList.remove('theme-transitioning')
 		}
