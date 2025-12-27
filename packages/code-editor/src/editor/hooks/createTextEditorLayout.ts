@@ -56,6 +56,8 @@ export type TextEditorLayout = {
 	lineToDisplay: (lineIndex: number) => number
 	/** Check if a line is hidden inside a folded region */
 	isLineHidden: (lineIndex: number) => boolean
+	/** Scroll to a specific line index */
+	scrollToLine: (lineIndex: number) => void
 }
 
 const measureLineHeight = (
@@ -506,6 +508,13 @@ export function createTextEditorLayout(
 		return Math.max(0, displayIndex) * lineHeight()
 	}
 
+	const scrollToLine = (lineIndex: number): void => {
+		const displayIndex = foldMapping.lineToDisplay(lineIndex)
+		if (displayIndex >= 0) {
+			rowVirtualizer.scrollToIndex(displayIndex, { align: 'start' })
+		}
+	}
+
 	const visibleLineRange = rowVirtualizer.visibleRange
 
 	return {
@@ -525,5 +534,6 @@ export function createTextEditorLayout(
 		displayToLine: foldMapping.displayToLine,
 		lineToDisplay: foldMapping.lineToDisplay,
 		isLineHidden: foldMapping.isLineHidden,
+		scrollToLine,
 	}
 }
