@@ -170,9 +170,9 @@ export const TextEditorView = (props: EditorProps) => {
 		const initialPos = props.initialScrollPosition?.()
 		const lineCount = cursor.lines.lineCount()
 
-		if (!path || lineCount === 0) return
+		if (!path || lineCount <= 1) return
 		
-		if (initialPos && restoreAttemptedForPath !== path) {
+		if (initialPos && restoreAttemptedForPath !== path && initialPos.lineIndex < lineCount) {
 			restoreAttemptedForPath = path
 			layout.scrollToLine(initialPos.lineIndex)
 		}
