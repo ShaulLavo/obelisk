@@ -1,4 +1,11 @@
-import { Show, createMemo, splitProps, type Accessor } from 'solid-js'
+import {
+	Show,
+	createMemo,
+	onCleanup,
+	onMount,
+	splitProps,
+	type Accessor,
+} from 'solid-js'
 
 import { useCursor } from '../../cursor'
 import type {
@@ -9,6 +16,7 @@ import type {
 } from '../../types'
 import type { TextRun } from '../utils/textRuns'
 import { Line } from './Line'
+
 type LineRowProps = {
 	virtualRow: VirtualItem2D
 	lineHeight: Accessor<number>
@@ -80,6 +88,16 @@ const areBracketDepthsEqual = (
 	return true
 }
 
+let pendingMounts = 0
+let pendingCleanups = 0
+
+export const consumeLineRowCounters = () => {
+	const snapshot = { mounts: pendingMounts, cleanups: pendingCleanups }
+	pendingMounts = 0
+	pendingCleanups = 0
+	return snapshot
+}
+
 export const LineRow = (props: LineRowProps) => {
 	const [local] = splitProps(props, [
 		'virtualRow',
@@ -97,6 +115,14 @@ export const LineRow = (props: LineRowProps) => {
 		'displayToLine',
 	])
 	const cursor = useCursor()
+
+	onMount(() => {
+		pendingMounts += 1
+	})
+
+	onCleanup(() => {
+		pendingCleanups += 1
+	})
 
 	const lineIndex = createMemo(() => {
 		const rawIndex = local.virtualRow.index

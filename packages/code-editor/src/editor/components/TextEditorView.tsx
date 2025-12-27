@@ -20,8 +20,53 @@ import {
 	useVisibleContentCache,
 } from '../hooks'
 import { EditorViewport } from './EditorViewport'
+import { consumeLineRowCounters } from '../line/components/LineRow'
 import { Minimap } from '../minimap'
-import type { DocumentIncrementalEdit, EditorProps, LineEntry } from '../types'
+import type {
+	DocumentIncrementalEdit,
+	EditorProps,
+	HighlightOffsets,
+	LineEntry,
+} from '../types'
+import { mapRangeToOldOffsets } from '../utils/highlights'
+
+const getLineOffsetShift = (
+	lineStart: number,
+	lineEnd: number,
+	offsets: HighlightOffsets
+) => {
+	let shift = 0
+	let intersects = false
+
+	for (const offset of offsets) {
+		if (!offset) continue
+		if (offset.newEndIndex <= lineStart) {
+			shift += offset.charDelta
+			continue
+		}
+		if (offset.fromCharIndex >= lineEnd) {
+			continue
+		}
+		intersects = true
+	}
+
+	if (intersects || shift === 0) {
+		return {
+			shift: 0,
+			intersects,
+			oldStart: lineStart,
+			oldEnd: lineEnd,
+		}
+	}
+
+	const mapped = mapRangeToOldOffsets(lineStart, lineEnd, offsets)
+	return {
+		shift,
+		intersects: false,
+		oldStart: mapped.start,
+		oldEnd: mapped.end,
+	}
+}
 
 export const TextEditorView = (props: EditorProps) => {
 	const cursor = useCursor()
@@ -47,7 +92,30 @@ export const TextEditorView = (props: EditorProps) => {
 		if (!props.isFileSelected()) {
 			return
 		}
+
+		console.log(
+			'[TextEditorView] incremental edit',
+			JSON.stringify(
+				{
+					edit,
+					highlightCount: props.highlights?.()?.length ?? 0,
+					offsetCount: props.highlightOffset?.()?.length ?? 0,
+					bracketCount: props.brackets?.()?.length ?? 0,
+				},
+				null,
+				2
+			)
+		)
 		props.document.applyIncrementalEdit?.(edit)
+		queueMicrotask(() => {
+			const { mounts, cleanups } = consumeLineRowCounters()
+			if (mounts > 0 || cleanups > 0) {
+				console.log('[TextEditorView] line-row mounts after edit', {
+					mounts,
+					cleanups,
+				})
+			}
+		})
 	}
 
 	const { foldedStarts, toggleFold } = useFoldedStarts({
@@ -165,6 +233,17 @@ export const TextEditorView = (props: EditorProps) => {
 		const brackets = props.brackets?.()
 		if (!brackets || brackets.length === 0) return undefined
 
+		const lineStart = entry.start
+		const lineEnd = entry.start + entry.length
+		const offsets = props.highlightOffset?.()
+		const offsetInfo =
+			offsets && offsets.length > 0
+				? getLineOffsetShift(lineStart, lineEnd, offsets)
+				: null
+		const bracketStart = offsetInfo?.intersects ? lineStart : offsetInfo?.oldStart ?? lineStart
+		const bracketEnd = offsetInfo?.intersects ? lineEnd : offsetInfo?.oldEnd ?? lineEnd
+		const shift = offsetInfo?.intersects ? 0 : offsetInfo?.shift ?? 0
+
 		const map: Record<number, number> = {}
 		let found = false
 
@@ -173,7 +252,7 @@ export const TextEditorView = (props: EditorProps) => {
 		let high = brackets.length
 		while (low < high) {
 			const mid = (low + high) >>> 1
-			if (brackets[mid]!.index < entry.start) {
+			if (brackets[mid]!.index < bracketStart) {
 				low = mid + 1
 			} else {
 				high = mid
@@ -183,8 +262,11 @@ export const TextEditorView = (props: EditorProps) => {
 		// Collect all brackets within the line
 		for (let i = low; i < brackets.length; i++) {
 			const b = brackets[i]!
-			if (b.index >= entry.start + entry.length) break
-			map[b.index - entry.start] = b.depth
+			if (b.index >= bracketEnd) break
+			const mappedIndex = shift === 0 ? b.index : b.index + shift
+			const relativeIndex = mappedIndex - lineStart
+			if (relativeIndex < 0 || relativeIndex >= entry.length) continue
+			map[relativeIndex] = b.depth
 			found = true
 		}
 

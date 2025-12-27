@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, describe, expect, it, vi } from 'vitest'
 import { batch, createSignal } from 'solid-js'
 import { render } from 'vitest-browser-solid'
 import { waitForFrames } from '../../benchmarks/utils/performanceMetrics'
@@ -7,6 +7,11 @@ import { getEditCharDelta, getEditLineDelta } from '@repo/utils/highlightShift'
 import { ColorModeProvider } from '@kobalte/core'
 import { ThemeProvider } from '@repo/theme'
 import { Editor } from '../../components/Editor'
+import sqliteContent from '../../../../../../sqlite.js?raw'
+import {
+	disposeTreeSitterWorker,
+	parseBufferWithTreeSitter,
+} from '../../../../../../apps/web/src/treeSitter/workerClient'
 import type {
 	CursorMode,
 	EditorSyntaxHighlight,
@@ -17,6 +22,9 @@ import type {
 type BuildTextRuns = typeof import('../utils/textRuns').buildTextRuns
 
 const buildTextRunsCalls = vi.hoisted(() => [] as string[])
+const lineRowCounterSnapshots = vi.hoisted(
+	() => [] as Array<{ mounts: number; cleanups: number }>
+)
 
 vi.mock('../utils/textRuns', async () => {
 	const actual =
@@ -47,15 +55,30 @@ vi.mock('../utils/textRuns', async () => {
 	}
 })
 
+vi.mock('./LineRow', async () => {
+	const actual = await vi.importActual<typeof import('./LineRow')>('./LineRow')
+	const consumeLineRowCounters = () => {
+		const snapshot = actual.consumeLineRowCounters()
+		lineRowCounterSnapshots.push(snapshot)
+		return snapshot
+	}
+
+	return {
+		...actual,
+		consumeLineRowCounters,
+	}
+})
+
 type FileState = {
 	path: string
 	content: string
-	highlights: EditorSyntaxHighlight[]
+	highlights?: EditorSyntaxHighlight[]
 }
 
 type HarnessHandle = {
 	switchFile: (next: FileState) => void
 	typeAt: (lineIndex: number, column: number, text: string) => void
+	setHighlights: (highlights: EditorSyntaxHighlight[] | undefined) => void
 	container: HTMLDivElement
 	getContent: () => string
 	unmount: () => void
@@ -74,56 +97,28 @@ const jsContent = [
 	'} // L9',
 ].join('\n')
 
-const jsHighlights: EditorSyntaxHighlight[] = [
-	{ startIndex: 0, endIndex: 5, scope: 'keyword.declaration' },
-	{ startIndex: 6, endIndex: 12, scope: 'variable' },
-	{ startIndex: 13, endIndex: 14, scope: 'operator' },
-	{ startIndex: 15, endIndex: 16, scope: 'number' },
-	{ startIndex: 17, endIndex: 22, scope: 'comment' },
-	{ startIndex: 23, endIndex: 28, scope: 'keyword.declaration' },
-	{ startIndex: 29, endIndex: 35, scope: 'variable' },
-	{ startIndex: 36, endIndex: 37, scope: 'operator' },
-	{ startIndex: 38, endIndex: 39, scope: 'number' },
-	{ startIndex: 40, endIndex: 45, scope: 'comment' },
-	{ startIndex: 46, endIndex: 52, scope: 'keyword.import' },
-	{ startIndex: 53, endIndex: 58, scope: 'keyword.declaration' },
-	{ startIndex: 59, endIndex: 63, scope: 'variable' },
-	{ startIndex: 64, endIndex: 65, scope: 'operator' },
-	{ startIndex: 66, endIndex: 67, scope: 'punctuation.bracket' },
-	{ startIndex: 68, endIndex: 73, scope: 'comment' },
-	{ startIndex: 75, endIndex: 77, scope: 'property' },
-	{ startIndex: 79, endIndex: 80, scope: 'number' },
-	{ startIndex: 80, endIndex: 81, scope: 'punctuation.delimiter' },
-	{ startIndex: 82, endIndex: 87, scope: 'comment' },
-	{ startIndex: 89, endIndex: 93, scope: 'property' },
-	{ startIndex: 95, endIndex: 100, scope: 'string' },
-	{ startIndex: 101, endIndex: 106, scope: 'comment' },
-	{ startIndex: 107, endIndex: 108, scope: 'punctuation.bracket' },
-	{ startIndex: 109, endIndex: 114, scope: 'comment' },
-	{ startIndex: 115, endIndex: 121, scope: 'keyword.import' },
-	{ startIndex: 122, endIndex: 130, scope: 'keyword.declaration' },
-	{ startIndex: 131, endIndex: 136, scope: 'function' },
-	{ startIndex: 131, endIndex: 136, scope: 'variable' },
-	{ startIndex: 136, endIndex: 137, scope: 'punctuation.bracket' },
-	{ startIndex: 137, endIndex: 141, scope: 'variable' },
-	{ startIndex: 141, endIndex: 142, scope: 'punctuation.bracket' },
-	{ startIndex: 143, endIndex: 144, scope: 'punctuation.bracket' },
-	{ startIndex: 145, endIndex: 150, scope: 'comment' },
-	{ startIndex: 152, endIndex: 157, scope: 'keyword.declaration' },
-	{ startIndex: 158, endIndex: 165, scope: 'variable' },
-	{ startIndex: 166, endIndex: 167, scope: 'operator' },
-	{ startIndex: 168, endIndex: 177, scope: 'string' },
-	{ startIndex: 178, endIndex: 179, scope: 'operator' },
-	{ startIndex: 180, endIndex: 184, scope: 'variable' },
-	{ startIndex: 184, endIndex: 185, scope: 'punctuation.delimiter' },
-	{ startIndex: 185, endIndex: 189, scope: 'property' },
-	{ startIndex: 190, endIndex: 195, scope: 'comment' },
-	{ startIndex: 197, endIndex: 203, scope: 'keyword.control' },
-	{ startIndex: 204, endIndex: 211, scope: 'variable' },
-	{ startIndex: 212, endIndex: 217, scope: 'comment' },
-	{ startIndex: 218, endIndex: 219, scope: 'punctuation.bracket' },
-	{ startIndex: 220, endIndex: 225, scope: 'comment' },
-]
+const textEncoder = new TextEncoder()
+const highlightCache = new Map<string, EditorSyntaxHighlight[]>()
+
+const getTreeSitterHighlights = async (
+	path: string,
+	content: string
+): Promise<EditorSyntaxHighlight[]> => {
+	const cached = highlightCache.get(path)
+	if (cached) return cached
+
+	const buffer = textEncoder.encode(content).buffer
+	const result = await parseBufferWithTreeSitter(path, buffer)
+	if (!result) {
+		throw new Error(`Tree-sitter parse failed for ${path}`)
+	}
+	if (result.captures.length === 0) {
+		throw new Error(`Tree-sitter returned no highlights for ${path}`)
+	}
+
+	highlightCache.set(path, result.captures)
+	return result.captures
+}
 
 const collectBuildTextRunsLines = (calls: string[], content: string) => {
 	const lines = content.split('\n')
@@ -264,6 +259,7 @@ const createHarness = (initialFile: FileState): HarnessHandle => {
 	return {
 		switchFile,
 		typeAt,
+		setHighlights,
 		container: screen.container as HTMLDivElement,
 		getContent: content,
 		unmount: () => screen.unmount(),
@@ -273,10 +269,15 @@ const createHarness = (initialFile: FileState): HarnessHandle => {
 describe('LineRow highlight offsets', () => {
 	let activeHarness: HarnessHandle | null = null
 
+	afterAll(async () => {
+		await disposeTreeSitterWorker()
+	})
+
 	afterEach(() => {
 		activeHarness?.unmount()
 		activeHarness = null
 		buildTextRunsCalls.length = 0
+		lineRowCounterSnapshots.length = 0
 	})
 
 	// This test verifies minimal recomputation when offsets are applied.
@@ -285,15 +286,23 @@ describe('LineRow highlight offsets', () => {
 		async () => {
 			const fileAContent = jsContent
 			const fileBContent = jsContent
+			const fileAHighlights = await getTreeSitterHighlights(
+				'fileA.js',
+				fileAContent
+			)
+			const fileBHighlights = await getTreeSitterHighlights(
+				'fileB.js',
+				fileBContent
+			)
 			const fileA: FileState = {
 				path: 'fileA.js',
 				content: fileAContent,
-				highlights: jsHighlights,
+				highlights: fileAHighlights,
 			}
 			const fileB: FileState = {
 				path: 'fileB.js',
 				content: fileBContent,
-				highlights: jsHighlights,
+				highlights: fileBHighlights,
 			}
 
 			activeHarness = createHarness(fileA)
@@ -330,4 +339,40 @@ describe('LineRow highlight offsets', () => {
 			expect(changedLines).toEqual([0])
 		}
 	)
+
+	// Repro: first edit replaces most line nodes.
+	it('keeps line DOM nodes stable on first edit', async () => {
+		const sqliteHighlightsPromise = getTreeSitterHighlights(
+			'sqlite.js',
+			sqliteContent
+		)
+		const fileA: FileState = {
+			path: 'sqlite.js',
+			content: sqliteContent,
+			highlights: undefined,
+		}
+
+		activeHarness = createHarness(fileA)
+
+		await expect
+			.poll(
+				() => activeHarness!.container.querySelectorAll('.editor-line').length
+			)
+			.toBeGreaterThan(0)
+
+		const sqliteHighlights = await sqliteHighlightsPromise
+		activeHarness.setHighlights(sqliteHighlights)
+		await waitForFrames(2)
+
+		activeHarness.typeAt(0, 0, 'x')
+		await expect
+			.poll(() => lineRowCounterSnapshots.length)
+			.toBeGreaterThan(0)
+		await waitForFrames(1)
+
+		const snapshot = lineRowCounterSnapshots.at(-1)
+		expect(snapshot).toBeDefined()
+		expect(snapshot?.mounts ?? 0).toBeLessThanOrEqual(50)
+		expect(snapshot?.cleanups ?? 0).toBeLessThanOrEqual(50)
+	})
 })

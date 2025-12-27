@@ -304,7 +304,9 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 			: entry.index
 		if (hasOffsets && mappedLineIndex !== null) {
 			const cached = precomputedCache.get(mappedLineIndex)
-			if (cached) return cached
+			if (cached) {
+				return cached
+			}
 		}
 		const cacheKey = hasOffsets ? mappedLineIndex : entry.index
 		const cacheMap = cacheKey === null ? dirtyHighlightCache : highlightCache

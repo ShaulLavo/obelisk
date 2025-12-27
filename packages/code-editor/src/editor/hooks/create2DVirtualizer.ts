@@ -328,12 +328,44 @@ export function create2DVirtualizer(
 	const virtualItemCache = new Map<number, VirtualItem2D>()
 	let cachedRowHeight = 0
 	let cachedCharWidth = 0
+	let lastEnabled = true
+	let lastCount = -1
+	let lastItemCount = -1
 
 	const virtualItems = createMemo<VirtualItem2D[]>(() => {
 		const enabled = options.enabled()
 		const count = normalizeCount(options.count())
 		const rowHeight = normalizeRowHeight(options.rowHeight())
+		if (enabled !== lastEnabled || count !== lastCount) {
+			console.log(
+				'[create2DVirtualizer] state change',
+				JSON.stringify(
+					{
+						enabled,
+						count,
+						prevEnabled: lastEnabled,
+						prevCount: lastCount,
+					},
+					null,
+					2
+				)
+			)
+			lastEnabled = enabled
+			lastCount = count
+		}
 		if (!enabled || count === 0) {
+			console.log(
+				'[create2DVirtualizer] cache clear',
+				JSON.stringify(
+					{
+						reason: 'disabled-or-empty',
+						enabled,
+						count,
+					},
+					null,
+					2
+				)
+			)
 			virtualItemCache.clear()
 			cachedRowHeight = rowHeight
 			cachedCharWidth = normalizeCharWidth(options.charWidth())
@@ -349,12 +381,38 @@ export function create2DVirtualizer(
 			() => {
 				// Invalidate cache if metrics change
 				if (cachedRowHeight !== rowHeight || cachedCharWidth !== charWidth) {
+					console.log(
+						'[create2DVirtualizer] cache clear',
+						JSON.stringify(
+							{
+								reason: 'metric-change',
+								rowHeight,
+								cachedRowHeight,
+								charWidth,
+								cachedCharWidth,
+							},
+							null,
+							2
+						)
+					)
 					virtualItemCache.clear()
 					cachedRowHeight = rowHeight
 					cachedCharWidth = charWidth
 				}
 
 				if (range.start > range.end) {
+					console.log(
+						'[create2DVirtualizer] cache clear',
+						JSON.stringify(
+							{
+								reason: 'range-invalid',
+								start: range.start,
+								end: range.end,
+							},
+							null,
+							2
+						)
+					)
 					virtualItemCache.clear()
 					return []
 				}
@@ -432,6 +490,24 @@ export function create2DVirtualizer(
 					}
 
 					items.push(item)
+				}
+
+				if (items.length !== lastItemCount) {
+					console.log(
+						'[create2DVirtualizer] items length change',
+						JSON.stringify(
+							{
+								count,
+								items: items.length,
+								prevItems: lastItemCount,
+								start: range.start,
+								end: range.end,
+							},
+							null,
+							2
+						)
+					)
+					lastItemCount = items.length
 				}
 
 				return items

@@ -4,6 +4,7 @@ import solidPlugin from 'vite-plugin-solid'
 
 export default defineConfig({
 	plugins: [solidPlugin()],
+	publicDir: '../../apps/web/public',
 	resolve: {
 		// Use vdev condition to resolve vitest-browser-solid to source files
 		conditions: ['vdev'],

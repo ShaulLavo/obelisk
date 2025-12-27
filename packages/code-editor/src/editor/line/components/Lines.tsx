@@ -1,12 +1,11 @@
 import { For, createEffect } from 'solid-js'
 import { endGlobalTrace, hasGlobalTrace } from '@repo/perf'
 import { useCursor } from '../../cursor'
-import type { LinesProps } from '../../types'
+import type { LinesProps, VirtualItem2D } from '../../types'
 import { LineRow } from './LineRow'
 
 export const Lines = (props: LinesProps) => {
 	const cursor = useCursor()
-
 	// End keystroke trace when Lines re-renders (triggered by cursor/text changes)
 	createEffect(() => {
 		// Track cursor position to trigger on text changes

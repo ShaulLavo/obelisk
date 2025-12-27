@@ -66,6 +66,19 @@ export const createHighlightState = () => {
 	) => {
 		if (!path) return
 
+		console.log(
+			'[createHighlightState] applyHighlightOffset',
+			JSON.stringify(
+				{
+					path,
+					transform,
+					offsetCount: highlightOffsets[path]?.length ?? 0,
+				},
+				null,
+				2
+			)
+		)
+
 		const normalizedStart = transform.fromCharIndex
 		const normalizedOldEnd = Math.max(normalizedStart, transform.oldEndIndex)
 		const normalizedNewEnd = Math.max(normalizedStart, transform.newEndIndex)
@@ -108,6 +121,21 @@ export const createHighlightState = () => {
 		const offsetCount = highlightOffsets[path]?.length ?? 0
 		const updateId = ++highlightUpdateId
 
+		console.log(
+			'[createHighlightState] setHighlights start',
+			JSON.stringify(
+				{
+					path,
+					updateId,
+					offsetCount,
+					existingCount: existingHighlights?.length ?? 0,
+					nextCount: nextHighlights?.length ?? 0,
+				},
+				null,
+				2
+			)
+		)
+
 		log.debug('[setHighlights] start', {
 			path,
 			updateId,
@@ -132,6 +160,21 @@ export const createHighlightState = () => {
 			}
 			setHighlightsStore(path, nextHighlights)
 		})
+
+		console.log(
+			'[createHighlightState] setHighlights end',
+			JSON.stringify(
+				{
+					path,
+					updateId,
+					offsetCount,
+					nextCount: nextHighlights?.length ?? 0,
+					clearedOffsets: shouldClearOffsets,
+				},
+				null,
+				2
+			)
+		)
 
 		log.debug('[setHighlights] end', {
 			path,

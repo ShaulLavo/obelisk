@@ -39,7 +39,7 @@ export const LineGutter = (props: LineGutterProps) => {
 			<Show when={props.isFoldable} fallback={<span class="w-4 shrink-0" />}>
 				<button
 					type="button"
-					class="editor-fold-button"
+					class="flex h-4 w-4 shrink-0 items-center justify-center rounded text-[10px] text-(--editor-line-number)"
 					aria-label={props.isFolded ? 'Expand fold' : 'Collapse fold'}
 					onMouseDown={(event) => event.stopPropagation()}
 					onClick={(event) => {
