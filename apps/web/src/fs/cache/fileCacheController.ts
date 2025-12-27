@@ -14,7 +14,7 @@ import type { CacheStats } from './backends/types'
 export const DISABLE_CACHE = false as const
 
 export type ScrollPosition = {
-	scrollTop: number
+	lineIndex: number
 	scrollLeft: number
 }
 
@@ -34,9 +34,12 @@ export type FileCacheController = {
 	get: (path: string) => FileCacheEntry
 	set: (path: string, entry: FileCacheEntry) => void
 	clearPath: (path: string) => void
+	clearContent: (path: string) => void
 	clearBuffer: (path: string) => void
 	clearAll: () => void
+	clearMemory: () => void
 	getAsync: (path: string) => Promise<FileCacheEntry>
+	getScrollPosition: (path: string) => ScrollPosition | undefined
 	setActiveFile: (path: string | null) => void
 	getStats: () => Promise<CacheStats>
 	flush: () => Promise<void>
@@ -136,8 +139,23 @@ export const createFileCacheController = ({
 		setPieceTable(path, undefined)
 	}
 
+	const clearContent = (path: string) => {
+		if (!path) return
+		console.debug(`[FileCacheController] clearContent called for ${path}`)
+		batch(() => {
+			setPieceTable(path, undefined)
+			setFileStats(path, undefined)
+			setHighlights(path, undefined)
+			setFolds(path, undefined)
+			setBrackets(path, undefined)
+			setErrors(path, undefined)
+			delete previews[path]
+		})
+	}
+
 	const clearPath = (path: string) => {
 		if (!path) return
+		console.debug(`[FileCacheController] clearPath called for ${path}`)
 		batch(() => {
 			setPieceTable(path, undefined)
 			setFileStats(path, undefined)
@@ -155,6 +173,8 @@ export const createFileCacheController = ({
 	}
 
 	const clearAll = () => {
+		console.debug('[FileCacheController] clearAll called')
+		console.trace()
 		batch(() => {
 			for (const path of Object.keys(state.pieceTables)) {
 				setPieceTable(path, undefined)
@@ -189,13 +209,55 @@ export const createFileCacheController = ({
 		})
 	}
 
+	const clearMemory = () => {
+		console.debug('[FileCacheController] clearMemory called')
+		batch(() => {
+			for (const path of Object.keys(state.pieceTables)) {
+				setPieceTable(path, undefined)
+			}
+			for (const path of Object.keys(state.fileStats)) {
+				setFileStats(path, undefined)
+			}
+			for (const path of Object.keys(state.fileHighlights)) {
+				setHighlights(path, undefined)
+			}
+			for (const path of Object.keys(state.fileFolds)) {
+				setFolds(path, undefined)
+			}
+			for (const path of Object.keys(state.fileBrackets)) {
+				setBrackets(path, undefined)
+			}
+			for (const path of Object.keys(state.fileErrors)) {
+				setErrors(path, undefined)
+			}
+			for (const path of Object.keys(state.scrollPositions)) {
+				setScrollPosition(path, undefined)
+			}
+			for (const path of Object.keys(state.visibleContents)) {
+				setVisibleContent(path, undefined)
+			}
+			for (const path of Object.keys(previews)) {
+				delete previews[path]
+			}
+		})
+	}
+
 	const getAsync = async (path: string): Promise<FileCacheEntry> => {
 		if (DISABLE_CACHE) return {}
 		const memoryEntry = get(path)
-		if (Object.keys(memoryEntry).some((key) => memoryEntry[key as keyof FileCacheEntry] !== undefined)) {
+		const hasMemoryData = Object.keys(memoryEntry).some((key) => memoryEntry[key as keyof FileCacheEntry] !== undefined)
+		console.log(`[FileCacheController] getAsync: ${path} ${JSON.stringify({
+			hasMemoryData,
+			memoryScrollPosition: memoryEntry.scrollPosition
+		})}`)
+		if (hasMemoryData) {
 			return memoryEntry
 		}
 		const persistedEntry = await tieredCache.getAsync(path)
+		console.log(`[FileCacheController] getAsync: ${path} persisted entry: ${JSON.stringify({
+			hasScrollPosition: !!persistedEntry.scrollPosition,
+			scrollPosition: persistedEntry.scrollPosition
+		})}`)
 		if (Object.keys(persistedEntry).length > 0) {
 			batch(() => {
 				if (persistedEntry.pieceTable !== undefined) {
@@ -220,6 +282,7 @@ export const createFileCacheController = ({
 					setErrors(path, persistedEntry.errors)
 				}
 				if (persistedEntry.scrollPosition !== undefined) {
+					console.log(`[FileCacheController] Setting scroll position for ${path}: ${JSON.stringify(persistedEntry.scrollPosition)}`)
 					setScrollPosition(path, persistedEntry.scrollPosition)
 				}
 				if (persistedEntry.visibleContent !== undefined) {
@@ -234,6 +297,12 @@ export const createFileCacheController = ({
 		tieredCache.setActiveFile(path)
 	}
 
+	const getScrollPosition = (path: string): ScrollPosition | undefined => {
+		const memoryPos = state.scrollPositions[path]
+		if (memoryPos) return memoryPos
+		return tieredCache.getScrollPosition(path)
+	}
+
 	const getStats = async (): Promise<CacheStats> => {
 		return tieredCache.getStats()
 	}
@@ -246,9 +315,12 @@ export const createFileCacheController = ({
 		get,
 		set,
 		clearPath,
+		clearContent,
 		clearBuffer,
 		clearAll,
+		clearMemory,
 		getAsync,
+		getScrollPosition,
 		setActiveFile,
 		getStats,
 		flush,

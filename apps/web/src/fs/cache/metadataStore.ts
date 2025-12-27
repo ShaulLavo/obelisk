@@ -111,22 +111,19 @@ export function createCacheMetadataStore(options: MetadataStoreOptions = {}): Ca
 	}
 
 	const isStale = (path: string, currentMtime?: number): boolean => {
-		const metadata = getMetadata(path)
-		if (!metadata) {
-			return true // No metadata means we should treat as stale
-		}
-
-		// If no current mtime provided, we can't check staleness
 		if (currentMtime === undefined) {
 			return false
 		}
 
-		// If cached entry has no mtime, treat as not stale
+		const metadata = getMetadata(path)
+		if (!metadata) {
+			return false
+		}
+
 		if (metadata.mtime === undefined) {
 			return false
 		}
 
-		// Stale if current file is newer than cached version
 		return currentMtime > metadata.mtime
 	}
 

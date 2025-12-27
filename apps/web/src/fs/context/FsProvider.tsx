@@ -158,7 +158,7 @@ export function FsProvider(props: { children: JSX.Element }) {
 		setLoading,
 		clearParseResults,
 		clearPieceTables,
-		clearFileCache: fileCache.clearAll,
+		clearFileCache: fileCache.clearMemory,
 		setBackgroundPrefetching,
 		setBackgroundIndexedFileCount,
 		setLastPrefetchedPath,
@@ -266,6 +266,12 @@ export function FsProvider(props: { children: JSX.Element }) {
 		const lastFilePath =
 			localStorage.getItem('fs-last-known-file-path') ?? undefined
 		setSelectedPath(lastFilePath)
+		if (lastFilePath) {
+			const scrollPos = fileCache.getScrollPosition(lastFilePath)
+			if (scrollPos) {
+				setScrollPosition(lastFilePath, scrollPos)
+			}
+		}
 	})
 
 	onCleanup(() => {

@@ -1,6 +1,6 @@
 import type { SyncStorageBackend, AsyncStorageBackend, TierRoutingConfig, CacheStats, CacheMode } from './backends/types'
 import { DEFAULT_ROUTING } from './backends/types'
-import type { FileCacheEntry } from './fileCacheController'
+import type { FileCacheEntry, ScrollPosition } from './fileCacheController'
 import { TierRouter } from './tierRouter'
 import { createActiveFileState, type ActiveFileState } from './activeFileState'
 import { createCacheMetadataStore, createCacheEntryMetadata, type CacheMetadataStoreInterface } from './metadataStore'
@@ -53,6 +53,15 @@ export class TieredCacheController {
 		})
 	}
 
+	getScrollPosition(path: string): ScrollPosition | undefined {
+		const key = `v1:${path}:scrollPosition`
+		const value = this.warmBackend.get(key)
+		if (value !== null) {
+			return value as ScrollPosition
+		}
+		return undefined
+	}
+
 	get(path: string): FileCacheEntry {
 		if (this.activeFileState.isActive(path)) {
 			return this.activeFileState.getActiveEntry() ?? {}
@@ -85,7 +94,6 @@ export class TieredCacheController {
 		
 		if (this.activeFileState.isActive(path)) {
 			this.activeFileState.setActiveEntry(entry)
-			return
 		}
 		
 		const promises: Promise<void>[] = []
@@ -94,6 +102,7 @@ export class TieredCacheController {
 		for (const [key, value] of Object.entries(entry)) {
 			if (value !== undefined) {
 				const dataType = key as keyof FileCacheEntry
+				console.debug(`[TieredCache] Setting ${dataType} for ${path}`)
 				promises.push(this.tierRouter.set(path, dataType, value))
 			}
 		}
@@ -102,10 +111,13 @@ export class TieredCacheController {
 		
 		const tier = this.determinePrimaryTier(entry)
 		this.metadataStore.setMetadata(path, createCacheEntryMetadata(tier, currentMtime))
+		this.metadataStore.persist()
 	}
 
 	async clearPath(path: string): Promise<void> {
 		if (!path) return
+		console.debug(`[TieredCacheController] clearPath called for ${path}`)
+		console.trace()
 		
 		if (this.activeFileState.isActive(path)) {
 			this.activeFileState.setActive(null)
@@ -116,6 +128,8 @@ export class TieredCacheController {
 	}
 
 	async clearAll(): Promise<void> {
+		console.debug('[TieredCacheController] clearAll called')
+		console.trace()
 		this.activeFileState.setActive(null)
 		await this.tierRouter.clearAll()
 		this.metadataStore.clear()
