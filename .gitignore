@@ -16,6 +16,7 @@ node_modules
 
 # Testing
 coverage
+**/__screenshots__/
 
 # Turbo
 .turbo
@@ -40,3 +41,8 @@ yarn-error.log*
 *.pem
 # Generated files from scripts/generate-ts-file.ts
 *.generated.ts
+
+# Tooling
+.kro
+.kiro
+di
