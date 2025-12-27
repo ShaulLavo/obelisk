@@ -41,25 +41,7 @@ export const createTerminalController = async (
 		fontSize: 14,
 		fontFamily: 'JetBrains Mono Variable, monospace',
 		theme: {
-			background: options.theme.terminal.background,
-			foreground: options.theme.terminal.foreground,
-			black: options.theme.terminal.black,
-			red: options.theme.terminal.red,
-			green: options.theme.terminal.green,
-			yellow: options.theme.terminal.yellow,
-			blue: options.theme.terminal.blue,
-			magenta: options.theme.terminal.magenta,
-			cyan: options.theme.terminal.cyan,
-			white: options.theme.terminal.white,
-			cursor: options.theme.terminal.cursor,
-			brightBlack: options.theme.terminal.brightBlack,
-			brightRed: options.theme.terminal.brightRed,
-			brightGreen: options.theme.terminal.brightGreen,
-			brightYellow: options.theme.terminal.brightYellow,
-			brightBlue: options.theme.terminal.brightBlue,
-			brightMagenta: options.theme.terminal.brightMagenta,
-			brightCyan: options.theme.terminal.brightCyan,
-			brightWhite: options.theme.terminal.brightWhite,
+			...mapTheme(options.theme),
 		},
 	})
 
@@ -128,6 +110,9 @@ export const createTerminalController = async (
 
 	return {
 		fit,
+		setTheme: (theme: ThemePalette) => {
+			term.options.theme = mapTheme(theme)
+		},
 		dispose: () => {
 			disposed = true
 			if (initialFitRaf !== null) {
@@ -140,5 +125,29 @@ export const createTerminalController = async (
 			echoAddon.dispose()
 			term.dispose()
 		},
+	}
+}
+
+function mapTheme(theme: ThemePalette) {
+	return {
+		background: theme.terminal.background,
+		foreground: theme.terminal.foreground,
+		black: theme.terminal.black,
+		red: theme.terminal.red,
+		green: theme.terminal.green,
+		yellow: theme.terminal.yellow,
+		blue: theme.terminal.blue,
+		magenta: theme.terminal.magenta,
+		cyan: theme.terminal.cyan,
+		white: theme.terminal.white,
+		cursor: theme.terminal.cursor,
+		brightBlack: theme.terminal.brightBlack,
+		brightRed: theme.terminal.brightRed,
+		brightGreen: theme.terminal.brightGreen,
+		brightYellow: theme.terminal.brightYellow,
+		brightBlue: theme.terminal.brightBlue,
+		brightMagenta: theme.terminal.brightMagenta,
+		brightCyan: theme.terminal.brightCyan,
+		brightWhite: theme.terminal.brightWhite,
 	}
 }
