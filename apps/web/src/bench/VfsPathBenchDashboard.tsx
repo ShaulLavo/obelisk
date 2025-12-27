@@ -153,14 +153,17 @@ export const VfsPathBenchDashboard = () => {
 	const getCategoryColor = (category: string): string => {
 		const colors: Record<string, string> = {
 			'path-resolution':
-				'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-			'handle-acquisition': 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-			'file-read': 'bg-pink-500/20 text-pink-400 border-pink-500/30',
-			'batch-operations': 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+				'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30',
+			'handle-acquisition':
+				'bg-blue-500/20 text-blue-700 dark:text-blue-400 border-blue-500/30',
+			'file-read':
+				'bg-pink-500/20 text-pink-700 dark:text-pink-400 border-pink-500/30',
+			'batch-operations':
+				'bg-amber-500/20 text-amber-700 dark:text-amber-400 border-amber-500/30',
 			'cache-effectiveness':
-				'bg-violet-500/20 text-violet-400 border-violet-500/30',
+				'bg-violet-500/20 text-violet-700 dark:text-violet-400 border-violet-500/30',
 		}
-		return colors[category] ?? 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30'
+		return colors[category] ?? 'bg-muted text-muted-foreground border-border'
 	}
 
 	const exportResults = () => {
@@ -181,16 +184,16 @@ export const VfsPathBenchDashboard = () => {
 		scenarioStates().filter((s) => s.status === 'complete').length
 
 	return (
-		<div class="min-h-screen bg-[#0b0c0f] text-zinc-100 font-sans selection:bg-indigo-500/30">
+		<div class="min-h-screen bg-background text-foreground font-sans selection:bg-primary/30">
 			{/* Header */}
-			<header class="border-b border-zinc-800 bg-[#0f1014]">
+			<header class="border-b border-border bg-card">
 				<div class="max-w-6xl mx-auto px-6 py-6">
 					<div class="flex items-center justify-between">
 						<div>
-							<h1 class="text-xl font-semibold text-zinc-100">
+							<h1 class="text-xl font-semibold text-foreground">
 								VFS Path Benchmark
 							</h1>
-							<p class="text-sm text-zinc-500 mt-1">
+							<p class="text-sm text-muted-foreground mt-1">
 								Measures directory handle acquisition and path resolution
 								overhead
 							</p>
@@ -199,7 +202,7 @@ export const VfsPathBenchDashboard = () => {
 							<Show when={allResults().length > 0}>
 								<button
 									onClick={exportResults}
-									class="px-4 py-2 text-sm font-medium text-zinc-300 bg-zinc-800 hover:bg-zinc-700 rounded-lg border border-zinc-700 transition-colors"
+									class="px-4 py-2 text-sm font-medium text-secondary-foreground bg-secondary hover:bg-secondary/80 rounded-lg border border-border transition-colors"
 								>
 									Export JSON
 								</button>
@@ -230,17 +233,17 @@ export const VfsPathBenchDashboard = () => {
 				{/* Progress */}
 				<Show when={progress()}>
 					<div class="mb-6">
-						<div class="flex items-center justify-between text-sm text-zinc-400 mb-2">
+						<div class="flex items-center justify-between text-sm text-muted-foreground mb-2">
 							<span>
 								{progress()!.current} / {progress()!.total} scenarios
 							</span>
 							<Show when={currentScenario()}>
-								<span class="text-zinc-500 font-mono text-xs">
+								<span class="text-muted-foreground font-mono text-xs">
 									{currentScenario()}
 								</span>
 							</Show>
 						</div>
-						<div class="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+						<div class="h-1.5 bg-muted rounded-full overflow-hidden">
 							<div
 								class="h-full bg-indigo-500 transition-all duration-300"
 								style={{
@@ -253,43 +256,43 @@ export const VfsPathBenchDashboard = () => {
 
 				{/* Results Table */}
 				<Show when={scenarioStates().length > 0}>
-					<div class="rounded-lg border border-zinc-800 overflow-hidden bg-[#0b0c0f] shadow-sm">
+					<div class="rounded-lg border border-border overflow-hidden bg-card shadow-sm">
 						<div class="overflow-x-auto">
 							<table class="w-full text-left text-sm border-collapse">
 								<thead>
-									<tr class="bg-zinc-900/50 border-b border-zinc-800">
-										<th class="px-4 py-3 font-medium text-zinc-400 whitespace-nowrap">
+									<tr class="bg-muted/50 border-b border-border">
+										<th class="px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">
 											Scenario
 										</th>
-										<th class="px-4 py-3 font-medium text-zinc-400 whitespace-nowrap">
+										<th class="px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">
 											Category
 										</th>
-										<th class="px-4 py-3 font-medium text-zinc-400 whitespace-nowrap text-center">
+										<th class="px-4 py-3 font-medium text-muted-foreground whitespace-nowrap text-center">
 											Status
 										</th>
-										<th class="px-4 py-3 font-medium text-zinc-400 whitespace-nowrap text-right">
+										<th class="px-4 py-3 font-medium text-muted-foreground whitespace-nowrap text-right">
 											Avg
 										</th>
-										<th class="px-4 py-3 font-medium text-zinc-400 whitespace-nowrap text-right">
+										<th class="px-4 py-3 font-medium text-muted-foreground whitespace-nowrap text-right">
 											P50
 										</th>
-										<th class="px-4 py-3 font-medium text-zinc-400 whitespace-nowrap text-right">
+										<th class="px-4 py-3 font-medium text-muted-foreground whitespace-nowrap text-right">
 											P95
 										</th>
-										<th class="px-4 py-3 font-medium text-zinc-400 whitespace-nowrap text-right">
+										<th class="px-4 py-3 font-medium text-muted-foreground whitespace-nowrap text-right">
 											Throughput
 										</th>
 									</tr>
 								</thead>
-								<tbody class="divide-y divide-zinc-800/50">
+								<tbody class="divide-y divide-border">
 									<For each={scenarioStates()}>
 										{(state) => (
-											<tr class="hover:bg-zinc-800/30 transition-colors">
+											<tr class="hover:bg-muted/50 transition-colors">
 												<td class="px-4 py-3">
-													<div class="font-medium text-zinc-200">
+													<div class="font-medium text-foreground">
 														{state.scenario.name}
 													</div>
-													<div class="text-xs text-zinc-500 mt-0.5">
+													<div class="text-xs text-muted-foreground mt-0.5">
 														{state.scenario.description}
 													</div>
 												</td>
@@ -306,25 +309,27 @@ export const VfsPathBenchDashboard = () => {
 														fallback={
 															<Show
 																when={state.status === 'complete'}
-																fallback={<span class="text-zinc-600">○</span>}
+																fallback={
+																	<span class="text-muted-foreground">○</span>
+																}
 															>
 																<span class="text-emerald-400">✓</span>
 															</Show>
 														}
 													>
-														<span class="inline-block w-4 h-4 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+														<span class="inline-block w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
 													</Show>
 												</td>
-												<td class="px-4 py-3 text-right font-mono text-xs text-zinc-300">
+												<td class="px-4 py-3 text-right font-mono text-xs text-muted-foreground">
 													{formatMs(state.result?.avgMs)}
 												</td>
-												<td class="px-4 py-3 text-right font-mono text-xs text-zinc-400">
+												<td class="px-4 py-3 text-right font-mono text-xs text-muted-foreground">
 													{formatMs(state.result?.p50Ms)}
 												</td>
-												<td class="px-4 py-3 text-right font-mono text-xs text-zinc-400">
+												<td class="px-4 py-3 text-right font-mono text-xs text-muted-foreground">
 													{formatMs(state.result?.p95Ms)}
 												</td>
-												<td class="px-4 py-3 text-right font-mono text-xs text-zinc-300">
+												<td class="px-4 py-3 text-right font-mono text-xs text-muted-foreground">
 													{formatOps(state.result?.opsPerSec)}
 												</td>
 											</tr>
@@ -333,7 +338,7 @@ export const VfsPathBenchDashboard = () => {
 								</tbody>
 							</table>
 						</div>
-						<div class="px-4 py-2 bg-zinc-900/30 border-t border-zinc-800 text-xs text-zinc-500 flex justify-between">
+						<div class="px-4 py-2 bg-muted/30 border-t border-border text-xs text-muted-foreground flex justify-between">
 							<span>
 								{completedCount()} of {scenarioStates().length} scenarios
 								complete
@@ -346,9 +351,9 @@ export const VfsPathBenchDashboard = () => {
 				{/* Empty State */}
 				<Show when={!running() && scenarioStates().length === 0}>
 					<div class="flex flex-col items-center justify-center py-24 text-center">
-						<div class="w-16 h-16 mb-6 rounded-full bg-zinc-800/50 flex items-center justify-center">
+						<div class="w-16 h-16 mb-6 rounded-full bg-muted flex items-center justify-center">
 							<svg
-								class="w-8 h-8 text-zinc-600"
+								class="w-8 h-8 text-muted-foreground"
 								fill="none"
 								stroke="currentColor"
 								viewBox="0 0 24 24"
@@ -361,10 +366,10 @@ export const VfsPathBenchDashboard = () => {
 								/>
 							</svg>
 						</div>
-						<h2 class="text-lg font-medium text-zinc-300 mb-2">
+						<h2 class="text-lg font-medium text-foreground mb-2">
 							Ready to benchmark
 						</h2>
-						<p class="text-sm text-zinc-500 max-w-md">
+						<p class="text-sm text-muted-foreground max-w-md">
 							Click "Run Benchmark" to measure VFS path resolution performance.
 							This will create temporary files in OPFS to test handle
 							acquisition at various depths.
