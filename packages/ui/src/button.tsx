@@ -52,7 +52,6 @@ const Button = <T extends ValidComponent = 'button'>(
 		'size',
 		'class',
 	])
-
 	return (
 		<ButtonPrimitive.Root
 			class={cn(
