@@ -7,7 +7,7 @@ import type {
 	BracketInfo,
 	TreeSitterError,
 	FoldRange,
-} from '../../workers/treeSitterWorkerTypes'
+} from '../../workers/treeSitter/types'
 import type {
 	FileCacheController,
 	ScrollPosition,

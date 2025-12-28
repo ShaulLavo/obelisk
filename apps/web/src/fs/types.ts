@@ -6,7 +6,7 @@ import type {
 	BracketInfo,
 	TreeSitterError,
 	FoldRange,
-} from '../workers/treeSitterWorkerTypes'
+} from '../workers/treeSitter/types'
 import type { DeferredDirMetadata } from './prefetch/treePrefetchWorkerTypes'
 import type { ScrollPosition } from './cache/fileCacheController'
 import type { HighlightTransform } from './hooks/createHighlightState'

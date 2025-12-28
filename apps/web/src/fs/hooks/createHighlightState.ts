@@ -1,7 +1,7 @@
 import { batch } from 'solid-js'
 import { createStore, reconcile } from 'solid-js/store'
 import { logger } from '../../logger'
-import type { TreeSitterCapture } from '../../workers/treeSitterWorkerTypes'
+import type { TreeSitterCapture } from '../../workers/treeSitter/types'
 
 export type HighlightTransform = {
 	charDelta: number

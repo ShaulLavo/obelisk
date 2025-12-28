@@ -6,9 +6,12 @@ import type {
 	BracketInfo,
 	TreeSitterError,
 	FoldRange,
-} from '../../workers/treeSitterWorkerTypes'
+} from '../../workers/treeSitter/types'
 import type { FsState } from '../types'
-import { TieredCacheController, type TieredCacheControllerOptions } from './tieredCacheController'
+import {
+	TieredCacheController,
+	type TieredCacheControllerOptions,
+} from './tieredCacheController'
 import type { CacheStats } from './backends/types'
 
 export const DISABLE_CACHE = false as const
@@ -131,7 +134,10 @@ export const createFileCacheController = ({
 			}
 		})
 		tieredCache.set(path, entry).catch((error) => {
-			console.warn(`FileCacheController: Failed to persist entry for ${path}:`, error)
+			console.warn(
+				`FileCacheController: Failed to persist entry for ${path}:`,
+				error
+			)
 		})
 	}
 
@@ -246,7 +252,9 @@ export const createFileCacheController = ({
 	const getAsync = async (path: string): Promise<FileCacheEntry> => {
 		if (DISABLE_CACHE) return {}
 		const memoryEntry = get(path)
-		const hasMemoryData = Object.keys(memoryEntry).some((key) => memoryEntry[key as keyof FileCacheEntry] !== undefined)
+		const hasMemoryData = Object.keys(memoryEntry).some(
+			(key) => memoryEntry[key as keyof FileCacheEntry] !== undefined
+		)
 		if (hasMemoryData) {
 			return memoryEntry
 		}

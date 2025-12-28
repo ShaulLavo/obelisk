@@ -1,5 +1,5 @@
 import { createStore, reconcile } from 'solid-js/store'
-import type { TreeSitterError } from '../../workers/treeSitterWorkerTypes'
+import type { TreeSitterError } from '../../workers/treeSitter/types'
 
 export const createErrorState = () => {
 	const [fileErrors, setErrorsStore] = createStore<

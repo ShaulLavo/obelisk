@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Tree } from 'web-tree-sitter'
-import type { TreeSitterEditPayload } from '../treeSitterWorkerTypes'
+import type { TreeSitterEditPayload } from './types'
 import { astCache, clearAstCache } from './cache'
 import { reparseWithEditBatch } from './parse'
 
 type TreeEdit = Omit<TreeSitterEditPayload, 'path' | 'insertedText'>
 type ParseFn = (text: string, tree?: Tree) => Tree | null
 
-const parseMock = vi.fn<ReturnType<ParseFn>, Parameters<ParseFn>>()
+const parseMock = vi.fn<ParseFn>()
 
 vi.mock('./parser', () => ({
 	ensureParser: vi.fn(async () => ({

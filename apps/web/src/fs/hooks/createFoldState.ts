@@ -1,5 +1,5 @@
 import { createStore, reconcile } from 'solid-js/store'
-import type { FoldRange } from '../../workers/treeSitterWorkerTypes'
+import type { FoldRange } from '../../workers/treeSitter/types'
 
 export const createFoldState = () => {
 	const [fileFolds, setFoldsStore] = createStore<

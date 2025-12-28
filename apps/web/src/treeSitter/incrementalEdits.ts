@@ -2,7 +2,7 @@ import type { DocumentIncrementalEdit } from '@repo/code-editor'
 import type {
 	TreeSitterParseResult,
 	TreeSitterEditPayload,
-} from '../workers/treeSitterWorkerTypes'
+} from '../workers/treeSitter/types'
 import { applyTreeSitterEditBatch } from './workerClient'
 import { logger } from '../logger'
 

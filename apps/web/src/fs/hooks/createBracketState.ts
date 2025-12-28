@@ -1,5 +1,5 @@
 import { createStore, reconcile } from 'solid-js/store'
-import type { BracketInfo } from '../../workers/treeSitterWorkerTypes'
+import type { BracketInfo } from '../../workers/treeSitter/types'
 
 export const createBracketState = () => {
 	const [fileBrackets, setBracketsStore] = createStore<

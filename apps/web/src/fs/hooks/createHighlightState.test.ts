@@ -1,6 +1,6 @@
 import { createEffect, createRoot } from 'solid-js'
 import { describe, expect, it } from 'vitest'
-import type { TreeSitterCapture } from '../../workers/treeSitterWorkerTypes'
+import type { TreeSitterCapture } from '../../workers/treeSitter/types'
 import type { HighlightTransform } from './createHighlightState'
 import { createHighlightState } from './createHighlightState'
 
