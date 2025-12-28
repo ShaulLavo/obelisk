@@ -40,7 +40,8 @@
     "serve": "bun run --cwd apps/web serve",
     "depcheck": "turbo run depcheck --parallel",
     "unimported": "turbo run unimported --parallel",
-    "tsprune": "turbo run tsprune --parallel"
+    "tsprune": "turbo run tsprune --parallel",
+    "build:fresh": "bun run --cwd packages/icons init && bun run --cwd packages/sqlite-wasm build && bun run --cwd apps/web build && bun run --cwd apps/web start"
   },
   "workspaces": [
     "apps/*",

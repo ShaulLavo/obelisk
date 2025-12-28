@@ -47,6 +47,8 @@ const PREFIX_SCOPE_CLASS: Record<string, string> = {
 	namespace: 'syntax-namespace',
 }
 
+const SCOPE_CACHE = new Map<string, string | undefined>()
+
 /**
  * Get the CSS class name for a tree-sitter scope.
  */
@@ -54,17 +56,19 @@ export const getHighlightClassForScope = (
 	scope: string
 ): string | undefined => {
 	if (!scope) return undefined
+	if (SCOPE_CACHE.has(scope)) return SCOPE_CACHE.get(scope)
 
 	// Try exact match first
-	const exactClass = EXACT_SCOPE_CLASS[scope]
-	if (exactClass) return exactClass
+	let result = EXACT_SCOPE_CLASS[scope]
 
-	// Fall back to prefix match
-	const prefix = scope.split('.')[0] ?? ''
-	const prefixClass = PREFIX_SCOPE_CLASS[prefix]
-	if (prefixClass) return prefixClass
+	if (!result) {
+		// Fall back to prefix match
+		const prefix = scope.split('.')[0] ?? ''
+		result = PREFIX_SCOPE_CLASS[prefix]
+	}
 
-	return undefined
+	SCOPE_CACHE.set(scope, result)
+	return result
 }
 
 export const mergeLineSegments = (
@@ -174,42 +178,48 @@ const mapBoundaryToOld = (
 	if (position >= offset.newEndIndex) {
 		return position - (offset.newEndIndex - offset.oldEndIndex)
 	}
+	// For highlighting purposes:
+	// If the boundary is inside the edited range, we clamp it to the start/end of the old range
+	// so that the highlight doesn't disappear if it was partially covered by the edit.
+	// But it depends on whether we want to verify intersection strictness.
+	// For now, mapping to insertion point (fromCharIndex) or old end index is correct.
 	return boundary === 'start' ? offset.fromCharIndex : offset.oldEndIndex
 }
 
 const mapRangeToOldOffset = (
 	rangeStart: number,
 	rangeEnd: number,
-	offset: HighlightShiftOffset
-): HighlightRange => {
+	offset: HighlightShiftOffset,
+	out: { start: number; end: number }
+) => {
 	const mappedStart = mapBoundaryToOld(rangeStart, offset, 'start')
 	const mappedEnd = mapBoundaryToOld(rangeEnd, offset, 'end')
 	const intersects =
 		rangeStart < offset.newEndIndex && rangeEnd > offset.fromCharIndex
 	if (!intersects) {
-		const start = Math.min(mappedStart, mappedEnd)
-		const end = Math.max(mappedStart, mappedEnd)
-		return { start, end }
+		out.start = Math.min(mappedStart, mappedEnd)
+		out.end = Math.max(mappedStart, mappedEnd)
+		return
 	}
-	const start = Math.min(mappedStart, offset.fromCharIndex)
-	const end = Math.max(mappedEnd, offset.oldEndIndex)
-	return { start, end }
+	out.start = Math.min(mappedStart, offset.fromCharIndex)
+	out.end = Math.max(mappedEnd, offset.oldEndIndex)
 }
 
 export const mapRangeToOldOffsets = (
 	rangeStart: number,
 	rangeEnd: number,
 	offsets: HighlightShiftOffset[]
-): HighlightRange => {
+): { start: number; end: number } => {
 	let mappedStart = rangeStart
 	let mappedEnd = rangeEnd
+	const scratch = { start: 0, end: 0 }
 
 	for (let i = offsets.length - 1; i >= 0; i--) {
 		const offset = offsets[i]
 		if (!offset) continue
-		const mapped = mapRangeToOldOffset(mappedStart, mappedEnd, offset)
-		mappedStart = mapped.start
-		mappedEnd = mapped.end
+		mapRangeToOldOffset(mappedStart, mappedEnd, offset, scratch)
+		mappedStart = scratch.start
+		mappedEnd = scratch.end
 	}
 
 	return {
@@ -218,15 +228,15 @@ export const mapRangeToOldOffsets = (
 	}
 }
 
-const pushRange = (output: HighlightRange[], start: number, end: number) => {
+const pushRange = (output: number[], start: number, end: number) => {
 	if (end <= start) return
-	output.push({ start, end })
+	output.push(start, end)
 }
 
 const applyOffsetToSegments = (
-	segments: HighlightRange[],
+	segments: number[],
 	offset: HighlightShiftOffset,
-	output: HighlightRange[]
+	output: number[]
 ) => {
 	output.length = 0
 	const offsetStart = offset.fromCharIndex
@@ -234,9 +244,10 @@ const applyOffsetToSegments = (
 	const offsetNewEnd = offset.newEndIndex
 	const offsetDelta = offsetNewEnd - offsetOldEnd
 
-	for (const segment of segments) {
-		const segmentStart = segment.start
-		const segmentEnd = segment.end
+	for (let i = 0; i < segments.length; i += 2) {
+		const segmentStart = segments[i]!
+		const segmentEnd = segments[i + 1]!
+
 		if (segmentEnd <= offsetStart) {
 			pushRange(output, segmentStart, segmentEnd)
 			continue
@@ -278,11 +289,11 @@ const applyOffsetsToHighlight = (
 	highlightStart: number,
 	highlightEnd: number,
 	offsets: HighlightShiftOffset[],
-	bufferA: HighlightRange[],
-	bufferB: HighlightRange[]
+	bufferA: number[],
+	bufferB: number[]
 ) => {
 	bufferA.length = 0
-	bufferA.push({ start: highlightStart, end: highlightEnd })
+	bufferA.push(highlightStart, highlightEnd)
 
 	let current = bufferA
 	let next = bufferB
@@ -316,8 +327,8 @@ export const toLineHighlightSegmentsForLine = (
 	let compareLineStart = lineStart
 	let compareLineEnd = lineEnd
 
-	const rangeBufferA: HighlightRange[] = []
-	const rangeBufferB: HighlightRange[] = []
+	const rangeBufferA: number[] = []
+	const rangeBufferB: number[] = []
 
 	if (hasOffsets) {
 		const mapped = mapRangeToOldOffsets(lineStart, lineEnd, offsets)
@@ -400,8 +411,13 @@ export const toLineHighlightSegmentsForLine = (
 			rangeBufferB
 		)
 
-		for (const range of shiftedRanges) {
-			pushSegment(range.start, range.end, className, highlight.scope)
+		for (let i = 0; i < shiftedRanges.length; i += 2) {
+			pushSegment(
+				shiftedRanges[i]!,
+				shiftedRanges[i + 1]!,
+				className,
+				highlight.scope
+			)
 		}
 	}
 

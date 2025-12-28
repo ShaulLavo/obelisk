@@ -20,147 +20,28 @@ import {
 	getLineLength as getLineLengthFromStarts,
 	getLineStart,
 	getLineTextLength as getLineTextLengthFromStarts,
-	offsetToLineIndex,
 	offsetToPosition,
 	positionToOffset,
 } from '../utils/position'
-import { countLineBreaks } from '../utils/lineTextCache'
+import {
+	applyEditToLineStarts,
+	buildLineStartsFromSnapshot,
+	buildLineStartsFromText,
+	insertSingleNewlineToLineStarts,
+} from '../utils/lineStarts'
+import {
+	buildEditedLineTexts,
+	buildLineDataFromText,
+	buildLineDataFromSnapshot,
+	buildLineIdsForEdit,
+	clampLineIndex,
+	computeEditMetadata,
+	createLineIdGenerator,
+	type EditMetadata,
+} from '../utils/lineData'
 import type { CursorContextValue, CursorProviderProps } from './types'
 
 const CursorContext = createContext<CursorContextValue>()
-
-const buildLineStartsFromText = (text: string): number[] => {
-	const starts: number[] = [0]
-	let index = text.indexOf('\n')
-
-	while (index !== -1) {
-		starts.push(index + 1)
-		index = text.indexOf('\n', index + 1)
-	}
-
-	return starts
-}
-
-const buildLineStartsFromSnapshot = (
-	snapshot: PieceTableSnapshot
-): number[] => {
-	const starts: number[] = [0]
-	if (snapshot.length === 0 || !snapshot.root) return starts
-
-	type Node = NonNullable<typeof snapshot.root>
-
-	const stack: Node[] = []
-	let node: Node | null = snapshot.root
-	let docOffset = 0
-
-	while (node || stack.length > 0) {
-		while (node) {
-			stack.push(node)
-			node = node.left
-		}
-
-		const current = stack.pop()
-		if (!current) break
-
-		const piece = current.piece
-		const buffer =
-			piece.buffer === 'original'
-				? snapshot.buffers.original
-				: snapshot.buffers.add
-		const pieceStart = piece.start
-		const pieceEnd = piece.start + piece.length
-
-		let searchFrom = pieceStart
-		while (searchFrom < pieceEnd) {
-			const idx = buffer.indexOf('\n', searchFrom)
-			if (idx === -1 || idx >= pieceEnd) break
-			starts.push(docOffset + (idx - pieceStart) + 1)
-			searchFrom = idx + 1
-		}
-
-		docOffset += piece.length
-		node = current.right
-	}
-
-	return starts
-}
-
-const applyEditToLineStarts = (
-	lineStarts: number[],
-	startIndex: number,
-	deletedText: string,
-	insertedText: string
-): number[] => {
-	const len = lineStarts.length
-	if (len === 0) return lineStarts
-
-	const deletedLength = deletedText.length
-	const insertedLength = insertedText.length
-	const delta = insertedLength - deletedLength
-	const oldEnd = startIndex + deletedLength
-
-	// Binary search for startLineIndex (last line starting at or before startIndex)
-	let low = 0
-	let high = len - 1
-	let startLineIndex = 0
-	while (low <= high) {
-		const mid = (low + high) >> 1
-		if ((lineStarts[mid] ?? 0) <= startIndex) {
-			startLineIndex = mid
-			low = mid + 1
-		} else {
-			high = mid - 1
-		}
-	}
-
-	// Binary search for firstAfterDeletion (first line starting after oldEnd)
-	low = 0
-	high = len
-	let firstAfterDeletion = len
-	while (low < high) {
-		const mid = (low + high) >> 1
-		if ((lineStarts[mid] ?? 0) > oldEnd) {
-			firstAfterDeletion = mid
-			high = mid
-		} else {
-			low = mid + 1
-		}
-	}
-
-	// Count newlines in inserted text to pre-allocate
-	let insertedNewlines = 0
-	let searchPos = 0
-	while ((searchPos = insertedText.indexOf('\n', searchPos)) !== -1) {
-		insertedNewlines++
-		searchPos++
-	}
-
-	// Calculate final array size and pre-allocate
-	const keepCount = startLineIndex + 1
-	const tailCount = len - firstAfterDeletion
-	const resultLen = keepCount + insertedNewlines + tailCount
-	const result = new Array<number>(resultLen)
-
-	// Copy preserved prefix directly
-	for (let i = 0; i < keepCount; i++) {
-		result[i] = lineStarts[i]!
-	}
-
-	// Fill in new line starts from inserted text
-	let writeIdx = keepCount
-	let nlIdx = insertedText.indexOf('\n')
-	while (nlIdx !== -1) {
-		result[writeIdx++] = startIndex + nlIdx + 1
-		nlIdx = insertedText.indexOf('\n', nlIdx + 1)
-	}
-
-	// Copy and adjust tail
-	for (let i = firstAfterDeletion; i < len; i++) {
-		result[writeIdx++] = (lineStarts[i] ?? 0) + delta
-	}
-
-	return result
-}
 
 export function CursorProvider(props: CursorProviderProps) {
 	const log = loggers.codeEditor.withTag('cursor')
@@ -177,7 +58,6 @@ export function CursorProvider(props: CursorProviderProps) {
 	// Used to explicitly invalidate memos that depend on line content.
 	const [lineDataRevision, setLineDataRevision] = createSignal(0)
 
-	let nextLineId = 1
 	let lineIdIndex = new Map<number, number>()
 	let pendingLineDataReset = false
 	const setLineIdsWithIndex = (nextIds: number[]) => {
@@ -190,123 +70,7 @@ export function CursorProvider(props: CursorProviderProps) {
 			}
 		}
 	}
-	const createLineIds = (count: number) => {
-		const ids: number[] = new Array(Math.max(0, count))
-		for (let i = 0; i < ids.length; i += 1) {
-			ids[i] = nextLineId
-			nextLineId += 1
-		}
-		return ids
-	}
-	const clampLineIndex = (value: number, maxIndex: number) =>
-		Math.max(0, Math.min(value, maxIndex))
-	const buildLineDataFromText = (
-		content: string,
-		ids: number[],
-		starts: number[]
-	) => {
-		const data: Record<number, { text: string; length: number }> = {}
-		const lineCount = Math.min(ids.length, starts.length)
-		for (let i = 0; i < lineCount; i += 1) {
-			const lineId = ids[i]
-			const start = starts[i] ?? 0
-			const end = starts[i + 1] ?? content.length
-			const textEnd = i < lineCount - 1 ? Math.max(start, end - 1) : end
-			const text = content.slice(start, textEnd)
-			const length = Math.max(0, end - start)
-			if (typeof lineId === 'number') {
-				data[lineId] = { text, length }
-			}
-		}
-		return data
-	}
-	const buildLineDataFromSnapshot = (
-		snapshot: PieceTableSnapshot,
-		ids: number[],
-		starts: number[]
-	) => {
-		const data: Record<number, { text: string; length: number }> = {}
-		const lineCount = Math.min(ids.length, starts.length)
-		const docLength = getPieceTableLength(snapshot)
-		for (let i = 0; i < lineCount; i += 1) {
-			const lineId = ids[i]
-			const start = starts[i] ?? 0
-			const end = starts[i + 1] ?? docLength
-			const textEnd = i < lineCount - 1 ? Math.max(start, end - 1) : end
-			const text = getPieceTableText(snapshot, start, textEnd)
-			const length = Math.max(0, end - start)
-			if (typeof lineId === 'number') {
-				data[lineId] = { text, length }
-			}
-		}
-		return data
-	}
-	const buildEditedLineTexts = (options: {
-		startLineText: string
-		endLineText: string
-		startColumn: number
-		endColumn: number
-		insertedText: string
-	}) => {
-		const startText = options.startLineText
-		const endText = options.endLineText
-		const startColumn = Math.max(
-			0,
-			Math.min(options.startColumn, startText.length)
-		)
-		const endColumn = Math.max(0, Math.min(options.endColumn, endText.length))
-		const prefix = startText.slice(0, startColumn)
-		const suffix = endText.slice(endColumn)
-		const insertedLines = options.insertedText.split('\n')
-
-		if (insertedLines.length === 1) {
-			return [prefix + options.insertedText + suffix]
-		}
-
-		const nextLines: string[] = new Array(insertedLines.length)
-		nextLines[0] = `${prefix}${insertedLines[0] ?? ''}`
-		for (let i = 1; i < insertedLines.length - 1; i += 1) {
-			nextLines[i] = insertedLines[i] ?? ''
-		}
-		nextLines[insertedLines.length - 1] = `${
-			insertedLines[insertedLines.length - 1] ?? ''
-		}${suffix}`
-		return nextLines
-	}
-	const buildLineIdsForEdit = (options: {
-		prevLineIds: number[]
-		startLine: number
-		endLine: number
-		lineDelta: number
-		expectedLineCount: number
-	}) => {
-		const expectedCount = options.expectedLineCount
-		if (expectedCount <= 0) return []
-		if (options.prevLineIds.length === 0) return createLineIds(expectedCount)
-
-		const maxIndex = options.prevLineIds.length - 1
-		if (maxIndex < 0) return createLineIds(expectedCount)
-
-		const safeStart = clampLineIndex(options.startLine, maxIndex)
-		const safeEnd = Math.max(
-			safeStart,
-			clampLineIndex(options.endLine, maxIndex)
-		)
-		const replacedCount = safeEnd - safeStart + 1
-		const nextSegmentCount = Math.max(0, replacedCount + options.lineDelta)
-		const before = options.prevLineIds.slice(0, safeStart)
-		const after = options.prevLineIds.slice(safeEnd + 1)
-
-		if (nextSegmentCount === 0) return [...before, ...after]
-
-		const preservedId = options.prevLineIds[safeStart] ?? createLineIds(1)[0]!
-		const extraCount = Math.max(0, nextSegmentCount - 1)
-		const addedIds = extraCount > 0 ? createLineIds(extraCount) : []
-		const nextIds = [...before, preservedId, ...addedIds, ...after]
-		return nextIds.length === expectedCount
-			? nextIds
-			: createLineIds(expectedCount)
-	}
+	const createLineIds = createLineIdGenerator()
 
 	const lineCount = createMemo(() => lineStarts().length)
 
@@ -337,54 +101,198 @@ export function CursorProvider(props: CursorProviderProps) {
 		updateCurrentState(() => ({}))
 	}
 
-	const applyEdit = (
-		startIndex: number,
-		deletedText: string,
-		insertedText: string
-	) => {
+	/**
+	 * Fast-path for inserting a single newline with no deletion.
+	 * Returns true if handled, false if general path needed.
+	 */
+	const applySingleNewlineInsert = (startIndex: number): boolean => {
 		const prevLineStarts = lineStarts()
 		const prevLineIds = lineIds()
-		const prevDocumentLength = documentLength()
 		const prevLineCount = prevLineStarts.length
-		const deletedLineBreaks = countLineBreaks(deletedText)
-		const insertedLineBreaks = countLineBreaks(insertedText)
-		const lineDelta = insertedLineBreaks - deletedLineBreaks
-		const endOffset = Math.min(
-			prevDocumentLength,
-			startIndex + deletedText.length
-		)
-		const startLine = offsetToLineIndex(
-			startIndex,
-			prevLineStarts,
-			prevDocumentLength
-		)
-		const endLine = offsetToLineIndex(
-			endOffset,
-			prevLineStarts,
-			prevDocumentLength
-		)
-		const expectedLineCount = Math.max(0, prevLineCount + lineDelta)
-		const shouldResetLineIds =
-			prevLineIds.length !== prevLineCount || prevLineIds.length === 0
-		const shouldUpdateLineIds = lineDelta !== 0 || shouldResetLineIds
-		let nextLineIds = prevLineIds
 
-		if (shouldUpdateLineIds) {
-			if (expectedLineCount === 0) {
-				nextLineIds = []
-			} else if (shouldResetLineIds) {
-				nextLineIds = createLineIds(expectedLineCount)
+		// Find the line containing startIndex
+		let startLine = 0
+		let lo = 0
+		let hi = prevLineCount - 1
+		while (lo <= hi) {
+			const mid = (lo + hi) >> 1
+			if ((prevLineStarts[mid] ?? 0) <= startIndex) {
+				startLine = mid
+				lo = mid + 1
 			} else {
-				nextLineIds = buildLineIdsForEdit({
-					prevLineIds,
-					startLine,
-					endLine,
-					lineDelta,
-					expectedLineCount,
-				})
+				hi = mid - 1
 			}
 		}
 
+		// Validate state
+		if (prevLineIds.length !== prevLineCount || prevLineIds.length === 0) {
+			return false // Need full reset
+		}
+
+		const startLineId = prevLineIds[startLine]
+		if (typeof startLineId !== 'number' || startLineId < 0) {
+			return false
+		}
+
+		// Get current line text
+		const lineStart = prevLineStarts[startLine] ?? 0
+		const currentText = lineDataById[startLineId]?.text ?? ''
+		const column = startIndex - lineStart
+
+		// Split the line
+		const prefix = currentText.slice(0, column)
+		const suffix = currentText.slice(column)
+
+		// Create new line ID
+		const newLineId = createLineIds(1)[0]!
+
+		// Build new line IDs array
+		const nextLineIds = new Array<number>(prevLineCount + 1)
+		for (let i = 0; i <= startLine; i++) {
+			nextLineIds[i] = prevLineIds[i]!
+		}
+		nextLineIds[startLine + 1] = newLineId
+		for (let i = startLine + 1; i < prevLineCount; i++) {
+			nextLineIds[i + 1] = prevLineIds[i]!
+		}
+
+		const prevLastLineId = prevLineIds[prevLineCount - 1] ?? -1
+		const nextLastLineId = nextLineIds[prevLineCount] ?? -1
+
+		// Update signals
+		batch(() => {
+			setDocumentLength((prev) => prev + 1)
+			setLineStarts((prev) => insertSingleNewlineToLineStarts(prev, startIndex))
+			setLineIdsWithIndex(nextLineIds)
+			syncCursorStateToDocument()
+		})
+
+		// Update line data
+		batch(() => {
+			// Update current line with prefix (no longer last if it was)
+			const wasLast = startLineId === prevLastLineId
+			const isNowLast = startLineId === nextLastLineId
+			setLineDataById(startLineId, {
+				text: prefix,
+				length: prefix.length + (isNowLast ? 0 : 1),
+			})
+
+			// Add new line with suffix
+			const newIsLast = newLineId === nextLastLineId
+			setLineDataById(newLineId, {
+				text: suffix,
+				length: suffix.length + (newIsLast ? 0 : 1),
+			})
+
+			// Update previous last line if it changed
+			if (wasLast && !isNowLast && prevLastLineId > 0) {
+				const prevLast = lineDataById[prevLastLineId]
+				if (prevLast && prevLast !== lineDataById[startLineId]) {
+					setLineDataById(prevLastLineId, {
+						text: prevLast.text,
+						length: prevLast.text.length + 1,
+					})
+				}
+			}
+
+			setLineDataRevision((v) => v + 1)
+		})
+
+		return true
+	}
+
+	/**
+	 * Fast-path for inserting a single non-newline character with no deletion.
+	 * Common case: typing a letter, space, etc.
+	 * Returns true if handled, false if general path needed.
+	 */
+	const applySingleCharInsert = (startIndex: number, char: string): boolean => {
+		const prevLineStarts = lineStarts()
+		const prevLineIds = lineIds()
+		const prevLineCount = prevLineStarts.length
+
+		if (prevLineIds.length !== prevLineCount || prevLineCount === 0) {
+			return false
+		}
+
+		// Find the line containing startIndex
+		let lineIdx = 0
+		let lo = 0
+		let hi = prevLineCount - 1
+		while (lo <= hi) {
+			const mid = (lo + hi) >> 1
+			if ((prevLineStarts[mid] ?? 0) <= startIndex) {
+				lineIdx = mid
+				lo = mid + 1
+			} else {
+				hi = mid - 1
+			}
+		}
+
+		const lineId = prevLineIds[lineIdx]
+		if (typeof lineId !== 'number' || lineId < 0) {
+			return false
+		}
+
+		const lineStart = prevLineStarts[lineIdx] ?? 0
+		const currentText = lineDataById[lineId]?.text ?? ''
+		const column = startIndex - lineStart
+		const isLastLine = lineIdx === prevLineCount - 1
+
+		// Insert character into text
+		const newText =
+			currentText.slice(0, column) + char + currentText.slice(column)
+
+		// Update lineStarts: shift all lines after this one by 1
+		const newLineStarts = new Array<number>(prevLineCount)
+		for (let i = 0; i <= lineIdx; i++) {
+			newLineStarts[i] = prevLineStarts[i]!
+		}
+		for (let i = lineIdx + 1; i < prevLineCount; i++) {
+			newLineStarts[i] = prevLineStarts[i]! + 1
+		}
+
+		batch(() => {
+			setDocumentLength((prev) => prev + 1)
+			setLineStarts(newLineStarts)
+			syncCursorStateToDocument()
+		})
+
+		batch(() => {
+			setLineDataById(lineId, {
+				text: newText,
+				length: newText.length + (isLastLine ? 0 : 1),
+			})
+			setLineDataRevision((v) => v + 1)
+		})
+
+		return true
+	}
+
+	const computeNextLineIds = (meta: EditMetadata): number[] => {
+		if (!meta.shouldUpdateLineIds) return meta.prevLineIds
+		if (meta.expectedLineCount === 0) return []
+		if (meta.shouldResetLineIds) return createLineIds(meta.expectedLineCount)
+
+		return buildLineIdsForEdit(
+			{
+				prevLineIds: meta.prevLineIds,
+				startLine: meta.startLine,
+				endLine: meta.endLine,
+				lineDelta: meta.lineDelta,
+				expectedLineCount: meta.expectedLineCount,
+			},
+			createLineIds
+		)
+	}
+
+	const applyEditSignals = (
+		startIndex: number,
+		deletedText: string,
+		insertedText: string,
+		meta: EditMetadata,
+		nextLineIds: number[]
+	) =>
 		batch(() => {
 			setDocumentLength((prev) =>
 				Math.max(0, prev + insertedText.length - deletedText.length)
@@ -392,82 +300,28 @@ export function CursorProvider(props: CursorProviderProps) {
 			setLineStarts((prev) =>
 				applyEditToLineStarts(prev, startIndex, deletedText, insertedText)
 			)
-			if (shouldUpdateLineIds) {
+			if (meta.shouldUpdateLineIds) {
 				setLineIdsWithIndex(nextLineIds)
 			}
 			syncCursorStateToDocument()
 		})
 
-		const nextLineCount = lineStarts().length
-		if (nextLineCount !== Math.max(0, prevLineCount + lineDelta)) {
-			setLineIdsWithIndex(createLineIds(nextLineCount))
-			pendingLineDataReset = true
-			return
-		}
+	type LineDataUpdateParams = {
+		nextLineTexts: string[]
+		preservedId: number
+		addedIds: number[]
+		prevLastLineId: number
+		nextLastLineId: number
+	}
 
-		if (shouldResetLineIds) {
-			pendingLineDataReset = true
-			return
-		}
-
-		if (nextLineCount === 0 || nextLineIds.length === 0) {
-			setLineDataById(reconcile({}))
-			return
-		}
-
-		if (startLine > endLine) {
-			return
-		}
-
-		const maxIndex = prevLineIds.length - 1
-		if (maxIndex < 0) return
-		const safeStart = clampLineIndex(startLine, maxIndex)
-		const safeEnd = Math.max(safeStart, clampLineIndex(endLine, maxIndex))
-		const startLineId = prevLineIds[safeStart] ?? -1
-		const endLineId = prevLineIds[safeEnd] ?? startLineId
-		if (startLineId < 0) return
-
-		const startLineStart = prevLineStarts[safeStart] ?? 0
-		const endLineStart = prevLineStarts[safeEnd] ?? startLineStart
-		const startLineText =
-			lineDataById[startLineId]?.text ??
-			getTextRange(
-				startLineStart,
-				startLineStart +
-					getLineTextLengthFromStarts(
-						safeStart,
-						prevLineStarts,
-						prevDocumentLength
-					)
-			)
-		const endLineText =
-			lineDataById[endLineId]?.text ??
-			getTextRange(
-				endLineStart,
-				endLineStart +
-					getLineTextLengthFromStarts(
-						safeEnd,
-						prevLineStarts,
-						prevDocumentLength
-					)
-			)
-		const startColumn = startIndex - startLineStart
-		const endColumn = endOffset - endLineStart
-		const nextLineTexts = buildEditedLineTexts({
-			startLineText,
-			endLineText,
-			startColumn,
-			endColumn,
-			insertedText,
-		})
-		const nextLastLineId = nextLineIds[nextLineIds.length - 1] ?? -1
-		const prevLastLineId = prevLineIds[prevLineIds.length - 1] ?? -1
-		const preservedId = startLineId
-		const extraCount = Math.max(0, nextLineTexts.length - 1)
-		const addedIds =
-			extraCount > 0
-				? nextLineIds.slice(safeStart + 1, safeStart + 1 + extraCount)
-				: []
+	const commitLineDataUpdates = (params: LineDataUpdateParams) => {
+		const {
+			nextLineTexts,
+			preservedId,
+			addedIds,
+			prevLastLineId,
+			nextLastLineId,
+		} = params
 
 		batch(() => {
 			if (nextLineTexts.length > 0) {
@@ -501,9 +355,137 @@ export function CursorProvider(props: CursorProviderProps) {
 				}
 			}
 
-			// Single revision bump for all line data changes
 			setLineDataRevision((v) => v + 1)
 		})
+	}
+
+	const updateLineDataForEdit = (
+		startIndex: number,
+		insertedText: string,
+		meta: EditMetadata,
+		nextLineIds: number[]
+	): boolean => {
+		const nextLineCount = lineStarts().length
+		if (nextLineCount !== Math.max(0, meta.prevLineCount + meta.lineDelta)) {
+			batch(() => {
+				setLineIdsWithIndex(createLineIds(nextLineCount))
+				setLineDataRevision((v) => v + 1)
+			})
+			pendingLineDataReset = true
+			return false
+		}
+
+		if (meta.shouldResetLineIds) {
+			pendingLineDataReset = true
+			setLineDataRevision((v) => v + 1)
+			return false
+		}
+
+		if (nextLineCount === 0 || nextLineIds.length === 0) {
+			batch(() => {
+				setLineDataById(reconcile({}))
+				setLineDataRevision((v) => v + 1)
+			})
+			return false
+		}
+
+		if (meta.startLine > meta.endLine) {
+			setLineDataRevision((v) => v + 1)
+			return false
+		}
+
+		const maxIndex = meta.prevLineIds.length - 1
+		if (maxIndex < 0) {
+			setLineDataRevision((v) => v + 1)
+			return false
+		}
+
+		const safeStart = clampLineIndex(meta.startLine, maxIndex)
+		const safeEnd = Math.max(safeStart, clampLineIndex(meta.endLine, maxIndex))
+		const startLineId = meta.prevLineIds[safeStart] ?? -1
+		if (startLineId < 0) {
+			setLineDataRevision((v) => v + 1)
+			return false
+		}
+
+		const startLineStart = meta.prevLineStarts[safeStart] ?? 0
+		const endLineStart = meta.prevLineStarts[safeEnd] ?? startLineStart
+
+		const startTextLen = getLineTextLengthFromStarts(
+			safeStart,
+			meta.prevLineStarts,
+			meta.prevDocumentLength
+		)
+		const startLineText =
+			lineDataById[startLineId]?.text ??
+			getTextRange(startLineStart, startLineStart + startTextLen)
+
+		const endLineId = meta.prevLineIds[safeEnd] ?? startLineId
+		const endTextLen = getLineTextLengthFromStarts(
+			safeEnd,
+			meta.prevLineStarts,
+			meta.prevDocumentLength
+		)
+		const endLineText =
+			lineDataById[endLineId]?.text ??
+			getTextRange(endLineStart, endLineStart + endTextLen)
+
+		const startColumn = startIndex - startLineStart
+		const endColumn = meta.endOffset - endLineStart
+		const nextLineTexts = buildEditedLineTexts({
+			startLineText,
+			endLineText,
+			startColumn,
+			endColumn,
+			insertedText,
+		})
+
+		const nextLastLineId = nextLineIds[nextLineIds.length - 1] ?? -1
+		const prevLastLineId = meta.prevLineIds[meta.prevLineIds.length - 1] ?? -1
+		const preservedId = startLineId
+		const extraCount = Math.max(0, nextLineTexts.length - 1)
+		const addedIds =
+			extraCount > 0
+				? nextLineIds.slice(safeStart + 1, safeStart + 1 + extraCount)
+				: []
+
+		commitLineDataUpdates({
+			nextLineTexts,
+			preservedId,
+			addedIds,
+			prevLastLineId,
+			nextLastLineId,
+		})
+
+		return true
+	}
+
+	const applyEdit = (
+		startIndex: number,
+		deletedText: string,
+		insertedText: string
+	) => {
+		// Fast paths for common single-character operations
+		if (insertedText === '\n' && deletedText.length === 0) {
+			if (applySingleNewlineInsert(startIndex)) return
+		}
+		if (
+			insertedText.length === 1 &&
+			insertedText !== '\n' &&
+			deletedText.length === 0
+		) {
+			if (applySingleCharInsert(startIndex, insertedText)) return
+		}
+
+		// General path
+		const meta = computeEditMetadata(startIndex, deletedText, insertedText, {
+			lineStarts: lineStarts(),
+			lineIds: lineIds(),
+			documentLength: documentLength(),
+		})
+		const nextLineIds = computeNextLineIds(meta)
+		applyEditSignals(startIndex, deletedText, insertedText, meta, nextLineIds)
+		updateLineDataForEdit(startIndex, insertedText, meta, nextLineIds)
 	}
 
 	const getLineText = (lineIndex: number): string => {
