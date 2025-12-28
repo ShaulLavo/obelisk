@@ -91,22 +91,21 @@ const applyEditToLineStarts = (
 	deletedText: string,
 	insertedText: string
 ): number[] => {
-	if (lineStarts.length === 0) return lineStarts
+	const len = lineStarts.length
+	if (len === 0) return lineStarts
 
 	const deletedLength = deletedText.length
 	const insertedLength = insertedText.length
 	const delta = insertedLength - deletedLength
 	const oldEnd = startIndex + deletedLength
 
-	const safeStarts = lineStarts.slice()
-
+	// Binary search for startLineIndex (last line starting at or before startIndex)
 	let low = 0
-	let high = safeStarts.length - 1
+	let high = len - 1
 	let startLineIndex = 0
 	while (low <= high) {
 		const mid = (low + high) >> 1
-		const value = safeStarts[mid] ?? 0
-		if (value <= startIndex) {
+		if ((lineStarts[mid] ?? 0) <= startIndex) {
 			startLineIndex = mid
 			low = mid + 1
 		} else {
@@ -114,13 +113,13 @@ const applyEditToLineStarts = (
 		}
 	}
 
+	// Binary search for firstAfterDeletion (first line starting after oldEnd)
 	low = 0
-	high = safeStarts.length
-	let firstAfterDeletion = safeStarts.length
+	high = len
+	let firstAfterDeletion = len
 	while (low < high) {
 		const mid = (low + high) >> 1
-		const value = safeStarts[mid] ?? 0
-		if (value > oldEnd) {
+		if ((lineStarts[mid] ?? 0) > oldEnd) {
 			firstAfterDeletion = mid
 			high = mid
 		} else {
@@ -128,19 +127,39 @@ const applyEditToLineStarts = (
 		}
 	}
 
-	const nextStarts: number[] = safeStarts.slice(0, startLineIndex + 1)
-
-	let newlineIndex = insertedText.indexOf('\n')
-	while (newlineIndex !== -1) {
-		nextStarts.push(startIndex + newlineIndex + 1)
-		newlineIndex = insertedText.indexOf('\n', newlineIndex + 1)
+	// Count newlines in inserted text to pre-allocate
+	let insertedNewlines = 0
+	let searchPos = 0
+	while ((searchPos = insertedText.indexOf('\n', searchPos)) !== -1) {
+		insertedNewlines++
+		searchPos++
 	}
 
-	for (let i = firstAfterDeletion; i < safeStarts.length; i++) {
-		nextStarts.push((safeStarts[i] ?? 0) + delta)
+	// Calculate final array size and pre-allocate
+	const keepCount = startLineIndex + 1
+	const tailCount = len - firstAfterDeletion
+	const resultLen = keepCount + insertedNewlines + tailCount
+	const result = new Array<number>(resultLen)
+
+	// Copy preserved prefix directly
+	for (let i = 0; i < keepCount; i++) {
+		result[i] = lineStarts[i]!
 	}
 
-	return nextStarts
+	// Fill in new line starts from inserted text
+	let writeIdx = keepCount
+	let nlIdx = insertedText.indexOf('\n')
+	while (nlIdx !== -1) {
+		result[writeIdx++] = startIndex + nlIdx + 1
+		nlIdx = insertedText.indexOf('\n', nlIdx + 1)
+	}
+
+	// Copy and adjust tail
+	for (let i = firstAfterDeletion; i < len; i++) {
+		result[writeIdx++] = (lineStarts[i] ?? 0) + delta
+	}
+
+	return result
 }
 
 export function CursorProvider(props: CursorProviderProps) {
@@ -450,7 +469,6 @@ export function CursorProvider(props: CursorProviderProps) {
 				? nextLineIds.slice(safeStart + 1, safeStart + 1 + extraCount)
 				: []
 
-		// Batch all line data updates to minimize reactive overhead
 		batch(() => {
 			if (nextLineTexts.length > 0) {
 				const text = nextLineTexts[0] ?? ''
