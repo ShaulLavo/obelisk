@@ -87,11 +87,16 @@ export const TextEditorView = (props: EditorProps) => {
 
 	const isEditable = () => props.document.isEditable()
 
+	const handleIncrementalEditStart = (edit: DocumentIncrementalEdit) => {
+		if (!props.isFileSelected()) {
+			return
+		}
+	}
+
 	const handleIncrementalEdit = (edit: DocumentIncrementalEdit) => {
 		if (!props.isFileSelected()) {
 			return
 		}
-
 		props.document.applyIncrementalEdit?.(edit)
 	}
 
@@ -105,6 +110,7 @@ export const TextEditorView = (props: EditorProps) => {
 		fontSize: () => props.fontSize(),
 		fontFamily: () => props.fontFamily(),
 		isFileSelected: () => props.isFileSelected(),
+		filePath: () => props.document.filePath(),
 		tabSize,
 		scrollElement,
 		folds: () => props.folds?.(),
@@ -131,6 +137,7 @@ export const TextEditorView = (props: EditorProps) => {
 		getInputElement: () => inputElement,
 		scrollCursorIntoView,
 		activeScopes: () => props.activeScopes?.() ?? ['editor', 'global'],
+		onIncrementalEditStart: handleIncrementalEditStart,
 		onIncrementalEdit: handleIncrementalEdit,
 		onSave: untrack(() => props.onSave),
 	})
@@ -208,8 +215,15 @@ export const TextEditorView = (props: EditorProps) => {
 		const brackets = props.brackets?.()
 		if (!brackets || brackets.length === 0) return undefined
 
-		const lineStart = entry.start
-		const lineEnd = entry.start + entry.length
+		const lineStart =
+			entry.lineId > 0
+				? cursor.lines.getLineStartById(entry.lineId)
+				: entry.start
+		const lineLength =
+			entry.lineId > 0
+				? cursor.lines.getLineLengthById(entry.lineId)
+				: entry.length
+		const lineEnd = lineStart + lineLength
 		const offsets = props.highlightOffset?.()
 		const offsetInfo =
 			offsets && offsets.length > 0
@@ -242,7 +256,7 @@ export const TextEditorView = (props: EditorProps) => {
 			if (b.index >= bracketEnd) break
 			const mappedIndex = shift === 0 ? b.index : b.index + shift
 			const relativeIndex = mappedIndex - lineStart
-			if (relativeIndex < 0 || relativeIndex >= entry.length) continue
+			if (relativeIndex < 0 || relativeIndex >= lineLength) continue
 			map[relativeIndex] = b.depth
 			found = true
 		}
@@ -250,12 +264,29 @@ export const TextEditorView = (props: EditorProps) => {
 		return found ? map : undefined
 	}
 
-	const buildLineEntry = (lineIndex: number): LineEntry => ({
-		index: lineIndex,
-		start: cursor.lines.getLineStart(lineIndex),
-		length: cursor.lines.getLineLength(lineIndex),
-		text: cursor.lines.getLineText(lineIndex),
-	})
+	const buildLineEntry = (lineIndex: number): LineEntry => {
+		const lineId = cursor.lines.getLineId(lineIndex)
+		const start =
+			lineId > 0
+				? cursor.lines.getLineStartById(lineId)
+				: cursor.lines.getLineStart(lineIndex)
+		const length =
+			lineId > 0
+				? cursor.lines.getLineLengthById(lineId)
+				: cursor.lines.getLineLength(lineIndex)
+		const text =
+			lineId > 0
+				? cursor.lines.getLineTextById(lineId)
+				: cursor.lines.getLineText(lineIndex)
+
+		return {
+			lineId,
+			index: lineIndex,
+			start,
+			length,
+			text,
+		}
+	}
 
 	const getLineEntry = (lineIndex: number) => {
 		const count = cursor.lines.lineCount()
@@ -289,6 +320,10 @@ export const TextEditorView = (props: EditorProps) => {
 		highlightOffset: () =>
 			showHighlights() ? props.highlightOffset?.() : undefined,
 		lineEntries,
+		getLineStart: (entry) =>
+			entry.lineId > 0
+				? cursor.lines.getLineStartById(entry.lineId)
+				: cursor.lines.getLineStart(entry.index),
 	})
 	// const getLineHighlights = () => undefined
 
@@ -296,6 +331,14 @@ export const TextEditorView = (props: EditorProps) => {
 		filePath: () => props.document.filePath(),
 		scrollElement,
 		virtualItems: layout.virtualItems,
+		resolveLineIndex: (item) => {
+			const lineId = item.lineId
+			if (lineId > 0) {
+				const resolved = cursor.lines.getLineIndex(lineId)
+				if (resolved >= 0) return resolved
+			}
+			return layout.displayToLine(item.index)
+		},
 		getLineEntry,
 		getLineBracketDepths,
 		getLineHighlights,

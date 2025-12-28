@@ -13,6 +13,7 @@ export type VirtualItem = {
 export type VirtualItem2D = VirtualItem & {
 	columnStart: number
 	columnEnd: number
+	lineId: number
 }
 
 // Bracket depth map: character index -> nesting depth
@@ -148,6 +149,7 @@ export type ScrollPosition = {
 }
 
 export type LineEntry = {
+	lineId: number
 	index: number
 	start: number
 	length: number
@@ -156,6 +158,7 @@ export type LineEntry = {
 
 export type LineProps = {
 	virtualRow: VirtualItem2D
+	columnEndOverride?: number
 	lineIndex: number
 	lineText: string
 	lineHeight: number
@@ -207,7 +210,8 @@ export type LinesProps = {
 	getCachedRuns?: (
 		lineIndex: number,
 		columnStart: number,
-		columnEnd: number
+		columnEnd: number,
+		lineId?: number
 	) => TextRun[] | undefined
 	/** Convert display row index to actual document line index */
 	displayToLine?: (displayIndex: number) => number

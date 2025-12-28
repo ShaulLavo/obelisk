@@ -39,7 +39,8 @@ export const Line = (props: LineProps) => {
 	}
 
 	const columnStart = () => props.virtualRow.columnStart
-	const columnEnd = () => props.virtualRow.columnEnd
+	const columnEnd = () =>
+		props.columnEndOverride ?? props.virtualRow.columnEnd
 	const columnRange = createMemo(() => {
 		const start = columnStart()
 		const end = columnEnd()

@@ -1,11 +1,9 @@
-import { For, Show, createMemo } from 'solid-js'
+import { For, createMemo } from 'solid-js'
 import { EDITOR_PADDING_LEFT } from '../../consts'
-import { useCursor } from '../../cursor'
 import type { FoldRange, LineGuttersProps } from '../../types'
-import { LineGutter } from './LineGutter'
+import { LineGutterItem } from './LineGutterItem'
 
 export const LineGutters = (props: LineGuttersProps) => {
-	const cursor = useCursor()
 	const handleRowMouseDown = (event: MouseEvent, lineIndex: number) => {
 		if (
 			event.button !== 0 ||
@@ -52,57 +50,18 @@ export const LineGutters = (props: LineGuttersProps) => {
 				}}
 			>
 				<For each={props.rows()}>
-					{(virtualRow) => {
-						const lineIndex = createMemo(() =>
-							props.displayToLine
-								? props.displayToLine(virtualRow.index)
-								: virtualRow.index
-						)
-
-						const isValidLine = createMemo(
-							() => lineIndex() >= 0 && lineIndex() < cursor.lines.lineCount()
-						)
-
-						const height = createMemo(
-							() => virtualRow.size || props.lineHeight()
-						)
-						const isActive = createMemo(
-							() => props.activeLineIndex() === lineIndex()
-						)
-						const hasFold = createMemo(() => foldMap().has(lineIndex()))
-						const isFolded = createMemo(
-							() => props.foldedStarts?.()?.has(lineIndex()) ?? false
-						)
-
-						return (
-							<Show when={isValidLine()}>
-								<div
-									data-index={virtualRow.index}
-									data-line={lineIndex()}
-									class="editor-gutter-row"
-									style={{
-										transform: `translateY(${virtualRow.start}px)`,
-										top: 0,
-										height: `${height()}px`,
-									}}
-									onMouseDown={(event) =>
-										handleRowMouseDown(event, lineIndex())
-									}
-								>
-									<LineGutter
-										lineNumber={lineIndex() + 1}
-										lineHeight={height()}
-										isActive={isActive()}
-										isFoldable={hasFold()}
-										isFolded={isFolded()}
-										onFoldClick={() =>
-											hasFold() && props.onToggleFold?.(lineIndex())
-										}
-									/>
-								</div>
-							</Show>
-						)
-					}}
+					{(virtualRow) => (
+						<LineGutterItem
+							virtualRow={virtualRow}
+							displayToLine={props.displayToLine}
+							lineHeight={props.lineHeight}
+							activeLineIndex={props.activeLineIndex}
+							foldMap={foldMap}
+							foldedStarts={props.foldedStarts}
+							onToggleFold={props.onToggleFold}
+							onRowMouseDown={handleRowMouseDown}
+						/>
+					)}
 				</For>
 			</div>
 		</div>

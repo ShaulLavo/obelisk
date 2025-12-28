@@ -7,6 +7,7 @@ import {
 	untrack,
 	type Accessor,
 } from 'solid-js'
+import { createStore, type SetStoreFunction } from 'solid-js/store'
 
 import { trackMicro } from '@repo/perf'
 import type { VirtualItem2D } from '../types'
@@ -25,6 +26,8 @@ export type Virtualizer2DOptions = {
 	horizontalOverscan?: number
 	// On-demand line length lookup (in characters)
 	getLineLength: (lineIndex: number) => number
+	// Stable line identity lookup
+	getLineId: (lineIndex: number) => number
 }
 
 export type Virtualizer2D = {
@@ -49,6 +52,11 @@ export type VisibleRange2D = {
 	rowEnd: number
 	colStart: number
 	colEnd: number
+}
+
+type VirtualItemStore = {
+	state: VirtualItem2D
+	setState: SetStoreFunction<VirtualItem2D>
 }
 
 // Lines shorter than this will not be horizontally virtualized
@@ -142,7 +150,6 @@ export const computeColumnRange = (options: {
 	// Long lines: slice to visible range
 	const colStartBase = Math.max(0, Math.floor(scrollLeft / charWidth))
 	const visibleCols = Math.max(1, Math.ceil(viewportWidth / charWidth))
-
 	const hStart = Math.max(0, colStartBase - horizontalOverscan)
 	const hEnd = Math.min(
 		lineLength,
@@ -325,21 +332,31 @@ export function create2DVirtualizer(
 		}
 	)
 
-	const virtualItemCache = new Map<number, VirtualItem2D>()
+	const virtualItemCache = new Map<number, VirtualItemStore>()
 	let cachedRowHeight = 0
 	let cachedCharWidth = 0
-	let lastEnabled = true
-	let lastCount = -1
-	let lastItemCount = -1
+
+	const createItemStore = (item: VirtualItem2D): VirtualItemStore => {
+		const [state, setState] = createStore(item)
+		return { state, setState }
+	}
+
+	const updateItemStore = (store: VirtualItemStore, next: VirtualItem2D) => {
+		const prev = store.state
+		if (prev.index !== next.index) store.setState('index', next.index)
+		if (prev.start !== next.start) store.setState('start', next.start)
+		if (prev.size !== next.size) store.setState('size', next.size)
+		if (prev.columnStart !== next.columnStart)
+			store.setState('columnStart', next.columnStart)
+		if (prev.columnEnd !== next.columnEnd)
+			store.setState('columnEnd', next.columnEnd)
+		if (prev.lineId !== next.lineId) store.setState('lineId', next.lineId)
+	}
 
 	const virtualItems = createMemo<VirtualItem2D[]>(() => {
 		const enabled = options.enabled()
 		const count = normalizeCount(options.count())
 		const rowHeight = normalizeRowHeight(options.rowHeight())
-		if (enabled !== lastEnabled || count !== lastCount) {
-			lastEnabled = enabled
-			lastCount = count
-		}
 		if (!enabled || count === 0) {
 			virtualItemCache.clear()
 			cachedRowHeight = rowHeight
@@ -350,6 +367,7 @@ export function create2DVirtualizer(
 		const range = visibleRange() // Only vertical part exposed directly
 		const { charWidth, colStartBase, visibleCols } = columnWindow()
 		const getLineLength = options.getLineLength
+		const getLineId = options.getLineId
 
 		return trackMicro(
 			'virtualizer-2d.virtualItems',
@@ -374,25 +392,18 @@ export function create2DVirtualizer(
 					return []
 				}
 
-				// GC: Clean up cache for rows no longer visible
-				for (const index of virtualItemCache.keys()) {
-					if (index < startIndex || index > endIndex) {
-						virtualItemCache.delete(index)
-					}
-				}
-
 				const items: VirtualItem2D[] = []
+				const activeKeys = new Set<number>()
 
 				// Horizontal start/end with overscan
 				const hStart = Math.max(0, colStartBase - horizontalOverscan)
-				// We don't clamp hEnd here because it depends on line length, done per item
 
 				for (let i = startIndex; i <= endIndex; i++) {
 					const rawLineLen = getLineLength(i)
-					let lineLen = 0
-					if (Number.isFinite(rawLineLen) && rawLineLen > 0) {
-						lineLen = Math.floor(rawLineLen)
-					}
+					const lineLen =
+						Number.isFinite(rawLineLen) && rawLineLen > 0
+							? Math.floor(rawLineLen)
+							: 0
 
 					// THRESHOLD CHECK:
 					// If line is short, render everything (no horizontal virtualization overhead)
@@ -414,35 +425,35 @@ export function create2DVirtualizer(
 						}
 					}
 
-					// We need to invalidate item if column range changed significantly
-					let item = virtualItemCache.get(i)
-					if (item) {
-						if (item.columnStart !== cStart || item.columnEnd !== cEnd) {
-							item = {
-								index: i,
-								start: i * rowHeight,
-								size: rowHeight,
-								columnStart: cStart,
-								columnEnd: cEnd,
-							}
-							virtualItemCache.set(i, item)
-						}
-					} else {
-						item = {
-							index: i,
-							start: i * rowHeight,
-							size: rowHeight,
-							columnStart: cStart,
-							columnEnd: cEnd,
-						}
-						virtualItemCache.set(i, item)
+					const rawLineId = getLineId(i)
+					const lineKey = rawLineId > 0 ? rawLineId : -(i + 1)
+					const lineId = rawLineId > 0 ? rawLineId : lineKey
+					activeKeys.add(lineKey)
+
+					const nextItem: VirtualItem2D = {
+						index: i,
+						start: i * rowHeight,
+						size: rowHeight,
+						columnStart: cStart,
+						columnEnd: cEnd,
+						lineId,
 					}
 
-					items.push(item)
+					let store = virtualItemCache.get(lineKey)
+					if (!store) {
+						store = createItemStore(nextItem)
+						virtualItemCache.set(lineKey, store)
+					} else {
+						updateItemStore(store, nextItem)
+					}
+
+					items.push(store.state)
 				}
 
-				if (items.length !== lastItemCount) {
-					lastItemCount = items.length
+				for (const key of virtualItemCache.keys()) {
+					if (!activeKeys.has(key)) {
+						virtualItemCache.delete(key)
+					}
 				}
 
 				return items

@@ -10,19 +10,21 @@ import {
 	createEffect,
 	createMemo,
 	createSignal,
+	untrack,
 	useContext,
 } from 'solid-js'
+import { createStore, reconcile } from 'solid-js/store'
 import { useCursorActions } from '../hooks/useCursorActions'
 import { useCursorStateManager } from '../hooks/useCursorStateManager'
 import {
-	getLineLength,
+	getLineLength as getLineLengthFromStarts,
 	getLineStart,
-	getLineTextLength,
+	getLineTextLength as getLineTextLengthFromStarts,
 	offsetToLineIndex,
 	offsetToPosition,
 	positionToOffset,
 } from '../utils/position'
-import { countLineBreaks, updateLineTextCache } from '../utils/lineTextCache'
+import { countLineBreaks } from '../utils/lineTextCache'
 import type { CursorContextValue, CursorProviderProps } from './types'
 
 const CursorContext = createContext<CursorContextValue>()
@@ -145,9 +147,149 @@ export function CursorProvider(props: CursorProviderProps) {
 	const log = loggers.codeEditor.withTag('cursor')
 	const [documentLength, setDocumentLength] = createSignal(0)
 	const [lineStarts, setLineStarts] = createSignal<number[]>([])
+	const [lineIds, setLineIds] = createSignal<number[]>([])
 	const [activePieceTable, setActivePieceTable] = createSignal<
 		PieceTableSnapshot | undefined
 	>(undefined)
+	const [lineDataById, setLineDataById] = createStore<
+		Record<number, { text: string; length: number }>
+	>({})
+
+	let nextLineId = 1
+	let lineIdIndex = new Map<number, number>()
+	let pendingLineDataReset = false
+	const setLineIdsWithIndex = (nextIds: number[]) => {
+		setLineIds(nextIds)
+		lineIdIndex = new Map<number, number>()
+		for (let i = 0; i < nextIds.length; i += 1) {
+			const id = nextIds[i]
+			if (typeof id === 'number') {
+				lineIdIndex.set(id, i)
+			}
+		}
+	}
+	const createLineIds = (count: number) => {
+		const ids: number[] = new Array(Math.max(0, count))
+		for (let i = 0; i < ids.length; i += 1) {
+			ids[i] = nextLineId
+			nextLineId += 1
+		}
+		return ids
+	}
+	const clampLineIndex = (value: number, maxIndex: number) =>
+		Math.max(0, Math.min(value, maxIndex))
+	const setLineData = (lineId: number, text: string, isLastLine: boolean) => {
+		const length = Math.max(0, text.length + (isLastLine ? 0 : 1))
+		setLineDataById(lineId, {
+			text,
+			length,
+		})
+	}
+	const buildLineDataFromText = (
+		content: string,
+		ids: number[],
+		starts: number[]
+	) => {
+		const data: Record<number, { text: string; length: number }> = {}
+		const lineCount = Math.min(ids.length, starts.length)
+		for (let i = 0; i < lineCount; i += 1) {
+			const lineId = ids[i]
+			const start = starts[i] ?? 0
+			const end = starts[i + 1] ?? content.length
+			const textEnd = i < lineCount - 1 ? Math.max(start, end - 1) : end
+			const text = content.slice(start, textEnd)
+			const length = Math.max(0, end - start)
+			if (typeof lineId === 'number') {
+				data[lineId] = { text, length }
+			}
+		}
+		return data
+	}
+	const buildLineDataFromSnapshot = (
+		snapshot: PieceTableSnapshot,
+		ids: number[],
+		starts: number[]
+	) => {
+		const data: Record<number, { text: string; length: number }> = {}
+		const lineCount = Math.min(ids.length, starts.length)
+		const docLength = getPieceTableLength(snapshot)
+		for (let i = 0; i < lineCount; i += 1) {
+			const lineId = ids[i]
+			const start = starts[i] ?? 0
+			const end = starts[i + 1] ?? docLength
+			const textEnd = i < lineCount - 1 ? Math.max(start, end - 1) : end
+			const text = getPieceTableText(snapshot, start, textEnd)
+			const length = Math.max(0, end - start)
+			if (typeof lineId === 'number') {
+				data[lineId] = { text, length }
+			}
+		}
+		return data
+	}
+	const buildEditedLineTexts = (options: {
+		startLineText: string
+		endLineText: string
+		startColumn: number
+		endColumn: number
+		insertedText: string
+	}) => {
+		const startText = options.startLineText
+		const endText = options.endLineText
+		const startColumn = Math.max(0, Math.min(options.startColumn, startText.length))
+		const endColumn = Math.max(0, Math.min(options.endColumn, endText.length))
+		const prefix = startText.slice(0, startColumn)
+		const suffix = endText.slice(endColumn)
+		const insertedLines = options.insertedText.split('\n')
+
+		if (insertedLines.length === 1) {
+			return [prefix + options.insertedText + suffix]
+		}
+
+		const nextLines: string[] = new Array(insertedLines.length)
+		nextLines[0] = `${prefix}${insertedLines[0] ?? ''}`
+		for (let i = 1; i < insertedLines.length - 1; i += 1) {
+			nextLines[i] = insertedLines[i] ?? ''
+		}
+		nextLines[insertedLines.length - 1] = `${
+			insertedLines[insertedLines.length - 1] ?? ''
+		}${suffix}`
+		return nextLines
+	}
+	const buildLineIdsForEdit = (options: {
+		prevLineIds: number[]
+		startLine: number
+		endLine: number
+		lineDelta: number
+		expectedLineCount: number
+	}) => {
+		const expectedCount = options.expectedLineCount
+		if (expectedCount <= 0) return []
+		if (options.prevLineIds.length === 0) return createLineIds(expectedCount)
+
+		const maxIndex = options.prevLineIds.length - 1
+		if (maxIndex < 0) return createLineIds(expectedCount)
+
+		const safeStart = clampLineIndex(options.startLine, maxIndex)
+		const safeEnd = Math.max(
+			safeStart,
+			clampLineIndex(options.endLine, maxIndex)
+		)
+		const replacedCount = safeEnd - safeStart + 1
+		const nextSegmentCount = Math.max(0, replacedCount + options.lineDelta)
+		const before = options.prevLineIds.slice(0, safeStart)
+		const after = options.prevLineIds.slice(safeEnd + 1)
+
+		if (nextSegmentCount === 0) return [...before, ...after]
+
+		const preservedId =
+			options.prevLineIds[safeStart] ?? createLineIds(1)[0]
+		const extraCount = Math.max(0, nextSegmentCount - 1)
+		const addedIds = extraCount > 0 ? createLineIds(extraCount) : []
+		const nextIds = [...before, preservedId, ...addedIds, ...after]
+		return nextIds.length === expectedCount
+			? nextIds
+			: createLineIds(expectedCount)
+	}
 
 	const lineCount = createMemo(() => lineStarts().length)
 
@@ -178,21 +320,18 @@ export function CursorProvider(props: CursorProviderProps) {
 		updateCurrentState(() => ({}))
 	}
 
-	const MAX_CACHED_LINES = 2000
-	const lineTextCache = new Map<number, string>()
-
 	const applyEdit = (
 		startIndex: number,
 		deletedText: string,
 		insertedText: string
 	) => {
 		const prevLineStarts = lineStarts()
+		const prevLineIds = lineIds()
 		const prevDocumentLength = documentLength()
 		const prevLineCount = prevLineStarts.length
 		const deletedLineBreaks = countLineBreaks(deletedText)
 		const insertedLineBreaks = countLineBreaks(insertedText)
 		const lineDelta = insertedLineBreaks - deletedLineBreaks
-		const hasLineBreaks = deletedLineBreaks > 0 || insertedLineBreaks > 0
 		const endOffset = Math.min(
 			prevDocumentLength,
 			startIndex + deletedText.length
@@ -207,6 +346,27 @@ export function CursorProvider(props: CursorProviderProps) {
 			prevLineStarts,
 			prevDocumentLength
 		)
+		const expectedLineCount = Math.max(0, prevLineCount + lineDelta)
+		const shouldResetLineIds =
+			prevLineIds.length !== prevLineCount || prevLineIds.length === 0
+		const shouldUpdateLineIds = lineDelta !== 0 || shouldResetLineIds
+		let nextLineIds = prevLineIds
+
+		if (shouldUpdateLineIds) {
+			if (expectedLineCount === 0) {
+				nextLineIds = []
+			} else if (shouldResetLineIds) {
+				nextLineIds = createLineIds(expectedLineCount)
+			} else {
+				nextLineIds = buildLineIdsForEdit({
+					prevLineIds,
+					startLine,
+					endLine,
+					lineDelta,
+					expectedLineCount,
+				})
+			}
+		}
 
 		batch(() => {
 			setDocumentLength((prev) =>
@@ -215,40 +375,121 @@ export function CursorProvider(props: CursorProviderProps) {
 			setLineStarts((prev) =>
 				applyEditToLineStarts(prev, startIndex, deletedText, insertedText)
 			)
+			if (shouldUpdateLineIds) {
+				setLineIdsWithIndex(nextLineIds)
+			}
 			syncCursorStateToDocument()
 		})
 
 		const nextLineCount = lineStarts().length
 		if (nextLineCount !== Math.max(0, prevLineCount + lineDelta)) {
-			lineTextCache.clear()
+			setLineIdsWithIndex(createLineIds(nextLineCount))
+			pendingLineDataReset = true
+			return
+		}
+
+		if (shouldResetLineIds) {
+			pendingLineDataReset = true
+			return
+		}
+
+		if (nextLineCount === 0 || nextLineIds.length === 0) {
+			setLineDataById(reconcile({}))
 			return
 		}
 
 		if (startLine > endLine) {
-			lineTextCache.clear()
 			return
 		}
 
-		if (lineTextCache.size === 0) return
+		const maxIndex = prevLineIds.length - 1
+		if (maxIndex < 0) return
+		const safeStart = clampLineIndex(startLine, maxIndex)
+		const safeEnd = Math.max(safeStart, clampLineIndex(endLine, maxIndex))
+		const startLineId = prevLineIds[safeStart] ?? -1
+		const endLineId = prevLineIds[safeEnd] ?? startLineId
+		if (startLineId < 0) return
 
-		if (!hasLineBreaks) {
-			lineTextCache.delete(startLine)
-			return
-		}
-
-		updateLineTextCache(lineTextCache, {
-			startLine,
-			endLine,
-			lineDelta,
+		const startLineStart = prevLineStarts[safeStart] ?? 0
+		const endLineStart = prevLineStarts[safeEnd] ?? startLineStart
+		const startLineText =
+			lineDataById[startLineId]?.text ??
+			getTextRange(
+				startLineStart,
+				startLineStart +
+					getLineTextLengthFromStarts(
+						safeStart,
+						prevLineStarts,
+						prevDocumentLength
+					)
+			)
+		const endLineText =
+			lineDataById[endLineId]?.text ??
+			getTextRange(
+				endLineStart,
+				endLineStart +
+					getLineTextLengthFromStarts(
+						safeEnd,
+						prevLineStarts,
+						prevDocumentLength
+					)
+			)
+		const startColumn = startIndex - startLineStart
+		const endColumn = endOffset - endLineStart
+		const nextLineTexts = buildEditedLineTexts({
+			startLineText,
+			endLineText,
+			startColumn,
+			endColumn,
+			insertedText,
 		})
+		const nextLastLineId = nextLineIds[nextLineIds.length - 1] ?? -1
+		const prevLastLineId = prevLineIds[prevLineIds.length - 1] ?? -1
+		const preservedId = startLineId
+		const extraCount = Math.max(0, nextLineTexts.length - 1)
+		const addedIds =
+			extraCount > 0
+				? nextLineIds.slice(safeStart + 1, safeStart + 1 + extraCount)
+				: []
+
+		if (nextLineTexts.length > 0) {
+			setLineData(
+				preservedId,
+				nextLineTexts[0] ?? '',
+				preservedId === nextLastLineId
+			)
+		}
+
+		for (let i = 0; i < addedIds.length; i += 1) {
+			const lineId = addedIds[i]
+			if (typeof lineId !== 'number') continue
+			setLineData(
+				lineId,
+				nextLineTexts[i + 1] ?? '',
+				lineId === nextLastLineId
+			)
+		}
+
+		if (prevLastLineId !== nextLastLineId && prevLastLineId > 0) {
+			const prevLast = lineDataById[prevLastLineId]
+			if (prevLast) {
+				setLineData(prevLastLineId, prevLast.text, false)
+			}
+		}
+		if (nextLastLineId > 0) {
+			const nextLast = lineDataById[nextLastLineId]
+			if (nextLast) {
+				setLineData(nextLastLineId, nextLast.text, true)
+			}
+		}
 	}
 
 	const getLineText = (lineIndex: number): string => {
-		const cached = lineTextCache.get(lineIndex)
-		if (cached !== undefined) {
-			lineTextCache.delete(lineIndex)
-			lineTextCache.set(lineIndex, cached)
-			return cached
+		const ids = lineIds()
+		const lineId = ids[lineIndex]
+		if (lineId) {
+			const data = lineDataById[lineId]
+			if (data) return data.text
 		}
 
 		const starts = lineStarts()
@@ -256,29 +497,26 @@ export function CursorProvider(props: CursorProviderProps) {
 		if (starts.length === 0) return ''
 
 		const start = getLineStart(lineIndex, starts)
-		const textLength = getLineTextLength(lineIndex, starts, length)
-		const text = getTextRange(start, start + textLength)
-		lineTextCache.set(lineIndex, text)
-		while (lineTextCache.size > MAX_CACHED_LINES) {
-			const oldestKey = lineTextCache.keys().next().value
-			if (typeof oldestKey !== 'number') break
-			lineTextCache.delete(oldestKey)
-		}
-		return text
+		const textLength = getLineTextLengthFromStarts(lineIndex, starts, length)
+		return getTextRange(start, start + textLength)
 	}
 
 	let initializedPath: string | undefined
 	const initializeFromSnapshot = (snapshot: PieceTableSnapshot) => {
 		const length = getPieceTableLength(snapshot)
 		const starts = buildLineStartsFromSnapshot(snapshot)
+		const ids = createLineIds(starts.length)
+		const data = buildLineDataFromSnapshot(snapshot, ids, starts)
 
 		batch(() => {
 			setActivePieceTable(snapshot)
 			setDocumentLength(length)
 			setLineStarts(starts)
+			setLineIdsWithIndex(ids)
+			setLineDataById(reconcile(data))
 			syncCursorStateToDocument()
 		})
-		lineTextCache.clear()
+		pendingLineDataReset = false
 
 		log.debug('Initialized from piece table', {
 			path: props.filePath(),
@@ -290,14 +528,18 @@ export function CursorProvider(props: CursorProviderProps) {
 	const initializeFromContent = (content: string) => {
 		const length = content.length
 		const starts = buildLineStartsFromText(content)
+		const ids = createLineIds(starts.length)
+		const data = buildLineDataFromText(content, ids, starts)
 
 		batch(() => {
 			setActivePieceTable(undefined)
 			setDocumentLength(length)
 			setLineStarts(starts)
+			setLineIdsWithIndex(ids)
+			setLineDataById(reconcile(data))
 			syncCursorStateToDocument()
 		})
-		lineTextCache.clear()
+		pendingLineDataReset = false
 
 		log.debug('Initialized from content', {
 			path: props.filePath(),
@@ -317,8 +559,10 @@ export function CursorProvider(props: CursorProviderProps) {
 				setActivePieceTable(undefined)
 				setDocumentLength(0)
 				setLineStarts([])
+				setLineIdsWithIndex([])
+				setLineDataById(reconcile({}))
 			})
-			lineTextCache.clear()
+			pendingLineDataReset = false
 			return
 		}
 
@@ -355,6 +599,19 @@ export function CursorProvider(props: CursorProviderProps) {
 		documentLength,
 	})
 
+	const getLineId = (lineIndex: number) => {
+		const ids = lineIds()
+		if (lineIndex < 0 || lineIndex >= ids.length) return -1
+		return ids[lineIndex] ?? -1
+	}
+
+	const getLineIndex = (lineId: number) => {
+		const ids = lineIds()
+		if (ids.length === 0) return -1
+		const index = lineIdIndex.get(lineId)
+		return typeof index === 'number' ? index : -1
+	}
+
 	const value: CursorContextValue = {
 		get state() {
 			return currentState()
@@ -362,13 +619,48 @@ export function CursorProvider(props: CursorProviderProps) {
 		actions,
 		lines: {
 			lineStarts,
+			lineIds,
 			lineCount,
 			getLineStart: (lineIndex) => getLineStart(lineIndex, lineStarts()),
-			getLineLength: (lineIndex) =>
-				getLineLength(lineIndex, lineStarts(), documentLength()),
-			getLineTextLength: (lineIndex) =>
-				getLineTextLength(lineIndex, lineStarts(), documentLength()),
+			getLineLength: (lineIndex) => {
+				const ids = lineIds()
+				const lineId = ids[lineIndex]
+				if (lineId) {
+					return lineDataById[lineId]?.length ?? 0
+				}
+				return getLineLengthFromStarts(
+					lineIndex,
+					lineStarts(),
+					documentLength()
+				)
+			},
+			getLineTextLength: (lineIndex) => {
+				const ids = lineIds()
+				const lineId = ids[lineIndex]
+				if (lineId) {
+					return lineDataById[lineId]?.text.length ?? 0
+				}
+				return getLineTextLengthFromStarts(
+					lineIndex,
+					lineStarts(),
+					documentLength()
+				)
+			},
 			getLineText,
+			getLineId,
+			getLineIndex,
+			getLineTextById: (lineId) =>
+				lineDataById[lineId]?.text ?? '',
+			getLineLengthById: (lineId) =>
+				lineDataById[lineId]?.length ?? 0,
+			getLineTextLengthById: (lineId) =>
+				lineDataById[lineId]?.text.length ?? 0,
+			getLineStartById: (lineId) => {
+				const index = lineIdIndex.get(lineId)
+				if (typeof index !== 'number') return 0
+				const starts = untrack(lineStarts)
+				return getLineStart(index, starts)
+			},
 			offsetToPosition: (offset) =>
 				offsetToPosition(offset, lineStarts(), documentLength()),
 			positionToOffset: (line, column) =>
@@ -376,9 +668,22 @@ export function CursorProvider(props: CursorProviderProps) {
 			pieceTable: activePieceTable,
 			setPieceTableSnapshot: (snapshot, options) => {
 				setActivePieceTable(snapshot)
+				if (snapshot && pendingLineDataReset) {
+					const starts = lineStarts()
+					const ids = lineIds()
+					const data = buildLineDataFromSnapshot(snapshot, ids, starts)
+					setLineDataById(reconcile(data))
+					pendingLineDataReset = false
+					return
+				}
 				if (options?.mode === 'incremental') return
-				lineTextCache.clear()
-				log.debug('Cleared line text cache after snapshot update', {
+				if (snapshot) {
+					const starts = lineStarts()
+					const ids = lineIds()
+					const data = buildLineDataFromSnapshot(snapshot, ids, starts)
+					setLineDataById(reconcile(data))
+				}
+				log.debug('Rebuilt line data after snapshot update', {
 					mode: options?.mode ?? 'reset',
 				})
 			},

@@ -22,6 +22,11 @@ type CachedLineHighlights = {
 	segments: LineHighlightSegment[]
 }
 
+type PrecomputedLineHighlights = {
+	segments: LineHighlightSegment[][]
+	indexByLineId: Map<number, number>
+}
+
 export type CreateLineHighlightsOptions = {
 	highlights?: Accessor<EditorSyntaxHighlight[] | undefined>
 	errors?: Accessor<EditorError[] | undefined>
@@ -29,6 +34,8 @@ export type CreateLineHighlightsOptions = {
 	highlightOffset?: Accessor<HighlightOffsets | undefined>
 	/** Full line entries for precomputing highlight segments */
 	lineEntries?: Accessor<LineEntry[] | undefined>
+	/** Optional override for computing current line start */
+	getLineStart?: (entry: LineEntry) => number
 }
 
 export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
@@ -57,47 +64,57 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 			.sort((a, b) => a.startIndex - b.startIndex)
 	})
 
-	const precomputedSegments = createMemo<
-		LineHighlightSegment[][] | undefined
-	>(() => {
-		const lineEntries = options.lineEntries?.()
-		if (!lineEntries?.length) return undefined
+	const precomputedSegments = createMemo<PrecomputedLineHighlights | undefined>(
+		() => {
+			const lineEntries = options.lineEntries?.()
+			if (!lineEntries?.length) return undefined
 
-		const offsets = options.highlightOffset?.()
-		if (offsets && offsets.length > 0) return undefined
+			const offsets = options.highlightOffset?.()
+			if (offsets && offsets.length > 0) return undefined
 
-		const highlights = sortedHighlights()
-		const errors = sortedErrorHighlights()
-		const hasHighlights = highlights.length > 0
-		const hasErrors = errors.length > 0
-		if (!hasHighlights && !hasErrors) return undefined
+			const highlights = sortedHighlights()
+			const errors = sortedErrorHighlights()
+			const hasHighlights = highlights.length > 0
+			const hasErrors = errors.length > 0
+			if (!hasHighlights && !hasErrors) return undefined
 
-		const highlightSegments = hasHighlights
-			? toLineHighlightSegments(lineEntries, highlights)
-			: []
-		const errorSegments = hasErrors
-			? toLineHighlightSegments(lineEntries, errors)
-			: []
+			const highlightSegments = hasHighlights
+				? toLineHighlightSegments(lineEntries, highlights)
+				: []
+			const errorSegments = hasErrors
+				? toLineHighlightSegments(lineEntries, errors)
+				: []
 
-		if (!hasErrors) return highlightSegments
-		if (!hasHighlights) return errorSegments
+			const indexByLineId = new Map<number, number>()
+			for (let i = 0; i < lineEntries.length; i += 1) {
+				const lineId = lineEntries[i]?.lineId ?? -1
+				if (lineId > 0) {
+					indexByLineId.set(lineId, i)
+				}
+			}
 
-		const merged: LineHighlightSegment[][] = new Array(lineEntries.length)
-		for (let i = 0; i < lineEntries.length; i += 1) {
-			const mergedLine = mergeLineSegments(
-				highlightSegments[i],
-				errorSegments[i]
-			)
-			if (mergedLine.length > 0) merged[i] = mergedLine
-		}
-		return merged
+			if (!hasErrors) {
+				return { segments: highlightSegments, indexByLineId }
+			}
+			if (!hasHighlights) {
+				return { segments: errorSegments, indexByLineId }
+			}
+
+			const merged: LineHighlightSegment[][] = new Array(lineEntries.length)
+			for (let i = 0; i < lineEntries.length; i += 1) {
+				const mergedLine = mergeLineSegments(
+					highlightSegments[i],
+					errorSegments[i]
+				)
+				if (mergedLine.length > 0) merged[i] = mergedLine
+			}
+			return { segments: merged, indexByLineId }
 	})
 
 	let precomputedCache = new Map<number, LineHighlightSegment[]>()
-	let lastPrecomputedSegments: LineHighlightSegment[][] | undefined
+	let lastPrecomputed: PrecomputedLineHighlights | undefined
 	let lastOffsetsRef: HighlightOffsets | undefined
 	let validatedOffsetsRef: HighlightOffsets = EMPTY_OFFSETS
-	let lineIndexCache: Map<number, number | null> | null = null
 	let dirtyHighlightCache = new Map<number, CachedLineHighlights>()
 
 	const getValidatedOffsets = (): HighlightOffsets => {
@@ -112,54 +129,16 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 		lastOffsetsRef = offsets
 		if (offsets.length === 0) {
 			validatedOffsetsRef = EMPTY_OFFSETS
-			lineIndexCache = null
 			dirtyHighlightCache.clear()
 			precomputedCache.clear()
 			return validatedOffsetsRef
 		}
 
-		lineIndexCache = new Map()
 		dirtyHighlightCache.clear()
 		// Keep precomputed segments around so first edit can reuse them.
-		// They remain valid for non-intersecting lines mapped via offsets.
+		// They remain valid for non-intersecting lines keyed by lineId.
 		validatedOffsetsRef = offsets
 		return validatedOffsetsRef
-	}
-
-	const mapLineIndexToOldOffsets = (
-		lineIndex: number,
-		offsets: HighlightOffsets
-	): number | null => {
-		if (offsets.length === 0) return lineIndex
-
-		if (lineIndexCache && lineIndexCache.has(lineIndex)) {
-			return lineIndexCache.get(lineIndex) ?? null
-		}
-
-		let mappedIndex = lineIndex
-		for (let i = offsets.length - 1; i >= 0; i--) {
-			const offset = offsets[i]
-			if (!offset) continue
-
-			const startRow = offset.fromLineRow
-			const newEndRow = offset.newEndRow
-			if (mappedIndex < startRow) continue
-
-			if (mappedIndex <= newEndRow) {
-				if (lineIndexCache) lineIndexCache.set(lineIndex, null)
-				return null
-			}
-
-			mappedIndex -= offset.lineDelta
-		}
-
-		if (!Number.isFinite(mappedIndex)) {
-			if (lineIndexCache) lineIndexCache.set(lineIndex, null)
-			return null
-		}
-
-		if (lineIndexCache) lineIndexCache.set(lineIndex, mappedIndex)
-		return mappedIndex
 	}
 
 	const toShiftOffsets = (
@@ -273,16 +252,17 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 	const getLineHighlights = (entry: LineEntry): LineHighlightSegment[] => {
 		const offsets = getValidatedOffsets()
 		const hasOffsets = offsets.length > 0
+		const lineKey = entry.lineId > 0 ? entry.lineId : entry.index
 
 		const precomputed = hasOffsets ? undefined : precomputedSegments()
 		if (precomputed && !hasOffsets) {
-			lastPrecomputedSegments = precomputed
-			const segments = precomputed[entry.index] ?? []
+			lastPrecomputed = precomputed
+			const segments = precomputed.segments[entry.index] ?? []
 			lastHighlightsRef = sortedHighlights()
 			lastErrorsRef = sortedErrorHighlights()
-			cacheLineHighlights(highlightCache, entry.index, entry, segments)
+			cacheLineHighlights(highlightCache, lineKey, entry, segments)
 			if (segments.length > 0) {
-				precomputedCache.set(entry.index, segments)
+				precomputedCache.set(lineKey, segments)
 				if (precomputedCache.size > MAX_HIGHLIGHT_CACHE_SIZE) {
 					const firstKey = precomputedCache.keys().next().value
 					if (typeof firstKey === 'number') {
@@ -293,7 +273,7 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 			return segments
 		}
 
-		const lineStart = entry.start
+		const lineStart = options.getLineStart ? options.getLineStart(entry) : entry.start
 		const lineLength = entry.length
 		const lineTextLength = entry.text.length
 		const lineEnd = lineStart + lineLength
@@ -304,9 +284,8 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 			setHighlightsRevision((value) => value + 1)
 			highlightCache = new Map()
 			dirtyHighlightCache.clear()
-			lineIndexCache = null
 			precomputedCache.clear()
-			lastPrecomputedSegments = undefined
+			lastPrecomputed = undefined
 			lastHighlightsRef = highlights
 			lastErrorsRef = errors
 			spatialIndexReady = false
@@ -325,24 +304,33 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 		const shouldApplyOffsets =
 			hasOffsets && (hasIntersectingOffsets || offsetShiftAmount !== 0)
 		const offsetsForSegments = shouldApplyOffsets ? offsets : undefined
-		const mappedLineIndex = hasOffsets
-			? mapLineIndexToOldOffsets(entry.index, offsets)
-			: entry.index
-		if (hasOffsets && mappedLineIndex !== null) {
-			const cached = precomputedCache.get(mappedLineIndex)
+
+		if (hasOffsets && !hasIntersectingOffsets) {
+			const cached = precomputedCache.get(lineKey)
 			if (cached) {
 				return cached
 			}
-			const precomputed = lastPrecomputedSegments
-			if (precomputed) {
-				const precomputedLine = precomputed[mappedLineIndex]
-				return precomputedLine ?? EMPTY_SEGMENTS
+
+			const precomputedState = lastPrecomputed
+			if (precomputedState) {
+				const mappedIndex =
+					entry.lineId > 0
+						? precomputedState.indexByLineId.get(entry.lineId)
+						: entry.index
+				if (typeof mappedIndex === 'number') {
+					const precomputedLine =
+						precomputedState.segments[mappedIndex] ?? EMPTY_SEGMENTS
+					if (precomputedLine.length > 0) {
+						precomputedCache.set(lineKey, precomputedLine)
+					}
+					return precomputedLine
+				}
 			}
 		}
-		const cacheKey = hasOffsets ? mappedLineIndex : entry.index
-		const cacheMap = cacheKey === null ? dirtyHighlightCache : highlightCache
-		const cacheIndex = cacheKey === null ? entry.index : cacheKey
-		const cached = cacheMap.get(cacheIndex)
+
+		const cacheMap =
+			hasOffsets && hasIntersectingOffsets ? dirtyHighlightCache : highlightCache
+		const cached = cacheMap.get(lineKey)
 		if (
 			cached !== undefined &&
 			cached.length === lineLength &&
@@ -453,7 +441,7 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 			shiftedErrorSegments
 		)
 
-		cacheLineHighlights(cacheMap, cacheIndex, entry, result)
+		cacheLineHighlights(cacheMap, lineKey, entry, result)
 
 		return result
 	}

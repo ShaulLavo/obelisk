@@ -30,7 +30,8 @@ type EditorViewportProps = {
 	getCachedRuns?: (
 		lineIndex: number,
 		columnStart: number,
-		columnEnd: number
+		columnEnd: number,
+		lineId?: number
 	) => TextRun[] | undefined
 	folds?: Accessor<FoldRange[] | undefined>
 	foldedStarts: Accessor<Set<number>>

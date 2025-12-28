@@ -27,6 +27,8 @@ export type UseVisibleContentCacheOptions = {
 	scrollElement: Accessor<HTMLElement | null>
 	/** Virtual items representing visible rows */
 	virtualItems: Accessor<VirtualItem2D[]>
+	/** Resolve a virtual row to the actual line index */
+	resolveLineIndex?: (item: VirtualItem2D) => number
 	/** Get line entry for a given line index */
 	getLineEntry: (lineIndex: number) => LineEntry | null
 	/** Get bracket depths for a line entry */
@@ -63,7 +65,10 @@ export const useVisibleContentCache = (
 		const lines: CachedLineRender[] = []
 
 		for (const item of items) {
-			const entry = options.getLineEntry(item.index)
+			const lineIndex = options.resolveLineIndex
+				? options.resolveLineIndex(item)
+				: item.index
+			const entry = options.getLineEntry(lineIndex)
 			if (!entry) continue
 
 			const bracketDepths = options.getLineBracketDepths(entry)
@@ -82,7 +87,8 @@ export const useVisibleContentCache = (
 			)
 
 			lines.push({
-				lineIndex: item.index,
+				lineId: entry.lineId,
+				lineIndex,
 				columnStart: item.columnStart,
 				columnEnd: item.columnEnd,
 				runs,
@@ -144,7 +150,8 @@ export const useVisibleContentCache = (
 	const getCachedRuns = (
 		lineIndex: number,
 		columnStart: number,
-		columnEnd: number
+		columnEnd: number,
+		lineId?: number
 	) => {
 		// Once live content (highlights) is available, stop using cached runs
 		// This ensures freshly computed highlights are used instead of stale cache
@@ -153,12 +160,19 @@ export const useVisibleContentCache = (
 		const cache = options.initialVisibleContent?.()
 		if (!cache) return undefined
 
-		const cached = cache.lines.find(
-			(line) =>
+		const cached = cache.lines.find((line) => {
+			if (lineId && lineId > 0 && line.lineId === lineId) {
+				return (
+					line.columnStart === columnStart && line.columnEnd === columnEnd
+				)
+			}
+
+			return (
 				line.lineIndex === lineIndex &&
 				line.columnStart === columnStart &&
 				line.columnEnd === columnEnd
-		)
+			)
+		})
 		return cached?.runs
 	}
 

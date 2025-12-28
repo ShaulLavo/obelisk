@@ -4,6 +4,8 @@ import type { TextRun } from '../line/utils/textRuns'
  * Pre-computed render data for a single line, ready to display instantly.
  */
 export type CachedLineRender = {
+	/** Stable line identity */
+	lineId: number
 	/** The line index in the document */
 	lineIndex: number
 	/** Start column of the visible portion (for horizontal virtualization) */

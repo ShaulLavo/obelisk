@@ -48,11 +48,18 @@ export type CursorContextValue = {
 	actions: CursorActions
 	lines: {
 		lineStarts: Accessor<number[]>
+		lineIds: Accessor<number[]>
 		lineCount: Accessor<number>
 		getLineStart: (lineIndex: number) => number
 		getLineLength: (lineIndex: number) => number
 		getLineTextLength: (lineIndex: number) => number
 		getLineText: (lineIndex: number) => string
+		getLineId: (lineIndex: number) => number
+		getLineIndex: (lineId: number) => number
+		getLineTextById: (lineId: number) => string
+		getLineLengthById: (lineId: number) => number
+		getLineTextLengthById: (lineId: number) => number
+		getLineStartById: (lineId: number) => number
 		offsetToPosition: (offset: number) => CursorPosition
 		positionToOffset: (line: number, column: number) => number
 		pieceTable: Accessor<PieceTableSnapshot | undefined>

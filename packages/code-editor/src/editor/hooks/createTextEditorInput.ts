@@ -54,6 +54,7 @@ export type TextEditorInputOptions = {
 	getInputElement: () => HTMLTextAreaElement | null
 	scrollCursorIntoView: () => void
 	activeScopes?: Accessor<string[]>
+	onIncrementalEditStart?: (edit: DocumentIncrementalEdit) => void
 	onIncrementalEdit?: (edit: DocumentIncrementalEdit) => void
 	onSave?: () => void
 }
@@ -131,9 +132,10 @@ export function createTextEditorInput(
 		const cursorBefore = snapshotCursorPosition()
 		const selectionBefore = snapshotSelection()
 
-		const incrementalEdit =
-			options.onIncrementalEdit &&
-			describeIncrementalEdit(
+		const shouldDescribeEdit =
+			!!options.onIncrementalEdit || !!options.onIncrementalEditStart
+		const incrementalEdit = shouldDescribeEdit
+			? describeIncrementalEdit(
 				(offset) => {
 					const position = cursor.lines.offsetToPosition(offset)
 					return {
@@ -145,6 +147,11 @@ export function createTextEditorInput(
 				deletedText,
 				insertedText
 			)
+			: undefined
+
+		if (incrementalEdit) {
+			options.onIncrementalEditStart?.(incrementalEdit)
+		}
 
 		batch(() => {
 			cursor.lines.applyEdit(clampedStart, deletedText, insertedText)

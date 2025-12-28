@@ -30,6 +30,7 @@ export type TextEditorLayoutOptions = {
 	fontSize: Accessor<number>
 	fontFamily: Accessor<string>
 	isFileSelected: Accessor<boolean>
+	filePath?: Accessor<string | undefined>
 	tabSize: Accessor<number>
 	scrollElement: () => HTMLDivElement | null
 	folds?: Accessor<FoldRange[] | undefined>
@@ -141,10 +142,10 @@ export const scanLineWidthSlice = (options: {
 
 export const shouldResetWidthScan = (
 	nextTabSize: number,
-	nextLineCount: number,
+	_nextLineCount: number,
 	prevTabSize: number,
-	prevLineCount: number
-) => nextTabSize !== prevTabSize || nextLineCount !== prevLineCount
+	_prevLineCount: number
+) => nextTabSize !== prevTabSize
 
 export function createTextEditorLayout(
 	options: TextEditorLayoutOptions
@@ -195,6 +196,8 @@ export function createTextEditorLayout(
 	// On-demand line length lookup for 2D virtualization
 	const getLineLength = (displayIndex: number) =>
 		cursor.lines.getLineLength(foldMapping.displayToLine(displayIndex))
+	const getLineId = (displayIndex: number) =>
+		cursor.lines.getLineId(foldMapping.displayToLine(displayIndex))
 
 	const rowVirtualizer = create2DVirtualizer({
 		// Use visible count from fold mapping instead of total line count
@@ -209,6 +212,7 @@ export function createTextEditorLayout(
 		overscan: VERTICAL_VIRTUALIZER_OVERSCAN,
 		horizontalOverscan: HORIZONTAL_VIRTUALIZER_OVERSCAN * COLUMN_CHARS_PER_ITEM,
 		getLineLength,
+		getLineId,
 	})
 
 	const virtualItems = rowVirtualizer.virtualItems
@@ -236,22 +240,6 @@ export function createTextEditorLayout(
 		timeRemaining: () => number
 		didTimeout: boolean
 	}
-	type RequestIdleCallback = (
-		callback: (deadline: IdleDeadline) => void,
-		options?: { timeout?: number }
-	) => number
-	type CancelIdleCallback = (handle: number) => void
-
-	const requestIdleCallback: RequestIdleCallback | undefined = (
-		globalThis as unknown as {
-			requestIdleCallback?: RequestIdleCallback
-		}
-	).requestIdleCallback
-	const cancelIdleCallback: CancelIdleCallback | undefined = (
-		globalThis as unknown as {
-			cancelIdleCallback?: CancelIdleCallback
-		}
-	).cancelIdleCallback
 
 	const createYieldChecker = (deadline?: IdleDeadline) => {
 		const budget = Math.min(
@@ -339,7 +327,7 @@ export function createTextEditorLayout(
 				timeout: 60,
 			})
 		} else {
-			timeoutScanId = globalThis.setTimeout(() => runWidthScan(), 0)
+			timeoutScanId = setTimeout(() => runWidthScan(), 0)
 		}
 	}
 
@@ -384,21 +372,25 @@ export function createTextEditorLayout(
 
 	let lastTabSize = options.tabSize()
 	let lastLineCount = cursor.lines.lineCount()
+	let lastFilePath = options.filePath?.()
 
 	// *Approved*
 	createEffect(() => {
 		const tabSize = options.tabSize()
 		const lineCount = cursor.lines.lineCount()
+		const filePath = options.filePath?.()
 		const shouldReset = shouldResetWidthScan(
 			tabSize,
 			lineCount,
 			lastTabSize,
 			lastLineCount
 		)
+		const shouldResetForPath = filePath !== lastFilePath
 		lastTabSize = tabSize
 		lastLineCount = lineCount
+		lastFilePath = filePath
 
-		if (!shouldReset) return
+		if (!shouldReset && !shouldResetForPath) return
 
 		setMaxColumnsSeen(0)
 		lastWidthScanStart = 0
@@ -411,7 +403,7 @@ export function createTextEditorLayout(
 			idleScanId = undefined
 		}
 		if (timeoutScanId != null) {
-			globalThis.clearTimeout(timeoutScanId)
+			clearTimeout(timeoutScanId)
 			timeoutScanId = undefined
 		}
 	})
@@ -456,7 +448,7 @@ export function createTextEditorLayout(
 			idleScanId = undefined
 		}
 		if (timeoutScanId != null) {
-			globalThis.clearTimeout(timeoutScanId)
+			clearTimeout(timeoutScanId)
 			timeoutScanId = undefined
 		}
 		activeWidthScan = null

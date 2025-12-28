@@ -54,6 +54,7 @@ export const textToLineEntries = (text: string): LineEntry[] => {
 	if (text.length === 0) {
 		return [
 			{
+				lineId: 1,
 				index: 0,
 				start: 0,
 				length: 0,
@@ -71,6 +72,7 @@ export const textToLineEntries = (text: string): LineEntry[] => {
 			const rawLine = text.slice(lineStart, i)
 			const length = i - lineStart + 1
 			entries.push({
+				lineId: index + 1,
 				index,
 				start: lineStart,
 				length,
@@ -84,6 +86,7 @@ export const textToLineEntries = (text: string): LineEntry[] => {
 	if (lineStart <= text.length) {
 		const rawLine = text.slice(lineStart)
 		entries.push({
+			lineId: index + 1,
 			index,
 			start: lineStart,
 			length: text.length - lineStart,
