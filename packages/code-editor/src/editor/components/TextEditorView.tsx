@@ -24,6 +24,7 @@ import { Minimap, HorizontalScrollbar } from '../minimap'
 import type {
 	DocumentIncrementalEdit,
 	EditorProps,
+	FoldRange,
 	HighlightOffsets,
 	LineEntry,
 } from '../types'
@@ -102,16 +103,67 @@ export const TextEditorView = (props: EditorProps) => {
 	}
 
 	// Apply offset shifts to fold ranges for optimistic updates
+	// Memoization: cache result and only recompute when line-changing offsets change
+	let cachedFoldsInput: FoldRange[] | undefined
+	let cachedLineChangingCount = 0
+	let cachedResult: FoldRange[] | undefined
+
 	const shiftedFolds = createMemo(() => {
 		const memoStart = performance.now()
 		const folds = props.folds?.()
 		const offsets = props.highlightOffset?.()
+
+		// Fast path: no offsets means no shift needed
+		if (!offsets?.length) {
+			console.log(
+				'shiftedFolds memo:',
+				folds?.length ?? 0,
+				'folds, 0 offsets,',
+				performance.now() - memoStart,
+				'ms'
+			)
+			return folds
+		}
+
+		// Count line-changing offsets only
+		let lineChangingCount = 0
+		for (const offset of offsets) {
+			if (offset.lineDelta !== 0 || offset.oldEndRow !== offset.newEndRow) {
+				lineChangingCount++
+			}
+		}
+
+		// If folds haven't changed and line-changing offset count is same, return cached result
+		if (
+			folds === cachedFoldsInput &&
+			lineChangingCount === cachedLineChangingCount &&
+			cachedResult !== undefined
+		) {
+			console.log(
+				'shiftedFolds memo: CACHED,',
+				folds?.length ?? 0,
+				'folds,',
+				offsets.length,
+				'offsets,',
+				performance.now() - memoStart,
+				'ms'
+			)
+			return cachedResult
+		}
+
+		// Compute new result
 		const result = shiftFoldRanges(folds, offsets)
+
+		// Update cache
+		cachedFoldsInput = folds
+		cachedLineChangingCount = lineChangingCount
+		cachedResult = result
+
 		console.log(
 			'shiftedFolds memo:',
 			folds?.length ?? 0,
 			'folds,',
-			offsets?.length ?? 0,
+			offsets.length,
 			'offsets,',
 			performance.now() - memoStart,
 			'ms'
@@ -230,9 +282,28 @@ export const TextEditorView = (props: EditorProps) => {
 		})
 	})
 
+	// Profiling counter for bracket depths
+	let bracketDepthCallCount = 0
+	let bracketDepthTotalTime = 0
+	let lastBracketDepthReport = 0
+
 	const getLineBracketDepths = (entry: LineEntry) => {
+		const fnStart = performance.now()
 		const brackets = props.brackets?.()
-		if (!brackets || brackets.length === 0) return undefined
+		if (!brackets || brackets.length === 0) {
+			bracketDepthCallCount++
+			bracketDepthTotalTime += performance.now() - fnStart
+			const now = performance.now()
+			if (now - lastBracketDepthReport > 100 && bracketDepthCallCount > 0) {
+				console.log(
+					`getLineBracketDepths: ${bracketDepthCallCount} calls, ${bracketDepthTotalTime.toFixed(2)}ms total`
+				)
+				bracketDepthCallCount = 0
+				bracketDepthTotalTime = 0
+				lastBracketDepthReport = now
+			}
+			return undefined
+		}
 
 		const lineStart =
 			entry.lineId > 0
@@ -243,7 +314,8 @@ export const TextEditorView = (props: EditorProps) => {
 				? cursor.lines.getLineLengthById(entry.lineId)
 				: entry.length
 		const lineEnd = lineStart + lineLength
-		const offsets = props.highlightOffset?.()
+		// Use untrack to prevent all line memos from invalidating when highlightOffset changes
+		const offsets = untrack(() => props.highlightOffset?.())
 		const offsetInfo =
 			offsets && offsets.length > 0
 				? getLineOffsetShift(lineStart, lineEnd, offsets)
@@ -278,6 +350,18 @@ export const TextEditorView = (props: EditorProps) => {
 			if (relativeIndex < 0 || relativeIndex >= lineLength) continue
 			map[relativeIndex] = b.depth
 			found = true
+		}
+
+		bracketDepthCallCount++
+		bracketDepthTotalTime += performance.now() - fnStart
+		const now = performance.now()
+		if (now - lastBracketDepthReport > 100 && bracketDepthCallCount > 0) {
+			console.log(
+				`getLineBracketDepths: ${bracketDepthCallCount} calls, ${bracketDepthTotalTime.toFixed(2)}ms total`
+			)
+			bracketDepthCallCount = 0
+			bracketDepthTotalTime = 0
+			lastBracketDepthReport = now
 		}
 
 		return found ? map : undefined

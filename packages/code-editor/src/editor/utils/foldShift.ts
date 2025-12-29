@@ -24,12 +24,39 @@ const findFirstAffectedFold = (
 }
 
 /**
+ * Binary search to find the first fold index where startLine > target.
+ * Returns folds.length if no such fold exists.
+ */
+const findFirstFoldAfter = (
+	folds: FoldRange[],
+	targetLine: number,
+	startIdx: number
+): number => {
+	let lo = startIdx
+	let hi = folds.length
+
+	while (lo < hi) {
+		const mid = (lo + hi) >>> 1
+		if (folds[mid]!.startLine <= targetLine) {
+			lo = mid + 1
+		} else {
+			hi = mid
+		}
+	}
+
+	return lo
+}
+
+/**
  * Shift fold ranges based on edit offsets.
  * Similar to highlight offset logic, but operates on line numbers instead of character indices.
  *
  * When a line is added/removed, folds that start or end after the edit need to be shifted.
  *
- * Optimized: Uses binary search to skip folds that are entirely before the edit.
+ * Optimized:
+ * - Fast path for single-char edits (no line changes)
+ * - Binary search to skip folds before the edit
+ * - Batch shift for folds entirely after the edit
  */
 export const shiftFoldRanges = (
 	folds: FoldRange[] | undefined,
@@ -39,19 +66,24 @@ export const shiftFoldRanges = (
 		return folds
 	}
 
-	// Fast path: check if any offset has a line delta
-	// Most single-char edits don't change line count
-	let hasLineDelta = false
+	// Filter to only offsets that actually change line numbers
+	// Character-level changes (lineDelta === 0) don't affect fold ranges
+	const lineChangingOffsets: HighlightOffset[] = []
 	let minFromRow = Infinity
+	let maxOldEndRow = -Infinity
+	let totalLineDelta = 0
+
 	for (const offset of offsets) {
 		if (offset.lineDelta !== 0 || offset.oldEndRow !== offset.newEndRow) {
-			hasLineDelta = true
+			lineChangingOffsets.push(offset)
 			minFromRow = Math.min(minFromRow, offset.fromLineRow)
+			maxOldEndRow = Math.max(maxOldEndRow, offset.oldEndRow)
+			totalLineDelta += offset.lineDelta
 		}
 	}
 
-	if (!hasLineDelta) {
-		// No line changes - folds are unchanged
+	if (lineChangingOffsets.length === 0) {
+		// No line changes - folds are unchanged (fast path!)
 		return folds
 	}
 
@@ -63,24 +95,26 @@ export const shiftFoldRanges = (
 		return folds
 	}
 
+	// Find first fold that's entirely after the edit (startLine > maxOldEndRow)
+	// These can be batch-shifted without complex logic
+	const batchShiftIdx = findFirstFoldAfter(folds, maxOldEndRow, startIdx)
+
 	// Copy unaffected folds directly
 	const result: FoldRange[] = folds.slice(0, startIdx)
 
-	// Process potentially affected folds
-	for (let i = startIdx; i < folds.length; i++) {
+	// Process folds that intersect the edit (need complex logic)
+	for (let i = startIdx; i < batchShiftIdx; i++) {
 		const fold = folds[i]!
 		let startLine = fold.startLine
 		let endLine = fold.endLine
 
-		for (const offset of offsets) {
+		for (const offset of lineChangingOffsets) {
 			const lineDelta = offset.lineDelta
 			const fromRow = offset.fromLineRow
 			const oldEndRow = offset.oldEndRow
 			const newEndRow = offset.newEndRow
 
-			if (lineDelta === 0 && oldEndRow === newEndRow) {
-				continue
-			}
+			// No need to check lineDelta === 0 anymore since lineChangingOffsets is pre-filtered
 
 			if (endLine < fromRow) {
 				continue
@@ -130,6 +164,17 @@ export const shiftFoldRanges = (
 				type: fold.type,
 			})
 		}
+	}
+
+	// Batch-shift folds that are entirely after the edit
+	// These just need startLine += totalLineDelta and endLine += totalLineDelta
+	for (let i = batchShiftIdx; i < folds.length; i++) {
+		const fold = folds[i]!
+		result.push({
+			startLine: fold.startLine + totalLineDelta,
+			endLine: fold.endLine + totalLineDelta,
+			type: fold.type,
+		})
 	}
 
 	return result.length > 0 ? result : undefined
