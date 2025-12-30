@@ -83,7 +83,23 @@ export type ScopedCommandBinding<TContext> = {
 	isEnabled?: CommandPredicate<TContext>
 }
 
+export type KeyRepeatConfig = {
+	enabled: boolean
+	/** default: 300ms */
+	initialDelay?: number
+	/** default: 80ms */
+	initialInterval?: number
+	/** default: 25ms */
+	minInterval?: number
+	/** default: 0.92 */
+	accelerationRate?: number
+	/** default: 30 */
+	accelerationSteps?: number
+}
+
 export type KeymapControllerOptions<TContext> = {
 	contextResolver?: () => TContext | undefined
 	initialScopes?: string[]
+	/** Enable custom key repeat handling */
+	keyRepeat?: KeyRepeatConfig
 }

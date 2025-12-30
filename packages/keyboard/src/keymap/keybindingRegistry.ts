@@ -70,7 +70,7 @@ export function createKeybindingRegistry() {
 			treatEqualAsDistinct: options.treatEqualAsDistinct,
 		}
 
-		if (trimmed.startsWith('[')) {
+		if (trimmed.startsWith('[') && trimmed.length > 1) {
 			return parseShortcutSequence(trimmed, parseOptions)
 		}
 		return [parseShortcut(trimmed, parseOptions)]

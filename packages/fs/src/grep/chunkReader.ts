@@ -43,7 +43,7 @@ export async function* streamChunksWithOverlap(
 	overlapSize = Math.max(0, Math.min(overlapSize, chunkSize - 1))
 
 	const reader = stream.getReader()
-	let buffer = new Uint8Array(0)
+	let buffer: Uint8Array<ArrayBufferLike> = new Uint8Array(0)
 	let absoluteOffset = 0
 	let isFirstChunk = true
 
@@ -127,7 +127,10 @@ export async function readFullStream(
 /**
  * Concatenate two Uint8Arrays efficiently.
  */
-function concatUint8Arrays(a: Uint8Array, b: Uint8Array): Uint8Array {
+function concatUint8Arrays(
+	a: Uint8Array<ArrayBufferLike>,
+	b: Uint8Array<ArrayBufferLike>
+): Uint8Array {
 	const result = new Uint8Array(a.length + b.length)
 	result.set(a, 0)
 	result.set(b, a.length)

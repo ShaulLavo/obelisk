@@ -7,13 +7,13 @@ import { ThemeProvider } from '@repo/theme'
 import { Editor } from '../../components/Editor'
 import type {
 	TextEditorDocument,
-	CursorMode,
 	EditorSyntaxHighlight,
 	FoldRange,
 	BracketInfo,
 	EditorError,
 	HighlightOffsets,
 } from '../../types'
+import { CursorMode } from '../../types'
 
 export type TestEditorConfig = {
 	content: string
@@ -82,7 +82,7 @@ export const createTestEditor = (
 		fontSize = 14,
 		fontFamily = 'monospace',
 		tabSize = 4,
-		cursorMode = 'regular',
+		cursorMode = CursorMode.Regular,
 		highlights: initialHighlights,
 		brackets: initialBrackets,
 		folds: initialFolds,

@@ -28,13 +28,13 @@ describe('chunkReader', () => {
 		// 2. Chunk 10-19 (next chunk, advance 5)
 		// 3. Chunk 15-19 (remainder)
 		expect(chunks.length).toBe(3)
-		expect(chunks[0].chunk).toEqual(
+		expect(chunks[0]!.chunk).toEqual(
 			new Uint8Array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
 		)
-		expect(chunks[1].chunk).toEqual(
+		expect(chunks[1]!.chunk).toEqual(
 			new Uint8Array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19])
 		)
-		expect(chunks[2].chunk).toEqual(new Uint8Array([15, 16, 17, 18, 19]))
+		expect(chunks[2]!.chunk).toEqual(new Uint8Array([15, 16, 17, 18, 19]))
 	})
 
 	it('should prevent infinite loop by clamping overlapSize', async () => {
@@ -70,13 +70,13 @@ describe('chunkReader', () => {
 		// 2. Chunk 10-19. Advance 10-9 = 1. Buffer 11-19.
 		// 3. Remainder 11-19.
 		expect(chunks.length).toBe(3)
-		expect(chunks[0].chunk).toEqual(
+		expect(chunks[0]!.chunk).toEqual(
 			new Uint8Array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
 		)
-		expect(chunks[1].chunk).toEqual(
+		expect(chunks[1]!.chunk).toEqual(
 			new Uint8Array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19])
 		)
-		expect(chunks[2].chunk).toEqual(
+		expect(chunks[2]!.chunk).toEqual(
 			new Uint8Array([11, 12, 13, 14, 15, 16, 17, 18, 19])
 		)
 	})

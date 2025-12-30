@@ -9,6 +9,7 @@ import type {
 	KeybindingRegistration,
 	KeybindingSnapshot,
 	KeymapControllerOptions,
+	KeyRepeatConfig,
 } from './types'
 
 type KeyboardEventTarget = Pick<
@@ -29,6 +30,17 @@ type MissListener = (payload: {
 	scopesTried: string[]
 }) => void
 
+// Keys that should never trigger repeat (modifiers only)
+const MODIFIER_KEYS =
+	/^(?:Meta|Control|Alt|Shift|CapsLock|NumLock|ScrollLock|ContextMenu|OS|Dead|Unidentified)$/
+
+// Default key repeat timing
+const DEFAULT_REPEAT_INITIAL_DELAY = 300
+const DEFAULT_REPEAT_INITIAL_INTERVAL = 80
+const DEFAULT_REPEAT_MIN_INTERVAL = 25
+const DEFAULT_REPEAT_ACCELERATION_RATE = 0.92
+const DEFAULT_REPEAT_ACCELERATION_STEPS = 30
+
 export function createKeymapController<TContext = unknown>(
 	options: KeymapControllerOptions<TContext> = {}
 ) {
@@ -43,6 +55,13 @@ export function createKeymapController<TContext = unknown>(
 	const onMatchListeners = new Set<MatchListener>()
 	const onExecuteListeners = new Set<ExecuteListener<TContext>>()
 	const onMissListeners = new Set<MissListener>()
+
+	// Key repeat state
+	const keyRepeatConfig: KeyRepeatConfig | undefined = options.keyRepeat
+	let repeatActiveKey: string | null = null
+	let repeatTimeout: ReturnType<typeof setTimeout> | null = null
+	let repeatCount = 0
+	let repeatLastEvent: KeyboardEvent | null = null
 
 	function contextFor(
 		scope: string,
@@ -105,73 +124,182 @@ export function createKeymapController<TContext = unknown>(
 		}
 	}
 
-	function handleKeydown(event: KeyboardEvent): boolean {
-		const matches = keybindings.match(event)
-		if (matches.length === 0) {
+	function stopRepeat() {
+		if (repeatTimeout) {
+			clearTimeout(repeatTimeout)
+			repeatTimeout = null
+		}
+		repeatActiveKey = null
+		repeatCount = 0
+		repeatLastEvent = null
+	}
+
+	function startRepeat(event: KeyboardEvent, executeNow: () => boolean) {
+		if (!keyRepeatConfig?.enabled) return false
+
+		const key = event.key
+
+		// Never repeat modifier-only keys
+		if (MODIFIER_KEYS.test(key)) {
 			return false
 		}
 
-		for (const match of matches) {
-			notifyMatch(match)
+		// If a different key is pressed, stop previous repeat
+		if (repeatActiveKey !== null && repeatActiveKey !== key) {
+			stopRepeat()
 		}
 
-		const orderedMatches = sortMatches(matches)
-		for (const match of orderedMatches) {
-			const candidates = commands.resolve(match.id, activeScopes)
-			if (candidates.length === 0) {
-				notifyMiss(match.id)
-				continue
-			}
-
-			for (const candidate of candidates) {
-				const context = contextFor(candidate.scope, match.binding, event)
-
-				if (candidate.bindingWhen && !candidate.bindingWhen(context)) {
-					continue
-				}
-				if (candidate.command.when && !candidate.command.when(context)) {
-					continue
-				}
-				if (
-					candidate.bindingIsEnabled &&
-					!candidate.bindingIsEnabled(context)
-				) {
-					continue
-				}
-				if (
-					candidate.command.isEnabled &&
-					!candidate.command.isEnabled(context)
-				) {
-					continue
-				}
-
-				if (match.binding.preventDefault) {
-					event.preventDefault?.()
-				}
-				if (match.binding.stopPropagation) {
-					event.stopPropagation?.()
-				}
-
-				runCommand(candidate.command, context)
-				notifyExecute({
-					commandId: candidate.command.id,
-					scope: candidate.scope,
-					context,
-				})
-				return true
-			}
-
-			notifyMiss(match.id)
+		// If this key is already active, ignore (we handle our own repeat)
+		if (repeatActiveKey === key) {
+			return true // We handled it
 		}
 
-		return false
+		// Execute immediately
+		const handled = executeNow()
+		if (!handled) {
+			return false
+		}
+
+		repeatActiveKey = key
+		repeatLastEvent = event
+
+		const initialDelay =
+			keyRepeatConfig.initialDelay ?? DEFAULT_REPEAT_INITIAL_DELAY
+		const initialInterval =
+			keyRepeatConfig.initialInterval ?? DEFAULT_REPEAT_INITIAL_INTERVAL
+		const minInterval =
+			keyRepeatConfig.minInterval ?? DEFAULT_REPEAT_MIN_INTERVAL
+		const accelerationRate =
+			keyRepeatConfig.accelerationRate ?? DEFAULT_REPEAT_ACCELERATION_RATE
+		const accelerationSteps =
+			keyRepeatConfig.accelerationSteps ?? DEFAULT_REPEAT_ACCELERATION_STEPS
+
+		// Start repeat after initial delay
+		repeatTimeout = setTimeout(() => {
+			let currentInterval = initialInterval
+
+			const doRepeat = () => {
+				if (repeatActiveKey !== key || !repeatLastEvent) return
+
+				// Re-execute with stored event
+				executeNow()
+				repeatCount++
+
+				// Accelerate if not at max speed
+				if (repeatCount < accelerationSteps) {
+					currentInterval = Math.max(
+						minInterval,
+						currentInterval * accelerationRate
+					)
+				}
+
+				// Schedule next repeat
+				repeatTimeout = setTimeout(doRepeat, currentInterval)
+			}
+
+			doRepeat()
+		}, initialDelay)
+
+		return true
 	}
 
-	const boundHandler = (event: Event) => {
+	function handleKeydown(event: KeyboardEvent): boolean {
+		// If key repeat is enabled and this is a native repeat, ignore it
+		if (keyRepeatConfig?.enabled && event.repeat) {
+			event.preventDefault()
+			return true
+		}
+
+		const executeCommand = (): boolean => {
+			const matches = keybindings.match(event)
+			if (matches.length === 0) {
+				return false
+			}
+
+			for (const match of matches) {
+				notifyMatch(match)
+			}
+
+			const orderedMatches = sortMatches(matches)
+			for (const match of orderedMatches) {
+				const candidates = commands.resolve(match.id, activeScopes)
+				if (candidates.length === 0) {
+					notifyMiss(match.id)
+					continue
+				}
+
+				for (const candidate of candidates) {
+					const context = contextFor(candidate.scope, match.binding, event)
+
+					if (candidate.bindingWhen && !candidate.bindingWhen(context)) {
+						continue
+					}
+					if (candidate.command.when && !candidate.command.when(context)) {
+						continue
+					}
+					if (
+						candidate.bindingIsEnabled &&
+						!candidate.bindingIsEnabled(context)
+					) {
+						continue
+					}
+					if (
+						candidate.command.isEnabled &&
+						!candidate.command.isEnabled(context)
+					) {
+						continue
+					}
+
+					if (match.binding.preventDefault) {
+						event.preventDefault?.()
+					}
+					if (match.binding.stopPropagation) {
+						event.stopPropagation?.()
+					}
+
+					runCommand(candidate.command, context)
+					notifyExecute({
+						commandId: candidate.command.id,
+						scope: candidate.scope,
+						context,
+					})
+					return true
+				}
+
+				notifyMiss(match.id)
+			}
+
+			return false
+		}
+
+		// If key repeat is enabled, use the repeat system
+		if (keyRepeatConfig?.enabled) {
+			return startRepeat(event, executeCommand)
+		}
+
+		// Otherwise just execute normally
+		return executeCommand()
+	}
+
+	function handleKeyup(event: KeyboardEvent): void {
+		// Stop repeat when the active key is released
+		if (event.key === repeatActiveKey) {
+			stopRepeat()
+		}
+	}
+
+	const boundKeydownHandler = (event: Event) => {
 		if (event.type !== 'keydown') {
 			return
 		}
 		handleKeydown(event as KeyboardEvent)
+	}
+
+	const boundKeyupHandler = (event: Event) => {
+		if (event.type !== 'keyup') {
+			return
+		}
+		handleKeyup(event as KeyboardEvent)
 	}
 
 	function attach(targetOverride?: KeyboardEventTarget) {
@@ -190,14 +318,19 @@ export function createKeymapController<TContext = unknown>(
 		}
 
 		target = resolved
-		target.addEventListener('keydown', boundHandler as EventListener)
+		target.addEventListener('keydown', boundKeydownHandler as EventListener)
+		if (keyRepeatConfig?.enabled) {
+			target.addEventListener('keyup', boundKeyupHandler as EventListener)
+		}
 
 		return () => detach()
 	}
 
 	function detach() {
 		if (!target) return
-		target.removeEventListener('keydown', boundHandler as EventListener)
+		target.removeEventListener('keydown', boundKeydownHandler as EventListener)
+		target.removeEventListener('keyup', boundKeyupHandler as EventListener)
+		stopRepeat()
 		target = null
 	}
 
@@ -293,6 +426,8 @@ export function createKeymapController<TContext = unknown>(
 		attach,
 		detach,
 		handleKeydown,
+		handleKeyup,
+		stopRepeat,
 		registerKeybinding,
 		registerCommand,
 		bindCommand,

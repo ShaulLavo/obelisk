@@ -23,7 +23,6 @@ import type { DocumentIncrementalEdit } from '../types'
 import { useCursor, getSelectionBounds, hasSelection } from '../cursor'
 import { useHistory, type HistoryMergeMode } from '../history'
 import { clipboard } from '../utils/clipboard'
-import { createUnifiedKeyRepeat } from './createCharKeyRepeat'
 import { describeIncrementalEdit } from '../utils'
 
 type VisibleLineRange = {
@@ -293,7 +292,9 @@ export function createTextEditorInput(
 		target.value = ''
 	}
 
-	const keymap = createKeymapController()
+	const keymap = createKeymapController({
+		keyRepeat: { enabled: true },
+	})
 	const keymapDisposers: Array<() => void> = []
 
 	const registerCommandWithShortcuts = (
@@ -514,75 +515,146 @@ export function createTextEditorInput(
 		KEYMAP_SCOPE_NAVIGATION
 	)
 
-	const unifiedKeyRepeat = createUnifiedKeyRepeat(
-		(key, ctrlOrMeta, shiftKey) => {
-			const editable = options.isEditable()
+	// Register arrow keys for navigation with repeat
+	registerCommandWithShortcuts(
+		{
+			id: 'editor.cursor.left',
+			run: (context) => {
+				const ctrlOrMeta = context.event.ctrlKey || context.event.metaKey
+				cursor.actions.moveCursor('left', ctrlOrMeta, context.event.shiftKey)
+				options.scrollCursorIntoView()
+			},
+		},
+		[
+			{ shortcut: 'left' },
+			{ shortcut: 'shift+left' },
+			{ shortcut: 'primary+left' },
+			{ shortcut: 'primary+shift+left' },
+		],
+		KEYMAP_SCOPE_NAVIGATION
+	)
 
-			// Handle delete keys
-			if (key === 'Backspace' || key === 'Delete') {
-				if (!editable) return
-				performDelete(key as 'Backspace' | 'Delete', ctrlOrMeta)
-				return
-			}
+	registerCommandWithShortcuts(
+		{
+			id: 'editor.cursor.right',
+			run: (context) => {
+				const ctrlOrMeta = context.event.ctrlKey || context.event.metaKey
+				cursor.actions.moveCursor('right', ctrlOrMeta, context.event.shiftKey)
+				options.scrollCursorIntoView()
+			},
+		},
+		[
+			{ shortcut: 'right' },
+			{ shortcut: 'shift+right' },
+			{ shortcut: 'primary+right' },
+			{ shortcut: 'primary+shift+right' },
+		],
+		KEYMAP_SCOPE_NAVIGATION
+	)
 
-			// Handle arrow keys
-			switch (key) {
-				case 'ArrowLeft':
-					cursor.actions.moveCursor('left', ctrlOrMeta, shiftKey)
-					options.scrollCursorIntoView()
-					return
-				case 'ArrowRight':
-					cursor.actions.moveCursor('right', ctrlOrMeta, shiftKey)
-					options.scrollCursorIntoView()
-					return
-				case 'ArrowUp':
-					cursor.actions.moveCursor('up', false, shiftKey)
-					options.scrollCursorIntoView()
-					return
-				case 'ArrowDown':
-					cursor.actions.moveCursor('down', false, shiftKey)
-					options.scrollCursorIntoView()
-					return
-			}
+	registerCommandWithShortcuts(
+		{
+			id: 'editor.cursor.up',
+			run: (context) => {
+				cursor.actions.moveCursor('up', false, context.event.shiftKey)
+				options.scrollCursorIntoView()
+			},
+		},
+		[{ shortcut: 'up' }, { shortcut: 'shift+up' }],
+		KEYMAP_SCOPE_NAVIGATION
+	)
 
-			// Handle character input (single printable character, no ctrl/meta)
-			if (key.length === 1 && !ctrlOrMeta && editable) {
+	registerCommandWithShortcuts(
+		{
+			id: 'editor.cursor.down',
+			run: (context) => {
+				cursor.actions.moveCursor('down', false, context.event.shiftKey)
+				options.scrollCursorIntoView()
+			},
+		},
+		[{ shortcut: 'down' }, { shortcut: 'shift+down' }],
+		KEYMAP_SCOPE_NAVIGATION
+	)
+
+	// Register backspace command
+	registerCommandWithShortcuts(
+		{
+			id: 'editor.backspace',
+			run: (context) => {
+				if (!options.isEditable()) return
+				const ctrlOrMeta = context.event.ctrlKey || context.event.metaKey
+				performDelete('Backspace', ctrlOrMeta)
+			},
+		},
+		[{ shortcut: 'backspace' }, { shortcut: 'primary+backspace' }]
+	)
+
+	const PRINTABLE_CHARS: string[] = [
+		// Letters
+		'abcdefghijklmnopqrstuvwxyz',
+		// Numbers
+		'0123456789',
+		// Symbols (US keyboard layout)
+		"`-=[]\\;',./",
+		// Space
+		'space',
+	].flatMap((x) => (x === 'space' ? [x] : x.split('')))
+
+	// Register character insert command
+	const charInsertCommand = keymap.registerCommand({
+		id: 'editor.insertChar',
+		run: (context) => {
+			if (!options.isEditable()) return
+			const key = context.event.key
+			if (key.length === 1) {
 				deleteSelection()
 				startGlobalTrace('keystroke', key === ' ' ? '␣' : `"${key}"`)
 				applyInsert(key)
 			}
-		}
-	)
+		},
+	})
+	keymapDisposers.push(charInsertCommand)
+
+	// Register keybindings for each character (with and without shift)
+	for (const char of PRINTABLE_CHARS) {
+		const binding = keymap.registerKeybinding({
+			shortcut: char,
+			options: { preventDefault: true },
+		})
+		keymapDisposers.push(binding.dispose)
+
+		const disposeBinding = keymap.bindCommand({
+			scope: KEYMAP_SCOPE_EDITING,
+			bindingId: binding.id,
+			commandId: 'editor.insertChar',
+		})
+		keymapDisposers.push(disposeBinding)
+
+		// Also register with shift for uppercase/symbols
+		const shiftBinding = keymap.registerKeybinding({
+			shortcut: `shift+${char}`,
+			options: { preventDefault: true },
+		})
+		keymapDisposers.push(shiftBinding.dispose)
+
+		const disposeShiftBinding = keymap.bindCommand({
+			scope: KEYMAP_SCOPE_EDITING,
+			bindingId: shiftBinding.id,
+			commandId: 'editor.insertChar',
+		})
+		keymapDisposers.push(disposeShiftBinding)
+	}
 
 	const handleKeyDown = (event: KeyboardEvent) => {
 		// Trace all keydowns that might trigger an action
 		startGlobalTrace('keystroke', formatShortcut(fromEvent(event)))
 
-		// Let keymap handle shortcuts first
-		if (keymap.handleKeydown(event)) {
-			return
-		}
-
-		// Prevent default for keys we handle
-		const key = event.key
-		if (
-			key === 'Backspace' ||
-			key === 'Delete' ||
-			key === 'ArrowLeft' ||
-			key === 'ArrowRight' ||
-			key === 'ArrowUp' ||
-			key === 'ArrowDown' ||
-			(key.length === 1 && !event.ctrlKey && !event.metaKey)
-		) {
-			event.preventDefault()
-		}
-
-		// Use unified key repeat for everything
-		unifiedKeyRepeat.handleKeyDown(event)
+		// Let keymap handle all keys (with repeat)
+		keymap.handleKeydown(event)
 	}
 
 	const handleKeyUp = (event: KeyboardEvent) => {
-		unifiedKeyRepeat.handleKeyUp(event)
+		keymap.handleKeyup(event)
 	}
 
 	const handleRowClick = (lineIndex: number) => {

@@ -18,13 +18,23 @@ const makeEntry = (
 	text,
 })
 
+const defaultLineProps = {
+	lineCount: () => 1000,
+	getLineStart: (i: number) => 0,
+	getLineLength: (i: number) => 100,
+	getLineTextLength: (i: number) => 100,
+}
+
 describe('createLineHighlights', () => {
 	it('invalidates cached line highlights when line text changes', () => {
 		createRoot((dispose) => {
 			const [highlights] = createSignal([
 				{ startIndex: 0, endIndex: 5, scope: 'variable' },
 			])
-			const { getLineHighlights } = createLineHighlights({ highlights })
+			const { getLineHighlights } = createLineHighlights({
+				...defaultLineProps,
+				highlights,
+			})
 
 			const entryA = makeEntry(0, 0, 5, 'hello')
 			const segmentsA = getLineHighlights(entryA)
@@ -44,52 +54,50 @@ describe('createLineHighlights', () => {
 		})
 	})
 
-	it(
-		'keeps precomputed highlights for unaffected lines when offsets are applied',
-		() => {
-			createRoot((dispose) => {
-				const [highlightOffset, setHighlightOffset] =
-					createSignal<HighlightOffsets>([])
-				const [highlights] = createSignal([
-					{ startIndex: 6, endIndex: 11, scope: 'variable' },
-				])
-				const [lineEntries, setLineEntries] = createSignal([
-					makeEntry(0, 0, 5, 'hello'),
-					makeEntry(1, 6, 5, 'world'),
-				])
-				const { getLineHighlights } = createLineHighlights({
-					highlights,
-					highlightOffset,
-					lineEntries,
-				})
-
-				const before = getLineHighlights(lineEntries()[1]!)
-				expect(before.length).toBeGreaterThan(0)
-
-				setHighlightOffset([
-					{
-						charDelta: 1,
-						lineDelta: 0,
-						fromCharIndex: 0,
-						fromLineRow: 0,
-						oldEndRow: 0,
-						newEndRow: 0,
-						oldEndIndex: 0,
-						newEndIndex: 1,
-					},
-				])
-				setLineEntries([
-					makeEntry(0, 0, 6, 'xhello'),
-					makeEntry(1, 7, 5, 'world'),
-				])
-
-				const after = getLineHighlights(lineEntries()[1]!)
-				expect(after).toBe(before)
-
-				dispose()
+	it('keeps precomputed highlights for unaffected lines when offsets are applied', () => {
+		createRoot((dispose) => {
+			const [highlightOffset, setHighlightOffset] =
+				createSignal<HighlightOffsets>([])
+			const [highlights] = createSignal([
+				{ startIndex: 6, endIndex: 11, scope: 'variable' },
+			])
+			const [lineEntries, setLineEntries] = createSignal([
+				makeEntry(0, 0, 5, 'hello'),
+				makeEntry(1, 6, 5, 'world'),
+			])
+			const { getLineHighlights } = createLineHighlights({
+				...defaultLineProps,
+				getLineStart: (i: number) => (i === 0 ? 0 : 6),
+				highlights,
+				highlightOffset,
 			})
-		}
-	)
+
+			const before = getLineHighlights(lineEntries()[1]!)
+			expect(before.length).toBeGreaterThan(0)
+
+			setHighlightOffset([
+				{
+					charDelta: 1,
+					lineDelta: 0,
+					fromCharIndex: 0,
+					fromLineRow: 0,
+					oldEndRow: 0,
+					newEndRow: 0,
+					oldEndIndex: 0,
+					newEndIndex: 1,
+				},
+			])
+			setLineEntries([
+				makeEntry(0, 0, 6, 'xhello'),
+				makeEntry(1, 7, 5, 'world'),
+			])
+
+			const after = getLineHighlights(lineEntries()[1]!)
+			expect(after).toBe(before)
+
+			dispose()
+		})
+	})
 
 	it('recomputes highlights when highlight offset changes within a line', () => {
 		createRoot((dispose) => {
@@ -109,6 +117,7 @@ describe('createLineHighlights', () => {
 				{ startIndex: 0, endIndex: 3, scope: 'variable' },
 			])
 			const { getLineHighlights } = createLineHighlights({
+				...defaultLineProps,
 				highlights,
 				highlightOffset,
 			})
@@ -134,6 +143,7 @@ describe('createLineHighlights', () => {
 			])
 
 			const shiftedEntry = {
+				lineId: 1,
 				index: 0,
 				start: 0,
 				length: 8,
@@ -155,6 +165,8 @@ describe('createLineHighlights', () => {
 				{ startIndex: 10, endIndex: 12, scope: 'variable' },
 			])
 			const { getLineHighlights } = createLineHighlights({
+				...defaultLineProps,
+				getLineStart: (i: number) => (i === 0 ? 0 : 10),
 				highlights,
 				highlightOffset,
 			})
@@ -193,6 +205,8 @@ describe('createLineHighlights', () => {
 				{ startIndex: 10, endIndex: 12, scope: 'variable' },
 			])
 			const { getLineHighlights } = createLineHighlights({
+				...defaultLineProps,
+				getLineStart: (i: number) => (i === 0 ? 0 : 10),
 				highlights,
 				highlightOffset,
 			})
@@ -241,6 +255,7 @@ describe('createLineHighlights', () => {
 				{ startIndex: 0, endIndex: 5, scope: 'variable' },
 			])
 			const { getLineHighlights } = createLineHighlights({
+				...defaultLineProps,
 				highlights,
 				highlightOffset,
 			})
@@ -274,6 +289,7 @@ describe('createLineHighlights', () => {
 				{ startIndex: 4, endIndex: 6, scope: 'variable' },
 			])
 			const { getLineHighlights } = createLineHighlights({
+				...defaultLineProps,
 				highlights,
 				highlightOffset,
 			})
@@ -306,6 +322,7 @@ describe('createLineHighlights', () => {
 				{ startIndex: 5, endIndex: 7, scope: 'variable' },
 			])
 			const { getLineHighlights } = createLineHighlights({
+				...defaultLineProps,
 				highlights,
 				highlightOffset,
 			})
@@ -348,6 +365,7 @@ describe('createLineHighlights', () => {
 				{ startIndex: 0, endIndex: 6, scope: 'variable' },
 			])
 			const { getLineHighlights } = createLineHighlights({
+				...defaultLineProps,
 				highlights,
 				highlightOffset,
 			})
@@ -383,6 +401,8 @@ describe('createLineHighlights', () => {
 				{ startIndex: 5, endIndex: 7, scope: 'variable' },
 			])
 			const { getLineHighlights } = createLineHighlights({
+				...defaultLineProps,
+				getLineStart: () => 10,
 				highlights,
 				highlightOffset,
 			})
@@ -417,6 +437,8 @@ describe('createLineHighlights', () => {
 				{ startIndex: 10, endIndex: 12, scope: 'variable' },
 			])
 			const { getLineHighlights } = createLineHighlights({
+				...defaultLineProps,
+				getLineStart: () => 5,
 				highlights,
 				highlightOffset,
 			})
@@ -449,6 +471,7 @@ describe('createLineHighlights', () => {
 				{ startIndex: 2, endIndex: 4, scope: 'variable' },
 			])
 			const { getLineHighlights } = createLineHighlights({
+				...defaultLineProps,
 				highlights,
 				highlightOffset,
 			})
@@ -480,6 +503,7 @@ describe('createLineHighlights', () => {
 				{ startIndex: 0, endIndex: 3, scope: 'variable' },
 			])
 			const { getLineHighlights } = createLineHighlights({
+				...defaultLineProps,
 				highlights,
 				highlightOffset,
 			})
@@ -512,6 +536,7 @@ describe('createLineHighlights', () => {
 				{ startIndex: 0, endIndex: 5, message: 'err', isMissing: false },
 			])
 			const { getLineHighlights } = createLineHighlights({
+				...defaultLineProps,
 				errors,
 				highlightOffset,
 			})
@@ -544,6 +569,7 @@ describe('createLineHighlights', () => {
 				{ startIndex: 0, endIndex: 5, scope: 'variable' },
 			])
 			const { getLineHighlights } = createLineHighlights({
+				...defaultLineProps,
 				highlights,
 				highlightOffset,
 			})
@@ -571,6 +597,8 @@ describe('createLineHighlights', () => {
 			const [highlights] = createSignal(largeHighlights)
 
 			const { getLineHighlights } = createLineHighlights({
+				...defaultLineProps,
+				getLineStart: () => 25000,
 				highlights,
 			})
 

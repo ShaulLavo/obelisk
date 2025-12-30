@@ -81,7 +81,7 @@ export interface GrepFileTask {
 	path: string
 
 	/** Search pattern as UTF-8 bytes */
-	patternBytes: Uint8Array
+	patternBytes: Uint8Array<ArrayBufferLike>
 
 	/** Chunk size for streaming */
 	chunkSize: number
@@ -136,7 +136,7 @@ export interface LineInfo {
 /** Chunk with metadata for streaming */
 export interface ChunkData {
 	/** Raw bytes */
-	chunk: Uint8Array
+	chunk: Uint8Array<ArrayBufferLike>
 
 	/** Absolute byte offset in file */
 	absoluteOffset: number
