@@ -20,7 +20,11 @@ export const Line = (props: LineProps) => {
 		let column = props.lineText.length
 		if (lineElement) {
 			const rect = lineElement.getBoundingClientRect()
-			const clickX = event.clientX - rect.left
+			// Adjust clickX by the xOffset to account for horizontal virtualization.
+			// The line element is transformed by xOffset, so clicks relative to its rect
+			// need to be offset by that amount to get the correct column position.
+			const xOffsetPx = (props.virtualRow.columnStart ?? 0) * props.charWidth
+			const clickX = event.clientX - rect.left + xOffsetPx
 
 			column = calculateColumnFromClick(
 				props.lineText,
@@ -39,8 +43,7 @@ export const Line = (props: LineProps) => {
 	}
 
 	const columnStart = () => props.virtualRow.columnStart
-	const columnEnd = () =>
-		props.columnEndOverride ?? props.virtualRow.columnEnd
+	const columnEnd = () => props.columnEndOverride ?? props.virtualRow.columnEnd
 	const columnRange = createMemo(() => {
 		const start = columnStart()
 		const end = columnEnd()
