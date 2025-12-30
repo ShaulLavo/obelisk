@@ -5,7 +5,7 @@ import { createPieceTableSnapshot, type PieceTableSnapshot } from '@repo/utils'
 import { ColorModeProvider } from '@kobalte/core'
 import { ThemeProvider } from '@repo/theme'
 import { Editor } from '../components/Editor'
-import type { TextEditorDocument, CursorMode } from '../types'
+import { type TextEditorDocument, CursorMode } from '../types'
 import scrollbarStyles from '../minimap/Scrollbar.module.css'
 
 const NATIVE_SCROLLBAR_HIDE_CLASS = scrollbarStyles['scrollbar-hidden']!
@@ -41,7 +41,7 @@ describe('Editor (browser integration)', () => {
 		const [isFileSelected] = createSignal(true)
 		const [fontSize] = createSignal(14)
 		const [fontFamily] = createSignal('monospace')
-		const [cursorMode] = createSignal<CursorMode>('regular')
+		const [cursorMode] = createSignal<CursorMode>(CursorMode.Regular)
 		const [stats] = createSignal(undefined)
 
 		return (

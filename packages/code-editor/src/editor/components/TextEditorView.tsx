@@ -105,15 +105,15 @@ export const TextEditorView = (props: EditorProps) => {
 		enablePrecomputedSegments,
 		releasePrecomputedSegments,
 	} = createLineHighlights({
-			highlights: () => (showHighlights() ? props.highlights?.() : undefined),
-			errors: () => props.errors?.(),
-			highlightOffset: () =>
-				showHighlights() ? props.highlightOffset?.() : undefined,
-			lineCount: cursor.lines.lineCount,
-			getLineStart: cursor.lines.getLineStart,
-			getLineLength: cursor.lines.getLineLength,
-			getLineTextLength: cursor.lines.getLineTextLength,
-		})
+		highlights: () => (showHighlights() ? props.highlights?.() : undefined),
+		errors: () => props.errors?.(),
+		highlightOffset: () =>
+			showHighlights() ? props.highlightOffset?.() : undefined,
+		lineCount: cursor.lines.lineCount,
+		getLineStart: cursor.lines.getLineStart,
+		getLineLength: cursor.lines.getLineLength,
+		getLineTextLength: cursor.lines.getLineTextLength,
+	})
 
 	createEffect(() => {
 		props.document.filePath()
@@ -203,7 +203,10 @@ export const TextEditorView = (props: EditorProps) => {
 			) {
 				cancelAnimationFrame(rafId)
 			}
-			if (typeof idleId === 'number' && typeof cancelIdleCallback === 'function') {
+			if (
+				typeof idleId === 'number' &&
+				typeof cancelIdleCallback === 'function'
+			) {
 				cancelIdleCallback(idleId)
 			}
 			if (timeoutId) clearTimeout(timeoutId)
@@ -318,6 +321,7 @@ export const TextEditorView = (props: EditorProps) => {
 		charWidth: layout.charWidth,
 		tabSize,
 		lineHeight: layout.lineHeight,
+		gutterWidth: layout.gutterWidth,
 	})
 
 	const handleLineMouseDown = (

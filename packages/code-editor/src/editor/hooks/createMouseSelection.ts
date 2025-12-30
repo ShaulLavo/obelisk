@@ -1,5 +1,4 @@
 import { onCleanup, type Accessor } from 'solid-js'
-import { LINE_NUMBER_WIDTH } from '../consts'
 import { useCursor } from '../cursor'
 import { calculateColumnFromClick } from '../utils'
 
@@ -8,6 +7,7 @@ export type MouseSelectionOptions = {
 	charWidth: Accessor<number>
 	tabSize: Accessor<number>
 	lineHeight: Accessor<number>
+	gutterWidth: Accessor<number>
 }
 
 export type MouseSelectionHandlers = {
@@ -94,7 +94,7 @@ export function createMouseSelection(
 
 		const relativeX = Math.max(
 			0,
-			point.clientX - rect.left + scrollEl.scrollLeft - LINE_NUMBER_WIDTH
+			point.clientX - rect.left + scrollEl.scrollLeft - options.gutterWidth()
 		)
 
 		const column = calculateColumnFromClick(

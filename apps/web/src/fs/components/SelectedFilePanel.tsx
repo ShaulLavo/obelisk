@@ -3,7 +3,11 @@ import type {
 	HighlightOffsets,
 	TextEditorDocument,
 } from '@repo/code-editor'
-import { Editor, getHighlightClassForScope } from '@repo/code-editor'
+import {
+	CursorMode,
+	Editor,
+	getHighlightClassForScope,
+} from '@repo/code-editor'
 import { getEditCharDelta, getEditLineDelta } from '@repo/utils/highlightShift'
 
 import {
@@ -202,7 +206,7 @@ export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
 							stats={() => state.selectedFileStats}
 							fontSize={() => DEFAULT_FONT_SIZE}
 							fontFamily={() => DEFAULT_FONT_FAMILY}
-							cursorMode={() => 'regular'}
+							cursorMode={() => CursorMode.Terminal}
 							registerEditorArea={(resolver) =>
 								focus.registerArea('editor', resolver)
 							}

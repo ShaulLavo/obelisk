@@ -20,9 +20,6 @@ export const Line = (props: LineProps) => {
 		let column = props.lineText.length
 		if (lineElement) {
 			const rect = lineElement.getBoundingClientRect()
-			// Adjust clickX by the xOffset to account for horizontal virtualization.
-			// The line element is transformed by xOffset, so clicks relative to its rect
-			// need to be offset by that amount to get the correct column position.
 			const xOffsetPx = (props.virtualRow.columnStart ?? 0) * props.charWidth
 			const clickX = event.clientX - rect.left + xOffsetPx
 

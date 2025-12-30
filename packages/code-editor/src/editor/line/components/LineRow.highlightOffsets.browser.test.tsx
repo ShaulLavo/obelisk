@@ -12,16 +12,17 @@ import { getEditCharDelta, getEditLineDelta } from '@repo/utils/highlightShift'
 import { ColorModeProvider } from '@kobalte/core'
 import { ThemeProvider } from '@repo/theme'
 import { Editor } from '../../components/Editor'
+//@ts-expect-error idk
 import sqliteContent from '../../../../../../sqlite.js?raw'
 import {
 	disposeTreeSitterWorker,
 	parseBufferWithTreeSitter,
 } from '../../../../../../apps/web/src/treeSitter/workerClient'
-import type {
+import {
 	CursorMode,
-	EditorSyntaxHighlight,
-	HighlightOffsets,
-	TextEditorDocument,
+	type EditorSyntaxHighlight,
+	type HighlightOffsets,
+	type TextEditorDocument,
 } from '../../types'
 
 type BuildTextRuns = typeof import('../utils/textRuns').buildTextRuns
@@ -138,7 +139,7 @@ const createHarness = (initialFile: FileState): HarnessHandle => {
 	const [isFileSelected] = createSignal(true)
 	const [fontSize] = createSignal(14)
 	const [fontFamily] = createSignal('monospace')
-	const [cursorMode] = createSignal<CursorMode>('regular')
+	const [cursorMode] = createSignal<CursorMode>(CursorMode.Regular)
 	const [stats] = createSignal(undefined)
 
 	const document: TextEditorDocument = {

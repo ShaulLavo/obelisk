@@ -85,7 +85,10 @@ export type DocumentIncrementalEdit = {
 	insertedText: string
 }
 
-export type CursorMode = 'regular' | 'terminal'
+export const enum CursorMode {
+	Regular = 'regular',
+	Terminal = 'terminal',
+}
 
 export type EditorAreaRegistration = (
 	resolver: () => HTMLElement | null
