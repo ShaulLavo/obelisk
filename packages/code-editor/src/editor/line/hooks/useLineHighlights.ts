@@ -33,7 +33,6 @@ export const useLineHighlights = (
 				lastHighlightEntry.lineId === e.lineId &&
 				lastHighlightEntry.length === e.length &&
 				lastHighlightEntry.text === e.text
-
 			) {
 				lastHighlightEntry = e
 				return previous

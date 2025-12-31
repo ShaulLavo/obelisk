@@ -57,7 +57,14 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 	const sortedHighlights = createMemo(
 		(prev: EditorSyntaxHighlight[] | undefined) => {
 			const highlightsProp = options.highlights?.()
-			if (!highlightsProp?.length) return EMPTY_HIGHLIGHTS
+			if (!highlightsProp?.length) {
+				if (prev !== EMPTY_HIGHLIGHTS) {
+					// TODO get rid of this revsion thing completely
+					//also it's a setter inside a getter
+					setHighlightsRevision((v) => v + 1)
+				}
+				return EMPTY_HIGHLIGHTS
+			}
 
 			const highlights = unwrap(highlightsProp)
 
@@ -73,7 +80,14 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 				// but sorting is O(N log N) so O(N) check is cheaper.
 				let changed = false
 				for (let i = 0; i < highlights.length; i += 100) {
-					if (highlights[i] !== prev[i]) {
+					const h = highlights[i]
+					const p = prev[i]
+					if (
+						!h ||
+						!p ||
+						h.startIndex !== p.startIndex ||
+						h.endIndex !== p.endIndex
+					) {
 						changed = true
 						break
 					}
@@ -81,6 +95,8 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 				if (!changed) return prev
 			}
 
+			// Highlights changed - increment revision to notify consumers
+			setHighlightsRevision((v) => v + 1)
 			return highlights.slice().sort((a, b) => a.startIndex - b.startIndex)
 		}
 	)
@@ -360,10 +376,6 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 					}
 				}
 			}
-			// Debug log for precomputed hit
-			// log.debug(
-			// 	`getLineHighlights (precomputed): line ${entry.index} in ${(performance.now() - start).toFixed(2)}ms`
-			// )
 			return segments
 		}
 
@@ -375,7 +387,7 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 		const errors = sortedErrorHighlights()
 
 		if (highlights !== lastHighlightsRef || errors !== lastErrorsRef) {
-			setHighlightsRevision((value) => value + 1)
+			// Only clear caches, don't increment revision (causes re-render cascade)
 			highlightCache = new Map()
 			dirtyHighlightCache.clear()
 			precomputedCache.clear()
@@ -383,7 +395,6 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 			lastHighlightsRef = highlights
 			lastErrorsRef = errors
 			spatialIndexReady = false
-			setIsPrecomputedReady(false)
 		}
 
 		if (highlights.length > 0 && !spatialIndexReady) {
@@ -466,14 +477,7 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 		}
 
 		calcCount++
-		if (entry.index === 19) {
-			log.debug(
-				`stats: calc=${calcCount} shift=${shiftCount} cacheHit=${cacheHitCount}`
-			)
-			calcCount = 0
-			shiftCount = 0
-			cacheHitCount = 0
-		}
+		const calcStart = performance.now()
 		let highlightSegments: LineHighlightSegment[]
 		if (highlights.length > 0) {
 			const lookupRange = hasOffsets
@@ -582,11 +586,19 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 					cached.segments,
 					offsetShiftAmount
 				)
+				if (entry.index === 19) {
+					log.debug(
+						`calc (cache match) took ${(performance.now() - calcStart).toFixed(1)}ms`
+					)
+				}
 				return cached.segments
 			}
 		}
 
 		cacheLineHighlights(cacheMap, lineKey, entry, result, offsetShiftAmount)
+		if (entry.index === 19) {
+			log.debug(`calc took ${(performance.now() - calcStart).toFixed(1)}ms`)
+		}
 		return result
 	}
 

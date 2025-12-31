@@ -67,7 +67,7 @@
     "@xterm/xterm": "^5.5.0",
     "ansis": "^4.2.0",
     "comlink": "^4.4.2",
-    "ghostty-web": "^0.4.0",
+    "ghostty-web": "workspace:*",
     "gsap": "^3.13.0",
     "localforage": "^1.10.0",
     "nanoid": "^5.1.6",

@@ -312,8 +312,7 @@ export const useScrollBenchmark = (options: UseScrollBenchmarkOptions) => {
 		if (phasesToRun.has('jumpH'))
 			reportData['Random Jump (H)'] = fmtStats(stats.jumpH)
 
-		if (phasesToRun.has('jumpH'))
-			reportData['Random Jump (H)'] = fmtStats(stats.jumpH)
+		console.table(reportData)
 
 		// Reset
 		el.scrollTop = 0

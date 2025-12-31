@@ -21,7 +21,7 @@ export const CHAR_WIDTH_RATIO = 0.6
 export const DEFAULT_TAB_SIZE = 4
 export const COLUMN_CHARS_PER_ITEM = 80
 export const HORIZONTAL_VIRTUALIZER_OVERSCAN = 6
-export const VIRTUALIZER_OVERSCAN = 20
+export const VIRTUALIZER_OVERSCAN = 30
 export const VERTICAL_VIRTUALIZER_OVERSCAN = VIRTUALIZER_OVERSCAN
 
 // Scroll context: number of rows to keep visible above/below cursor

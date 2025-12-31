@@ -278,7 +278,6 @@ export function CursorProvider(props: CursorProviderProps) {
 			return false
 		}
 
-		// Find the line containing startIndex
 		let lineIdx = 0
 		let lo = 0
 		let hi = prevLineCount - 1
@@ -302,15 +301,12 @@ export function CursorProvider(props: CursorProviderProps) {
 		const column = startIndex - lineStart
 		const isLastLine = lineIdx === prevLineCount - 1
 
-		// Can't delete if column is beyond text length
 		if (column < 0 || column >= currentText.length) {
 			return false
 		}
 
-		// Delete character from text
 		const newText = currentText.slice(0, column) + currentText.slice(column + 1)
 
-		// Update lineStarts: shift all lines after this one by -1
 		const newLineStarts = new Array<number>(prevLineCount)
 		for (let i = 0; i <= lineIdx; i++) {
 			newLineStarts[i] = prevLineStarts[i]!
@@ -319,18 +315,23 @@ export function CursorProvider(props: CursorProviderProps) {
 			newLineStarts[i] = prevLineStarts[i]! - 1
 		}
 
+		const t0 = performance.now()
 		batch(() => {
 			setDocumentLength((prev) => prev - 1)
 			setLineStarts(newLineStarts)
 			syncCursorStateToDocument()
 
-			// Update line data in the same batch to avoid double reactive propagation
 			setLineDataById(lineId, {
 				text: newText,
 				length: newText.length + (isLastLine ? 0 : 1),
 			})
 			setLineDataRevision((v) => v + 1)
 		})
+		console.log(
+			'[delete] batch took',
+			(performance.now() - t0).toFixed(1),
+			'ms'
+		)
 
 		return true
 	}
