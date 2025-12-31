@@ -4,3 +4,6 @@
 [submodule "packages/vitest-browser-solid"]
 	path = packages/vitest-browser-solid
 	url = https://github.com/ShaulLavo/vitest-browser-solid.git
+[submodule "packages/ghostty-web"]
+	path = packages/ghostty-web
+	url = https://github.com/ShaulLavo/ghostty-web.git
