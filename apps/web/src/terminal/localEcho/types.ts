@@ -2,6 +2,8 @@ export interface Disposable {
 	dispose(): void
 }
 
+export type OutputMode = 'strict' | 'ansi' | 'none'
+
 export interface TerminalAddonLike {
 	activate(term: TerminalLike): void
 	dispose(): void
@@ -63,6 +65,8 @@ export type AutocompleteCallback = (
 export interface LocalEchoOptions {
 	historySize?: number
 	maxAutocompleteEntries?: number
+	/** Output sanitization mode to protect the terminal renderer. */
+	outputMode?: OutputMode
 }
 
 /** Public interface for LocalEchoController */

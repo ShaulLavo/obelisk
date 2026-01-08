@@ -58,7 +58,9 @@ export const createTerminalController = async (
 			: await createGhosttyRuntime(options.theme)
 
 	const { term, fitAddon, remeasureRendererFont, setTheme } = runtime
-	const echoAddon = new LocalEchoController()
+	const echoAddon = new LocalEchoController({
+		outputMode: backend === 'ghostty' ? 'strict' : 'none',
+	})
 
 	term.loadAddon(fitAddon)
 	term.loadAddon(echoAddon)

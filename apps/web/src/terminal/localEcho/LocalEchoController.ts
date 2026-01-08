@@ -17,6 +17,7 @@ import type {
 	Disposable,
 	ILocalEchoController,
 	LocalEchoOptions,
+	OutputMode,
 	PromptConfig,
 	TerminalLike,
 	TerminalSize,
@@ -60,30 +61,8 @@ const ESCAPE_SEQ = {
 const ANSI_COLOR_REGEX = /\u001B\[[0-9;]*m/g
 const stripAnsi = (value: string): string => value.replace(ANSI_COLOR_REGEX, '')
 
-// Drop control bytes that crash Ghostty; ANSI color can be re-enabled if needed.
-const ALLOWED_CONTROL_CODES = new Set([0x09, 0x0a, 0x0d])
-
-function sanitizeOutput(value: string): string {
-	let sanitized = ''
-	let changed = false
-
-	for (let i = 0; i < value.length; i++) {
-		const code = value.charCodeAt(i)
-		const isAsciiControl = code < 0x20 || code === 0x7f
-		const isC1Control = code >= 0x80 && code <= 0x9f
-		const isBlocked =
-			(isAsciiControl && !ALLOWED_CONTROL_CODES.has(code)) || isC1Control
-
-		if (isBlocked) {
-			changed = true
-			continue
-		}
-
-		sanitized += value[i]
-	}
-
-	return changed ? sanitized : value
-}
+// Drop control bytes that crash Ghostty; ANSI mode allows CSI sequences.
+const ALLOWED_CONTROL_CODES_STRICT = new Set([0x09, 0x0a, 0x0d])
 
 /**
  * Local terminal controller for displaying messages and handling local echo.
@@ -112,10 +91,12 @@ export class LocalEchoController implements ILocalEchoController {
 
 	private promptVisible = ''
 	private continuationVisible = ''
+	private outputMode: OutputMode
 
 	constructor(options: LocalEchoOptions = {}) {
 		this.history = new HistoryController(options.historySize ?? 10)
 		this.maxAutocompleteEntries = options.maxAutocompleteEntries ?? 100
+		this.outputMode = options.outputMode ?? 'strict'
 	}
 
 	activate(term: TerminalLike): void {
@@ -216,8 +197,37 @@ export class LocalEchoController implements ILocalEchoController {
 
 	/** Print a message, converting newlines properly */
 	print(message: string): void {
-		const normalized = sanitizeOutput(message).replace(/[\r\n]+/g, '\n')
+		const normalized = this.sanitizeOutput(message).replace(/[\r\n]+/g, '\n')
 		this.term?.write(normalized.replace(/\n/g, ANSI.NEWLINE))
+	}
+
+	private sanitizeOutput(value: string): string {
+		if (this.outputMode === 'none') return value
+
+		const allowedControls =
+			this.outputMode === 'ansi'
+				? ALLOWED_CONTROL_CODES_ANSI
+				: ALLOWED_CONTROL_CODES_STRICT
+
+		let sanitized = ''
+		let changed = false
+
+		for (let i = 0; i < value.length; i++) {
+			const code = value.charCodeAt(i)
+			const isAsciiControl = code < 0x20 || code === 0x7f
+			const isC1Control = code >= 0x80 && code <= 0x9f
+			const isBlocked =
+				(isAsciiControl && !allowedControls.has(code)) || isC1Control
+
+			if (isBlocked) {
+				changed = true
+				continue
+			}
+
+			sanitized += value[i]
+		}
+
+		return changed ? sanitized : value
 	}
 
 	/** Print items in wide column format */

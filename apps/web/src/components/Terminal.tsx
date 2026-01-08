@@ -36,7 +36,7 @@ export const Terminal: Component = () => {
 	)
 	const [terminalBackend, setTerminalBackend] = makePersisted(
 		// eslint-disable-next-line solid/reactivity
-		createSignal<TerminalBackend>('ghostty'),
+	createSignal<TerminalBackend>('xterm'),
 		{
 			name: 'terminal-backend',
 			storage,
