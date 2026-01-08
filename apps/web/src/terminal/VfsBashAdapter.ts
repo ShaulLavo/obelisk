@@ -44,6 +44,13 @@ export class VfsBashAdapter implements IFileSystem {
 		return new Uint8Array(buffer)
 	}
 
+	async readFileStream(path: string): Promise<ReadableStream<Uint8Array>> {
+		const normalizedPath = this.#normalizePath(path)
+		// We cast to any because @repo/fs might have a slightly different stream type
+		// but it's compatible with ReadableStream<Uint8Array> in the browser
+		return (await this.#ctx.file(normalizedPath).stream()) as any
+	}
+
 	async writeFile(
 		path: string,
 		content: FileContent,

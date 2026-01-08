@@ -371,6 +371,9 @@ export function createJustBashAdapter(
 			const result = await bash.exec(cmd, {
 				cwd: currentCwd,
 				env: currentEnv,
+				onOutput: state.outputCallback
+					? (text: string) => state.outputCallback!(text) // wrapper needed because state is enclosed
+					: undefined,
 			})
 
 			if (result.env) {
