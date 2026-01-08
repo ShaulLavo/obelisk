@@ -113,7 +113,7 @@ body {
 
 	/* Line Gutter */
 	.editor-gutter-container {
-		@apply shrink-0 select-none text-[11px] font-semibold tracking-[0.08em] tabular-nums flex items-center justify-between gap-1;
+		@apply shrink-0 select-none text-[11px] font-semibold tracking-[0.08em] tabular-nums flex items-center justify-end gap-0.5;
 	}
 
 	/* Line Gutters */
@@ -122,7 +122,7 @@ body {
 		background-color: var(--editor-gutter-background);
 	}
 	.editor-gutter-row {
-		@apply absolute left-0 right-0 flex items-center justify-around;
+		@apply absolute left-0 right-0 flex items-center justify-end pr-1;
 	}
 
 	/* Tree Node */
