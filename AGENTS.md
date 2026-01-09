@@ -5,7 +5,7 @@
 > **Always opt in for adding logs and other debug tools and asking the user for input when not sure.**
 
 - **Be a Good Citizen**: If you see a problem while working and it's easy to fix, fix it!
-- **Debugging**: Always use `console.log` for debugging, never use `@repo/logger`. The logger is for production logging only.
+- **Debugging**: Always use `console.log` for debugging, **never** use `@repo/logger`. The logger is for production logging only. Always wrap data in `JSON.stringify(data, null, 2)` specifically.
 
 ## Project Structure & Modules
 
