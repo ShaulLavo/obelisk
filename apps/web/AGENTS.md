@@ -113,3 +113,8 @@ Effects are primarily intended for handling side effects that do not write to th
 - **Never destructure props**: Destructuring `props` breaks reactivity. Use `splitProps` and `mergeProps` to separate or merge props while maintaining reactivity.
 - **Props are reactive getters**: Usually, there is no need to pass accessors (functions) as props. If you pass a signal or memo value like `<Comp value={mySignal()} />`, then `props.value` inside `Comp` is already a reactive getter—no need to wrap it in an accessor.
 - **Debugging Reactivity**: When debugging SolidJS, it is recommended to use `createEffect` with a log inside to track reactivity and verify when dependencies are changing.
+
+> **Note:** Before implementing a custom solution, it is recommended to check **[solid-primitives](https://github.com/solidjs-community/solid-primitives)**.
+> You can install individual packages using `bun add @solid-primitives/{name}` from the list below:
+>
+> active-element, audio, autofocus, bounds, clipboard, connectivity, context, cursor, date, deep, destructure, devices, event-bus, event-dispatcher, event-listener, event-props, filesystem, fullscreen, geolocation, graphql, history, i18n, immutable, input, intersection-observer, keyboard, keyed, lifecycle, map, media, memo, mouse, mutation-observer, network, pagination, platform, pointer, props, raf, range, refs, resize-observer, resource, rootless, scheduled, script-loader, scroll, selection, share, signal-builders, start, static-store, storage, stream, styles, template, timer, title, transition, trigger, tween, upload, utils, websocket, workers
