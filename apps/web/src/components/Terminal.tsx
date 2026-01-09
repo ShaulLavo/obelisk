@@ -16,9 +16,11 @@ import {
 	createTerminalController,
 	TerminalController,
 	type TerminalBackend,
+	type XtermRenderer,
 } from '../terminal/terminalController'
 import { useTheme } from '@repo/theme'
 import { ensureFs } from '~/fs/runtime/fsRuntime'
+import { TerminalScrollbar } from '~/terminal/TerminalScrollbar'
 
 export const Terminal: Component = () => {
 	let containerRef: HTMLDivElement = null!
@@ -36,11 +38,23 @@ export const Terminal: Component = () => {
 	)
 	const [terminalBackend, setTerminalBackend] = makePersisted(
 		// eslint-disable-next-line solid/reactivity
-	createSignal<TerminalBackend>('xterm'),
+		createSignal<TerminalBackend>('xterm'),
 		{
 			name: 'terminal-backend',
 			storage,
 		}
+	)
+	const [xtermRenderer, setXtermRenderer] = makePersisted(
+		// eslint-disable-next-line solid/reactivity
+		createSignal<XtermRenderer>('webgl'),
+		{
+			name: 'terminal-xterm-renderer',
+			storage,
+		}
+	)
+
+	const [controller, setController] = createSignal<TerminalController | null>(
+		null
 	)
 
 	const normalizeCwd = (path: string) => {
@@ -54,22 +68,33 @@ export const Terminal: Component = () => {
 		setTerminalBackend(() => next)
 	}
 
+	const handleRendererChange = (event: Event) => {
+		const target = event.currentTarget as HTMLSelectElement
+		const next = target.value as XtermRenderer
+		setXtermRenderer(() => next)
+	}
+
 	onMount(() => {
 		const unregisterFocus = focus.registerArea('terminal', () => containerRef)
-		let controller: TerminalController | null = null
 
 		createResizeObserver(
 			() => containerRef,
-			() => controller?.fit()
+			() => controller()?.fit()
 		)
 
-		const setup = async (focusOnMount: boolean) => {
-			if (controller) {
-				controller.dispose()
-				controller = null
-			}
+		const disposeController = () => {
+			const active = controller()
+			if (!active) return
+			active.dispose()
+			setController(() => null)
+		}
 
-			controller = await createTerminalController(containerRef, {
+		const setup = async (focusOnMount: boolean) => {
+			disposeController()
+			// Clear any leftover DOM elements from the previous terminal
+			containerRef.innerHTML = ''
+
+			const nextController = await createTerminalController(containerRef, {
 				getPrompt: () => createPrompt(cwd(), state.activeSource),
 				shellContext: {
 					state,
@@ -84,8 +109,10 @@ export const Terminal: Component = () => {
 				theme: theme,
 				focusOnMount,
 				backend: terminalBackend(),
+				rendererType: xtermRenderer(),
 			})
-			controller.fit()
+			setController(() => nextController)
+			nextController.fit()
 			const dir = await actions.ensureDirPathLoaded(cwd())
 			if (!dir) {
 				setCwd(() => '')
@@ -98,10 +125,18 @@ export const Terminal: Component = () => {
 
 		createEffect(
 			on(
-				terminalBackend,
+				[terminalBackend, xtermRenderer],
 				() => {
 					void setup(false).catch((error) => {
-						console.error('Failed to switch terminal backend', error)
+						console.error('Failed to switch terminal backend/renderer', error)
+						console.error(
+							'Error details:',
+							error instanceof Error ? error.message : String(error)
+						)
+						console.error(
+							'Stack:',
+							error instanceof Error ? error.stack : 'No stack'
+						)
 					})
 				},
 				{ defer: true }
@@ -112,15 +147,16 @@ export const Terminal: Component = () => {
 			on(
 				trackedTheme,
 				() => {
-					if (!controller) return
-					controller.setTheme(theme)
+					const active = controller()
+					if (!active) return
+					active.setTheme(theme)
 				},
 				{ defer: true }
 			)
 		)
 
 		onCleanup(() => {
-			controller?.dispose()
+			disposeController()
 			unregisterFocus()
 		})
 	})
@@ -137,8 +173,22 @@ export const Terminal: Component = () => {
 					<option value="ghostty">Ghostty</option>
 					<option value="xterm">xterm.js</option>
 				</select>
+				{terminalBackend() === 'xterm' && (
+					<select
+						class="rounded border border-border bg-background px-2 py-1 text-xs text-foreground"
+						value={xtermRenderer()}
+						onChange={handleRendererChange}
+					>
+						<option value="webgl">WebGL</option>
+						<option value="canvas">Canvas</option>
+						<option value="dom">DOM</option>
+					</select>
+				)}
 			</div>
-			<div class="h-full min-h-0 px-2" ref={containerRef} />
+			<div class="relative h-full min-h-0 pl-2">
+				<div class="absolute inset-0" ref={containerRef} />
+				<TerminalScrollbar controller={controller} />
+			</div>
 		</div>
 	)
 }

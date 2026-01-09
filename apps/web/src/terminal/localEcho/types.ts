@@ -12,7 +12,7 @@ export interface TerminalAddonLike {
 export interface TerminalLike {
 	cols: number
 	rows: number
-	write(data: string): void
+	write(data: string, callback?: () => void): void
 	open(container: HTMLElement): void
 	focus(): void
 	onData(callback: (data: string) => void): Disposable

@@ -22,6 +22,7 @@ import type {
 	TerminalLike,
 	TerminalSize,
 } from './types'
+import { logger } from '~/logger'
 
 const ANSI = {
 	CURSOR_UP: '\x1B[A',
@@ -67,6 +68,10 @@ const CSI_FINAL_MIN = 0x40
 const CSI_FINAL_MAX = 0x7e
 const CSI_START = 0x5b
 const CSI_MAX_LENGTH = 64
+const MAX_SANITIZE_LOGS = 3
+const MAX_WRITE_LOGS = 3
+const WRITE_BACKLOG_LOG_THRESHOLD = 200
+const outputLogger = logger.withTag('terminal:output')
 
 const isCsiContinuation = (code: number): boolean =>
 	(code >= 0x30 && code <= 0x3f) || (code >= 0x20 && code <= 0x2f)
@@ -151,6 +156,10 @@ export class LocalEchoController implements ILocalEchoController {
 	private activeCharPrompt: CharPromptConfig | null = null
 	private termSize: TerminalSize = { cols: 0, rows: 0 }
 	private disposables: Disposable[] = []
+	private sanitizeLogCount = 0
+	private writeLogCount = 0
+	private pendingWrite: Promise<void> = Promise.resolve()
+	private pendingWriteCount = 0
 
 	private promptVisible = ''
 	private continuationVisible = ''
@@ -211,7 +220,7 @@ export class LocalEchoController implements ILocalEchoController {
 	 */
 	read(prompt: string, continuationPrompt = '> '): Promise<string> {
 		return new Promise((resolve, reject) => {
-			this.term?.write(prompt)
+			this.writeImmediate(prompt)
 			this.promptVisible = stripAnsi(prompt)
 			this.continuationVisible = stripAnsi(continuationPrompt)
 			this.activePrompt = { prompt, continuationPrompt, resolve, reject }
@@ -227,15 +236,15 @@ export class LocalEchoController implements ILocalEchoController {
 	 */
 	readChar(prompt: string): Promise<string> {
 		return new Promise((resolve, reject) => {
-			this.term?.write(prompt)
+			this.writeImmediate(prompt)
 			this.activeCharPrompt = { prompt, resolve, reject }
 		})
 	}
 
 	/** Abort any pending read operation */
-	abortRead(reason = 'aborted'): void {
-		if (this.activePrompt || this.activeCharPrompt) {
-			this.term?.write(ANSI.NEWLINE)
+	abortRead(reason = 'aborted', skipWrite = false): void {
+		if (!skipWrite && (this.activePrompt || this.activeCharPrompt)) {
+			this.writeImmediate(ANSI.NEWLINE)
 		}
 
 		if (this.activePrompt) {
@@ -260,15 +269,80 @@ export class LocalEchoController implements ILocalEchoController {
 
 	/** Print a message, converting newlines properly */
 	print(message: string): void {
+		this.enqueueWrite(this.formatOutput(message))
+	}
+
+	/** Wait for any queued output to finish rendering. */
+	async flushOutput(): Promise<void> {
+		await this.pendingWrite
+	}
+
+	private formatOutput(message: string): string {
 		const normalized = this.sanitizeOutput(message).replace(/[\r\n]+/g, '\n')
-		this.term?.write(normalized.replace(/\n/g, ANSI.NEWLINE))
+		return normalized.replace(/\n/g, ANSI.NEWLINE)
+	}
+
+	private writeImmediate(message: string): void {
+		this.term?.write(this.formatOutput(message))
+	}
+
+	private enqueueWrite(data: string): void {
+		if (!this.term) return
+
+		this.pendingWriteCount += 1
+		if (
+			this.pendingWriteCount >= WRITE_BACKLOG_LOG_THRESHOLD &&
+			this.writeLogCount < MAX_WRITE_LOGS
+		) {
+			this.writeLogCount += 1
+			outputLogger.debug('Terminal output backlog', {
+				pendingWrites: this.pendingWriteCount,
+				length: data.length,
+			})
+		}
+
+		const write = () =>
+			new Promise<void>((resolve) => {
+				if (!this.term) {
+					resolve()
+					return
+				}
+				try {
+					this.term.write(data, resolve)
+				} catch (error) {
+					const details =
+						error instanceof Error
+							? { message: error.message, stack: error.stack }
+							: { message: String(error) }
+					outputLogger.error('Terminal write failed', details)
+					resolve()
+				}
+			})
+
+		this.pendingWrite = this.pendingWrite
+			.catch(() => undefined)
+			.then(write)
+			.finally(() => {
+				this.pendingWriteCount = Math.max(0, this.pendingWriteCount - 1)
+			})
 	}
 
 	private sanitizeOutput(value: string): string {
 		if (this.outputMode === 'none') return value
 
 		if (this.outputMode === 'ansi') {
-			return sanitizeAnsiOutput(value)
+			const sanitized = sanitizeAnsiOutput(value)
+			if (sanitized !== value) {
+				this.sanitizeLogCount += 1
+				if (this.sanitizeLogCount <= MAX_SANITIZE_LOGS) {
+					outputLogger.debug('Sanitized terminal output', {
+						length: value.length,
+					})
+				} else if (this.sanitizeLogCount === MAX_SANITIZE_LOGS + 1) {
+					outputLogger.debug('Sanitized terminal output (suppressed)')
+				}
+			}
+			return sanitized
 		}
 
 		let sanitized = ''
@@ -367,7 +441,7 @@ export class LocalEchoController implements ILocalEchoController {
 
 		const renderedPrompt = this.applyPrompts(newInput)
 		const visiblePrompt = this.applyPrompts(newInput, 'visible')
-		this.print(renderedPrompt)
+		this.writeImmediate(renderedPrompt)
 
 		if (this.cursor > newInput.length) {
 			this.cursor = newInput.length
@@ -400,16 +474,17 @@ export class LocalEchoController implements ILocalEchoController {
 		this.setCursor(this.input.length)
 		this.term?.write(ANSI.NEWLINE)
 
-		const resume = () => {
+		const resume = async () => {
+			await this.flushOutput()
 			this.cursor = savedCursor
 			this.setInput(this.input)
 		}
 
 		const result = callback()
 		if (result instanceof Promise) {
-			void result.then(resume)
+			void result.then(() => resume())
 		} else {
-			resume()
+			void resume()
 		}
 	}
 
@@ -506,9 +581,20 @@ export class LocalEchoController implements ILocalEchoController {
 
 	/** Handle terminal resize */
 	private handleTermResize = (data: { rows: number; cols: number }): void => {
-		this.clearInput()
-		this.termSize = { cols: data.cols, rows: data.rows }
-		this.setInput(this.input, false)
+		// Only redraw input if we're in an active input session
+		if (!this.active) {
+			this.termSize = { cols: data.cols, rows: data.rows }
+			return
+		}
+		try {
+			this.clearInput()
+			this.termSize = { cols: data.cols, rows: data.rows }
+			this.setInput(this.input, false)
+		} catch {
+			// Silently ignore WASM memory errors during resize
+			// The terminal will recover on next user interaction
+			this.termSize = { cols: data.cols, rows: data.rows }
+		}
 	}
 
 	/** Handle terminal data input */
@@ -526,8 +612,23 @@ export class LocalEchoController implements ILocalEchoController {
 		// Handle pasted input
 		if (data.length > 3 && data.charCodeAt(0) !== KEY.ESCAPE) {
 			const normalized = data.replace(/[\r\n]+/g, '\r')
+			let buffer = ''
 			for (const char of normalized) {
-				this.handleData(char)
+				if (!this.active) break
+				const ord = char.charCodeAt(0)
+				const isControl = ord < 32 || ord === KEY.BACKSPACE || ord === KEY.ESCAPE
+				if (isControl) {
+					if (buffer) {
+						this.handleCursorInsert(buffer)
+						buffer = ''
+					}
+					this.handleData(char)
+					continue
+				}
+				buffer += char
+			}
+			if (buffer && this.active) {
+				this.handleCursorInsert(buffer)
 			}
 		} else {
 			this.handleData(data)
