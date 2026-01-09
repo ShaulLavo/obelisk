@@ -14,6 +14,7 @@ export type SettingDefinition = {
 export type SettingsCategory = {
 	id: string
 	label: string
+	icon?: string
 	subcategories?: SettingsCategory[]
 }
 

@@ -39,12 +39,13 @@ export const createSettingsStore = (
 	const loadSchema = async (): Promise<SettingsSchema> => {
 		try {
 			// Import schema files dynamically
-			const [editorSchema, appearanceSchema, terminalSchema, fileTreeSchema] =
+			const [editorSchema, appearanceSchema, terminalSchema, fileTreeSchema, fontsSchema] =
 				await Promise.all([
 					import('../schemas/editor.json'),
 					import('../schemas/appearance.json'),
 					import('../schemas/terminal.json'),
 					import('../schemas/fileTree.json'),
+					import('../schemas/fonts.json'),
 				])
 
 			const categories = [
@@ -52,6 +53,7 @@ export const createSettingsStore = (
 				terminalSchema.category,
 				fileTreeSchema.category,
 				appearanceSchema.category,
+				fontsSchema.category,
 			]
 
 			const settings: SettingDefinition[] = [
@@ -59,6 +61,7 @@ export const createSettingsStore = (
 				...(terminalSchema.settings as SettingDefinition[]),
 				...(fileTreeSchema.settings as SettingDefinition[]),
 				...(appearanceSchema.settings as SettingDefinition[]),
+				...(fontsSchema.settings as SettingDefinition[]),
 			]
 
 			return { categories, settings }

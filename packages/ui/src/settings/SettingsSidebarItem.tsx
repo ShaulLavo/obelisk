@@ -2,11 +2,20 @@ import type { Component } from 'solid-js'
 import { For, Show, createSignal, createEffect } from 'solid-js'
 import * as Accordion from '@corvu/accordion'
 import { VsChevronRight } from '@repo/icons/vs/VsChevronRight'
+import { VsTextSize } from '@repo/icons/vs/VsTextSize'
 import { cn } from '../utils'
+
+// Icon mapping for category icons
+const iconMap = {
+	VsTextSize: VsTextSize,
+} as const
+
+type IconName = keyof typeof iconMap
 
 export type SettingsCategory = {
 	id: string
 	label: string
+	icon?: string
 	subcategories?: SettingsCategory[]
 }
 
@@ -36,6 +45,13 @@ export const SettingsSidebarItem: Component<SettingsSidebarItemProps> = (
 		props.selectedCategory.startsWith(`${fullId()}/`)
 
 	const hasSubcategories = () => Boolean(props.category.subcategories?.length)
+
+	// Render icon if provided
+	const renderIcon = () => {
+		if (!props.category.icon) return null
+		const IconComponent = iconMap[props.category.icon as IconName]
+		return IconComponent ? <IconComponent class="h-4 w-4 text-muted-foreground" /> : null
+	}
 
 	// Controlled expansion state
 	const [expandedItems, setExpandedItems] = createSignal<string[]>(
@@ -74,7 +90,10 @@ export const SettingsSidebarItem: Component<SettingsSidebarItemProps> = (
 					onClick={() => props.onCategorySelect(fullId())}
 					class={itemClass()}
 				>
-					<span class="truncate">{props.category.label}</span>
+					<div class="flex items-center gap-2">
+						{renderIcon()}
+						<span class="truncate">{props.category.label}</span>
+					</div>
 				</button>
 			}
 		>
@@ -88,7 +107,10 @@ export const SettingsSidebarItem: Component<SettingsSidebarItemProps> = (
 						class={cn(itemClass(), '[&[data-expanded]>svg]:rotate-90')}
 						onClick={() => props.onCategorySelect(fullId())}
 					>
-						<span class="truncate">{props.category.label}</span>
+						<div class="flex items-center gap-2">
+							{renderIcon()}
+							<span class="truncate">{props.category.label}</span>
+						</div>
 						<VsChevronRight class="h-3.5 w-3.5 text-muted-foreground transition-transform" />
 					</Accordion.Trigger>
 					<Accordion.Content class="overflow-hidden data-[expanded]:animate-accordion-down data-[closed]:animate-accordion-up">

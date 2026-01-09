@@ -24,6 +24,45 @@ describe('createSettingsStore', () => {
 	})
 
 	/**
+	 * **Feature: nerdfonts-settings, Property 1: Font Category Navigation**
+	 * **Validates: Requirements 1.2**
+	 */
+	it('property: fonts category is loaded in schema', async () => {
+		await new Promise<void>((resolve) => {
+			createRoot((disposeRoot) => {
+				const [state, actions] = createSettingsStore('memory')
+
+				const checkLoaded = () => {
+					if (state.isLoaded) {
+						// Verify fonts category exists
+						const fontsCategory = state.schema.categories.find(cat => cat.id === 'fonts')
+						expect(fontsCategory).toBeDefined()
+						expect(fontsCategory?.label).toBe('Fonts')
+						expect(fontsCategory?.icon).toBe('VsTextSize')
+
+						// Verify fonts settings exist
+						const fontsSettings = state.schema.settings.filter(setting => setting.category === 'fonts')
+						expect(fontsSettings).toHaveLength(3)
+						
+						const settingKeys = fontsSettings.map(s => s.key)
+						expect(settingKeys).toContain('fonts.autoInstallPreview')
+						expect(settingKeys).toContain('fonts.cacheLimit')
+						expect(settingKeys).toContain('fonts.previewText')
+
+						disposeRoot()
+						resolve()
+					} else {
+						// Keep checking until loaded
+						setTimeout(checkLoaded, 10)
+					}
+				}
+
+				checkLoaded()
+			})
+		})
+	})
+
+	/**
 	 * **Feature: settings-page, Property 8: Setting Modification Updates Store**
 	 * **Validates: Requirements 4.7**
 	 */

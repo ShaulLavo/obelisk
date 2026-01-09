@@ -1,0 +1,30 @@
+{
+    "category": {
+        "id": "fonts",
+        "label": "Fonts",
+        "icon": "VsTextSize"
+    },
+    "settings": [
+        {
+            "key": "fonts.autoInstallPreview",
+            "type": "boolean",
+            "default": true,
+            "description": "Automatically load font previews when browsing available fonts",
+            "category": "fonts"
+        },
+        {
+            "key": "fonts.cacheLimit",
+            "type": "number",
+            "default": 100,
+            "description": "Maximum cache size for downloaded fonts (MB)",
+            "category": "fonts"
+        },
+        {
+            "key": "fonts.previewText",
+            "type": "string",
+            "default": "The quick brown fox jumps over the lazy dog 0123456789",
+            "description": "Text used for font previews",
+            "category": "fonts"
+        }
+    ]
+}
