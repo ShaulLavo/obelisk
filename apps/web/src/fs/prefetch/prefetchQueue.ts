@@ -12,11 +12,8 @@ import type {
 	TreePrefetchWorkerCallbacks,
 	DeferredDirMetadata,
 } from './treePrefetchWorkerTypes'
-import {
-	batchInsertFiles,
-	initSqlite,
-	type FileMetadata,
-} from '../../workers/sqliteClient'
+import { searchService } from '../../search/SearchService'
+import type { FileMetadata } from '../../search/types'
 
 const MAX_PREFETCH_DEPTH = 6
 const MAX_PREFETCHED_DIRS = Infinity
@@ -86,7 +83,7 @@ export class PrefetchQueue {
 		if (this.workerCount < 1) {
 			throw new Error('PrefetchQueue requires at least one worker')
 		}
-		void initSqlite().catch((err) => {
+		void searchService.init().catch((err) => {
 			prefetchLogger.error('Failed to initialize SQLite for indexing', err)
 		})
 	}
@@ -483,7 +480,7 @@ export class PrefetchQueue {
 		this.indexBatch = []
 
 		try {
-			await batchInsertFiles(batch)
+			await searchService.indexFiles(batch)
 		} catch (err) {
 			prefetchLogger.error('Failed to batch insert files to SQLite', err)
 		}

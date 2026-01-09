@@ -43,7 +43,6 @@ const loadDirectoryTarget = async (
 			if (cached) {
 				// TODO: Add freshness validation here when modification time checking is implemented
 				// For now, we'll always scan to ensure data is fresh
-				console.debug(`Worker found cached data for ${target.path}, but scanning for freshness`)
 			}
 		} catch (error) {
 			console.warn(`Worker cache check failed for ${target.path}:`, error)
@@ -98,7 +97,6 @@ const loadDirectoryTarget = async (
 			}
 			
 			await workerCache.setDirectory(target.path, cachedEntry)
-			console.debug(`Worker cached scan results for ${target.path}`)
 		} catch (error) {
 			console.warn(`Worker failed to cache scan results for ${target.path}:`, error)
 		}
@@ -118,7 +116,6 @@ const api: TreePrefetchWorkerApi = {
 				dbName: 'tree-cache', // Same as main thread
 				storeName: 'directories' // Same as main thread
 			})
-			console.debug('Worker cache initialized')
 		} catch (error) {
 			console.warn('Worker cache initialization failed:', error)
 			workerCache = undefined
