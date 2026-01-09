@@ -11,7 +11,8 @@ import { useSettings } from '../SettingsProvider'
 export type SettingsTabProps = {
 	initialCategory?: string
 	currentCategory?: string
-	onCategoryChange?: (categoryId: string) => void
+	parentCategory?: string
+	onCategoryChange?: (categoryId: string, parentCategoryId?: string) => void
 }
 
 export const SettingsTab: Component<SettingsTabProps> = (props) => {
@@ -62,18 +63,25 @@ export const SettingsTab: Component<SettingsTabProps> = (props) => {
 		setLocalSelectedCategory(categoryId)
 		setParentCategory(info?.parentId)
 		// Notify parent of category change for URL sync
-		props.onCategoryChange?.(categoryId)
+		props.onCategoryChange?.(categoryId, info?.parentId)
 	}
 
 	const handleSettingChange = (key: string, value: unknown) => {
 		settingsActions.setSetting(key, value)
 	}
 
-	// Update parent category when selected category changes
+	// Update parent category when selected category changes or from props
 	createEffect(() => {
 		const category = selectedCategory()
-		const info = findCategoryInfo(category)
-		setParentCategory(info?.parentId)
+		
+		if (props.parentCategory) {
+			// If parent category is provided via props, use it
+			setParentCategory(props.parentCategory)
+		} else {
+			// Otherwise derive from category info
+			const info = findCategoryInfo(category)
+			setParentCategory(info?.parentId)
+		}
 	})
 
 	return (

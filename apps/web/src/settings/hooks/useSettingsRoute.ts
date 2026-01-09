@@ -22,8 +22,26 @@ export const useSettingsRoute = () => {
 
 	const currentCategory = () => {
 		const category = settingsCategory()
-		// If in JSON view or no category specified, default to 'editor'
-		return category === 'json' || !category ? 'editor' : category
+		if (!category || category === 'json') {
+			return 'editor'
+		}
+		// If it's a hierarchical path like "editor/font", return just the subcategory
+		if (category.includes('/')) {
+			return category.split('/')[1] || 'editor'
+		}
+		return category
+	}
+
+	const currentParentCategory = () => {
+		const category = settingsCategory()
+		if (!category || category === 'json') {
+			return undefined
+		}
+		// If it's a hierarchical path like "editor/font", return the parent category
+		if (category.includes('/')) {
+			return category.split('/')[0] || undefined
+		}
+		return undefined
 	}
 
 	const openSettings = (category?: string) => {
@@ -40,15 +58,22 @@ export const useSettingsRoute = () => {
 		setSearchParams({ settings: undefined, view: undefined })
 	}
 
-	const navigateToCategory = (categoryId: string) => {
+	const navigateToCategory = (categoryId: string, parentCategoryId?: string) => {
 		// Clear view mode when navigating to a category
-		setSearchParams({ settings: categoryId, view: undefined })
+		if (parentCategoryId) {
+			// Hierarchical format: parent/subcategory
+			setSearchParams({ settings: `${parentCategoryId}/${categoryId}`, view: undefined })
+		} else {
+			// Top-level category
+			setSearchParams({ settings: categoryId, view: undefined })
+		}
 	}
 
 	return {
 		isSettingsOpen,
 		isJSONView,
 		currentCategory,
+		currentParentCategory,
 		openSettings,
 		openJSONView,
 		closeSettings,
