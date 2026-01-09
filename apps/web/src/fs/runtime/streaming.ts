@@ -106,9 +106,13 @@ export async function getFileSize(
 	source: FsSource,
 	path: string
 ): Promise<number> {
+	console.log(`[streaming] getFileSize called`, { source, path })
 	const ctx = await ensureFs(source)
+	console.log(`[streaming] getFileSize: ensureFs complete`, { path, ctxExists: !!ctx })
 	const handle = await getOrCreateFileHandle(ctx, path)
+	console.log(`[streaming] getFileSize: got file handle`, { path, handleExists: !!handle })
 	const file = await handle.getFile()
+	console.log(`[streaming] getFileSize: got file`, { path, size: file.size })
 	return file.size
 }
 

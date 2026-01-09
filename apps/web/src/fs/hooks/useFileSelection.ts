@@ -66,11 +66,17 @@ export const useFileSelection = ({
 	}
 
 	const selectPath = async (path: string, options?: SelectPathOptions) => {
+		console.log(`[useFileSelection] selectPath called`, { path, options })
 		const tree = state.tree
-		if (!tree) return
+		if (!tree) {
+			console.log(`[useFileSelection] selectPath: tree is undefined, returning early`)
+			return
+		}
+		console.log(`[useFileSelection] selectPath: tree exists`, { treePath: tree.path, treeName: tree.name })
 
 		// Handle clearing selection (empty path)
 		if (!path) {
+			console.log(`[useFileSelection] selectPath: empty path, clearing selection`)
 			batch(() => {
 				setSelectedPath(undefined)
 				setSelectedFileSize(undefined)
@@ -82,13 +88,21 @@ export const useFileSelection = ({
 		}
 
 		if (options?.forceReload) {
+			console.log(`[useFileSelection] selectPath: forceReload=true, clearing cache for ${path}`)
 			fileCache.clearContent(path)
 		}
 
 		const node = findNode(tree, path)
+		console.log(`[useFileSelection] selectPath: findNode result`, { 
+			path, 
+			nodeFound: !!node, 
+			nodeKind: node?.kind,
+			nodePath: node?.path 
+		})
 		
 		// If node is found and it's a directory, handle directory selection
 		if (node?.kind === 'dir') {
+			console.log(`[useFileSelection] selectPath: node is directory, setting path only`)
 			batch(() => {
 				setSelectedPath(path)
 				setSelectedFileSize(undefined)
@@ -100,6 +114,7 @@ export const useFileSelection = ({
 		// For files (whether found in tree or not), proceed with file loading
 		// This allows opening files from search results even if their parent directory
 		// isn't expanded in the tree yet
+		console.log(`[useFileSelection] selectPath: proceeding with file loading for ${path}`)
 		const requestId = ++selectRequestId
 		// Evict previous file's piece table if it doesn't have unsaved edits
 		const previousPath = state.lastKnownFilePath
@@ -118,11 +133,16 @@ export const useFileSelection = ({
 			await trackOperation(
 				'fs:selectPath',
 				async ({ timeSync, timeAsync }) => {
+					console.log(`[useFileSelection] trackOperation started for ${path}`)
 					const fileSize = await timeAsync('get-file-size', () =>
 						getFileSize(source, path)
 					)
+					console.log(`[useFileSelection] getFileSize result for ${path}:`, { fileSize })
 					perfMetadata.fileSize = fileSize
-					if (requestId !== selectRequestId) return
+					if (requestId !== selectRequestId) {
+						console.log(`[useFileSelection] requestId mismatch after getFileSize, aborting`)
+						return
+					}
 
 					let selectedFileContentValue = ''
 					let pieceTableSnapshot: PieceTableSnapshot | undefined
