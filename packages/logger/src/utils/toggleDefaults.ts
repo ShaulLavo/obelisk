@@ -32,7 +32,10 @@ const LOGGER_TOGGLE_TREE = {
 		highlights: false,
 		LocalDirectoryFallback: false,
 		prefetch: false,
-		terminal: false,
+		terminal: {
+			$self: false,
+			output: false
+		},
 		'tree-cache': false,
 		treeSitter: false
 	}
