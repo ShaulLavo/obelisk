@@ -266,28 +266,50 @@ export class IndexedDBBackend<T = unknown> implements AsyncStorageBackend<T> {
 		this.pendingWrites.clear()
 		this.writeTimeout = null
 		
-		try {
-			// Batch write all pending entries
-			const promises = writes.map(([key, { value }]) => 
-				this.store.setItem(key, value)
-			)
-			
-			await Promise.all(promises)
-			
-			// Save metadata after successful writes
-			await this.saveMetadata()
-		} catch (error) {
-			console.warn('IndexedDBBackend: Batch write failed:', error)
-			
-			// Re-queue failed writes for retry
-			for (const [key, data] of writes) {
+		const failedWrites: Array<[string, { value: T; metadata: EntryMetadata }]> = []
+		let hasSuccessfulWrite = false
+		let hasDroppedWrite = false
+		
+		for (const [key, data] of writes) {
+			try {
+				await this.store.setItem(key, data.value)
+				hasSuccessfulWrite = true
+			} catch (error) {
+				if (this.isDataCloneError(error)) {
+					hasDroppedWrite = true
+					this.dropMetadataForKey(key, data.metadata)
+					console.log(
+						'[IndexedDBBackend] Dropping uncloneable value',
+						JSON.stringify(
+							{
+								key,
+								type: typeof data.value,
+								tag: Object.prototype.toString.call(data.value),
+							},
+							null,
+							2
+						)
+					)
+					continue
+				}
+				console.warn(`IndexedDBBackend: Failed to write "${key}":`, error)
+				failedWrites.push([key, data])
+			}
+		}
+		
+		if (failedWrites.length > 0) {
+			for (const [key, data] of failedWrites) {
 				this.pendingWrites.set(key, data)
 			}
 			
-			// Schedule retry with exponential backoff
 			setTimeout(() => {
 				this.scheduleBatchWrite()
 			}, this.debounceDelay * 2)
+			return
+		}
+		
+		if (hasSuccessfulWrite || hasDroppedWrite) {
+			await this.saveMetadata()
 		}
 	}
 
@@ -316,6 +338,28 @@ export class IndexedDBBackend<T = unknown> implements AsyncStorageBackend<T> {
 		} catch (error) {
 			console.warn('IndexedDBBackend: Failed to save metadata:', error)
 		}
+	}
+
+	private dropMetadataForKey(key: string, metadataFallback?: EntryMetadata): void {
+		const metadata = this.metadata.get(key) ?? metadataFallback
+		if (metadata) {
+			this.approximateSize = Math.max(0, this.approximateSize - metadata.size)
+		}
+		this.metadata.delete(key)
+	}
+
+	private isDataCloneError(error: unknown): boolean {
+		if (typeof DOMException !== 'undefined' && error instanceof DOMException) {
+			return error.name === 'DataCloneError'
+		}
+		if (typeof error !== 'object' || !error) {
+			return false
+		}
+		if (!('name' in error)) {
+			return false
+		}
+		const name = (error as { name?: unknown }).name
+		return typeof name === 'string' && name === 'DataCloneError'
 	}
 
 	/**

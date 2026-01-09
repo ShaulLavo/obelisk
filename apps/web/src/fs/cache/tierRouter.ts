@@ -5,6 +5,7 @@ import type {
 } from './backends/types'
 import { DEFAULT_ROUTING } from './backends/types'
 import type { FileCacheEntry } from './fileCacheController'
+import { unwrap } from 'solid-js/store'
 
 /**
  * Options for configuring the TierRouter.
@@ -98,27 +99,28 @@ export class TierRouter {
 	): Promise<void> {
 		const tier = this.getTierForDataType(dataType)
 		const key = this.generateCacheKey(path, dataType)
+		const storedValue = tier === 'cold' ? sanitizeForCold(value) : value
 
 		try {
 			if (tier === 'cold') {
 				const backend = this.getBackendForTier(tier)
-				await backend.set(key, value)
+				await backend.set(key, storedValue)
 			} else {
 				const backend = this.getBackendForTier(tier)
-				backend.set(key, value)
+				backend.set(key, storedValue)
 			}
 		} catch (error) {
 			console.warn(`Failed to store ${key} in ${tier} tier:`, error)
 
 			if (tier === 'cold') {
 				try {
-					this.warm.set(key, value)
+					this.warm.set(key, storedValue)
 				} catch {
-					this.hot.set(key, value)
+					this.hot.set(key, storedValue)
 				}
 			} else if (tier === 'warm') {
 				try {
-					this.hot.set(key, value)
+					this.hot.set(key, storedValue)
 				} catch {
 					console.error(`Failed to store ${key} in any available tier`)
 				}
@@ -317,5 +319,17 @@ export class TierRouter {
 	 */
 	getRouting(): TierRoutingConfig {
 		return { ...this.routing }
+	}
+}
+
+const sanitizeForCold = (value: unknown): unknown => {
+	if (value === null || typeof value !== 'object') {
+		return value
+	}
+	
+	try {
+		return unwrap(value as Record<string, unknown>)
+	} catch {
+		return value
 	}
 }
