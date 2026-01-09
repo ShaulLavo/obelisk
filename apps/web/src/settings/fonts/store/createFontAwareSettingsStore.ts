@@ -66,5 +66,5 @@ export const createFontAwareSettingsStore = (
 		}
 	})
 
-	return [baseState, enhancedActions] as FontAwareSettingsStore
+	return [baseState, enhancedActions]
 }
