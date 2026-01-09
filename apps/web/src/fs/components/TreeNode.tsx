@@ -6,8 +6,6 @@ import { useFs } from '../../fs/context/FsContext'
 import { VsChevronDown } from '@repo/icons/vs/VsChevronDown'
 import { VsChevronRight } from '@repo/icons/vs/VsChevronRight'
 import { FileIcon } from './FileIcon'
-import { VsFolder } from '@repo/icons/vs/VsFolder'
-import { VsFolderOpened } from '@repo/icons/vs/VsFolderOpened'
 import { CreationRow } from './CreationRow'
 
 const TREE_INDENT_PX = 8
@@ -135,12 +133,6 @@ export const TreeNode = (props: TreeNodeProps) => {
 					class="tree-node-button"
 				>
 					<span
-						class="tree-node-chevron"
-						classList={{ 'text-cyan-700': isSelected() }}
-					>
-						{isDir() ? isOpen() ? <VsChevronDown /> : <VsChevronRight /> : ''}
-					</span>
-					<span
 						class="tree-node-icon"
 						classList={{ 'text-cyan-700': isSelected() }}
 					>
@@ -148,8 +140,8 @@ export const TreeNode = (props: TreeNodeProps) => {
 							when={isDir()}
 							fallback={<FileIcon name={props.node.name} size={16} />}
 						>
-							<Show when={isOpen()} fallback={<VsFolder size={16} />}>
-								<VsFolderOpened size={16} />
+							<Show when={isOpen()} fallback={<VsChevronRight size={16} />}>
+								<VsChevronDown size={16} />
 							</Show>
 						</Show>
 					</span>

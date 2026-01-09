@@ -141,14 +141,12 @@ body {
 	.tree-node-button {
 		@apply relative z-10 flex w-full items-center overflow-hidden rounded text-left text-sm transition;
 	}
-	.tree-node-chevron {
-		@apply w-4 text-center text-[10px] text-zinc-500;
-	}
 	.tree-node-icon {
-		@apply mr-2 flex items-center justify-center;
+		@apply mr-1 flex items-center justify-center w-4 text-center ml-1;
 	}
 	.tree-node-branch-line {
-		@apply pointer-events-none absolute left-1.5 top-0 bottom-0 z-10 border-l transition-opacity duration-200 ease-linear;
+		@apply pointer-events-none absolute top-0 bottom-0 z-10 border-l transition-opacity duration-200 ease-linear;
+		left: 12px;
 	}
 
 	/* Fs Toolbar */

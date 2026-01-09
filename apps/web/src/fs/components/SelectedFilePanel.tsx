@@ -21,7 +21,6 @@ import {
 	createSignal,
 } from 'solid-js'
 import { useFocusManager } from '~/focus/focusManager'
-import { BinaryFileViewer } from '../../components/BinaryFileViewer'
 import { useFs } from '../../fs/context/FsContext'
 
 import { sendIncrementalTreeEdit } from '../../treeSitter/incrementalEdits'
@@ -76,17 +75,47 @@ export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
 	const [documentVersion, setDocumentVersion] = createSignal(0)
 	const [treeSitterWorker] = createResource(async () => getTreeSitterWorker())
 
-	const tabs = useTabs(() => state.lastKnownFilePath, {
+	const [tabsState, tabsActions] = useTabs(() => state.lastKnownFilePath, {
 		maxTabs: MAX_EDITOR_TABS,
 	})
 
 	createEffect(() => {
-		fileCache.setOpenTabs(tabs())
+		fileCache.setOpenTabs(tabsState())
 	})
 
 	const handleTabSelect = (path: string) => {
 		if (!path || path === state.selectedPath) return
 		void selectPath(path)
+	}
+
+	const handleTabClose = (path: string) => {
+		const isClosingActiveTab = path === state.selectedPath
+		
+		// Get the previous tab from history before closing
+		const previousTab = isClosingActiveTab ? tabsActions.getPreviousTab(path) : undefined
+		
+		console.log('[handleTabClose]', {
+			path,
+			isClosingActiveTab,
+			previousTab,
+			currentSelectedPath: state.selectedPath,
+			tabsCount: tabsState().length,
+		})
+		
+		// Close the tab
+		tabsActions.closeTab(path)
+		
+		// Switch to the previous tab or clear selection
+		if (isClosingActiveTab) {
+			if (previousTab) {
+				console.log('[handleTabClose] switching to previous tab:', previousTab)
+				void selectPath(previousTab)
+			} else {
+				// No previous tab available, clear selection
+				console.log('[handleTabClose] no previous tab, clearing selection')
+				void selectPath('')
+			}
+		}
 	}
 
 	const tabLabel = (path: string) => path.split('/').pop() || path
@@ -188,9 +217,10 @@ export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
 	return (
 		<div class="flex h-full flex-col font-mono overflow-hidden">
 			<Tabs
-				values={tabs()}
+				values={tabsState()}
 				activeValue={state.lastKnownFilePath}
 				onSelect={handleTabSelect}
+				onClose={handleTabClose}
 				getLabel={tabLabel}
 			/>
 

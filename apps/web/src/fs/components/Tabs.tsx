@@ -5,6 +5,7 @@ export type TabsProps = {
 	values: string[]
 	activeValue?: string
 	onSelect?: (value: string) => void
+	onClose?: (value: string) => void
 	getLabel?: (value: string) => string
 	emptyLabel?: string
 }
@@ -35,6 +36,7 @@ export const Tabs: Component<TabsProps> = (props) => {
 							label={labelFor(value)}
 							isActive={isSelected(value)}
 							onSelect={props.onSelect}
+							onClose={props.onClose}
 							title={value}
 						/>
 					)}

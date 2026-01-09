@@ -6,6 +6,13 @@ import { TreeView } from './TreeView'
 export const Fs = () => {
 	const [state, actions] = useFs()
 
+	// A file is selected only if there's an actual selectedPath pointing to a file
+	const isFileSelected = () => {
+		const path = state.selectedPath
+		if (!path) return false
+		return state.lastKnownFileNode?.kind === 'file'
+	}
+
 	return (
 		<div class="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-border/30 bg-muted/60 shadow-xl">
 			<button type="button" onClick={() => void actions.pickNewRoot()}>
@@ -19,7 +26,7 @@ export const Fs = () => {
 			>
 				<TreeView tree={() => state.tree} loading={() => state.loading} />
 				<SelectedFilePanel
-					isFileSelected={() => state.lastKnownFileNode?.kind === 'file'}
+					isFileSelected={isFileSelected}
 					currentPath={state.lastKnownFilePath}
 				/>
 			</Resizable>

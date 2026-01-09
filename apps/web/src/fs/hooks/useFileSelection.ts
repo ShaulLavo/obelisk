@@ -69,23 +69,37 @@ export const useFileSelection = ({
 		const tree = state.tree
 		if (!tree) return
 
+		// Handle clearing selection (empty path)
+		if (!path) {
+			batch(() => {
+				setSelectedPath(undefined)
+				setSelectedFileSize(undefined)
+				setSelectedFilePreviewBytes(undefined)
+				setSelectedFileContent('')
+				setSelectedFileLoading(false)
+			})
+			return
+		}
+
 		if (options?.forceReload) {
 			fileCache.clearContent(path)
 		}
 
 		const node = findNode(tree, path)
-		if (!node) return
-
-		if (node.kind === 'dir') {
+		
+		// If node is found and it's a directory, handle directory selection
+		if (node?.kind === 'dir') {
 			batch(() => {
 				setSelectedPath(path)
 				setSelectedFileSize(undefined)
 				setSelectedFileLoading(false)
 			})
-
 			return
 		}
 
+		// For files (whether found in tree or not), proceed with file loading
+		// This allows opening files from search results even if their parent directory
+		// isn't expanded in the tree yet
 		const requestId = ++selectRequestId
 		// Evict previous file's piece table if it doesn't have unsaved edits
 		const previousPath = state.lastKnownFilePath

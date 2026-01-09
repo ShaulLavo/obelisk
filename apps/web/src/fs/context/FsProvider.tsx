@@ -260,18 +260,6 @@ export function FsProvider(props: { children: JSX.Element }) {
 		}
 	})
 
-	onMount(() => {
-		const lastFilePath =
-			localStorage.getItem('fs-last-known-file-path') ?? undefined
-		setSelectedPath(lastFilePath)
-		if (lastFilePath) {
-			const scrollPos = fileCache.getScrollPosition(lastFilePath)
-			if (scrollPos) {
-				setScrollPosition(lastFilePath, scrollPos)
-			}
-		}
-	})
-
 	onCleanup(() => {
 		stopObserving()
 		void disposeTreePrefetchClient()

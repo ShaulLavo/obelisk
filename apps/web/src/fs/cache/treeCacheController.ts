@@ -97,15 +97,71 @@ export class TreeCacheController {
 			}
 			
 			this.stats.hits++
+			
+			// Recursively load all cached directories to build the full tree
+			const fullTree = await this.loadFullTreeFromCache(cached)
+			
 			const loadTime = performance.now() - startTime
 			this.stats.totalLoadTime += loadTime
 			
-			cacheLogger.debug('Cache hit for root tree', { rootPath, loadTime })
-			return this.convertCachedToTreeNode(cached)
+			cacheLogger.debug('Cache hit for root tree (full tree loaded)', { rootPath, loadTime })
+			return fullTree
 		} catch (error) {
 			this.stats.misses++
 			cacheLogger.warn('Failed to get cached tree, falling back to filesystem', { rootPath, error })
 			return null // Graceful degradation - return null to trigger filesystem fallback
+		}
+	}
+
+	/**
+	 * Recursively load the full tree from cache, populating all directory children
+	 */
+	private async loadFullTreeFromCache(cached: CachedDirectoryEntry): Promise<FsDirTreeNode> {
+		const children: Array<{ kind: 'file'; name: string; path: string; depth: number; parentPath?: string; size?: number; lastModified?: number } | FsDirTreeNode> = []
+		
+		for (const child of cached.children) {
+			if (child.kind === 'file') {
+				children.push({
+					kind: 'file' as const,
+					name: child.name,
+					path: child.path,
+					depth: child.depth,
+					parentPath: child.parentPath,
+					size: child.size,
+					lastModified: child.lastModified,
+				})
+			} else {
+				// For directories, try to load their cached children recursively
+				const childKey = CACHE_KEY_SCHEMA.dir(child.path)
+				const childCached = await this.store.getItem<CachedDirectoryEntry>(childKey)
+				
+				if (childCached) {
+					// Recursively load this directory's full tree
+					const childTree = await this.loadFullTreeFromCache(childCached)
+					children.push(childTree)
+				} else {
+					// No cached data for this directory, create empty placeholder
+					children.push({
+						kind: 'dir' as const,
+						name: child.name,
+						path: child.path,
+						depth: child.depth,
+						parentPath: child.parentPath,
+						children: [],
+						isLoaded: false,
+					})
+				}
+			}
+		}
+		
+		return {
+			kind: 'dir',
+			name: cached.name,
+			path: cached.path,
+			depth: cached.depth,
+			parentPath: cached.parentPath,
+			children,
+			isLoaded: cached.isLoaded,
 		}
 	}
 
