@@ -99,6 +99,18 @@ export const useFileSelection = ({
 			return
 		}
 
+		// Handle special case for settings file - always allow it to be opened
+		if (path === '/.system/settings.json') {
+			batch(() => {
+				setSelectedPath(path)
+				setSelectedFileSize(0) // Settings UI doesn't need file size
+				setSelectedFilePreviewBytes(undefined)
+				setSelectedFileContent('') // Settings UI doesn't use file content
+				setSelectedFileLoading(false)
+			})
+			return
+		}
+
 		// For files (whether found in tree or not), proceed with file loading
 		// This allows opening files from search results even if their parent directory
 		// isn't expanded in the tree yet

@@ -80,6 +80,19 @@ export const createFsState = () => {
 	)
 	const lastKnownFileNode = createMemo<FsFileTreeNode | undefined>((prev) => {
 		const node = selectedNode()
+		const currentPath = selectedPath()
+		
+		// Handle special case for settings file
+		if (currentPath === '/.system/settings.json') {
+			return {
+				kind: 'file',
+				path: currentPath,
+				name: 'settings.json',
+				size: 0,
+				lastModified: Date.now(),
+			} as FsFileTreeNode
+		}
+		
 		if (node?.kind === 'file') {
 			return node
 		}

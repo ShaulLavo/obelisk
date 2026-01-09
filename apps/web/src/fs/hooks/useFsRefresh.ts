@@ -96,6 +96,19 @@ export const useFsRefresh = ({
 		const lastFilePath =
 			localStorage.getItem('fs-last-known-file-path') ?? undefined
 
+		// If settings is open via URL, don't restore the last file path
+		// The settings route effect will handle opening settings
+		const urlParams = new URLSearchParams(window.location.search)
+		if (urlParams.has('settings')) {
+			return undefined
+		}
+
+		// If the settings file is currently selected, don't override it with stale localStorage
+		// This happens when settings was the last tab but localStorage hasn't been updated yet
+		if (state.selectedPath === '/.system/settings.json') {
+			return undefined
+		}
+
 		// If we have a stored file path from localStorage, use it directly
 		// The file might not be in the tree yet (parent dir not loaded), but selectPath can handle that
 		if (lastFilePath) {

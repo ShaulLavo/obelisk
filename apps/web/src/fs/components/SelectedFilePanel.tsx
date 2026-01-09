@@ -30,6 +30,9 @@ import { useTabs } from '../hooks/useTabs'
 import { Tabs } from './Tabs'
 import { unwrap } from 'solid-js/store'
 import { logger } from '../../logger'
+import { SettingsTab } from '../../settings/components/SettingsTab'
+import { SettingsJSONTab } from '../../settings/components/SettingsJSONTab'
+import { useSettingsRoute } from '../../settings/hooks/useSettingsRoute'
 
 const FONT_OPTIONS = [
 	{
@@ -69,8 +72,22 @@ export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
 	] = useFs()
 	const focus = useFocusManager()
 	const highlightLog = logger.withTag('highlights')
+	
+	// Initialize settings route
+	const settingsRoute = useSettingsRoute()
 
 	const isBinary = () => state.selectedFileStats?.contentKind === 'binary'
+	const isSettingsFile = () => state.selectedPath === '/.system/settings.json'
+	
+	// Check if we should show settings based on URL routing or if settings file is selected
+	const shouldShowSettings = () => {
+		return settingsRoute.isSettingsOpen() || isSettingsFile()
+	}
+	
+	// Check if we should show JSON view
+	const shouldShowJSONView = () => {
+		return settingsRoute.isJSONView() || (isSettingsFile() && settingsRoute.isJSONView())
+	}
 
 	const [documentVersion, setDocumentVersion] = createSignal(0)
 	const [treeSitterWorker] = createResource(async () => getTreeSitterWorker())
@@ -120,7 +137,12 @@ export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
 		}
 	}
 
-	const tabLabel = (path: string) => path.split('/').pop() || path
+	const tabLabel = (path: string) => {
+		if (path === '/.system/settings.json') {
+			return shouldShowJSONView() ? 'Settings (JSON)' : 'Settings'
+		}
+		return path.split('/').pop() || path
+	}
 
 	const isEditable = () =>
 		props.isFileSelected() && !state.selectedFileLoading && !state.loading
@@ -216,6 +238,20 @@ export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
 		})
 	})
 
+	// Handle settings routing - only sync when settings route is explicitly activated
+	createEffect(() => {
+		const isSettingsRouteOpen = settingsRoute.isSettingsOpen()
+		const isSettingsSelected = isSettingsFile()
+		
+		// Only open settings file if:
+		// 1. Settings route is active
+		// 2. Settings file is not already selected
+		// 3. We're not currently loading (to avoid conflicts during page restoration)
+		if (isSettingsRouteOpen && !isSettingsSelected && !state.loading && !state.selectedFileLoading) {
+			void selectPath('/.system/settings.json')
+		}
+	})
+
 	return (
 		<div class="flex h-full flex-col font-mono overflow-hidden">
 			<Tabs
@@ -260,9 +296,24 @@ export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
 						/>
 					}
 				>
+					<Match when={shouldShowSettings() && shouldShowJSONView()}>
+						<SettingsJSONTab />
+					</Match>
+
+					<Match when={shouldShowSettings() && !shouldShowJSONView()}>
+						<SettingsTab 
+							initialCategory={settingsRoute.currentCategory()}
+							currentCategory={settingsRoute.currentCategory()}
+							onCategoryChange={(categoryId) => {
+								settingsRoute.navigateToCategory(categoryId)
+							}}
+						/>
+					</Match>
+
 					<Match when={!props.isFileSelected()}>
 						<p class="mt-2 text-sm text-zinc-500">
 							{/* Select a file to view its contents. Click folders to toggle
+						visibility. Click folders to toggle
 						visibility. */}
 						</p>
 					</Match>
