@@ -36,6 +36,7 @@ type TerminalRuntime = {
 	term: TerminalLike
 	fitAddon: FitAddonLike
 	setTheme: (theme: ThemePalette) => void
+	setFont: (fontSize: number, fontFamily: string) => void
 	remeasureRendererFont?: () => void
 }
 
@@ -82,7 +83,7 @@ export const createTerminalController = async (
 			? createXtermRuntime(options.theme, options.rendererType)
 			: await createGhosttyRuntime(options.theme)
 
-	const { term, fitAddon, remeasureRendererFont, setTheme } = runtime
+	const { term, fitAddon, remeasureRendererFont, setTheme, setFont } = runtime
 	const echoAddon = new LocalEchoController({
 		// Sanitize ANSI output for xterm too to prevent parser errors on invalid bytes.
 		outputMode: 'ansi',
@@ -312,6 +313,9 @@ export const createTerminalController = async (
 		setTheme: (theme: ThemePalette) => {
 			setTheme(theme)
 		},
+		setFont: (fontSize: number, fontFamily: string) => {
+			setFont(fontSize, fontFamily)
+		},
 		getScrollElement: () => scrollElement,
 		getScrollSource: () => scrollSource,
 		onScrollTargetsChange: (listener: (targets: ScrollTargets) => void) => {
@@ -366,11 +370,20 @@ const createGhosttyRuntime = async (
 		},
 	})
 
+	const fitAddon = new GhosttyFitAddon()
+
 	return {
 		term,
-		fitAddon: new GhosttyFitAddon(),
+		fitAddon,
 		setTheme: (next) => {
 			term.options.theme = mapTheme(next)
+		},
+		setFont: (fontSize, fontFamily) => {
+			term.options.fontSize = fontSize
+			term.options.fontFamily = fontFamily
+			const renderer = term.renderer as CanvasRenderer | undefined
+			renderer?.remeasureFont()
+			fitAddon.fit()
 		},
 		remeasureRendererFont: () => {
 			const renderer = term.renderer as CanvasRenderer | undefined
@@ -432,11 +445,18 @@ const createXtermRuntime = (
 		term.loadAddon(addon)
 	}
 
+	const fitAddon = new XtermFitAddon()
+
 	return {
 		term,
-		fitAddon: new XtermFitAddon(),
+		fitAddon,
 		setTheme: (next) => {
 			term.options.theme = mapTheme(next)
+		},
+		setFont: (fontSize, fontFamily) => {
+			term.options.fontSize = fontSize
+			term.options.fontFamily = fontFamily
+			fitAddon.fit()
 		},
 	}
 }

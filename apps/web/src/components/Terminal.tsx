@@ -21,12 +21,14 @@ import {
 import { useTheme } from '@repo/theme'
 import { ensureFs } from '~/fs/runtime/fsRuntime'
 import { TerminalScrollbar } from '~/terminal/TerminalScrollbar'
+import { useSettings } from '~/settings/SettingsProvider'
 
 export const Terminal: Component = () => {
 	let containerRef: HTMLDivElement = null!
 	const focus = useFocusManager()
 	const [state, actions] = useFs()
 	const { theme, trackedTheme } = useTheme()
+	const [settingsState] = useSettings()
 	const storage = typeof window === 'undefined' ? undefined : dualStorage
 	const [cwd, setCwd] = makePersisted(
 		// eslint-disable-next-line solid/reactivity
@@ -155,6 +157,31 @@ export const Terminal: Component = () => {
 					const active = controller()
 					if (!active) return
 					active.setTheme(theme)
+				},
+				{ defer: true }
+			)
+		)
+
+		// Watch terminal font settings and update terminal when they change
+		createEffect(
+			on(
+				() => [
+					settingsState.values['terminal.fontSize'],
+					settingsState.values['terminal.fontFamily'],
+					settingsState.isLoaded,
+				],
+				() => {
+					const active = controller()
+					if (!active || !settingsState.isLoaded) return
+
+					const fontSize = (settingsState.values['terminal.fontSize'] ??
+						settingsState.defaults['terminal.fontSize'] ??
+						14) as number
+					const fontFamily = (settingsState.values['terminal.fontFamily'] ??
+						settingsState.defaults['terminal.fontFamily'] ??
+						'JetBrains Mono') as string
+
+					active.setFont(fontSize, fontFamily)
 				},
 				{ defer: true }
 			)
