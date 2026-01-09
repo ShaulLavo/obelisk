@@ -1,13 +1,14 @@
-import { createStore, produce } from 'solid-js/store'
+import { createStore, produce, unwrap } from 'solid-js/store'
 import { createEffect, createSignal } from 'solid-js'
+import { trackStore } from '@solid-primitives/deep'
 import type { SettingsSchema, SettingDefinition } from '../types'
 import { ensureFs } from '../../fs/runtime/fsRuntime'
 import type { FsSource } from '../../fs/types'
 
 export type SettingsState = {
 	schema: SettingsSchema
-	values: Record<string, unknown>      // Current setting values
-	defaults: Record<string, unknown>    // Default values from schema
+	values: Record<string, unknown> // Current setting values
+	defaults: Record<string, unknown> // Default values from schema
 	isLoaded: boolean
 }
 
@@ -23,7 +24,9 @@ export type SettingsStore = [SettingsState, SettingsActions]
 
 const SETTINGS_FILE_PATH = '/.system/settings.json'
 
-export const createSettingsStore = (source: FsSource = 'opfs'): SettingsStore => {
+export const createSettingsStore = (
+	source: FsSource = 'opfs'
+): SettingsStore => {
 	const [state, setState] = createStore<SettingsState>({
 		schema: { categories: [], settings: [] },
 		values: {},
@@ -33,23 +36,29 @@ export const createSettingsStore = (source: FsSource = 'opfs'): SettingsStore =>
 
 	const [isInitialized, setIsInitialized] = createSignal(false)
 
-	// Load schema from bundled JSON files
 	const loadSchema = async (): Promise<SettingsSchema> => {
 		try {
 			// Import schema files dynamically
-			const [editorSchema, appearanceSchema] = await Promise.all([
-				import('../schemas/editor.json'),
-				import('../schemas/appearance.json'),
-			])
+			const [editorSchema, appearanceSchema, terminalSchema, fileTreeSchema] =
+				await Promise.all([
+					import('../schemas/editor.json'),
+					import('../schemas/appearance.json'),
+					import('../schemas/terminal.json'),
+					import('../schemas/fileTree.json'),
+				])
 
 			const categories = [
 				editorSchema.category,
+				terminalSchema.category,
+				fileTreeSchema.category,
 				appearanceSchema.category,
 			]
 
-			const settings = [
-				...editorSchema.settings,
-				...appearanceSchema.settings,
+			const settings: SettingDefinition[] = [
+				...(editorSchema.settings as SettingDefinition[]),
+				...(terminalSchema.settings as SettingDefinition[]),
+				...(fileTreeSchema.settings as SettingDefinition[]),
+				...(appearanceSchema.settings as SettingDefinition[]),
 			]
 
 			return { categories, settings }
@@ -73,14 +82,14 @@ export const createSettingsStore = (source: FsSource = 'opfs'): SettingsStore =>
 		try {
 			const ctx = await ensureFs(source)
 			const exists = await ctx.exists(SETTINGS_FILE_PATH)
-			
+
 			if (!exists) {
 				return {}
 			}
 
 			const file = ctx.file(SETTINGS_FILE_PATH, 'r')
 			const content = await file.text()
-			
+
 			if (!content.trim()) {
 				return {}
 			}
@@ -96,10 +105,10 @@ export const createSettingsStore = (source: FsSource = 'opfs'): SettingsStore =>
 	const saveSettings = async (values: Record<string, unknown>) => {
 		try {
 			const ctx = await ensureFs(source)
-			
+
 			// Ensure the .system directory exists
 			await ctx.ensureDir('/.system')
-			
+
 			// Write settings file
 			await ctx.write(SETTINGS_FILE_PATH, JSON.stringify(values, null, 2))
 		} catch (error) {
@@ -114,12 +123,14 @@ export const createSettingsStore = (source: FsSource = 'opfs'): SettingsStore =>
 			const defaults = extractDefaults(schema)
 			const savedValues = await loadSavedSettings()
 
-			setState(produce((s) => {
-				s.schema = schema
-				s.defaults = defaults
-				s.values = savedValues
-				s.isLoaded = true
-			}))
+			setState(
+				produce((s) => {
+					s.schema = schema
+					s.defaults = defaults
+					s.values = savedValues
+					s.isLoaded = true
+				})
+			)
 
 			setIsInitialized(true)
 		} catch (error) {
@@ -129,8 +140,12 @@ export const createSettingsStore = (source: FsSource = 'opfs'): SettingsStore =>
 
 	// Persist to OPFS when values change (but only after initialization)
 	createEffect(() => {
+		// Track all nested changes in the values store
+		trackStore(state.values)
+
 		if (isInitialized() && state.isLoaded) {
-			void saveSettings(state.values)
+			// Use unwrap to get a plain object for JSON serialization
+			void saveSettings(unwrap(state.values))
 		}
 	})
 
@@ -142,25 +157,33 @@ export const createSettingsStore = (source: FsSource = 'opfs'): SettingsStore =>
 	}
 
 	const setSetting = (key: string, value: unknown) => {
-		setState(produce((s) => {
-			s.values[key] = value
-		}))
+		setState(
+			produce((s) => {
+				s.values[key] = value
+			})
+		)
 	}
 
 	const resetSetting = (key: string) => {
-		setState(produce((s) => {
-			delete s.values[key]
-		}))
+		setState(
+			produce((s) => {
+				delete s.values[key]
+			})
+		)
 	}
 
 	const resetAllSettings = () => {
-		setState(produce((s) => {
-			s.values = {}
-		}))
+		setState(
+			produce((s) => {
+				s.values = {}
+			})
+		)
 	}
 
 	const getSettingsForCategory = (categoryId: string): SettingDefinition[] => {
-		return state.schema.settings.filter(setting => setting.category === categoryId)
+		return state.schema.settings.filter(
+			(setting) => setting.category === categoryId
+		)
 	}
 
 	const actions: SettingsActions = {

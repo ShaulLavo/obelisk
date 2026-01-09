@@ -27,6 +27,7 @@ export const Providers: ParentComponent = (props) => {
 						<FocusProvider>
 							<FsProvider>
 								<SettingsProvider>
+									<SettingsEffects />
 									<CommandPaletteProvider>
 										<ThemedToaster />
 										<Modal />

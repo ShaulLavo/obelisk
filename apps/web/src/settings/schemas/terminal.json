@@ -1,0 +1,44 @@
+{
+    "category": {
+        "id": "terminal",
+        "label": "Terminal",
+        "subcategories": [
+            {
+                "id": "font",
+                "label": "Font"
+            }
+        ]
+    },
+    "settings": [
+        {
+            "key": "terminal.fontSize",
+            "type": "number",
+            "default": 14,
+            "description": "Controls the font size in the terminal.",
+            "category": "terminal",
+            "subcategory": "font"
+        },
+        {
+            "key": "terminal.fontFamily",
+            "type": "string",
+            "default": "JetBrains Mono Variable, monospace",
+            "description": "Controls the font family in the terminal.",
+            "category": "terminal",
+            "subcategory": "font",
+            "options": [
+                {
+                    "value": "JetBrains Mono Variable, monospace",
+                    "label": "JetBrains Mono"
+                },
+                {
+                    "value": "Fira Code, monospace",
+                    "label": "Fira Code"
+                },
+                {
+                    "value": "monospace",
+                    "label": "System Monospace"
+                }
+            ]
+        }
+    ]
+}

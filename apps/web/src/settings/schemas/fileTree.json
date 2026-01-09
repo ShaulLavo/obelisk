@@ -1,0 +1,44 @@
+{
+    "category": {
+        "id": "fileTree",
+        "label": "File Explorer",
+        "subcategories": [
+            {
+                "id": "font",
+                "label": "Font"
+            }
+        ]
+    },
+    "settings": [
+        {
+            "key": "fileTree.fontSize",
+            "type": "number",
+            "default": 13,
+            "description": "Controls the font size in the file explorer.",
+            "category": "fileTree",
+            "subcategory": "font"
+        },
+        {
+            "key": "fileTree.fontFamily",
+            "type": "string",
+            "default": "system-ui, sans-serif",
+            "description": "Controls the font family in the file explorer.",
+            "category": "fileTree",
+            "subcategory": "font",
+            "options": [
+                {
+                    "value": "system-ui, sans-serif",
+                    "label": "System UI"
+                },
+                {
+                    "value": "'JetBrains Mono', monospace",
+                    "label": "JetBrains Mono"
+                },
+                {
+                    "value": "monospace",
+                    "label": "System Monospace"
+                }
+            ]
+        }
+    ]
+}
