@@ -47,7 +47,6 @@ describe('ErrorHandling', () => {
 	})
 
 	afterEach(async () => {
-		// Clean up test data
 		try {
 			await cacheController.clearCache()
 		} catch {
@@ -83,7 +82,6 @@ describe('ErrorHandling', () => {
 					async (testData) => {
 						const { path, name, childCount, errorType } = testData
 
-						// Create a valid directory node for fallback
 						const fallbackNode: FsDirTreeNode = {
 							kind: 'dir',
 							name,
@@ -101,10 +99,8 @@ describe('ErrorHandling', () => {
 							isLoaded: true,
 						}
 
-						// Mock the filesystem loader to return fallback data
 						mockLoadDirectory.mockResolvedValue(fallbackNode)
 
-						// Create a spy on the cache controller methods to simulate failures
 						let cacheReadSpy: any
 						let cacheWriteSpy: any
 						let cacheClearSpy: any
@@ -133,35 +129,28 @@ describe('ErrorHandling', () => {
 							depth: 1,
 						}
 
-						// Test that the system gracefully handles the cache failure
 						let result: FsDirTreeNode | undefined
 						let operationSucceeded = false
 
 						try {
 							if (errorType === 'cache_clear_failure') {
-								// Test cache clear failure - this should not affect normal operations
 								await expect(cacheController.clearCache()).rejects.toThrow()
 
-								// System should still be able to load directories via fallback
 								result = await (cachedQueue as any).loadDirectoryWithCache(
 									target
 								)
 								operationSucceeded = true
 							} else {
-								// Test read/write failures during normal operation
 								result = await (cachedQueue as any).loadDirectoryWithCache(
 									target
 								)
 								operationSucceeded = true
 							}
 						} catch (error) {
-							// The operation should succeed even with cache failures
-							// If it fails, it should not be due to cache errors
 							operationSucceeded = false
 							cacheLogger.debug('Operation failed', { error })
 						}
 
-						// Verify normal operation continued despite cache errors
 						expect(operationSucceeded).toBe(true)
 
 						if (errorType !== 'cache_clear_failure') {
@@ -171,14 +160,10 @@ describe('ErrorHandling', () => {
 							expect(result!.children[0]?.name).toMatch(/^fallback-file-/)
 						}
 
-						// Verify the filesystem loader was called (fallback occurred)
 						expect(mockLoadDirectory).toHaveBeenCalledWith(target)
 
-						// Verify error was logged but system continued
-						// The system should not crash or throw unhandled errors
 						expect(mockCallbacks.onError).not.toHaveBeenCalled() // Cache errors should be handled internally
 
-						// Clean up spies
 						if (cacheReadSpy) cacheReadSpy.mockRestore()
 						if (cacheWriteSpy) cacheWriteSpy.mockRestore()
 						if (cacheClearSpy) cacheClearSpy.mockRestore()
@@ -215,7 +200,6 @@ describe('ErrorHandling', () => {
 					async (testData) => {
 						const { path, name, validChildCount, corruptionType } = testData
 
-						// Create valid fallback data
 						const validNode: FsDirTreeNode = {
 							kind: 'dir',
 							name,
@@ -233,10 +217,8 @@ describe('ErrorHandling', () => {
 							isLoaded: true,
 						}
 
-						// Mock filesystem fallback
 						mockLoadDirectory.mockResolvedValue(validNode)
 
-						// Simulate corrupted data by mocking the cache controller methods to return corrupted data
 						let getCachedSpy: any
 
 						switch (corruptionType) {
@@ -248,13 +230,11 @@ describe('ErrorHandling', () => {
 									)
 								break
 							case 'missing_required_fields':
-								// Mock getCachedDirectory to return null (simulating corrupted data cleanup)
 								getCachedSpy = vi
 									.spyOn(cacheController, 'getCachedDirectory')
 									.mockResolvedValue(null)
 								break
 							case 'invalid_data_types':
-								// Mock getCachedDirectory to return null (simulating corrupted data cleanup)
 								getCachedSpy = vi
 									.spyOn(cacheController, 'getCachedDirectory')
 									.mockResolvedValue(null)
@@ -267,7 +247,6 @@ describe('ErrorHandling', () => {
 							depth: 1,
 						}
 
-						// Test that corrupted cache data is handled gracefully
 						let result: FsDirTreeNode | undefined
 						let operationSucceeded = false
 
@@ -279,10 +258,8 @@ describe('ErrorHandling', () => {
 							expect(String(error)).not.toMatch(/JSON|corrupt|invalid/)
 						}
 
-						// System should fall back to filesystem scanning
 						expect(mockLoadDirectory).toHaveBeenCalled()
 
-						// Verify it was called with a target that has the expected path
 						const calls = mockLoadDirectory.mock.calls
 						expect(calls.length).toBeGreaterThan(0)
 						const lastCall = calls[calls.length - 1]
@@ -296,7 +273,6 @@ describe('ErrorHandling', () => {
 						// Operation should succeed despite corruption
 						expect(operationSucceeded).toBe(true)
 
-						// Result should be valid data from filesystem fallback
 						if (result) {
 							expect(result.path).toBe(path)
 							expect(result.children).toHaveLength(validChildCount)
@@ -305,7 +281,6 @@ describe('ErrorHandling', () => {
 							}
 						}
 
-						// Clean up
 						getCachedSpy.mockRestore()
 					}
 				),
@@ -347,7 +322,6 @@ describe('ErrorHandling', () => {
 					async (testData) => {
 						const { directories } = testData
 
-						// Create filesystem fallback data
 						const filesystemData = new Map<string, FsDirTreeNode>()
 						for (const dir of directories) {
 							const dirNode: FsDirTreeNode = {
@@ -369,15 +343,12 @@ describe('ErrorHandling', () => {
 							filesystemData.set(dir.path, dirNode)
 						}
 
-						// Mock filesystem loader
 						mockLoadDirectory.mockImplementation(
 							async (target: PrefetchTarget) => {
 								return filesystemData.get(target.path)
 							}
 						)
 
-						// Test that system continues to work even with cache initialization failure
-						// We'll test this by ensuring filesystem operations still work
 						const results: (FsDirTreeNode | undefined)[] = []
 
 						for (const dir of directories) {
@@ -397,7 +368,6 @@ describe('ErrorHandling', () => {
 							}
 						}
 
-						// Verify all filesystem operations succeeded
 						expect(results).toHaveLength(directories.length)
 
 						for (let i = 0; i < results.length; i++) {
@@ -410,7 +380,6 @@ describe('ErrorHandling', () => {
 							expect(result!.children[0]?.name).toMatch(/^fs-file-/)
 						}
 
-						// Verify filesystem loader was called for all directories (may be called multiple times due to property testing)
 						expect(mockLoadDirectory).toHaveBeenCalled()
 					}
 				),
@@ -445,7 +414,6 @@ describe('ErrorHandling', () => {
 					async (testData) => {
 						const { path, name, childCount, errorScenario } = testData
 
-						// Create fallback data
 						const fallbackNode: FsDirTreeNode = {
 							kind: 'dir',
 							name,
@@ -465,7 +433,6 @@ describe('ErrorHandling', () => {
 
 						mockLoadDirectory.mockResolvedValue(fallbackNode)
 
-						// Mock console methods to capture logging
 						const consoleSpy = vi
 							.spyOn(console, 'warn')
 							.mockImplementation(() => {})
@@ -473,7 +440,6 @@ describe('ErrorHandling', () => {
 							.spyOn(console, 'debug')
 							.mockImplementation(() => {})
 
-						// Simulate different error scenarios
 						let methodSpy: any
 						switch (errorScenario) {
 							case 'read_timeout':
@@ -499,7 +465,6 @@ describe('ErrorHandling', () => {
 							depth: 1,
 						}
 
-						// Execute operation that will encounter cache error
 						let result: FsDirTreeNode | undefined
 						let operationSucceeded = false
 
@@ -507,26 +472,18 @@ describe('ErrorHandling', () => {
 							result = await (cachedQueue as any).loadDirectoryWithCache(target)
 							operationSucceeded = true
 						} catch (error) {
-							// Operation should not fail due to cache errors
 							expect(String(error)).not.toMatch(
 								/timed out|Quota exceeded|locked/
 							)
 						}
 
-						// Verify normal operation continued despite cache errors
 						expect(operationSucceeded).toBe(true)
 						expect(result).not.toBeUndefined()
 						expect(result!.path).toBe(path)
 						expect(result!.children).toHaveLength(childCount)
 
-						// Verify fallback to filesystem occurred
 						expect(mockLoadDirectory).toHaveBeenCalledWith(target)
 
-						// Verify errors were logged (cache controller should log warnings)
-						// Note: The actual logging depends on the logger implementation
-						// We're testing that the system doesn't crash and continues operation
-
-						// Clean up
 						methodSpy.mockRestore()
 						consoleSpy.mockRestore()
 						consoleDebugSpy.mockRestore()
@@ -548,7 +505,6 @@ describe('ErrorHandling', () => {
 					async (testData) => {
 						const { entryCount, quotaLimit } = testData
 
-						// Create mock directories with different cache times
 						const directories = Array.from({ length: entryCount }, (_, i) => ({
 							path: `/test-dir-${i}`,
 							name: `test-dir-${i}`,
@@ -556,7 +512,6 @@ describe('ErrorHandling', () => {
 							cacheTime: 1000000000000 + i * 1000, // Different timestamps
 						}))
 
-						// Mock the evictLRUEntries method to test the LRU logic
 						const evictLRUSpy = vi
 							.spyOn(cacheController, 'evictLRUEntries')
 							.mockImplementation(async (maxEntries: number) => {
@@ -566,7 +521,6 @@ describe('ErrorHandling', () => {
 								expect(maxEntries).toBeGreaterThan(0)
 							})
 
-						// Mock cleanupOldEntries to trigger LRU eviction
 						const cleanupSpy = vi
 							.spyOn(cacheController, 'cleanupOldEntries')
 							.mockImplementation(async () => {
@@ -574,7 +528,6 @@ describe('ErrorHandling', () => {
 								await cacheController.evictLRUEntries(quotaLimit)
 							})
 
-						// Test LRU eviction behavior
 						let evictionSucceeded = true
 						try {
 							await cacheController.cleanupOldEntries()
@@ -582,13 +535,10 @@ describe('ErrorHandling', () => {
 							evictionSucceeded = false
 						}
 
-						// LRU eviction should succeed
 						expect(evictionSucceeded).toBe(true)
 
-						// Verify evictLRUEntries was called with correct parameters
 						expect(evictLRUSpy).toHaveBeenCalledWith(quotaLimit)
 
-						// Clean up
 						evictLRUSpy.mockRestore()
 						cleanupSpy.mockRestore()
 					}
@@ -608,14 +558,12 @@ describe('ErrorHandling', () => {
 					async (testData) => {
 						const { dirCount, accessCount, quotaLimit } = testData
 
-						// Create mock directories
 						const directories = Array.from({ length: dirCount }, (_, i) => ({
 							path: `/lru-test-${i}`,
 							name: `lru-test-${i}`,
 							cacheTime: 1000000000000 + i * 1000,
 						}))
 
-						// Mock updateAccessTime to track access patterns
 						const accessTimes = new Map<string, number>()
 						const updateAccessSpy = vi
 							.spyOn(cacheController, 'updateAccessTime')
@@ -623,7 +571,6 @@ describe('ErrorHandling', () => {
 								accessTimes.set(path, Date.now())
 							})
 
-						// Mock evictLRUEntries to verify LRU behavior
 						const evictLRUSpy = vi
 							.spyOn(cacheController, 'evictLRUEntries')
 							.mockImplementation(async (maxEntries: number) => {
@@ -639,20 +586,16 @@ describe('ErrorHandling', () => {
 								expect(maxEntries).toBe(quotaLimit)
 							})
 
-						// Simulate accessing some directories
 						for (let i = 0; i < Math.min(accessCount, dirCount); i++) {
 							const dir = directories[i]!
 							await cacheController.updateAccessTime(dir.path, Date.now())
 						}
 
-						// Trigger LRU eviction
 						await cacheController.evictLRUEntries(quotaLimit)
 
-						// Verify the LRU logic was applied correctly
 						expect(updateAccessSpy).toHaveBeenCalled()
 						expect(evictLRUSpy).toHaveBeenCalledWith(quotaLimit)
 
-						// Clean up
 						updateAccessSpy.mockRestore()
 						evictLRUSpy.mockRestore()
 					}
@@ -703,7 +646,6 @@ describe('ErrorHandling', () => {
 								break
 						}
 
-						// Cache directories
 						for (const dir of directories) {
 							const dirNode: FsDirTreeNode = {
 								kind: 'dir',
@@ -724,7 +666,6 @@ describe('ErrorHandling', () => {
 						// Small delay to ensure LocalForage operations complete
 						await new Promise((resolve) => setTimeout(resolve, 10))
 
-						// Test LRU eviction with edge cases
 						let evictionSucceeded = true
 						try {
 							await cacheController.cleanupOldEntries(1000) // Very short age to trigger cleanup
@@ -732,10 +673,8 @@ describe('ErrorHandling', () => {
 							evictionSucceeded = false
 						}
 
-						// LRU eviction should handle edge cases gracefully
 						expect(evictionSucceeded).toBe(true)
 
-						// Verify system remains in consistent state
 						const stats = await cacheController.getCacheStats()
 						expect(stats.totalEntries).toBeGreaterThanOrEqual(0)
 

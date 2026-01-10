@@ -31,7 +31,6 @@ describe('CachedPrefetchQueue', () => {
 			storeName: 'test-directories',
 		})
 
-		// Ensure clean state
 		try {
 			await cacheController.clearCache()
 		} catch {
@@ -56,7 +55,6 @@ describe('CachedPrefetchQueue', () => {
 	})
 
 	afterEach(async () => {
-		// Clean up test data
 		try {
 			await cacheController.clearCache()
 			// Also clear any mocks
@@ -74,7 +72,6 @@ describe('CachedPrefetchQueue', () => {
 		it('should display cached data immediately while workers run in background to validate freshness', async () => {
 			await fc.assert(
 				fc.asyncProperty(
-					// Generate test directory structure
 					fc.record({
 						path: fc
 							.string({ minLength: 1, maxLength: 20 })
@@ -122,7 +119,6 @@ describe('CachedPrefetchQueue', () => {
 						const { path, name, depth, cachedChildren, freshChildren } =
 							testData
 
-						// Create cached directory data
 						const cachedNode: FsDirTreeNode = {
 							kind: 'dir',
 							name,
@@ -141,7 +137,6 @@ describe('CachedPrefetchQueue', () => {
 							isLoaded: true,
 						}
 
-						// Create fresh directory data (simulating filesystem scan)
 						const freshNode: FsDirTreeNode = {
 							kind: 'dir',
 							name,
@@ -160,10 +155,8 @@ describe('CachedPrefetchQueue', () => {
 							isLoaded: true,
 						}
 
-						// Pre-populate cache with cached data
 						await cacheController.setCachedDirectory(path, cachedNode)
 
-						// Mock the worker to return fresh data after a delay
 						let workerCallCount = 0
 						mockLoadDirectory.mockImplementation(async (target) => {
 							workerCallCount++
@@ -172,13 +165,11 @@ describe('CachedPrefetchQueue', () => {
 							return target.path === path ? freshNode : undefined
 						})
 
-						// Track callback invocations
 						const directoryLoadedCalls: any[] = []
 						mockCallbacks.onDirectoryLoaded = vi.fn((payload) => {
 							directoryLoadedCalls.push(payload)
 						})
 
-						// Simulate cache-first loading
 						const target: PrefetchTarget = {
 							path,
 							name,
@@ -186,37 +177,29 @@ describe('CachedPrefetchQueue', () => {
 							parentPath: depth > 0 ? '/' : undefined,
 						}
 
-						// The queue should first display cached data, then validate in background
 						const startTime = Date.now()
 
-						// First, check if cached data would be returned immediately
 						const cachedData = await cacheController.getCachedDirectory(path)
 						expect(cachedData).not.toBeNull()
 						expect(cachedData!.path).toBe(path)
 						expect(cachedData!.children).toHaveLength(cachedChildren.length)
 
-						// Verify cached data is available instantly (should be very fast)
 						const cacheLoadTime = Date.now() - startTime
 						expect(cacheLoadTime).toBeLessThan(100) // More lenient timing
 
-						// Now simulate the cache-first loading which should trigger background validation
 						const backgroundStartTime = Date.now()
 
-						// This should return cached data immediately and trigger background validation
 						const result = await (cachedQueue as any).loadDirectoryWithCache(
 							target
 						)
 
-						// Result should be the cached data (returned immediately)
 						if (result) {
 							expect(result.path).toBe(path)
 							expect(result.children).toHaveLength(cachedChildren.length)
 						}
 
-						// Wait a bit for background validation to potentially complete
 						await new Promise((resolve) => setTimeout(resolve, 50))
 
-						// Worker should have been called for background validation
 						expect(workerCallCount).toBeGreaterThan(0)
 					}
 				),
@@ -225,16 +208,13 @@ describe('CachedPrefetchQueue', () => {
 		})
 
 		it('should update UI incrementally when changes are detected during background validation', async () => {
-			// Test that mergeDirectoryUpdate correctly updates the cache
 			const testPath = `/test-merge-${Date.now()}`
 			const testName = 'test-dir'
 			const cachedChildCount = 2
 			const freshChildCount = 3
 
-			// Ensure clean state
 			await cacheController.clearCache()
 
-			// Create cached data with specific child count
 			const cachedNode: FsDirTreeNode = {
 				kind: 'dir',
 				name: testName,
@@ -252,7 +232,6 @@ describe('CachedPrefetchQueue', () => {
 				isLoaded: true,
 			}
 
-			// Create fresh data with different child count (simulating changes)
 			const freshNode: FsDirTreeNode = {
 				kind: 'dir',
 				name: testName,
@@ -270,18 +249,14 @@ describe('CachedPrefetchQueue', () => {
 				isLoaded: true,
 			}
 
-			// Pre-populate cache with cached data
 			await cacheController.setCachedDirectory(testPath, cachedNode)
 
-			// Verify cache was set correctly
 			const verifyCache = await cacheController.getCachedDirectory(testPath)
 			expect(verifyCache).not.toBeNull()
 			expect(verifyCache!.children).toHaveLength(cachedChildCount)
 
-			// Now call mergeDirectoryUpdate to update the cache with fresh data
 			await cacheController.mergeDirectoryUpdate(testPath, freshNode)
 
-			// Verify cache was updated with fresh data
 			const updatedCache = await cacheController.getCachedDirectory(testPath)
 			expect(updatedCache).not.toBeNull()
 			expect(updatedCache!.children).toHaveLength(freshChildCount)
@@ -316,7 +291,6 @@ describe('CachedPrefetchQueue', () => {
 					async (testData) => {
 						const { rootPath, rootName, directories } = testData
 
-						// Create cached tree structure
 						const cachedTree: FsDirTreeNode = {
 							kind: 'dir',
 							name: rootName,
@@ -342,10 +316,8 @@ describe('CachedPrefetchQueue', () => {
 							isLoaded: true,
 						}
 
-						// Pre-populate cache with tree data
 						await cacheController.setCachedTree(rootPath, cachedTree)
 
-						// Also cache individual directories
 						for (const dir of directories) {
 							const dirNode: FsDirTreeNode = {
 								kind: 'dir',
@@ -367,7 +339,6 @@ describe('CachedPrefetchQueue', () => {
 							await cacheController.setCachedDirectory(dir.path, dirNode)
 						}
 
-						// Mock worker calls for background validation
 						let backgroundValidationCalls = 0
 						mockLoadDirectory.mockImplementation(async (target) => {
 							backgroundValidationCalls++
@@ -403,23 +374,18 @@ describe('CachedPrefetchQueue', () => {
 							return undefined
 						})
 
-						// Test cache-first startup
 						const startupStartTime = Date.now()
 
-						// Should load cached tree immediately
 						const cachedTreeData = await cacheController.getCachedTree(rootPath)
 
 						const cacheLoadTime = Date.now() - startupStartTime
 
-						// Cache load should be very fast
 						expect(cacheLoadTime).toBeLessThan(100) // More lenient timing
 
-						// Should have cached tree data
 						expect(cachedTreeData).not.toBeNull()
 						expect(cachedTreeData!.path).toBe(rootPath)
 						expect(cachedTreeData!.children).toHaveLength(directories.length)
 
-						// Simulate background validation of all directories
 						const validationPromises = directories.map((dir) => {
 							const target: PrefetchTarget = {
 								path: dir.path,
@@ -430,10 +396,8 @@ describe('CachedPrefetchQueue', () => {
 							return (cachedQueue as any).loadDirectoryWithCache(target)
 						})
 
-						// Wait for all background validations to complete
 						const validationResults = await Promise.all(validationPromises)
 
-						// All validations should return results (cached data initially)
 						validationResults.forEach((result, index) => {
 							if (result) {
 								expect(result.path).toBe(directories[index]?.path)
@@ -442,13 +406,10 @@ describe('CachedPrefetchQueue', () => {
 							}
 						})
 
-						// Wait for background validation to potentially complete
 						await new Promise((resolve) => setTimeout(resolve, 50))
 
-						// Background validation should have been triggered
 						expect(backgroundValidationCalls).toBeGreaterThan(0)
 
-						// Cache should potentially be updated with validated data
 						for (const dir of directories) {
 							const updatedCache = await cacheController.getCachedDirectory(
 								dir.path
