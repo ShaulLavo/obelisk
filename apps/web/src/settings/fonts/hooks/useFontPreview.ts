@@ -35,9 +35,11 @@ export function useFontPreview(fontName: () => string) {
 				.preview.get({ query: { text: PREVIEW_TEXT } })
 
 			if (error || !data) throw new Error('Failed to load preview')
+			if (!(data instanceof ArrayBuffer)) {
+				throw new Error('Unexpected preview payload')
+			}
 
-			// Register font
-			const fontData = await (data as Blob).arrayBuffer()
+			const fontData = data
 			fontFace = new FontFace(previewFamilyName, fontData)
 			await fontFace.load()
 			document.fonts.add(fontFace)

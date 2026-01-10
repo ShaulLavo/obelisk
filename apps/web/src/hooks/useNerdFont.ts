@@ -16,7 +16,8 @@ export async function loadNerdFont(
 			return undefined
 		}
 
-		const buffer = await (data as unknown as Blob).arrayBuffer()
+		const buffer =
+			data instanceof ArrayBuffer ? data : await (data as Blob).arrayBuffer()
 		const font = new FontFace(fontName, buffer)
 		document.fonts.add(font)
 		await font.load()
