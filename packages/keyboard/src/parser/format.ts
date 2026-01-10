@@ -45,7 +45,7 @@ export function formatModifier(
 	opts: { platform: Platform; useSymbols: boolean }
 ): string {
 	const assertNever = (value: never): never => {
-		//TODO: remove this
+		// TODO: remove all assert never things from the app
 		throw new Error(`Unhandled modifier: ${value}`)
 	}
 	if (!opts.useSymbols) {
