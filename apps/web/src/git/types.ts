@@ -35,8 +35,6 @@ export type GitCloneRequest = {
 	ref?: string
 	proxyUrl?: string
 	authToken?: string
-	onProgress?: GitProgressCallback
-	onFile?: GitFileCallback
 }
 
 export type GitCloneResult = {
@@ -47,5 +45,9 @@ export type GitCloneResult = {
 
 export type GitWorkerApi = {
 	init: (config?: GitWorkerConfig) => void
-	clone: (request: GitCloneRequest) => Promise<GitCloneResult>
+	clone: (
+		request: GitCloneRequest,
+		onProgress?: GitProgressCallback,
+		onFile?: GitFileCallback
+	) => Promise<GitCloneResult>
 }

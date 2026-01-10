@@ -24,13 +24,31 @@ export default defineConfig(({ mode }) => {
 			solidPlugin(),
 		],
 		resolve: {
-			alias: {
-				'~': path.resolve(__dirname, './src'),
-				'@repo/theme': path.resolve(
-					__dirname,
-					'../../packages/theme/src/index.ts'
-				),
-			},
+			alias: [
+				{
+					find: /^isomorphic-git$/,
+					replacement: path.resolve(
+						__dirname,
+						'./node_modules/isomorphic-git/index.js'
+					),
+				},
+				{
+					find: 'node:zlib',
+					replacement: path.resolve(__dirname, './src/shims/zlib.ts'),
+				},
+				{
+					find: /^zlib$/,
+					replacement: path.resolve(__dirname, './src/shims/zlib.ts'),
+				},
+				{ find: '~', replacement: path.resolve(__dirname, './src') },
+				{
+					find: '@repo/theme',
+					replacement: path.resolve(
+						__dirname,
+						'../../packages/theme/src/index.ts'
+					),
+				},
+			],
 			dedupe: ['@solidjs/router', 'solid-js'],
 		},
 		server: {

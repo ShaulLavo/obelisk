@@ -1,6 +1,8 @@
 import { wrap, proxy, type Remote } from 'comlink'
 import type {
 	GitCloneRequest,
+	GitFileCallback,
+	GitProgressCallback,
 	GitWorkerApi,
 	GitWorkerConfig,
 } from '../git/types'
@@ -13,10 +15,10 @@ export const gitApi: Remote<GitWorkerApi> = wrap<GitWorkerApi>(worker)
 
 export const initGitWorker = (config?: GitWorkerConfig) => gitApi.init(config)
 
-export const prepareGitCloneRequest = (
-	request: GitCloneRequest
-): GitCloneRequest => ({
-	...request,
-	onProgress: request.onProgress ? proxy(request.onProgress) : undefined,
-	onFile: request.onFile ? proxy(request.onFile) : undefined,
+export const prepareGitCloneCallbacks = (callbacks?: {
+	onProgress?: GitProgressCallback
+	onFile?: GitFileCallback
+}) => ({
+	onProgress: callbacks?.onProgress ? proxy(callbacks.onProgress) : undefined,
+	onFile: callbacks?.onFile ? proxy(callbacks.onFile) : undefined,
 })

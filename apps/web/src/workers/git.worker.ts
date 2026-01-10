@@ -5,6 +5,7 @@ import type {
 	GitCloneRequest,
 	GitCloneResult,
 	GitFile,
+	GitFileCallback,
 	GitProgressCallback,
 	GitProgressMessage,
 	GitWorkerApi,
@@ -37,6 +38,23 @@ type FsStats = {
 	isFile: () => boolean
 	isDirectory: () => boolean
 	isSymbolicLink: () => boolean
+}
+
+type FsPromiseApi = {
+	readFile: (
+		path: string,
+		options?: { encoding?: string } | string
+	) => Promise<Uint8Array | string>
+	writeFile: (path: string, content: Uint8Array | string) => Promise<void>
+	unlink: (path: string) => Promise<void>
+	readdir: (path: string) => Promise<string[]>
+	mkdir: (path: string, options?: { recursive?: boolean }) => Promise<void>
+	rmdir: (path: string) => Promise<void>
+	stat: (path: string) => Promise<FsStats>
+	lstat: (path: string) => Promise<FsStats>
+	readlink: (path: string) => Promise<string>
+	symlink: (target: string, path: string) => Promise<void>
+	chmod: (path: string, mode?: number) => Promise<void>
 }
 
 type GitCloneRuntimeConfig = {
@@ -93,11 +111,23 @@ const toUint8Array = (content: Uint8Array | string) => {
 	return content
 }
 
+type FsError = Error & {
+	code: string
+}
+
+const createFsError = (code: string, message: string): FsError => {
+	const error = new Error(message) as FsError
+	error.code = code
+	return error
+}
+
 class MemoryFs {
 	#entries = new Map<string, FsEntry>()
+	promises: FsPromiseApi
 
 	constructor() {
 		this.#ensureDir('/')
+		this.promises = this.#createPromises()
 	}
 
 	#now() {
@@ -123,7 +153,10 @@ class MemoryFs {
 		const normalized = normalizePath(path)
 		const entry = this.#entries.get(normalized)
 		if (!entry) {
-			throw new Error(`ENOENT: no such file or directory, ${normalized}`)
+			throw createFsError(
+				'ENOENT',
+				`ENOENT: no such file or directory, ${normalized}`
+			)
 		}
 		return { normalized, entry }
 	}
@@ -169,7 +202,7 @@ class MemoryFs {
 		return files
 	}
 
-	get promises() {
+	#createPromises(): FsPromiseApi {
 		return {
 			readFile: async (
 				path: string,
@@ -177,7 +210,10 @@ class MemoryFs {
 			) => {
 				const { entry } = this.#assertEntry(path)
 				if (entry.type !== 'file') {
-					throw new Error(`EISDIR: illegal operation on directory, ${path}`)
+					throw createFsError(
+						'EISDIR',
+						`EISDIR: illegal operation on directory, ${path}`
+					)
 				}
 				const encoding =
 					typeof options === 'string' ? options : options?.encoding
@@ -203,14 +239,20 @@ class MemoryFs {
 			unlink: async (path: string) => {
 				const { normalized, entry } = this.#assertEntry(path)
 				if (entry.type === 'dir') {
-					throw new Error(`EISDIR: illegal operation on directory, ${path}`)
+					throw createFsError(
+						'EISDIR',
+						`EISDIR: illegal operation on directory, ${path}`
+					)
 				}
 				this.#entries.delete(normalized)
 			},
 			readdir: async (path: string) => {
 				const { entry } = this.#assertEntry(path)
 				if (entry.type !== 'dir') {
-					throw new Error(`ENOTDIR: not a directory, ${path}`)
+					throw createFsError(
+						'ENOTDIR',
+						`ENOTDIR: not a directory, ${path}`
+					)
 				}
 				return this.#listChildren(path)
 			},
@@ -219,7 +261,10 @@ class MemoryFs {
 				const existing = this.#entries.get(normalized)
 				if (existing) {
 					if (existing.type === 'dir') return
-					throw new Error(`ENOTDIR: path exists and is not a directory, ${path}`)
+					throw createFsError(
+						'ENOTDIR',
+						`ENOTDIR: path exists and is not a directory, ${path}`
+					)
 				}
 				if (options?.recursive) {
 					this.#ensureDir(normalized)
@@ -227,18 +272,27 @@ class MemoryFs {
 				}
 				const parent = getDirName(normalized)
 				if (parent && !this.#entries.has(parent)) {
-					throw new Error(`ENOENT: no such file or directory, ${parent}`)
+					throw createFsError(
+						'ENOENT',
+						`ENOENT: no such file or directory, ${parent}`
+					)
 				}
 				this.#ensureDir(normalized)
 			},
 			rmdir: async (path: string) => {
 				const { normalized, entry } = this.#assertEntry(path)
 				if (entry.type !== 'dir') {
-					throw new Error(`ENOTDIR: not a directory, ${path}`)
+					throw createFsError(
+						'ENOTDIR',
+						`ENOTDIR: not a directory, ${path}`
+					)
 				}
 				const children = this.#listChildren(normalized)
 				if (children.length > 0) {
-					throw new Error(`ENOTEMPTY: directory not empty, ${path}`)
+					throw createFsError(
+						'ENOTEMPTY',
+						`ENOTEMPTY: directory not empty, ${path}`
+					)
 				}
 				if (normalized !== '/') {
 					this.#entries.delete(normalized)
@@ -262,7 +316,10 @@ class MemoryFs {
 			readlink: async (path: string) => {
 				const { entry } = this.#assertEntry(path)
 				if (entry.type !== 'symlink') {
-					throw new Error(`EINVAL: invalid argument, readlink ${path}`)
+					throw createFsError(
+						'EINVAL',
+						`EINVAL: invalid argument, readlink ${path}`
+					)
 				}
 				return entry.target
 			},
@@ -307,7 +364,11 @@ const emitFile = async (
 	await callback(transfer)
 }
 
-const clone = async (request: GitCloneRequest): Promise<GitCloneResult> => {
+const clone = async (
+	request: GitCloneRequest,
+	onProgress?: GitProgressCallback,
+	onFile?: GitFileCallback
+): Promise<GitCloneResult> => {
 	const config = resolveRuntimeConfig(request)
 	const fs = new MemoryFs()
 	const dir = '/repo'
@@ -315,7 +376,7 @@ const clone = async (request: GitCloneRequest): Promise<GitCloneResult> => {
 		? { Authorization: `Bearer ${config.authToken}` }
 		: undefined
 
-	await emitProgress(request.onProgress, {
+	await emitProgress(onProgress, {
 		stage: 'refs',
 		message: `Cloning ${request.repoUrl}`,
 	})
@@ -329,13 +390,13 @@ const clone = async (request: GitCloneRequest): Promise<GitCloneResult> => {
 		corsProxy: config.corsProxy,
 		headers,
 		onProgress: async (progress) => {
-			await emitProgress(request.onProgress, {
+			await emitProgress(onProgress, {
 				stage: 'pack',
 				message: `${progress.phase}: ${progress.loaded} / ${progress.total}`,
 			})
 		},
 		onMessage: async (message) => {
-			await emitProgress(request.onProgress, {
+			await emitProgress(onProgress, {
 				stage: 'pack',
 				message,
 			})
@@ -347,7 +408,7 @@ const clone = async (request: GitCloneRequest): Promise<GitCloneResult> => {
 	const files = fs.listFiles(dir)
 	let written = 0
 
-	await emitProgress(request.onProgress, {
+	await emitProgress(onProgress, {
 		stage: 'objects',
 		message: `Writing ${files.length} files`,
 	})
@@ -356,20 +417,20 @@ const clone = async (request: GitCloneRequest): Promise<GitCloneResult> => {
 		const content = (await fs.promises.readFile(
 			file.fullPath
 		)) as Uint8Array
-		await emitFile(request.onFile, {
+		await emitFile(onFile, {
 			path: file.path,
 			content,
 		})
 		written += 1
 		if (written % 50 === 0) {
-			await emitProgress(request.onProgress, {
+			await emitProgress(onProgress, {
 				stage: 'objects',
 				message: `Wrote ${written}/${files.length} files`,
 			})
 		}
 	}
 
-	await emitProgress(request.onProgress, {
+	await emitProgress(onProgress, {
 		stage: 'done',
 		message: `Clone complete (${written} files)`,
 	})

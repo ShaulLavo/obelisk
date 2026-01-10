@@ -1,6 +1,6 @@
 import type { FsContext } from '@repo/fs'
 import type { FsActions } from '../fs/context/FsContext'
-import { gitApi, prepareGitCloneRequest } from '../workers/gitClient'
+import { gitApi, prepareGitCloneCallbacks } from '../workers/gitClient'
 import type { GitCloneResult, GitFile, GitProgressCallback } from './types'
 
 type CloneIntoVfsOptions = {
@@ -62,12 +62,7 @@ const writeGitFile = async (
 	const targetPath = joinPath(basePath, file.path)
 	const slashIndex = targetPath.lastIndexOf('/')
 	const dirPath = slashIndex > -1 ? targetPath.slice(0, slashIndex) : ''
-	const content = new Uint8Array(
-		file.content.buffer.slice(
-			file.content.byteOffset,
-			file.content.byteOffset + file.content.byteLength
-		)
-	)
+	const content = Uint8Array.from(file.content)
 	await ensureFileDir(ctx, dirPath, cache)
 	await ctx.write(targetPath, content, { overwrite: true })
 }
@@ -89,16 +84,19 @@ export const cloneIntoVfs = async (
 		await writeGitFile(ctx, basePath, file, dirCache)
 	}
 
-	const request = prepareGitCloneRequest({
+	const request = {
 		repoUrl: options.repoUrl,
 		ref: options.ref,
 		proxyUrl: options.proxyUrl,
 		authToken: options.authToken,
+	}
+
+	const { onProgress, onFile: onFileCallback } = prepareGitCloneCallbacks({
 		onProgress: options.onProgress,
 		onFile,
 	})
 
-	const result = await gitApi.clone(request)
+	const result = await gitApi.clone(request, onProgress, onFileCallback)
 	await actions.refresh()
 	return result
 }
