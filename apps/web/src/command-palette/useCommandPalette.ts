@@ -1,3 +1,4 @@
+import type { Component } from 'solid-js'
 import {
 	createSignal,
 	createMemo,
@@ -11,6 +12,7 @@ import { useFs } from '../fs/context/FsContext'
 // import { useFocusManager } from '../focus/focusManager' // TODO: Will be used in later tasks
 import type { SearchResult } from '../search/types'
 import type { CommandDescriptor } from './types'
+import type { IconProps } from '@repo/icons'
 
 export type PaletteMode = 'file' | 'command'
 
@@ -20,6 +22,7 @@ export interface PaletteResult {
 	description?: string
 	shortcut?: string
 	kind: 'file' | 'command'
+	icon?: Component<IconProps>
 }
 
 export interface PaletteState {
@@ -64,6 +67,7 @@ function commandToResult(cmd: CommandDescriptor): PaletteResult {
 		description: cmd.category,
 		shortcut: cmd.shortcut,
 		kind: 'command',
+		icon: cmd.icon,
 	}
 }
 

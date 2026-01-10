@@ -1,3 +1,6 @@
+import type { Component } from 'solid-js'
+import type { IconProps } from '@repo/icons'
+
 export type CommandCategory =
 	| 'File'
 	| 'View'
@@ -12,6 +15,7 @@ export interface CommandDescriptor {
 	handler: () => void | Promise<void>
 	shortcut?: string // Display only, e.g., "⌘S"
 	when?: () => boolean // Conditional availability
+	icon?: Component<IconProps> // Optional icon component
 }
 
 export interface CommandPaletteRegistry {

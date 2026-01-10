@@ -1,86 +1,84 @@
 import type { CommandDescriptor, CommandPaletteRegistry } from './types'
-import type { FsActions, SelectPathOptions } from '../fs/context/FsContext'
+import type { SelectPathOptions } from '../fs/context/FsContext'
 import type { ViewMode } from '../fs/types/ViewMode'
+import type { FocusArea } from '../focus/focusManager'
+import { TbSunMoon } from '@repo/icons/tb/TbSunMoon'
+import { VsFolderOpened } from '@repo/icons/vs/VsFolderOpened'
+import { TbFolderMinus } from '@repo/icons/tb/TbFolderMinus'
+import { TbCode } from '@repo/icons/tb/TbCode'
+import { TbTerminal } from '@repo/icons/tb/TbTerminal'
+import { TbLayoutSidebar } from '@repo/icons/tb/TbLayoutSidebar'
+import { TbDeviceFloppy } from '@repo/icons/tb/TbDeviceFloppy'
+import { TbSettings } from '@repo/icons/tb/TbSettings'
+import { TbFileCode } from '@repo/icons/tb/TbFileCode'
+import { TbLayout } from '@repo/icons/tb/TbLayout'
 
-/**
- * Subset of FsActions needed for settings commands
- */
-type SettingsCommandActions = {
-	selectPath: (path: string, options?: SelectPathOptions) => Promise<void>
-	setViewMode: (path: string, viewMode: ViewMode) => void
+type ThemeMode = 'light' | 'dark' | 'system'
+
+export type BuiltinCommandDeps = {
+	fs: {
+		selectPath: (path: string, options?: SelectPathOptions) => Promise<void>
+		setViewMode: (path: string, viewMode: ViewMode) => void
+		pickNewRoot: () => Promise<void>
+		collapseAll: () => void
+		saveFile: () => Promise<void>
+	}
+	theme: {
+		mode: () => ThemeMode | undefined
+		setMode: (mode: ThemeMode) => void
+	}
+	focus: {
+		setActiveArea: (area: FocusArea) => void
+	}
 }
 
 /**
  * Registers all built-in commands with the command palette registry.
- * This includes theme commands, file tree commands, focus commands, save commands, and settings commands.
- *
- * Note: This function should be called within a SolidJS component context
- * where hooks like useTheme, useFs, and useFocusManager are available.
+ * All context dependencies must be passed in at registration time.
  */
 export function registerBuiltinCommands(
 	registry: CommandPaletteRegistry,
-	fsActions?: SettingsCommandActions
+	deps: BuiltinCommandDeps
 ): () => void {
 	const unregisterFunctions: Array<() => void> = []
 
-	// Theme commands
-	unregisterFunctions.push(registerThemeCommands(registry))
+	unregisterFunctions.push(registerThemeCommands(registry, deps.theme))
+	unregisterFunctions.push(registerFileTreeCommands(registry, deps.fs))
+	unregisterFunctions.push(registerFocusCommands(registry, deps.focus))
+	unregisterFunctions.push(registerSaveCommand(registry, deps.fs))
+	unregisterFunctions.push(registerSettingsCommands(registry, deps.fs))
 
-	// File tree commands
-	unregisterFunctions.push(registerFileTreeCommands(registry))
-
-	// Focus commands
-	unregisterFunctions.push(registerFocusCommands(registry))
-
-	// Save command
-	unregisterFunctions.push(registerSaveCommand(registry))
-
-	// Settings commands (requires fsActions)
-	if (fsActions) {
-		unregisterFunctions.push(registerSettingsCommands(registry, fsActions))
-	}
-
-	// Return function to unregister all commands
 	return () => {
 		unregisterFunctions.forEach((fn) => fn())
 	}
 }
 
-/**
- * Registers theme-related commands
- */
-function registerThemeCommands(registry: CommandPaletteRegistry): () => void {
+function registerThemeCommands(
+	registry: CommandPaletteRegistry,
+	theme: BuiltinCommandDeps['theme']
+): () => void {
 	const toggleThemeCommand: CommandDescriptor = {
 		id: 'theme.toggle',
 		label: 'Toggle Theme',
 		category: 'View',
 		shortcut: '⌘⇧T',
-		handler: async () => {
-			// Dynamic import to avoid issues in test environment
-			const { useTheme } = await import('@repo/theme')
-			const { mode, setMode } = useTheme()
-
-			// Get current mode with fallback
-			const currentMode = mode() || 'light'
-			const modes = ['light', 'dark', 'system'] as const
-			const currentIndex = modes.indexOf(currentMode as (typeof modes)[number])
-
-			// Calculate next mode (with fallback to light if not found)
+		icon: TbSunMoon,
+		handler: () => {
+			const currentMode = theme.mode() || 'light'
+			const modes: ThemeMode[] = ['light', 'dark', 'system']
+			const currentIndex = modes.indexOf(currentMode)
 			const safeIndex = currentIndex === -1 ? 0 : currentIndex
 			const nextMode = modes[(safeIndex + 1) % modes.length]!
-
-			setMode(nextMode)
+			theme.setMode(nextMode)
 		},
 	}
 
 	return registry.register(toggleThemeCommand)
 }
 
-/**
- * Registers file tree related commands
- */
 function registerFileTreeCommands(
-	registry: CommandPaletteRegistry
+	registry: CommandPaletteRegistry,
+	fs: BuiltinCommandDeps['fs']
 ): () => void {
 	const unregisterFunctions: Array<() => void> = []
 
@@ -88,11 +86,9 @@ function registerFileTreeCommands(
 		id: 'fileTree.pickFolder',
 		label: 'Pick Folder',
 		category: 'File',
-		handler: async () => {
-			// Dynamic import to avoid issues in test environment
-			const { useFs } = await import('../fs/context/FsContext')
-			const [, actions] = useFs()
-			await actions.pickNewRoot()
+		icon: VsFolderOpened,
+		handler: () => {
+			void fs.pickNewRoot()
 		},
 	}
 
@@ -100,11 +96,9 @@ function registerFileTreeCommands(
 		id: 'fileTree.collapseAll',
 		label: 'Collapse All Folders',
 		category: 'File',
-		handler: async () => {
-			// Dynamic import to avoid issues in test environment
-			const { useFs } = await import('../fs/context/FsContext')
-			const [, actions] = useFs()
-			actions.collapseAll()
+		icon: TbFolderMinus,
+		handler: () => {
+			fs.collapseAll()
 		},
 	}
 
@@ -116,21 +110,19 @@ function registerFileTreeCommands(
 	}
 }
 
-/**
- * Registers focus management commands
- */
-function registerFocusCommands(registry: CommandPaletteRegistry): () => void {
+function registerFocusCommands(
+	registry: CommandPaletteRegistry,
+	focus: BuiltinCommandDeps['focus']
+): () => void {
 	const unregisterFunctions: Array<() => void> = []
 
 	const focusEditorCommand: CommandDescriptor = {
 		id: 'focus.editor',
 		label: 'Focus Editor',
 		category: 'Navigation',
-		handler: async () => {
-			// Dynamic import to avoid issues in test environment
-			const { useFocusManager } = await import('../focus/focusManager')
-			const focusManager = useFocusManager()
-			focusManager.setActiveArea('editor')
+		icon: TbCode,
+		handler: () => {
+			focus.setActiveArea('editor')
 		},
 	}
 
@@ -138,11 +130,9 @@ function registerFocusCommands(registry: CommandPaletteRegistry): () => void {
 		id: 'focus.terminal',
 		label: 'Focus Terminal',
 		category: 'Navigation',
-		handler: async () => {
-			// Dynamic import to avoid issues in test environment
-			const { useFocusManager } = await import('../focus/focusManager')
-			const focusManager = useFocusManager()
-			focusManager.setActiveArea('terminal')
+		icon: TbTerminal,
+		handler: () => {
+			focus.setActiveArea('terminal')
 		},
 	}
 
@@ -150,11 +140,9 @@ function registerFocusCommands(registry: CommandPaletteRegistry): () => void {
 		id: 'focus.fileTree',
 		label: 'Focus File Tree',
 		category: 'Navigation',
-		handler: async () => {
-			// Dynamic import to avoid issues in test environment
-			const { useFocusManager } = await import('../focus/focusManager')
-			const focusManager = useFocusManager()
-			focusManager.setActiveArea('fileTree')
+		icon: TbLayoutSidebar,
+		handler: () => {
+			focus.setActiveArea('fileTree')
 		},
 	}
 
@@ -167,68 +155,65 @@ function registerFocusCommands(registry: CommandPaletteRegistry): () => void {
 	}
 }
 
-/**
- * Registers save command
- */
-function registerSaveCommand(registry: CommandPaletteRegistry): () => void {
+function registerSaveCommand(
+	registry: CommandPaletteRegistry,
+	fs: BuiltinCommandDeps['fs']
+): () => void {
 	const saveFileCommand: CommandDescriptor = {
 		id: 'file.save',
 		label: 'Save File',
 		category: 'File',
 		shortcut: '⌘S',
-		handler: async () => {
-			// Dynamic import to avoid issues in test environment
-			const { useFs } = await import('../fs/context/FsContext')
-			const [, actions] = useFs()
-			await actions.saveFile()
+		icon: TbDeviceFloppy,
+		handler: () => {
+			void fs.saveFile()
 		},
 	}
 
 	return registry.register(saveFileCommand)
 }
 
-/**
- * Registers settings-related commands
- * Uses the view mode system to open settings in different modes
- */
 function registerSettingsCommands(
 	registry: CommandPaletteRegistry,
-	fsActions: SettingsCommandActions
+	fs: BuiltinCommandDeps['fs']
 ): () => void {
 	const unregisterFunctions: Array<() => void> = []
 	const USER_SETTINGS_FILE_PATH = '/.system/userSettings.json'
 
-	// Default "Open Settings" command - opens in editor mode (JSON)
 	const openSettingsCommand: CommandDescriptor = {
 		id: 'settings.open',
 		label: 'Open Settings',
 		category: 'View',
 		shortcut: '⌘,',
-		handler: async () => {
-			await fsActions.selectPath(USER_SETTINGS_FILE_PATH)
-			fsActions.setViewMode(USER_SETTINGS_FILE_PATH, 'editor')
+		icon: TbSettings,
+		handler: () => {
+			void fs.selectPath(USER_SETTINGS_FILE_PATH).then(() => {
+				fs.setViewMode(USER_SETTINGS_FILE_PATH, 'editor')
+			})
 		},
 	}
 
-	// Open Settings (UI) - opens in ui mode
 	const openSettingsUICommand: CommandDescriptor = {
 		id: 'settings.openUI',
 		label: 'Open Settings (UI)',
 		category: 'View',
-		handler: async () => {
-			await fsActions.selectPath(USER_SETTINGS_FILE_PATH)
-			fsActions.setViewMode(USER_SETTINGS_FILE_PATH, 'ui')
+		icon: TbLayout,
+		handler: () => {
+			void fs.selectPath(USER_SETTINGS_FILE_PATH).then(() => {
+				fs.setViewMode(USER_SETTINGS_FILE_PATH, 'ui')
+			})
 		},
 	}
 
-	// Open Settings (JSON) - explicit JSON/editor mode
 	const openSettingsJSONCommand: CommandDescriptor = {
 		id: 'settings.openJSON',
 		label: 'Open Settings (JSON)',
 		category: 'View',
-		handler: async () => {
-			await fsActions.selectPath(USER_SETTINGS_FILE_PATH)
-			fsActions.setViewMode(USER_SETTINGS_FILE_PATH, 'editor')
+		icon: TbFileCode,
+		handler: () => {
+			void fs.selectPath(USER_SETTINGS_FILE_PATH).then(() => {
+				fs.setViewMode(USER_SETTINGS_FILE_PATH, 'editor')
+			})
 		},
 	}
 

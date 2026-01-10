@@ -180,8 +180,26 @@ describe('CommandPaletteRegistry', () => {
 	 * Verifies that all built-in commands can be registered without conflicts
 	 */
 	it('should register all built-in commands successfully', () => {
+		// Create mock dependencies
+		const mockDeps = {
+			fs: {
+				selectPath: async () => {},
+				setViewMode: () => {},
+				pickNewRoot: async () => {},
+				collapseAll: () => {},
+				saveFile: async () => {},
+			},
+			theme: {
+				mode: () => 'light' as const,
+				setMode: () => {},
+			},
+			focus: {
+				setActiveArea: () => {},
+			},
+		}
+
 		// Register built-in commands
-		const unregister = registerBuiltinCommands(registry)
+		const unregister = registerBuiltinCommands(registry, mockDeps)
 
 		// Verify commands are registered
 		const allCommands = registry.getAll()
@@ -195,6 +213,9 @@ describe('CommandPaletteRegistry', () => {
 			'focus.terminal',
 			'focus.fileTree',
 			'file.save',
+			'settings.open',
+			'settings.openUI',
+			'settings.openJSON',
 		]
 
 		for (const expectedId of expectedCommands) {
