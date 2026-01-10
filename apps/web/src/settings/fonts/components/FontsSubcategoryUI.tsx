@@ -26,6 +26,7 @@ import {
 import { Card, CardContent } from '@repo/ui/Card'
 import { useFontRegistry, FontSource, FontStatus } from '../../../fonts'
 import type { FontEntry } from '../../../fonts'
+import { useFontPreview } from '../hooks/useFontPreview'
 
 export const FontsSubcategoryUI = () => {
 	return (
@@ -228,6 +229,9 @@ const FontCard = (props: FontCardProps) => {
 	const isInstalled = () => props.font.isLoaded
 	const hasError = () => props.font.status === FontStatus.ERROR
 
+	// Lazy preview for non-installed fonts
+	const preview = useFontPreview(() => props.font.id)
+
 	return (
 		<Card class="overflow-hidden">
 			<CardContent class="p-4">
@@ -235,10 +239,26 @@ const FontCard = (props: FontCardProps) => {
 					{props.font.displayName}
 				</h4>
 
-				<div class="mb-3 p-2 bg-muted rounded text-xs font-mono overflow-hidden">
+				<div
+					ref={preview.ref}
+					class="mb-3 p-2 bg-muted rounded text-xs font-mono overflow-hidden"
+				>
 					<Show
 						when={isInstalled()}
-						fallback={<span class="text-muted-foreground">{previewText}</span>}
+						fallback={
+							<Show
+								when={preview.fontFamily()}
+								fallback={
+									<span class="text-muted-foreground">
+										{preview.isLoading() ? 'Loading...' : previewText}
+									</span>
+								}
+							>
+								<span style={{ 'font-family': preview.fontFamily()! }}>
+									{previewText}
+								</span>
+							</Show>
+						}
 					>
 						<span
 							style={{ 'font-family': props.font.fontFamily }}
@@ -256,7 +276,9 @@ const FontCard = (props: FontCardProps) => {
 				</Show>
 
 				<button
-					onClick={isInstalled() ? props.onRemove : props.onDownload}
+					onClick={() =>
+						isInstalled() ? props.onRemove() : props.onDownload()
+					}
 					disabled={props.isDownloading}
 					class="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 					classList={{

@@ -38,7 +38,6 @@ export class FontMetadataService {
 			// Test the store is working
 			await this.store.ready()
 			this.initialized = true
-			console.log('FontMetadataService initialized successfully')
 		} catch (error) {
 			console.error('Failed to initialize FontMetadataService:', error)
 			// In test environment, we can still mark as initialized to allow testing
