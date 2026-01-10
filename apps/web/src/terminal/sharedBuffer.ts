@@ -25,15 +25,21 @@ export type SharedBuffer = {
 		source?: BufferEntry['source']
 	) => void
 	clear: () => void
-	replay: (printer: {
-		print: (s: string) => void
-		println: (s: string) => void
-	}, options?: ReplayOptions) => void
+	replay: (
+		printer: {
+			print: (s: string) => void
+			println: (s: string) => void
+		},
+		options?: ReplayOptions
+	) => void
 	/** Async replay that yields between batches to prevent blocking */
-	replayAsync: (printer: {
-		print: (s: string) => void
-		println: (s: string) => void
-	}, options?: ReplayOptions) => Promise<void>
+	replayAsync: (
+		printer: {
+			print: (s: string) => void
+			println: (s: string) => void
+		},
+		options?: ReplayOptions
+	) => Promise<void>
 	/** Get total character count in buffer */
 	getTotalSize: () => number
 	/** Get sequence of the most recent entry */
@@ -55,7 +61,9 @@ const getChunkEnd = (value: string, start: number, maxSize: number): number => {
 	const prev = value.charCodeAt(fallbackEnd - 1)
 	const next = value.charCodeAt(fallbackEnd)
 	const end =
-		isHighSurrogate(prev) && isLowSurrogate(next) ? fallbackEnd - 1 : fallbackEnd
+		isHighSurrogate(prev) && isLowSurrogate(next)
+			? fallbackEnd - 1
+			: fallbackEnd
 
 	return end <= start ? fallbackEnd : end
 }
@@ -131,8 +139,7 @@ export const createSharedBuffer = (): SharedBuffer => {
 			const lastIndex = chunks.length - 1
 			for (let i = 0; i < chunks.length; i++) {
 				const chunk = chunks[i]!
-				const entryType: BufferEntry['type'] =
-					i === lastIndex ? type : 'print'
+				const entryType: BufferEntry['type'] = i === lastIndex ? type : 'print'
 				const entry: BufferEntry = {
 					type: entryType,
 					content: chunk,

@@ -616,7 +616,8 @@ export class LocalEchoController implements ILocalEchoController {
 			for (const char of normalized) {
 				if (!this.active) break
 				const ord = char.charCodeAt(0)
-				const isControl = ord < 32 || ord === KEY.BACKSPACE || ord === KEY.ESCAPE
+				const isControl =
+					ord < 32 || ord === KEY.BACKSPACE || ord === KEY.ESCAPE
 				if (isControl) {
 					if (buffer) {
 						this.handleCursorInsert(buffer)

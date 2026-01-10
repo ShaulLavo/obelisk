@@ -1,6 +1,7 @@
 import * as Comlink from 'comlink'
 import git from 'isomorphic-git'
 import http from 'isomorphic-git/http/web'
+import { Buffer } from 'buffer'
 import type {
 	GitCloneRequest,
 	GitCloneResult,
@@ -66,6 +67,10 @@ type GitCloneRuntimeConfig = {
 const DEFAULT_USER_AGENT = 'git/2.37.3'
 
 let baseConfig: GitWorkerConfig = {}
+
+if (!globalThis.Buffer) {
+	globalThis.Buffer = Buffer
+}
 
 const logDebug = (message: GitProgressMessage) => {
 	console.log('[git-worker]', JSON.stringify(message, null, 2))
@@ -249,10 +254,7 @@ class MemoryFs {
 			readdir: async (path: string) => {
 				const { entry } = this.#assertEntry(path)
 				if (entry.type !== 'dir') {
-					throw createFsError(
-						'ENOTDIR',
-						`ENOTDIR: not a directory, ${path}`
-					)
+					throw createFsError('ENOTDIR', `ENOTDIR: not a directory, ${path}`)
 				}
 				return this.#listChildren(path)
 			},
@@ -282,10 +284,7 @@ class MemoryFs {
 			rmdir: async (path: string) => {
 				const { normalized, entry } = this.#assertEntry(path)
 				if (entry.type !== 'dir') {
-					throw createFsError(
-						'ENOTDIR',
-						`ENOTDIR: not a directory, ${path}`
-					)
+					throw createFsError('ENOTDIR', `ENOTDIR: not a directory, ${path}`)
 				}
 				const children = this.#listChildren(normalized)
 				if (children.length > 0) {
@@ -355,6 +354,35 @@ const resolveRuntimeConfig = (
 	userAgent: baseConfig.userAgent ?? DEFAULT_USER_AGENT,
 })
 
+type AuthConfig = {
+	headers?: Record<string, string>
+	onAuth?: () => { username: string; password: string }
+}
+
+const resolveAuthConfig = (repoUrl: string, token?: string): AuthConfig => {
+	if (!token) return {}
+	const trimmed = token.trim()
+	const lower = trimmed.toLowerCase()
+	if (lower.startsWith('bearer ') || lower.startsWith('basic ')) {
+		return { headers: { Authorization: trimmed } }
+	}
+	if (trimmed.includes(':')) {
+		const [username, ...rest] = trimmed.split(':')
+		return { onAuth: () => ({ username, password: rest.join(':') }) }
+	}
+	try {
+		const host = new URL(repoUrl).hostname
+		if (host === 'github.com' || host.endsWith('.github.com')) {
+			return {
+				onAuth: () => ({ username: 'x-access-token', password: trimmed }),
+			}
+		}
+	} catch {
+		// fallthrough to default bearer auth
+	}
+	return { headers: { Authorization: `Bearer ${trimmed}` } }
+}
+
 const emitFile = async (
 	callback: ((file: GitFile) => void | Promise<void>) | undefined,
 	file: GitFile
@@ -372,9 +400,7 @@ const clone = async (
 	const config = resolveRuntimeConfig(request)
 	const fs = new MemoryFs()
 	const dir = '/repo'
-	const headers = config.authToken
-		? { Authorization: `Bearer ${config.authToken}` }
-		: undefined
+	const authConfig = resolveAuthConfig(request.repoUrl, config.authToken)
 
 	await emitProgress(onProgress, {
 		stage: 'refs',
@@ -388,11 +414,17 @@ const clone = async (
 		url: request.repoUrl,
 		ref: request.ref,
 		corsProxy: config.corsProxy,
-		headers,
+		headers: authConfig.headers,
+		onAuth: authConfig.onAuth,
 		onProgress: async (progress) => {
+			const total = progress.total
+			const suffix =
+				typeof total === 'number'
+					? `${progress.loaded} / ${total}`
+					: `${progress.loaded}`
 			await emitProgress(onProgress, {
 				stage: 'pack',
-				message: `${progress.phase}: ${progress.loaded} / ${progress.total}`,
+				message: `${progress.phase}: ${suffix}`,
 			})
 		},
 		onMessage: async (message) => {
@@ -414,9 +446,7 @@ const clone = async (
 	})
 
 	for (const file of files) {
-		const content = (await fs.promises.readFile(
-			file.fullPath
-		)) as Uint8Array
+		const content = (await fs.promises.readFile(file.fullPath)) as Uint8Array
 		await emitFile(onFile, {
 			path: file.path,
 			content,
