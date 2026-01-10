@@ -29,7 +29,7 @@ export interface FontLoadingMetrics {
 class FontPerformanceMonitor {
 	private static instance: FontPerformanceMonitor
 	private metrics: Map<string, FontLoadingMetrics> = new Map()
-	private [performanceData, setPerformanceData] = createSignal<PerformanceMetrics>({
+	private performanceDataSignal = createSignal<PerformanceMetrics>({
 		fontDownloadTime: 0,
 		fontInstallationTime: 0,
 		cacheHitRate: 0,
@@ -37,6 +37,8 @@ class FontPerformanceMonitor {
 		renderTime: 0,
 		totalFontsLoaded: 0
 	})
+	private performanceData = this.performanceDataSignal[0]
+	private setPerformanceData = this.performanceDataSignal[1]
 
 	static getInstance(): FontPerformanceMonitor {
 		if (!FontPerformanceMonitor.instance) {
@@ -211,8 +213,13 @@ export function usePerformanceMonitor() {
  * Lazy loading utility for font previews
  */
 export function createLazyFontPreview() {
-	const [isVisible, setIsVisible] = createSignal(false)
-	const [element, setElement] = createSignal<HTMLElement>()
+	const isVisibleSignal = createSignal(false)
+	const isVisible = isVisibleSignal[0]
+	const setIsVisible = isVisibleSignal[1]
+	
+	const elementSignal = createSignal<HTMLElement>()
+	const element = elementSignal[0]
+	const setElement = elementSignal[1]
 
 	const observer = new IntersectionObserver(
 		(entries) => {
@@ -344,15 +351,27 @@ export class FontLoadingOptimizer {
  * Memory usage monitoring
  */
 export function createMemoryMonitor() {
-	const [memoryInfo, setMemoryInfo] = createSignal<{
+	// Extend Performance interface for Chrome's memory API
+	interface PerformanceWithMemory extends Performance {
+		memory?: {
+			usedJSHeapSize: number
+			totalJSHeapSize: number
+			jsHeapSizeLimit: number
+		}
+	}
+
+	const memoryInfoSignal = createSignal<{
 		usedJSHeapSize: number
 		totalJSHeapSize: number
 		jsHeapSizeLimit: number
 	} | null>(null)
+	const memoryInfo = memoryInfoSignal[0]
+	const setMemoryInfo = memoryInfoSignal[1]
 
 	const updateMemoryInfo = () => {
-		if ('memory' in performance) {
-			const memory = (performance as any).memory
+		const performanceWithMemory = performance as PerformanceWithMemory
+		if (performanceWithMemory.memory) {
+			const memory = performanceWithMemory.memory
 			setMemoryInfo({
 				usedJSHeapSize: memory.usedJSHeapSize,
 				totalJSHeapSize: memory.totalJSHeapSize,
