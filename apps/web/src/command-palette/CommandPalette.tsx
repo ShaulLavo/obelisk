@@ -198,8 +198,8 @@ export function CommandPalette() {
 			<Dialog.Portal>
 				<Dialog.Overlay
 					cmdk-overlay=""
-					class="fixed inset-0 z-50 bg-black/50"
-					style={{ 'backdrop-filter': 'blur(2px)' }}
+					class="fixed inset-0 z-50 bg-black/0"
+					style={{ 'backdrop-filter': 'blur(1px)' }}
 					onClick={() => actions.close()}
 				/>
 				<Dialog.Content
