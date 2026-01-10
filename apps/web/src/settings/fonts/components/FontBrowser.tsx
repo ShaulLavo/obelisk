@@ -4,6 +4,9 @@ import { useFontStore } from '../store/FontStoreProvider'
 import { SelectableFontCard } from './SelectableFontCard'
 import { FontErrorBoundary } from './ErrorBoundary/FontErrorBoundary'
 import { useMultiSelect } from '../hooks/useMultiSelect'
+import { TextField, TextFieldInput } from '@repo/ui/text-field'
+import { Button } from '@repo/ui/button'
+import { Flex } from '@repo/ui/flex'
 
 export const FontBrowser = () => {
 	const { availableFonts, installedFonts, pending, actions } = useFontStore()
@@ -34,39 +37,42 @@ export const FontBrowser = () => {
 		selection.exitSelectMode()
 	}
 
+	// ...
+
 	return (
-		<div class="space-y-4">
+		<Flex flexDirection="col" class="space-y-4" alignItems="stretch">
 			{/* Search Input - Always visible */}
-			<div class="relative flex gap-2">
+			<Flex class="relative gap-2">
 				<div class="relative flex-1">
-					<VsSearch class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-					<input
-						type="text"
-						placeholder="Search fonts..."
+					<TextField
 						value={searchQuery()}
-						onInput={(e) => setSearchQuery(e.currentTarget.value)}
-						class="w-full pl-10 pr-3 py-2 border border-border rounded-md bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
-					/>
+						onChange={setSearchQuery}
+						class="w-full"
+					>
+						<VsSearch class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground z-10" />
+						<TextFieldInput
+							placeholder="Search fonts..."
+							class="w-full pl-10"
+						/>
+					</TextField>
 				</div>
 				<Show when={selection.count() > 0}>
-					<div class="flex items-center gap-2 animate-in fade-in slide-in-from-right-4 duration-200">
-						<button
-							onClick={handleBatchDownload}
-							class="flex items-center gap-2 px-3 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors"
-						>
+					<Flex class="items-center gap-2 animate-in fade-in slide-in-from-right-4 duration-200">
+						<Button onClick={handleBatchDownload} size="sm" class="gap-2">
 							<VsDownload class="w-4 h-4" />
 							Download ({selection.count()})
-						</button>
-						<button
+						</Button>
+						<Button
 							onClick={selection.exitSelectMode}
-							class="p-2 hover:bg-muted rounded-md text-muted-foreground hover:text-foreground transition-colors"
+							variant="ghost"
+							size="icon"
 							title="Cancel selection"
 						>
 							<VsClose class="w-4 h-4" />
-						</button>
-					</div>
+						</Button>
+					</Flex>
 				</Show>
-			</div>
+			</Flex>
 
 			{/* Font Grid with Progressive Loading */}
 			<FontErrorBoundary
@@ -112,16 +118,17 @@ export const FontBrowser = () => {
 							: 'No fonts available.'}
 					</p>
 					<Show when={searchQuery()}>
-						<button
+						<Button
 							onClick={() => setSearchQuery('')}
-							class="mt-2 text-xs text-primary hover:underline"
+							variant="link"
+							class="mt-2 text-xs h-auto p-0"
 						>
 							Clear search
-						</button>
+						</Button>
 					</Show>
 				</div>
 			</Show>
-		</div>
+		</Flex>
 	)
 }
 

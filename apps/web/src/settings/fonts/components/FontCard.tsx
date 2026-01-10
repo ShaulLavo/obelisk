@@ -1,6 +1,7 @@
 import { Show, createSignal, createEffect } from 'solid-js'
 import { VsDownload, VsCheck, VsLoading } from '@repo/icons/vs'
-import { Card, CardContent } from '@repo/ui/Card'
+import { Card, CardContent } from '@repo/ui/card'
+import { Button } from '@repo/ui/button'
 import { useFontStore } from '../store/FontStoreProvider'
 import { FontDownloadErrorBoundary } from './ErrorBoundary/FontErrorBoundary'
 
@@ -84,14 +85,15 @@ export const FontCard = (props: FontCardProps) => {
 					</div>
 
 					{/* Action Button */}
-					<button
+					<Button
 						onClick={handleDownload}
 						disabled={props.isInstalled || isInDownloadQueue() || props.pending}
+						variant={getButtonState() === 'installed' ? 'secondary' : 'default'}
 						class="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 						classList={{
 							'bg-primary text-primary-foreground hover:bg-primary/90':
 								getButtonState() === 'download',
-							'bg-success text-success-foreground':
+							'bg-success text-success-foreground hover:bg-success/90':
 								getButtonState() === 'installed',
 							'bg-muted text-muted-foreground':
 								getButtonState() === 'downloading',
@@ -109,7 +111,7 @@ export const FontCard = (props: FontCardProps) => {
 							<VsDownload class="w-3 h-3" />
 							Download
 						</Show>
-					</button>
+					</Button>
 				</CardContent>
 			</Card>
 		</FontDownloadErrorBoundary>

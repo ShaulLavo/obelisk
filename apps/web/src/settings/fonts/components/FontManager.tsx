@@ -1,6 +1,8 @@
 import { For, Show, createSignal } from 'solid-js'
 import { VsTrash, VsInfo, VsCheck } from '@repo/icons/vs'
-import { Card, CardContent } from '@repo/ui/Card'
+import { Card, CardContent } from '@repo/ui/card'
+import { Button } from '@repo/ui/button'
+import { Flex } from '@repo/ui/flex'
 import { useFontStore } from '../store/FontStoreProvider'
 import { useFontSettingsIntegration } from '../hooks/useFontSettingsIntegration'
 import { CacheStatusIndicator } from './CacheStatusIndicator'
@@ -31,7 +33,7 @@ export const FontManager = () => {
 		setRemovingFont(fontName)
 		try {
 			await actions.removeFont(fontName)
-		} catch (error) {
+		} catch {
 			// Handle error silently or show user-friendly message
 		} finally {
 			setRemovingFont(null)
@@ -41,23 +43,23 @@ export const FontManager = () => {
 	const handleCleanupCache = async () => {
 		try {
 			await actions.cleanupCache()
-		} catch (error) {
+		} catch {
 			// Handle error silently or show user-friendly message
 		}
 	}
 
 	return (
-		<div class="space-y-4">
+		<Flex flexDirection="col" class="space-y-4" alignItems="stretch">
 			{/* Cache Status Indicator */}
 			<CacheStatusIndicator />
 
 			{/* Cache Statistics */}
 			<Card>
 				<CardContent class="p-4">
-					<div class="flex items-center gap-2 mb-3">
+					<Flex class="gap-2 mb-3" justifyContent="start">
 						<VsInfo class="w-4 h-4 text-muted-foreground" />
 						<h3 class="font-medium text-sm">Cache Statistics</h3>
-					</div>
+					</Flex>
 					<Show
 						when={cacheStats()}
 						fallback={
@@ -82,13 +84,14 @@ export const FontManager = () => {
 						)}
 					</Show>
 					<div class="mt-3 pt-3 border-t border-border">
-						<button
+						<Button
 							onClick={handleCleanupCache}
 							disabled={pending()}
-							class="text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+							variant="ghost"
+							class="text-xs text-muted-foreground hover:text-foreground h-auto p-0"
 						>
 							Clean up cache
-						</button>
+						</Button>
 					</div>
 				</CardContent>
 			</Card>
@@ -109,7 +112,7 @@ export const FontManager = () => {
 						</Card>
 					}
 				>
-					<div class="space-y-2">
+					<Flex flexDirection="col" class="space-y-2" alignItems="stretch">
 						<For each={installedFontsList()}>
 							{(fontName) => (
 								<InstalledFontItem
@@ -120,10 +123,10 @@ export const FontManager = () => {
 								/>
 							)}
 						</For>
-					</div>
+					</Flex>
 				</Show>
 			</div>
-		</div>
+		</Flex>
 	)
 }
 
@@ -141,9 +144,9 @@ const InstalledFontItem = (props: InstalledFontItemProps) => {
 	return (
 		<Card class="hover:bg-card/80 transition-colors">
 			<CardContent class="p-3">
-				<div class="flex items-center justify-between">
+				<Flex justifyContent="between">
 					<div class="flex-1 min-w-0">
-						<div class="flex items-center gap-2 mb-1">
+						<Flex justifyContent="start" class="gap-2 mb-1">
 							<span class="font-medium text-sm truncate">{displayName()}</span>
 							<Show when={props.isCurrentlyUsed}>
 								<div class="flex items-center gap-1 px-2 py-1 text-xs bg-primary text-primary-foreground rounded">
@@ -151,7 +154,7 @@ const InstalledFontItem = (props: InstalledFontItemProps) => {
 									In Use
 								</div>
 							</Show>
-						</div>
+						</Flex>
 						<div
 							class="text-xs font-mono text-muted-foreground truncate"
 							style={{ 'font-family': `"${props.name}", monospace` }}
@@ -159,10 +162,12 @@ const InstalledFontItem = (props: InstalledFontItemProps) => {
 							{previewText}
 						</div>
 					</div>
-					<button
+					<Button
 						onClick={props.onRemove}
 						disabled={props.isCurrentlyUsed || props.isRemoving}
-						class="ml-3 p-2 text-destructive hover:bg-destructive/10 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+						variant="ghost"
+						size="icon"
+						class="ml-3 text-destructive hover:bg-destructive/10 hover:text-destructive transition-colors"
 						title={
 							props.isCurrentlyUsed
 								? 'Cannot remove font that is currently in use'
@@ -175,8 +180,8 @@ const InstalledFontItem = (props: InstalledFontItemProps) => {
 						>
 							<div class="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
 						</Show>
-					</button>
-				</div>
+					</Button>
+				</Flex>
 			</CardContent>
 		</Card>
 	)

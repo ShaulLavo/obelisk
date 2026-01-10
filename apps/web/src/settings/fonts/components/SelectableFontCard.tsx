@@ -1,4 +1,4 @@
-import { VsCheck } from '@repo/icons/vs'
+import { Checkbox } from '@repo/ui/checkbox'
 import { FontCard, type FontCardProps } from './FontCard'
 
 export interface SelectableFontCardProps extends FontCardProps {
@@ -26,7 +26,6 @@ export const SelectableFontCard = (props: SelectableFontCardProps) => {
 			>
 				<FontCard {...props} />
 
-				{/* Selection Overlay */}
 				<div
 					class="absolute inset-0 rounded-lg border-2 pointer-events-none transition-colors"
 					classList={{
@@ -36,25 +35,17 @@ export const SelectableFontCard = (props: SelectableFontCardProps) => {
 				/>
 			</div>
 
-			{/* Checkbox */}
-			<button
-				onClick={(e) => {
-					e.preventDefault()
-					e.stopPropagation()
-					props.onToggle()
-				}}
-				class="absolute top-2 right-2 z-10 w-6 h-6 rounded-full border shadow-sm flex items-center justify-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ring"
-				classList={{
-					'opacity-0 group-hover:opacity-100':
-						!props.isSelectMode && !props.isSelected,
-					'opacity-100': props.isSelectMode || props.isSelected,
-					'bg-primary border-primary text-primary-foreground': props.isSelected,
-					'bg-background/80 backdrop-blur border-muted-foreground/30 hover:border-primary/50 text-transparent':
-						!props.isSelected,
-				}}
-			>
-				<VsCheck class="w-3.5 h-3.5" />
-			</button>
+			<div class="absolute top-2 right-2 z-10">
+				<Checkbox
+					checked={props.isSelected}
+					onChange={() => props.onToggle()}
+					class={`w-6 h-6 border shadow-sm transition-all duration-200 bg-background/80 backdrop-blur ${
+						props.isSelectMode || props.isSelected
+							? 'opacity-100'
+							: 'opacity-0 group-hover:opacity-100'
+					}`}
+				/>
+			</div>
 		</div>
 	)
 }

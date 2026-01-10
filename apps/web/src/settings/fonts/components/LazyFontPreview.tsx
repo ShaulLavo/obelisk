@@ -5,8 +5,9 @@
  * Uses Intersection Observer for efficient lazy loading.
  */
 
-import { createSignal, createEffect, onCleanup, Show } from 'solid-js'
+import { createSignal, createEffect, onCleanup, Show, For } from 'solid-js'
 import { createLazyFontPreview } from '../utils/performanceMonitoring'
+import { Button } from '@repo/ui/button'
 
 export interface LazyFontPreviewProps {
 	fontName: string
@@ -142,10 +143,11 @@ export const OptimizedFontCard = (props: OptimizedFontCardProps) => {
 			</div>
 
 			{/* Action Button */}
-			<button
+			<Button
 				onClick={props.isInstalled ? props.onRemove : props.onDownload}
 				disabled={props.isDownloading}
-				class="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+				variant={props.isInstalled ? 'destructive' : 'default'}
+				class="w-full justify-center gap-2 px-3 py-2 text-xs font-medium rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 				classList={{
 					'bg-primary text-primary-foreground hover:bg-primary/90':
 						!props.isInstalled && !props.isDownloading,
@@ -183,7 +185,7 @@ export const OptimizedFontCard = (props: OptimizedFontCardProps) => {
 					</svg>
 					Download
 				</Show>
-			</button>
+			</Button>
 		</div>
 	)
 }
@@ -264,17 +266,19 @@ export const VirtualFontGrid = (props: VirtualFontGridProps) => {
 						transform: `translateY(${Math.floor(visibleRange().start / itemsPerRow) * itemHeight}px)`,
 					}}
 				>
-					{visibleFonts().map((font) => (
-						<OptimizedFontCard
-							fontName={font.fontName}
-							displayName={font.displayName}
-							fontFamily={font.fontFamily}
-							isInstalled={font.isInstalled}
-							isDownloading={font.isDownloading}
-							onDownload={() => props.onDownload(font.fontName)}
-							onRemove={() => props.onRemove(font.fontName)}
-						/>
-					))}
+					<For each={visibleFonts()}>
+						{(font) => (
+							<OptimizedFontCard
+								fontName={font.fontName}
+								displayName={font.displayName}
+								fontFamily={font.fontFamily}
+								isInstalled={font.isInstalled}
+								isDownloading={font.isDownloading}
+								onDownload={() => props.onDownload(font.fontName)}
+								onRemove={() => props.onRemove(font.fontName)}
+							/>
+						)}
+					</For>
 				</div>
 			</div>
 		</div>
