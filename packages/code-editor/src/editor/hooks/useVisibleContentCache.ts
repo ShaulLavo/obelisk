@@ -162,9 +162,7 @@ export const useVisibleContentCache = (
 
 		const cached = cache.lines.find((line) => {
 			if (lineId && lineId > 0 && line.lineId === lineId) {
-				return (
-					line.columnStart === columnStart && line.columnEnd === columnEnd
-				)
+				return line.columnStart === columnStart && line.columnEnd === columnEnd
 			}
 
 			return (

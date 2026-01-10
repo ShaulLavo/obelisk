@@ -1,4 +1,5 @@
 export * from './bytes'
+export * from './dom'
 export * from './parse'
 export * from './pieceTable'
 export * from './textHeuristics'

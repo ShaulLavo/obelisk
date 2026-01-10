@@ -13,7 +13,9 @@ export type ScrollbarProps = {
 	class?: string
 	style?: JSX.CSSProperties
 	trackStyle?: JSX.CSSProperties
-	thumbStyle?: JSX.CSSProperties | ((state: ScrollbarThumbState) => JSX.CSSProperties)
+	thumbStyle?:
+		| JSX.CSSProperties
+		| ((state: ScrollbarThumbState) => JSX.CSSProperties)
 	thumbOffset: () => number
 	thumbSize: () => number
 	isVisible?: () => boolean
@@ -60,7 +62,13 @@ export const Scrollbar = (props: ScrollbarProps) => {
 
 		if (!props.thumbStyle) return base
 		if (typeof props.thumbStyle === 'function') {
-			return { ...base, ...props.thumbStyle({ isHovered: isHovered(), isDragging: isDragging() }) }
+			return {
+				...base,
+				...props.thumbStyle({
+					isHovered: isHovered(),
+					isDragging: isDragging(),
+				}),
+			}
 		}
 
 		return { ...base, ...props.thumbStyle }
@@ -145,9 +153,7 @@ export const Scrollbar = (props: ScrollbarProps) => {
 		if (!props.onScrollBy || !isVisible()) return
 		event.preventDefault()
 
-		const delta = isVertical()
-			? event.deltaY
-			: event.deltaX || event.deltaY
+		const delta = isVertical() ? event.deltaY : event.deltaX || event.deltaY
 
 		props.onScrollBy(delta)
 	}
@@ -190,8 +196,12 @@ export const Scrollbar = (props: ScrollbarProps) => {
 			<div
 				style={{
 					position: 'absolute',
-					top: isVertical() ? `${props.thumbOffset()}px` : `${DEFAULT_THUMB_INSET}px`,
-					left: isVertical() ? `${DEFAULT_THUMB_INSET}px` : `${props.thumbOffset()}px`,
+					top: isVertical()
+						? `${props.thumbOffset()}px`
+						: `${DEFAULT_THUMB_INSET}px`,
+					left: isVertical()
+						? `${DEFAULT_THUMB_INSET}px`
+						: `${props.thumbOffset()}px`,
 					right: isVertical() ? `${DEFAULT_THUMB_INSET}px` : undefined,
 					bottom: isVertical() ? undefined : `${DEFAULT_THUMB_INSET}px`,
 					height: isVertical() ? `${props.thumbSize()}px` : undefined,

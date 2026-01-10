@@ -66,16 +66,16 @@ export const useSelectionRects = (
 		const rects: SelectionRect[] = []
 		const baseX = props.lineNumberWidth + props.paddingLeft
 
-	for (const virtualRow of virtualItems) {
-		const lineIndex = virtualRow.index
-		if (lineIndex < 0 || lineIndex >= cursor.lines.lineCount()) continue
+		for (const virtualRow of virtualItems) {
+			const lineIndex = virtualRow.index
+			if (lineIndex < 0 || lineIndex >= cursor.lines.lineCount()) continue
 
-		const lineStart = cursor.lines.getLineStart(lineIndex)
-		const lineEnd = lineStart + cursor.lines.getLineLength(lineIndex)
+			const lineStart = cursor.lines.getLineStart(lineIndex)
+			const lineEnd = lineStart + cursor.lines.getLineLength(lineIndex)
 
-		if (bounds.end <= lineStart || bounds.start >= lineEnd) {
-			continue
-		}
+			if (bounds.end <= lineStart || bounds.start >= lineEnd) {
+				continue
+			}
 
 			const selStart = Math.max(bounds.start, lineStart)
 			const selEnd = Math.min(bounds.end, lineEnd)

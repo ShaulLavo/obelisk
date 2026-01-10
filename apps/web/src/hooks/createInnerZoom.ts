@@ -3,7 +3,7 @@ import { makePersisted } from '@solid-primitives/storage'
 import { createSignal, createMemo, onMount, Accessor } from 'solid-js'
 //TODO DO we want to createa a global font size store and let all modules scale hwo they want?
 // sound pretty good to me idk
-const baseFontSize =()=>  12
+const baseFontSize = () => 12
 interface InnerZoomOptions {
 	ref: HTMLElement | Accessor<HTMLElement>
 	key: string
@@ -22,7 +22,7 @@ const clmap = (value: number, min: number, max: number) => {
 
 export const createInnerZoom = (options: InnerZoomOptions) => {
 	const [percentChange, setPercentChange] = makePersisted(createSignal(0), {
-		name: options.key + '-fontChange'
+		name: options.key + '-fontChange',
 	})
 
 	const aggressiveness = options.aggressiveness ?? DEFAULT_AGGRESSIVENESS
@@ -52,7 +52,7 @@ export const createInnerZoom = (options: InnerZoomOptions) => {
 
 	onMount(() => {
 		sync()
-		makeEventListener(resolveRef(), 'wheel', e => {
+		makeEventListener(resolveRef(), 'wheel', (e) => {
 			if (e.ctrlKey) {
 				e.preventDefault()
 				const delta = e.deltaY < 0 ? 1 : -1
@@ -66,6 +66,6 @@ export const createInnerZoom = (options: InnerZoomOptions) => {
 	return {
 		fontSize,
 		percentChange,
-		setPercentChange: setPercentChangeClamped
+		setPercentChange: setPercentChangeClamped,
 	}
 }

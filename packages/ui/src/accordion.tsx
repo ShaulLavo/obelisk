@@ -17,9 +17,7 @@ const AccordionItem = <T extends ValidComponent = 'div'>(
 	props: PolymorphicProps<T, AccordionItemProps<T>>
 ) => {
 	const [local, others] = splitProps(props as AccordionItemProps, ['class'])
-	return (
-		<AccordionPrimitive.Item class={cn(local.class)} {...others} />
-	)
+	return <AccordionPrimitive.Item class={cn(local.class)} {...others} />
 }
 
 type AccordionTriggerProps<T extends ValidComponent = 'button'> =
@@ -78,10 +76,7 @@ const AccordionContent = <T extends ValidComponent = 'div'>(
 	])
 	return (
 		<AccordionPrimitive.Content
-			class={cn(
-				'overflow-hidden text-sm',
-				local.class
-			)}
+			class={cn('overflow-hidden text-sm', local.class)}
 			{...others}
 		>
 			{local.children}

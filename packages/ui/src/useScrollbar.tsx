@@ -149,8 +149,7 @@ export const useScrollbar = (options: UseScrollbarOptions) => {
 			const rect = containerRef?.getBoundingClientRect()
 			if (!rect) return
 
-			const size =
-				getOrientation() === 'horizontal' ? rect.width : rect.height
+			const size = getOrientation() === 'horizontal' ? rect.width : rect.height
 			setContainerSize(size)
 			updateThumb()
 		})

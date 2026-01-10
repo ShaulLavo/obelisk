@@ -3,7 +3,9 @@ import { describe, expect, it, vi } from 'vitest'
 import { createModalStore } from './createModalStore'
 
 describe('createModalStore', () => {
-	const withStore = <T,>(run: (store: ReturnType<typeof createModalStore>) => T) => {
+	const withStore = <T>(
+		run: (store: ReturnType<typeof createModalStore>) => T
+	) => {
 		return createRoot((dispose) => {
 			const store = createModalStore()
 			const result = run(store)

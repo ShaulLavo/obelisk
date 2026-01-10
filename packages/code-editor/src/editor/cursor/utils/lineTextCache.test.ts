@@ -2,8 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { countLineBreaks, updateLineTextCache } from './lineTextCache'
 
 const buildCache = (entries: Array<[number, string]>) => new Map(entries)
-const cacheEntries = (cache: Map<number, string>) =>
-	Array.from(cache.entries())
+const cacheEntries = (cache: Map<number, string>) => Array.from(cache.entries())
 
 describe('lineTextCache', () => {
 	it('counts line breaks', () => {
