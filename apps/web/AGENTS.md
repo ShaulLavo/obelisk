@@ -24,6 +24,9 @@
 - Follow the shared ESLint config; fix all reported issues before committing.
 - Client-only app: browser globals like `window` are always present; skip `typeof window !== 'undefined'` guards.
 - Prefer Tailwind utilities and `@apply`/`@layer` for styling; use CSS modules only in rare cases (e.g. multiple custom scrollbars) to prevent class collisions.
+- **Logic Separation**: Never write complex logic inside component files.
+  - All **pure logic** must reside in an appropriate utility file.
+  - All **logic that touches state** must reside in a hook (`create*` or `use*` primitive).
 
 ## Logging
 
@@ -134,6 +137,27 @@ Effects are primarily intended for handling side effects that do not write to th
 > You can install individual packages using `bun add @solid-primitives/{name}` from the list below:
 >
 > active-element, audio, autofocus, bounds, clipboard, connectivity, context, cursor, date, deep, destructure, devices, event-bus, event-dispatcher, event-listener, event-props, filesystem, fullscreen, geolocation, graphql, history, i18n, immutable, input, intersection-observer, keyboard, keyed, lifecycle, map, media, memo, mouse, mutation-observer, network, pagination, platform, pointer, props, raf, range, refs, resize-observer, resource, rootless, scheduled, script-loader, scroll, selection, share, signal-builders, start, static-store, storage, stream, styles, template, timer, title, transition, trigger, tween, upload, utils, websocket, workers
+
+## Reactive Utilities & Secondary Primitives
+
+### startTransition
+
+- `import { startTransition } from "solid-js"`
+- Like `useTransition` but without a pending state.
+- Wraps updates to maintain UI until async resources resolve (prevents flickers).
+
+### createSelector
+
+- `import { createSelector } from "solid-js"`
+- Parameterized boolean signal for efficient selection status.
+- Reduces updates from $O(n)$ to $O(2)$ (only old and new matches update).
+- **Usage:**
+  ```tsx
+  const isSelected = createSelector(selectedId)
+  <For each={list()}>
+    {(item) => <li classList={{ active: isSelected(item.id) }}>{item.name}</li>}
+  </For>
+  ```
 
 SOLID ASYNC + SUSPENSE CHEAT SHEET
 

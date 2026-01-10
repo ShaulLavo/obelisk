@@ -10,8 +10,10 @@
 	--color-border: var(--editor-line-number);
 	--color-muted: var(--editor-gutter-background);
 	--color-muted-foreground: var(--editor-line-number);
-	--color-accent: var(--syntax-keyword);
-	--color-accent-foreground: var(--editor-background);
+	/* IMPORTANT: accent must be neutral/muted - never colorful by default.
+	   Colorful accents (like syntax-keyword green) should only be opt-in. */
+	--color-accent: var(--editor-gutter-background);
+	--color-accent-foreground: var(--editor-foreground);
 
 	--font-mono: var(--editor-font-family, 'JetBrains Mono Variable', monospace);
 	--font-serif: 'Geist Variable', sans-serif;
@@ -86,19 +88,25 @@ body {
 	animation: cursor-blink-soft 1s linear infinite;
 }
 
-/* Accordion open/close height animation sourced from Kobalte's CSS vars */
+/* Accordion open/close height animation sourced from disclosure CSS vars */
 @keyframes accordion-down {
 	from {
 		height: 0;
 	}
 	to {
-		height: var(--kb-accordion-content-height);
+		height: var(
+			--corvu-disclosure-content-height,
+			var(--kb-accordion-content-height)
+		);
 	}
 }
 
 @keyframes accordion-up {
 	from {
-		height: var(--kb-accordion-content-height);
+		height: var(
+			--corvu-disclosure-content-height,
+			var(--kb-accordion-content-height)
+		);
 	}
 	to {
 		height: 0;

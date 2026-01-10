@@ -75,10 +75,11 @@ export const Tab = (props: TabProps) => {
 			title={props.title ?? props.value}
 			class={
 				'h-auto gap-2 px-3 py-1 font-semibold transition-colors group text-xs rounded-none border-r border-border/30 first:border-l ' +
-				'focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none focus:outline-none ring-0 outline-none ' + // Force removal of rings
+				'focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none focus:outline-none ring-0 outline-none ' +
+				'hover:bg-muted/50 hover:text-foreground ' + // Override accent hover with neutral muted
 				(props.isActive
 					? 'bg-background text-foreground'
-					: 'text-muted-foreground hover:text-foreground hover:bg-muted/50')
+					: 'text-muted-foreground')
 			}
 			aria-selected={props.isActive}
 		>

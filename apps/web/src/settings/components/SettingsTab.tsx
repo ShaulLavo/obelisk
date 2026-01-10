@@ -1,5 +1,5 @@
 import type { Component } from 'solid-js'
-import { createEffect, createMemo, createSignal } from 'solid-js'
+import { createMemo, createSignal } from 'solid-js'
 import {
 	SettingsSearch,
 	SettingsSidebar,
@@ -27,14 +27,10 @@ export const SettingsTab: Component<SettingsTabProps> = (props) => {
 	const [localSelectedCategory, setLocalSelectedCategory] = createSignal(
 		props.initialCategory || 'editor'
 	)
-	const [parentCategory, setParentCategory] = createSignal<string | undefined>(
-		undefined
-	)
 
 	const selectedCategory = () =>
 		props.currentCategory || localSelectedCategory()
 
-	// Find a category by id in the schema tree
 	const findCategory = (
 		id: string,
 		categories: SettingsCategory[] = settingsState.schemas
@@ -54,7 +50,6 @@ export const SettingsTab: Component<SettingsTabProps> = (props) => {
 							path: `${cat.id}.${child.id}`,
 						}
 					}
-					// Support deeper nesting if needed
 					const found = findCategory(id, cat.children)
 					if (found) {
 						return { ...found, path: `${cat.id}.${found.path}` }
@@ -85,9 +80,9 @@ export const SettingsTab: Component<SettingsTabProps> = (props) => {
 
 	const handleCategorySelect = (categoryId: string) => {
 		const parsed = parseCategoryPath(categoryId)
-		setLocalSelectedCategory(categoryId)
 		const info = findCategory(parsed.id)
-		setParentCategory(info?.parent?.id)
+
+		setLocalSelectedCategory(categoryId)
 		props.onCategoryChange?.(categoryId, info?.parent?.id)
 	}
 
@@ -95,12 +90,10 @@ export const SettingsTab: Component<SettingsTabProps> = (props) => {
 		settingsActions.setSetting(key, value)
 	}
 
-	// Custom subcategory components
 	const customSubcategoryComponents = {
 		fonts: () => <FontsSubcategoryUI />,
 	}
 
-	// Custom setting components
 	const customSettingComponents = {
 		'editor.font.family': () => (
 			<FontFamilySelect
@@ -139,23 +132,7 @@ export const SettingsTab: Component<SettingsTabProps> = (props) => {
 		),
 	}
 
-	// Update parent category when selected category changes
-	createEffect(() => {
-		const category = selectedCategory()
-
-		if (props.parentCategory) {
-			setParentCategory(props.parentCategory)
-		} else {
-			const parsed = parseCategoryPath(category)
-			const info = findCategory(parsed.id)
-			setParentCategory(info?.parent?.id)
-		}
-	})
-
-	// Convert schemas to sidebar format (uses same type now)
 	const sidebarCategories = () => settingsState.schemas
-
-	// ...
 
 	return (
 		<Flex
@@ -163,7 +140,7 @@ export const SettingsTab: Component<SettingsTabProps> = (props) => {
 			class="h-full min-h-0 bg-background"
 			alignItems="stretch"
 		>
-			<div class="shrink-0 px-4 py-2 border-b border-border/60">
+			<div class="shrink-0 px-2 py-2 border-b border-border/60">
 				<SettingsSearch
 					value={searchValue()}
 					onInput={setSearchValue}

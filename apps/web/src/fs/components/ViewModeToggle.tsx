@@ -41,7 +41,8 @@ export const ViewModeToggle: Component<ViewModeToggleProps> = (props) => {
 		<Show when={shouldShow()}>
 			<Flex
 				alignItems="center"
-				class="gap-1 px-2 py-1 border-l border-border/30"
+				justifyContent="start"
+				class="w-auto shrink-0 gap-1 px-2 py-1 border-l border-border/30"
 			>
 				<For each={props.availableModes}>
 					{(mode) => {
