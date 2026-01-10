@@ -25,6 +25,13 @@ import { toast } from '@repo/ui/toaster'
 
 const textDecoder = new TextDecoder()
 
+/**
+ * Normalize path by stripping leading slash.
+ * Cache keys use normalized paths (without leading slash).
+ */
+const normalizePath = (path: string): string =>
+	path.startsWith('/') ? path.slice(1) : path
+
 export const enum FileSelectionAnimation {
 	Blur = 'blur',
 	None = 'none',
@@ -112,7 +119,7 @@ export const useFileSelection = ({
 		if (
 			previousPath &&
 			previousPath !== path &&
-			!state.dirtyPaths[previousPath]
+			!state.dirtyPaths[normalizePath(previousPath)]
 		) {
 			fileCache.clearBuffer(previousPath)
 		}

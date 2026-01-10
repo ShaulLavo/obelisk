@@ -276,6 +276,29 @@ export function FsProvider(props: { children: JSX.Element }) {
 		})
 	})
 
+	// Listen for settings file changes from the UI
+	// When settings UI saves, invalidate the editor cache so it reloads fresh content
+	createEffect(() => {
+		const handleSettingsFileChanged = async (event: CustomEvent<{ path: string; content: string }>) => {
+			const { path } = event.detail
+			// Clear the cache for this file so editor reloads from disk
+			fileCache.clearContent(path)
+			
+			// If this file is currently selected, force reload it
+			const normalizedPath = path.startsWith('/') ? path.slice(1) : path
+			const currentPath = state.lastKnownFilePath
+			const normalizedCurrent = currentPath?.startsWith('/') ? currentPath.slice(1) : currentPath
+			if (normalizedCurrent === normalizedPath) {
+				await selectPath(path, { forceReload: true })
+			}
+		}
+
+		window.addEventListener('settings-file-changed', handleSettingsFileChanged as EventListener)
+		onCleanup(() => {
+			window.removeEventListener('settings-file-changed', handleSettingsFileChanged as EventListener)
+		})
+	})
+
 	createEffect(() => {
 		const node = state.selectedNode
 		if (node?.kind === 'file') {

@@ -3,6 +3,13 @@ import { createStore, reconcile } from 'solid-js/store'
 import { logger } from '../../logger'
 import type { TreeSitterCapture } from '../../workers/treeSitter/types'
 
+/**
+ * Normalize path by stripping leading slash.
+ * Cache keys use normalized paths (without leading slash).
+ */
+const normalizePath = (path: string): string =>
+	path.startsWith('/') ? path.slice(1) : path
+
 export type HighlightTransform = {
 	charDelta: number
 	lineDelta: number
@@ -56,6 +63,7 @@ export const createHighlightState = () => {
 		transform: HighlightTransform
 	) => {
 		if (!path) return
+		const p = normalizePath(path)
 
 		const normalizedStart = transform.fromCharIndex
 		const normalizedOldEnd = Math.max(normalizedStart, transform.oldEndIndex)
@@ -82,7 +90,7 @@ export const createHighlightState = () => {
 			newEndIndex: normalizedNewEnd,
 		}
 
-		const existing = highlightOffsets[path]
+		const existing = highlightOffsets[p]
 
 		// Attempt to merge back-to-back single char edits to keep the stack small
 		if (existing && existing.length > 0) {
@@ -106,7 +114,7 @@ export const createHighlightState = () => {
 				}
 				const nextOffsets = [...existing]
 				nextOffsets[existing.length - 1] = merged
-				setHighlightOffsets(path, nextOffsets)
+				setHighlightOffsets(p, nextOffsets)
 				return
 			}
 
@@ -125,25 +133,26 @@ export const createHighlightState = () => {
 				}
 				const nextOffsets = [...existing]
 				nextOffsets[existing.length - 1] = merged
-				setHighlightOffsets(path, nextOffsets)
+				setHighlightOffsets(p, nextOffsets)
 				return
 			}
 		}
 
 		const nextOffsets = existing ? [...existing, incoming] : [incoming]
-		setHighlightOffsets(path, nextOffsets)
+		setHighlightOffsets(p, nextOffsets)
 	}
 
 	const setHighlights = (path: string, highlights?: TreeSitterCapture[]) => {
 		if (!path) return
+		const p = normalizePath(path)
 
 		const nextHighlights = highlights?.length ? highlights : undefined
-		const existingHighlights = fileHighlights[path]
-		const offsetCount = highlightOffsets[path]?.length ?? 0
+		const existingHighlights = fileHighlights[p]
+		const offsetCount = highlightOffsets[p]?.length ?? 0
 		const updateId = ++highlightUpdateId
 
 		log.debug('[setHighlights] start', {
-			path,
+			path: p,
 			updateId,
 			offsetCount,
 			existing: summarizeHighlights(existingHighlights),
@@ -156,19 +165,19 @@ export const createHighlightState = () => {
 		const hasExistingHighlights = !!existingHighlights?.length
 
 		if (!shouldClearOffsets && !hasNextHighlights && !hasExistingHighlights) {
-			log.debug('[setHighlights] noop', { path, updateId })
+			log.debug('[setHighlights] noop', { path: p, updateId })
 			return
 		}
 
 		batch(() => {
 			if (shouldClearOffsets) {
-				setHighlightOffsets(path, undefined)
+				setHighlightOffsets(p, undefined)
 			}
-			setHighlightsStore(path, nextHighlights)
+			setHighlightsStore(p, nextHighlights)
 		})
 
 		log.debug('[setHighlights] end', {
-			path,
+			path: p,
 			updateId,
 			offsetCount,
 			nextCount: nextHighlights?.length ?? 0,

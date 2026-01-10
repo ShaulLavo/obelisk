@@ -1,0 +1,66 @@
+{
+    "id": "appearance",
+    "label": "Appearance",
+    "children": [
+        {
+            "id": "theme",
+            "label": "Theme",
+            "settings": [
+                {
+                    "id": "mode",
+                    "default": "dark",
+                    "options": [
+                        "light",
+                        "dark",
+                        "auto"
+                    ],
+                    "description": "Controls the color theme of the interface."
+                }
+            ]
+        },
+        {
+            "id": "layout",
+            "label": "Layout",
+            "settings": [
+                {
+                    "id": "sidebarWidth",
+                    "default": 240,
+                    "description": "Controls the width of the sidebar in pixels."
+                },
+                {
+                    "id": "showLineNumbers",
+                    "default": true,
+                    "description": "Controls whether line numbers are shown in the editor."
+                },
+                {
+                    "id": "compactMode",
+                    "default": false,
+                    "experimental": true,
+                    "description": "Enables compact mode for a more condensed interface."
+                }
+            ]
+        },
+        {
+            "id": "fonts",
+            "label": "Fonts",
+            "icon": "VsTextSize",
+            "settings": [
+                {
+                    "id": "autoInstallPreview",
+                    "default": true,
+                    "description": "Automatically load font previews when browsing available fonts."
+                },
+                {
+                    "id": "cacheLimit",
+                    "default": 100,
+                    "description": "Maximum cache size for downloaded fonts (MB)."
+                },
+                {
+                    "id": "previewText",
+                    "default": "The quick brown fox jumps over the lazy dog 0123456789",
+                    "description": "Text used for font previews."
+                }
+            ]
+        }
+    ]
+}

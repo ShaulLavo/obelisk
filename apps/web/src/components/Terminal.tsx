@@ -38,22 +38,11 @@ export const Terminal: Component = () => {
 			storage,
 		}
 	)
-	const [terminalBackend, setTerminalBackend] = makePersisted(
-		// eslint-disable-next-line solid/reactivity
-		createSignal<TerminalBackend>('xterm'),
-		{
-			name: 'terminal-backend',
-			storage,
-		}
-	)
-	const [xtermRenderer, setXtermRenderer] = makePersisted(
-		// eslint-disable-next-line solid/reactivity
-		createSignal<XtermRenderer>('webgl'),
-		{
-			name: 'terminal-xterm-renderer',
-			storage,
-		}
-	)
+	const getTerminalBackend = () =>
+		(settingsState.values['terminal.backend'] ?? 'xterm') as TerminalBackend
+	const getXtermRenderer = () =>
+		(settingsState.values['terminal.xterm.renderer'] ??
+			'webgl') as XtermRenderer
 
 	const [controller, setController] = createSignal<TerminalController | null>(
 		null
@@ -62,18 +51,6 @@ export const Terminal: Component = () => {
 	const normalizeCwd = (path: string) => {
 		if (!path || path === '/') return ''
 		return path.replace(/^[/\\]+/, '')
-	}
-
-	const handleBackendChange = (event: Event) => {
-		const target = event.currentTarget as HTMLSelectElement
-		const next = target.value === 'xterm' ? 'xterm' : 'ghostty'
-		setTerminalBackend(() => next)
-	}
-
-	const handleRendererChange = (event: Event) => {
-		const target = event.currentTarget as HTMLSelectElement
-		const next = target.value as XtermRenderer
-		setXtermRenderer(() => next)
 	}
 
 	onMount(() => {
@@ -115,8 +92,8 @@ export const Terminal: Component = () => {
 				},
 				theme: theme,
 				focusOnMount,
-				backend: terminalBackend(),
-				rendererType: xtermRenderer(),
+				backend: getTerminalBackend(),
+				rendererType: getXtermRenderer(),
 			})
 			setController(() => nextController)
 			nextController.fit()
@@ -132,7 +109,7 @@ export const Terminal: Component = () => {
 
 		createEffect(
 			on(
-				[terminalBackend, xtermRenderer],
+				[getTerminalBackend, getXtermRenderer],
 				() => {
 					void setup(false).catch((error) => {
 						console.error('Failed to switch terminal backend/renderer', error)
@@ -166,19 +143,19 @@ export const Terminal: Component = () => {
 		createEffect(
 			on(
 				() => [
-					settingsState.values['terminal.fontSize'],
-					settingsState.values['terminal.fontFamily'],
+					settingsState.values['terminal.font.size'],
+					settingsState.values['terminal.font.family'],
 					settingsState.isLoaded,
 				],
 				() => {
 					const active = controller()
 					if (!active || !settingsState.isLoaded) return
 
-					const fontSize = (settingsState.values['terminal.fontSize'] ??
-						settingsState.defaults['terminal.fontSize'] ??
+					const fontSize = (settingsState.values['terminal.font.size'] ??
+						settingsState.defaults['terminal.font.size'] ??
 						14) as number
-					const fontFamily = (settingsState.values['terminal.fontFamily'] ??
-						settingsState.defaults['terminal.fontFamily'] ??
+					const fontFamily = (settingsState.values['terminal.font.family'] ??
+						settingsState.defaults['terminal.font.family'] ??
 						'JetBrains Mono') as string
 
 					active.setFont(fontSize, fontFamily)
@@ -195,28 +172,6 @@ export const Terminal: Component = () => {
 
 	return (
 		<div class="terminal-container relative h-full min-h-0">
-			<div class="absolute right-3 top-3 z-10 flex items-center gap-2 rounded border border-border bg-background/70 px-2 py-1 text-xs backdrop-blur">
-				<span class="text-muted-foreground">Terminal</span>
-				<select
-					class="rounded border border-border bg-background px-2 py-1 text-xs text-foreground"
-					value={terminalBackend()}
-					onChange={handleBackendChange}
-				>
-					<option value="ghostty">Ghostty</option>
-					<option value="xterm">xterm.js</option>
-				</select>
-				{terminalBackend() === 'xterm' && (
-					<select
-						class="rounded border border-border bg-background px-2 py-1 text-xs text-foreground"
-						value={xtermRenderer()}
-						onChange={handleRendererChange}
-					>
-						<option value="webgl">WebGL</option>
-						<option value="canvas">Canvas</option>
-						<option value="dom">DOM</option>
-					</select>
-				)}
-			</div>
 			<div class="relative h-full min-h-0 pl-2">
 				<div class="absolute inset-0" ref={containerRef} />
 				<TerminalScrollbar controller={controller} />

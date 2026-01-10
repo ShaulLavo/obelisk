@@ -5,6 +5,7 @@ import {
 	SettingsSidebar,
 	SettingsPanel,
 } from '@repo/ui/settings'
+import type { SettingsCategory } from '@repo/ui/settings'
 import { Resizable } from '../../components/Resizable'
 import { useSettings } from '../SettingsProvider'
 import { FontsSubcategoryUI } from '../fonts/components/FontsSubcategoryUI'
@@ -21,21 +22,48 @@ export type SettingsTabProps = {
 export const SettingsTab: Component<SettingsTabProps> = (props) => {
 	const [settingsState, settingsActions] = useSettings()
 
-	// Search functionality (placeholder for now)
 	const [searchValue, setSearchValue] = createSignal('')
 
-	// Category selection state - use currentCategory prop if available, otherwise local state
 	const [localSelectedCategory, setLocalSelectedCategory] = createSignal(
 		props.initialCategory || 'editor'
 	)
-	// Track parent category when a subcategory is selected
 	const [parentCategory, setParentCategory] = createSignal<string | undefined>(
 		undefined
 	)
 
-	// Use currentCategory prop if provided, otherwise local state
 	const selectedCategory = () =>
 		props.currentCategory || localSelectedCategory()
+
+	// Find a category by id in the schema tree
+	const findCategory = (
+		id: string,
+		categories: SettingsCategory[] = settingsState.schemas
+	):
+		| { category: SettingsCategory; parent?: SettingsCategory; path: string }
+		| undefined => {
+		for (const cat of categories) {
+			if (cat.id === id) {
+				return { category: cat, path: cat.id }
+			}
+			if (cat.children) {
+				for (const child of cat.children) {
+					if (child.id === id) {
+						return {
+							category: child,
+							parent: cat,
+							path: `${cat.id}.${child.id}`,
+						}
+					}
+					// Support deeper nesting if needed
+					const found = findCategory(id, cat.children)
+					if (found) {
+						return { ...found, path: `${cat.id}.${found.path}` }
+					}
+				}
+			}
+		}
+		return undefined
+	}
 
 	const parseCategoryPath = (
 		categoryId: string
@@ -50,53 +78,17 @@ export const SettingsTab: Component<SettingsTabProps> = (props) => {
 		}
 	}
 
-	// Find category info (handles both top-level and subcategories)
-	const findCategoryInfo = (
-		categoryId: string
-	): { label: string; parentId?: string } | undefined => {
-		const parsed = parseCategoryPath(categoryId)
-		if (parsed.parentId) {
-			const parent = settingsState.schema.categories.find(
-				(cat) => cat.id === parsed.parentId
-			)
-			const subcategory = parent?.subcategories?.find(
-				(sub) => sub.id === parsed.id
-			)
-			if (subcategory) {
-				return { label: subcategory.label, parentId: parsed.parentId }
-			}
-		}
-		for (const cat of settingsState.schema.categories) {
-			if (cat.id === parsed.id) {
-				return { label: cat.label }
-			}
-			// Check subcategories
-			if (cat.subcategories) {
-				for (const sub of cat.subcategories) {
-					if (sub.id === parsed.id) {
-						return { label: sub.label, parentId: cat.id }
-					}
-				}
-			}
-		}
-		return undefined
-	}
-
-	const activeCategoryLabel = createMemo(() => {
-		const info = findCategoryInfo(selectedCategory())
-		return info?.label
+	const activeCategory = createMemo(() => {
+		const parsed = parseCategoryPath(selectedCategory())
+		return findCategory(parsed.id)
 	})
 
-	const panelCategoryId = createMemo(
-		() => parseCategoryPath(selectedCategory()).id
-	)
-
 	const handleCategorySelect = (categoryId: string) => {
-		const info = findCategoryInfo(categoryId)
+		const parsed = parseCategoryPath(categoryId)
 		setLocalSelectedCategory(categoryId)
-		setParentCategory(info?.parentId)
-		// Notify parent of category change for URL sync
-		props.onCategoryChange?.(categoryId, info?.parentId)
+		const info = findCategory(parsed.id)
+		setParentCategory(info?.parent?.id)
+		props.onCategoryChange?.(categoryId, info?.parent?.id)
 	}
 
 	const handleSettingChange = (key: string, value: unknown) => {
@@ -110,56 +102,58 @@ export const SettingsTab: Component<SettingsTabProps> = (props) => {
 
 	// Custom setting components
 	const customSettingComponents = {
-		'editor.fontFamily': () => (
+		'editor.font.family': () => (
 			<FontFamilySelect
 				value={String(
-					settingsState.values['editor.fontFamily'] ||
+					settingsState.values['editor.font.family'] ||
 						"'JetBrains Mono Variable', monospace"
 				)}
-				onChange={(value) => handleSettingChange('editor.fontFamily', value)}
+				onChange={(value) => handleSettingChange('editor.font.family', value)}
 				label="Font Family"
 				description="Controls the font family."
 				category={FontCategory.MONO}
 			/>
 		),
-		'terminal.fontFamily': () => (
+		'terminal.font.family': () => (
 			<FontFamilySelect
 				value={String(
-					settingsState.values['terminal.fontFamily'] ||
+					settingsState.values['terminal.font.family'] ||
 						"'JetBrains Mono Variable', monospace"
 				)}
-				onChange={(value) => handleSettingChange('terminal.fontFamily', value)}
+				onChange={(value) => handleSettingChange('terminal.font.family', value)}
 				label="Font Family"
 				description="Controls the font family in the terminal."
 				category={FontCategory.MONO}
 			/>
 		),
-		'ui.fontFamily': () => (
+		'ui.font.family': () => (
 			<FontFamilySelect
 				value={String(
-					settingsState.values['ui.fontFamily'] ||
+					settingsState.values['ui.font.family'] ||
 						"'Google Sans Flex', sans-serif"
 				)}
-				onChange={(value) => handleSettingChange('ui.fontFamily', value)}
+				onChange={(value) => handleSettingChange('ui.font.family', value)}
 				label="Font Family"
 				description="Controls the font family for the entire user interface."
 			/>
 		),
 	}
 
-	// Update parent category when selected category changes or from props
+	// Update parent category when selected category changes
 	createEffect(() => {
 		const category = selectedCategory()
 
 		if (props.parentCategory) {
-			// If parent category is provided via props, use it
 			setParentCategory(props.parentCategory)
 		} else {
-			// Otherwise derive from category info
-			const info = findCategoryInfo(category)
-			setParentCategory(info?.parentId)
+			const parsed = parseCategoryPath(category)
+			const info = findCategory(parsed.id)
+			setParentCategory(info?.parent?.id)
 		}
 	})
+
+	// Convert schemas to sidebar format (uses same type now)
+	const sidebarCategories = () => settingsState.schemas
 
 	return (
 		<div class="flex flex-col h-full min-h-0 bg-background">
@@ -181,20 +175,20 @@ export const SettingsTab: Component<SettingsTabProps> = (props) => {
 				handleAriaLabel="Resize settings sidebar and panel"
 			>
 				<SettingsSidebar
-					categories={settingsState.schema.categories}
+					categories={sidebarCategories()}
 					selectedCategory={selectedCategory()}
 					onCategorySelect={handleCategorySelect}
 				/>
-				<SettingsPanel
-					categoryId={panelCategoryId()}
-					categoryLabel={activeCategoryLabel()}
-					parentCategoryId={parentCategory()}
-					settings={settingsState.schema.settings}
-					values={settingsState.values}
-					onSettingChange={handleSettingChange}
-					customSubcategoryComponents={customSubcategoryComponents}
-					customSettingComponents={customSettingComponents}
-				/>
+				{activeCategory() && (
+					<SettingsPanel
+						category={activeCategory()!.category}
+						categoryPath={activeCategory()!.path}
+						values={settingsState.values}
+						onSettingChange={handleSettingChange}
+						customSubcategoryComponents={customSubcategoryComponents}
+						customSettingComponents={customSettingComponents}
+					/>
+				)}
 			</Resizable>
 		</div>
 	)

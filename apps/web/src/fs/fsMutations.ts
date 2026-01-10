@@ -187,7 +187,10 @@ export const createFsMutations = ({
 			return
 		}
 
-		const stats = state.fileStats[filePath]
+		// Normalize path for cache lookups
+		const normalizedPath = filePath.startsWith('/') ? filePath.slice(1) : filePath
+
+		const stats = state.fileStats[normalizedPath]
 		if (stats && stats.contentKind === 'binary') {
 			toast.error('Cannot save binary files')
 			return
@@ -196,7 +199,7 @@ export const createFsMutations = ({
 		setSaving(true)
 
 		try {
-			const pieceTable = state.pieceTables[filePath]
+			const pieceTable = state.pieceTables[normalizedPath]
 
 			const content = pieceTable
 				? getPieceTableText(pieceTable)
@@ -222,7 +225,6 @@ export const createFsMutations = ({
 			})
 
 			// Sync settings if this is the user settings file
-			const normalizedPath = filePath.startsWith('/') ? filePath.slice(1) : filePath
 			if (normalizedPath === '.system/userSettings.json') {
 				try {
 					const parsed = JSON.parse(content)
@@ -230,6 +232,7 @@ export const createFsMutations = ({
 					window.dispatchEvent(
 						new CustomEvent('settings-file-saved', { detail: parsed })
 					)
+					console.log('[fsMutations] Dispatched settings-file-saved event', parsed)
 				} catch (e) {
 					logger
 						.withTag('fsMutations')

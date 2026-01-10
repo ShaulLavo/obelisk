@@ -1,4 +1,4 @@
-import type { Component } from 'solid-js'
+import type { Component, JSX } from 'solid-js'
 import { Match, Switch } from 'solid-js'
 import { SettingCheckbox } from './SettingCheckbox'
 import { SettingSelect } from './SettingSelect'
@@ -6,13 +6,11 @@ import { SettingInput } from './SettingInput'
 import { cn } from '../utils'
 
 export type SettingDefinition = {
+	id: string
 	key: string
-	type: 'boolean' | 'string' | 'number'
 	default: unknown
-	description: string
-	category: string
-	subcategory?: string
-	options?: { value: string; label: string }[]
+	description?: string
+	options?: string[] | { value: string; label: string }[]
 	experimental?: boolean
 }
 
@@ -21,55 +19,71 @@ export type SettingItemProps = {
 	value: unknown
 	onChange: (value: unknown) => void
 	class?: string
-	customComponents?: Record<string, () => any>
+	customComponents?: Record<string, () => JSX.Element>
 }
 
 export const SettingItem: Component<SettingItemProps> = (props) => {
 	// Check if there's a custom component for this setting
 	const customComponent = () => props.customComponents?.[props.setting.key]
 
+	// Infer type from default value
+	const inferredType = () => {
+		const defaultVal = props.setting.default
+		if (typeof defaultVal === 'boolean') return 'boolean'
+		if (typeof defaultVal === 'number') return 'number'
+		return 'string'
+	}
+
+	// Normalize options to { value, label } format
+	const normalizedOptions = () => {
+		const opts = props.setting.options
+		if (!opts) return undefined
+		return opts.map((opt) =>
+			typeof opt === 'string' ? { value: opt, label: opt } : opt
+		)
+	}
+
 	return (
 		<div class={cn('py-2.5', props.class)}>
-			{/* Custom component if available */}
 			<Switch>
 				<Match when={customComponent()}>{customComponent()!()}</Match>
 
-				<Match when={props.setting.type === 'boolean'}>
+				<Match when={inferredType() === 'boolean'}>
 					<SettingCheckbox
 						checked={Boolean(props.value)}
 						onChange={(checked) => props.onChange(checked)}
-						label={props.setting.key.split('.').pop() || props.setting.key}
-						description={props.setting.description}
+						label={props.setting.id}
+						description={props.setting.description || ''}
 					/>
 				</Match>
 
-				<Match when={props.setting.type === 'string' && props.setting.options}>
+				<Match when={normalizedOptions()}>
 					<SettingSelect
-						value={String(props.value || props.setting.default || '')}
-						options={props.setting.options || []}
+						value={String(props.value ?? props.setting.default ?? '')}
+						options={normalizedOptions()!}
 						onChange={(value) => props.onChange(value)}
-						label={props.setting.key.split('.').pop() || props.setting.key}
-						description={props.setting.description}
+						label={props.setting.id}
+						description={props.setting.description || ''}
 					/>
 				</Match>
 
-				<Match when={props.setting.type === 'string' && !props.setting.options}>
+				<Match when={inferredType() === 'string' && !normalizedOptions()}>
 					<SettingInput
-						value={String(props.value || props.setting.default || '')}
+						value={String(props.value ?? props.setting.default ?? '')}
 						type="text"
 						onChange={(value) => props.onChange(value)}
-						label={props.setting.key.split('.').pop() || props.setting.key}
-						description={props.setting.description}
+						label={props.setting.id}
+						description={props.setting.description || ''}
 					/>
 				</Match>
 
-				<Match when={props.setting.type === 'number'}>
+				<Match when={inferredType() === 'number'}>
 					<SettingInput
-						value={Number(props.value || props.setting.default || 0)}
+						value={Number(props.value ?? props.setting.default ?? 0)}
 						type="number"
 						onChange={(value) => props.onChange(value)}
-						label={props.setting.key.split('.').pop() || props.setting.key}
-						description={props.setting.description}
+						label={props.setting.id}
+						description={props.setting.description || ''}
 					/>
 				</Match>
 			</Switch>

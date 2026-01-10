@@ -1,0 +1,20 @@
+{
+    "name": "@repo/settings",
+    "version": "0.0.1",
+    "type": "module",
+    "main": "./src/index.ts",
+    "exports": {
+        ".": "./src/index.ts",
+        "./schemas/*": "./schemas/*"
+    },
+    "scripts": {
+        "test": "vitest run"
+    },
+    "dependencies": {
+        "zod": "^4.3.5"
+    },
+    "devDependencies": {
+        "typescript": "^5.0.0",
+        "vitest": "^2.0.0"
+    }
+}

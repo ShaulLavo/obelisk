@@ -1,0 +1,22 @@
+{
+    "id": "ui",
+    "label": "User Interface",
+    "children": [
+        {
+            "id": "font",
+            "label": "Font",
+            "settings": [
+                {
+                    "id": "size",
+                    "default": 13,
+                    "description": "Controls the font size in the user interface."
+                },
+                {
+                    "id": "family",
+                    "default": "'Google Sans Flex', sans-serif",
+                    "description": "Controls the font family for the entire user interface."
+                }
+            ]
+        }
+    ]
+}

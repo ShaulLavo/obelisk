@@ -16,7 +16,7 @@ export type SettingsCategory = {
 	id: string
 	label: string
 	icon?: string
-	subcategories?: SettingsCategory[]
+	children?: SettingsCategory[]
 }
 
 export type SettingsSidebarItemProps = {
@@ -44,7 +44,7 @@ export const SettingsSidebarItem: Component<SettingsSidebarItemProps> = (
 	const isParentOfSelected = () =>
 		props.selectedCategory.startsWith(`${fullId()}/`)
 
-	const hasSubcategories = () => Boolean(props.category.subcategories?.length)
+	const hasChildren = () => Boolean(props.category.children?.length)
 
 	// Render icon if provided
 	const renderIcon = () => {
@@ -85,7 +85,7 @@ export const SettingsSidebarItem: Component<SettingsSidebarItemProps> = (
 
 	return (
 		<Show
-			when={hasSubcategories()}
+			when={hasChildren()}
 			fallback={
 				<button
 					type="button"
@@ -117,7 +117,7 @@ export const SettingsSidebarItem: Component<SettingsSidebarItemProps> = (
 					</Accordion.Trigger>
 					<Accordion.Content class="overflow-hidden data-[expanded]:animate-accordion-down data-[closed]:animate-accordion-up">
 						<div class="space-y-1 pt-1">
-							<For each={props.category.subcategories || []}>
+							<For each={props.category.children || []}>
 								{(subcategory) => (
 									<SettingsSidebarItem
 										category={subcategory}

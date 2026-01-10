@@ -1,7 +1,8 @@
 import { CursorMode, Editor } from '@repo/code-editor'
-import { Accessor, Match, Switch, createResource } from 'solid-js'
+import { Accessor, Match, Switch, createMemo, createResource } from 'solid-js'
 import { useFocusManager } from '~/focus/focusManager'
 import { useFs } from '../../fs/context/FsContext'
+import { useSettings } from '~/settings/SettingsProvider'
 
 import { getTreeSitterWorker } from '../../treeSitter/workerClient'
 
@@ -17,18 +18,8 @@ import { detectAvailableViewModes } from '../utils/viewModeDetection'
 import { viewModeRegistry } from '../registry/ViewModeRegistry'
 import { type ViewMode } from '../types/TabIdentity'
 
-const FONT_OPTIONS = [
-	{
-		label: 'JetBrains Mono',
-		value: '"JetBrains Mono Variable", monospace',
-	},
-	{
-		label: 'Geist Mono',
-		value: '"Geist Mono", monospace',
-	},
-]
 const DEFAULT_FONT_SIZE = 14
-const DEFAULT_FONT_FAMILY = FONT_OPTIONS[0]?.value ?? 'monospace'
+const DEFAULT_FONT_FAMILY = "'JetBrains Mono Variable', monospace"
 const MAX_EDITOR_TABS = 1000
 
 type SelectedFilePanelProps = {
@@ -55,6 +46,29 @@ export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
 		},
 	] = useFs()
 	const focus = useFocusManager()
+	const [settingsState] = useSettings()
+
+	const editorFontSize = createMemo(() => {
+		const value = settingsState.values['editor.fontSize']
+		if (typeof value === 'number') return value
+
+		const fallback = settingsState.defaults['editor.fontSize']
+		if (typeof fallback === 'number') return fallback
+
+		return DEFAULT_FONT_SIZE
+	})
+
+	const editorFontFamily = createMemo(() => {
+		const value = settingsState.values['editor.fontFamily']
+		if (typeof value === 'string' && value.trim().length > 0) return value
+
+		const fallback = settingsState.defaults['editor.fontFamily']
+		if (typeof fallback === 'string' && fallback.trim().length > 0) {
+			return fallback
+		}
+
+		return DEFAULT_FONT_FAMILY
+	})
 
 	const settingsView = useSettingsViewState({
 		selectedPath: () => state.selectedPath,
@@ -193,8 +207,8 @@ export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
 							document={editorDocument}
 							isFileSelected={props.isFileSelected}
 							stats={() => state.selectedFileStats}
-							fontSize={() => DEFAULT_FONT_SIZE}
-							fontFamily={() => DEFAULT_FONT_FAMILY}
+							fontSize={editorFontSize}
+							fontFamily={editorFontFamily}
 							cursorMode={() => CursorMode.Terminal}
 							registerEditorArea={(resolver) =>
 								focus.registerArea('editor', resolver)
@@ -236,8 +250,8 @@ export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
 							data={() => state.selectedFilePreviewBytes}
 							stats={() => state.selectedFileStats}
 							fileSize={() => state.selectedFileSize}
-							fontSize={() => DEFAULT_FONT_SIZE}
-							fontFamily={() => DEFAULT_FONT_FAMILY}
+							fontSize={editorFontSize}
+							fontFamily={editorFontFamily}
 						/>
 					</Match>
 

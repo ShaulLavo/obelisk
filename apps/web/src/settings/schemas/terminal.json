@@ -6,6 +6,10 @@
             {
                 "id": "font",
                 "label": "Font"
+            },
+            {
+                "id": "xterm",
+                "label": "Xterm.js"
             }
         ]
     },
@@ -25,6 +29,30 @@
             "description": "Controls the font family in the terminal.",
             "category": "terminal",
             "subcategory": "font"
+        },
+        {
+            "key": "terminal.backend",
+            "type": "string",
+            "default": "xterm",
+            "options": [
+                "xterm",
+                "ghostty"
+            ],
+            "description": "Controls the terminal backend implementation.",
+            "category": "terminal"
+        },
+        {
+            "key": "terminal.xterm.renderer",
+            "type": "string",
+            "default": "webgl",
+            "options": [
+                "webgl",
+                "canvas",
+                "dom"
+            ],
+            "description": "Controls the renderer used by the xterm.js backend.",
+            "category": "terminal",
+            "subcategory": "xterm"
         }
     ]
 }

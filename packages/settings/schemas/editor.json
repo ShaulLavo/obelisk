@@ -1,0 +1,54 @@
+{
+    "id": "editor",
+    "label": "Text Editor",
+    "children": [
+        {
+            "id": "font",
+            "label": "Font",
+            "settings": [
+                {
+                    "id": "size",
+                    "default": 14,
+                    "description": "Controls the font size in pixels."
+                },
+                {
+                    "id": "family",
+                    "default": "'JetBrains Mono Variable', monospace",
+                    "description": "Controls the font family."
+                }
+            ]
+        },
+        {
+            "id": "cursor",
+            "label": "Cursor",
+            "settings": [
+                {
+                    "id": "style",
+                    "default": "line",
+                    "options": [
+                        "line",
+                        "block",
+                        "underline"
+                    ],
+                    "description": "Controls the cursor style."
+                }
+            ]
+        },
+        {
+            "id": "behavior",
+            "label": "Behavior",
+            "settings": [
+                {
+                    "id": "tabSize",
+                    "default": 4,
+                    "description": "The number of spaces a tab is equal to."
+                },
+                {
+                    "id": "wordWrap",
+                    "default": false,
+                    "description": "Controls how lines should wrap."
+                }
+            ]
+        }
+    ]
+}

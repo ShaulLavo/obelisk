@@ -1,0 +1,49 @@
+{
+    "id": "terminal",
+    "label": "Terminal",
+    "settings": [
+        {
+            "id": "backend",
+            "default": "xterm",
+            "options": [
+                "xterm",
+                "ghostty"
+            ],
+            "description": "Controls the terminal backend implementation."
+        }
+    ],
+    "children": [
+        {
+            "id": "font",
+            "label": "Font",
+            "settings": [
+                {
+                    "id": "size",
+                    "default": 14,
+                    "description": "Controls the font size in the terminal."
+                },
+                {
+                    "id": "family",
+                    "default": "'JetBrains Mono Variable', monospace",
+                    "description": "Controls the font family in the terminal."
+                }
+            ]
+        },
+        {
+            "id": "xterm",
+            "label": "Xterm.js",
+            "settings": [
+                {
+                    "id": "renderer",
+                    "default": "webgl",
+                    "options": [
+                        "webgl",
+                        "canvas",
+                        "dom"
+                    ],
+                    "description": "Controls the renderer used by the xterm.js backend."
+                }
+            ]
+        }
+    ]
+}

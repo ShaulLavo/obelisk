@@ -1,71 +1,34 @@
 import type { Component, JSX } from 'solid-js'
-import { For, Show } from 'solid-js'
+import { For, Show, createMemo } from 'solid-js'
 import { SettingItem } from './SettingItem'
 import type { SettingDefinition } from './SettingItem'
 import { SettingsScrollArea } from './SettingsScrollArea'
 import { cn } from '../utils'
+import type { SettingsCategory } from './SettingsSidebarItem'
 
 export type SettingsPanelProps = {
-	categoryId: string
-	categoryLabel?: string
-	settings: SettingDefinition[]
+	category: SettingsCategory
+	categoryPath: string
 	values: Record<string, unknown>
 	onSettingChange: (key: string, value: unknown) => void
 	class?: string
-	/** Parent category ID when a subcategory is selected */
-	parentCategoryId?: string
-	/** Custom UI components for specific subcategories */
 	customSubcategoryComponents?: Record<string, () => JSX.Element>
-	/** Custom components for individual settings */
 	customSettingComponents?: Record<string, () => JSX.Element>
 }
 
 export const SettingsPanel: Component<SettingsPanelProps> = (props) => {
-	// Filter settings for the current category or subcategory
-	const categorySettings = () =>
-		props.settings.filter((setting) => {
-			// If we have a parent category, we're viewing a subcategory
-			if (props.parentCategoryId) {
-				return (
-					setting.category === props.parentCategoryId &&
-					setting.subcategory === props.categoryId
-				)
-			}
-			// Otherwise, show all settings for this category
-			return setting.category === props.categoryId
-		})
+	// Convert category settings to SettingDefinition format with full key
+	const categorySettings = createMemo(() => {
+		if (!props.category.settings) return []
+		return props.category.settings.map((setting) => ({
+			...setting,
+			key: `${props.categoryPath}.${setting.id}`,
+		}))
+	})
 
-	// Group settings by subcategory
-	const groupedSettings = () => {
-		const settings = categorySettings()
-		const groups: Record<string, SettingDefinition[]> = {}
-
-		settings.forEach((setting) => {
-			const subcategory = setting.subcategory || 'general'
-			if (!groups[subcategory]) {
-				groups[subcategory] = []
-			}
-			groups[subcategory].push(setting)
-		})
-
-		return groups
-	}
-
-	const groupedEntries = () => Object.entries(groupedSettings())
-	const shouldShowSubcategory = (subcategory: string) =>
-		subcategory !== 'general' || groupedEntries().length > 1
-
-	// Check if we should show custom UI for fonts subcategory
-	const shouldShowCustomFontsUI = () => {
-		return (
-			props.parentCategoryId === 'appearance' && props.categoryId === 'fonts'
-		)
-	}
-
-	// Get custom component for subcategory
-	const getCustomComponent = (subcategory: string) => {
-		return props.customSubcategoryComponents?.[subcategory]
-	}
+	// Check if we should show custom UI for this category
+	const customComponent = () =>
+		props.customSubcategoryComponents?.[props.category.id]
 
 	return (
 		<SettingsScrollArea
@@ -73,87 +36,88 @@ export const SettingsPanel: Component<SettingsPanelProps> = (props) => {
 			contentClass="px-4 py-3 pr-6"
 		>
 			{/* Category header */}
-			<Show when={props.categoryLabel}>
-				<div class="mb-3 border border-border/60 bg-muted/40 px-3 py-1.5">
-					<h1 class="text-xl font-semibold text-foreground">
-						{props.categoryLabel}
-					</h1>
-				</div>
-			</Show>
+			<div class="mb-3 border border-border/60 bg-muted/40 px-3 py-1.5">
+				<h1 class="text-xl font-semibold text-foreground">
+					{props.category.label}
+				</h1>
+			</div>
 
-			{/* Settings grouped by subcategory */}
+			{/* Settings */}
 			<div class="space-y-5">
-				<For each={groupedEntries()}>
-					{([subcategory, settings]) => {
-						const CustomComponent = getCustomComponent(subcategory)
+				{/* Custom component if available */}
+				<Show when={customComponent()}>{customComponent()!()}</Show>
 
-						return (
-							<div class="space-y-3">
-								{/* Subcategory header (only show if not 'general' or if there are multiple subcategories) */}
-								<Show when={shouldShowSubcategory(subcategory)}>
-									<h2 class="text-sm font-semibold text-foreground/80 capitalize border-b border-border/60 pb-1.5">
-										{subcategory === 'general' ? 'General' : subcategory}
-									</h2>
-								</Show>
+				{/* Regular settings */}
+				<Show when={categorySettings().length > 0}>
+					<div class="divide-y divide-border/60">
+						<For each={categorySettings()}>
+							{(setting) => (
+								<SettingItem
+									setting={setting}
+									value={props.values[setting.key]}
+									onChange={(value) =>
+										props.onSettingChange(setting.key, value)
+									}
+									customComponents={props.customSettingComponents}
+								/>
+							)}
+						</For>
+					</div>
+				</Show>
 
-								{/* Custom component or regular settings */}
-								<Show
-									when={CustomComponent}
-									fallback={
-										<div class="divide-y divide-border/60">
-											<For each={settings}>
-												{(setting) => (
+				{/* Nested children */}
+				<For each={props.category.children || []}>
+					{(child) => (
+						<div class="space-y-3">
+							<h2 class="text-sm font-semibold text-foreground/80 capitalize border-b border-border/60 pb-1.5">
+								{child.label}
+							</h2>
+
+							{/* Check for custom component for this child */}
+							<Show
+								when={props.customSubcategoryComponents?.[child.id]}
+								fallback={
+									<div class="divide-y divide-border/60">
+										<For each={child.settings || []}>
+											{(setting) => {
+												const key = `${props.categoryPath}.${child.id}.${setting.id}`
+												return (
 													<SettingItem
-														setting={setting}
-														value={props.values[setting.key]}
+														setting={{ ...setting, key }}
+														value={props.values[key]}
 														onChange={(value) =>
-															props.onSettingChange(setting.key, value)
+															props.onSettingChange(key, value)
 														}
 														customComponents={props.customSettingComponents}
 													/>
-												)}
-											</For>
-										</div>
-									}
-								>
-									<div class="space-y-4">
-										{/* Regular settings first */}
-										<Show when={settings.length > 0}>
-											<div class="divide-y divide-border/60">
-												<For each={settings}>
-													{(setting) => (
-														<SettingItem
-															setting={setting}
-															value={props.values[setting.key]}
-															onChange={(value) =>
-																props.onSettingChange(setting.key, value)
-															}
-															customComponents={props.customSettingComponents}
-														/>
-													)}
-												</For>
-											</div>
-										</Show>
-
-										{/* Custom component */}
-										{CustomComponent && CustomComponent()}
+												)
+											}}
+										</For>
 									</div>
-								</Show>
-							</div>
-						)
-					}}
+								}
+							>
+								{props.customSubcategoryComponents![child.id]()}
+							</Show>
+						</div>
+					)}
 				</For>
 			</div>
 
 			{/* Empty state */}
-			<Show when={categorySettings().length === 0}>
+			<Show
+				when={
+					categorySettings().length === 0 &&
+					!props.category.children?.length &&
+					!customComponent()
+				}
+			>
 				<div class="flex items-center justify-center h-64 text-center">
 					<div class="space-y-2">
 						<p class="text-base font-medium text-muted-foreground">
 							No settings found
 						</p>
 						<p class="text-sm text-muted-foreground">
-							There are no settings available for the "{props.categoryId}"
+							There are no settings available for the "{props.category.id}"
 							category.
 						</p>
 					</div>
