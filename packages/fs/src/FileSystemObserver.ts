@@ -127,26 +127,20 @@ export class FileSystemObserverPolyfill {
 			return this.nativeObserver.observe(handle, options)
 		}
 
-		// Polling fallback
 		if (this.pollingIntervals.has(handle)) {
-			// Already observing this handle
 			return
 		}
 
 		this.observedOptions.set(handle, options)
 
-		// Take initial snapshot
 		const snapshot = await this.takeSnapshot(handle, options.recursive ?? false)
 		this.snapshots.set(handle, snapshot)
-
-		// Start polling
 		const intervalId = setInterval(async () => {
 			if (this.pollingInFlight.has(handle)) return
 			this.pollingInFlight.add(handle)
 			try {
 				await this.checkForChanges(handle)
 			} catch (error) {
-				// Handle was likely removed or permission revoked
 				const record: FileSystemChangeRecord = {
 					root: handle,
 					changedHandle: handle,
@@ -229,12 +223,10 @@ export class FileSystemObserverPolyfill {
 						)
 					)
 				} else {
-					// For non-recursive, just record directory existence
 					children.set(name, { kind: 'directory' })
 				}
 			}
 		} catch {
-			// Permission denied or handle invalid
 		}
 
 		return { kind: 'directory', children }
@@ -276,7 +268,6 @@ export class FileSystemObserverPolyfill {
 		changes: FileSystemChangeRecord[],
 		recursive: boolean
 	): void {
-		// Check for file modifications
 		if (oldSnap.kind === 'file' && newSnap.kind === 'file') {
 			if (
 				oldSnap.lastModified !== newSnap.lastModified ||
@@ -292,24 +283,21 @@ export class FileSystemObserverPolyfill {
 			return
 		}
 
-		// Check directory children
 		if (oldSnap.kind === 'directory' && newSnap.kind === 'directory') {
 			const oldChildren = oldSnap.children ?? new Map()
 			const newChildren = newSnap.children ?? new Map()
 
-			// Check for disappeared items
 			for (const [name, oldChild] of oldChildren) {
 				if (!newChildren.has(name)) {
 					changes.push({
 						root: rootHandle,
-						changedHandle: currentHandle, // Best approximation
+						changedHandle: currentHandle,
 						relativePathComponents: [...pathComponents, name],
 						type: 'disappeared',
 					})
 				}
 			}
 
-			// Check for appeared and modified items
 			for (const [name, newChild] of newChildren) {
 				const oldChild = oldChildren.get(name)
 				const childPath = [...pathComponents, name]
@@ -317,12 +305,11 @@ export class FileSystemObserverPolyfill {
 				if (!oldChild) {
 					changes.push({
 						root: rootHandle,
-						changedHandle: currentHandle, // Best approximation
+						changedHandle: currentHandle,
 						relativePathComponents: childPath,
 						type: 'appeared',
 					})
 				} else if (recursive || newChild.kind === 'file') {
-					// Recursively diff
 					this.diffSnapshots(
 						rootHandle,
 						currentHandle,
@@ -336,7 +323,6 @@ export class FileSystemObserverPolyfill {
 			}
 		}
 
-		// Kind changed (e.g., file replaced by directory)
 		if (oldSnap.kind !== newSnap.kind) {
 			changes.push({
 				root: rootHandle,

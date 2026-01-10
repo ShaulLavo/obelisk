@@ -9,18 +9,7 @@ import {
 } from './FileSystemObserver'
 
 /**
- * Spec-compliant tests for FileSystemObserver polyfill
- *
- * Based on WHATWG File System spec:
- * https://fs.spec.whatwg.org/#observing-the-file-system
- *
- * FileSystemChangeType values per spec:
- * - "appeared": Entry was created or moved into scope
- * - "disappeared": Entry was deleted or moved out of scope
- * - "modified": File content was modified
- * - "moved": Entry was moved within the watch scope
- * - "errored": An error occurred for this observer registration
- * - "unknown": Zero or more events might have been missed
+ * Spec-compliant tests for FileSystemObserver polyfill based on WHATWG File System spec.
  */
 
 // ============================================================================
@@ -54,7 +43,6 @@ class MockFileHandle implements FileSystemFileHandle {
 	}
 
 	async getFile(): Promise<File> {
-		// Create a copy of the data as ArrayBuffer for File constructor
 		const buffer = new ArrayBuffer(this._file.data.length)
 		const view = new Uint8Array(buffer)
 		view.set(this._file.data)
@@ -75,7 +63,6 @@ class MockFileHandle implements FileSystemFileHandle {
 		return other === this
 	}
 
-	// Test helper to simulate file modification
 	setContent(content: string): void {
 		const encoder = new TextEncoder()
 		this._file.data = encoder.encode(content)

@@ -46,7 +46,6 @@ class DirHandleCache {
 	get(key: string): FileSystemDirectoryHandle | undefined {
 		const value = this.#cache.get(key)
 		if (value !== undefined) {
-			// Move to end (most recently used)
 			this.#cache.delete(key)
 			this.#cache.set(key, value)
 		}
@@ -54,7 +53,6 @@ class DirHandleCache {
 	}
 
 	set(key: string, value: FileSystemDirectoryHandle): void {
-		// Remove oldest if at capacity
 		if (this.#cache.size >= this.#maxSize) {
 			const oldest = this.#cache.keys().next().value
 			if (oldest !== undefined) {
@@ -238,31 +236,25 @@ export class FsContextImpl implements FsContextInternal {
 		segments: string[],
 		create: boolean
 	): Promise<FileSystemDirectoryHandle> {
-		// Fast path: empty segments means root
 		if (segments.length === 0) {
 			return this.root
 		}
 
 		const fullPath = segments.join('/')
 
-		// 1. Check Cache
 		const cached = this.#dirHandleCache.get(fullPath)
 		if (cached) {
 			return cached
 		}
 
-		// 2. Check In-Flight Requests (Request Coalescing)
-		// We use a unique key for the operation to dedupe parallel quests
 		const opKey = `${fullPath}:${create}`
 		const pending = this.#pendingOperations.get(opKey)
 		if (pending) {
 			return pending
 		}
 
-		// 3. Perform Operation
 		const operation = (async () => {
 			try {
-				// Find longest cached prefix to minimize tree walking
 				let startIndex = 0
 				let current: FileSystemDirectoryHandle = this.root
 
@@ -276,10 +268,8 @@ export class FsContextImpl implements FsContextInternal {
 					}
 				}
 
-				// Walk from the cached prefix (or root) to the target
 				for (let i = startIndex; i < segments.length; i++) {
 					current = await current.getDirectoryHandle(segments[i]!, { create })
-					// Cache intermediate paths as we walk
 					const intermediatePath = segments.slice(0, i + 1).join('/')
 					this.#dirHandleCache.set(intermediatePath, current)
 				}

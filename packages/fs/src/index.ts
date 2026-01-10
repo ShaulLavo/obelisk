@@ -53,7 +53,7 @@ export type {
 } from './grep'
 
 // Sync module
-export { ByteContentHandle, ByteContentHandleFactory, WriteTokenManager } from './sync'
+export { ByteContentHandle, ByteContentHandleFactory, WriteTokenManager, FileSyncManager } from './sync'
 export type {
 	SyncState,
 	ContentHandle,
@@ -71,4 +71,6 @@ export type {
 	SyncedEvent,
 	SyncEventMap,
 	SyncEventHandler,
+	FileSyncManagerOptions,
+	ObserverStrategy,
 } from './sync'
