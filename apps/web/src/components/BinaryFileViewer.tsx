@@ -57,7 +57,7 @@ const BinaryRow = (props: BinaryRowProps) => {
 					{offset().toString(16).padStart(8, '0').toUpperCase()}
 				</span>
 
-				<div class="flex-1">
+				<div class="flex-1 min-w-0">
 					<div class="flex items-center gap-4">
 						<div class="flex flex-wrap gap-0.5">
 							<For each={Array.from(rowBytes())}>
@@ -68,7 +68,7 @@ const BinaryRow = (props: BinaryRowProps) => {
 									return (
 										<>
 											<span
-												class="cursor-default rounded px-1 tabular-nums text-zinc-200 font-normal"
+												class="cursor-default rounded px-1 tabular-nums text-zinc-200 font-normal min-w-[24px] text-center"
 												classList={{
 													'bg-emerald-400 text-zinc-900 font-semibold':
 														isHovered(),
@@ -89,7 +89,7 @@ const BinaryRow = (props: BinaryRowProps) => {
 							</For>
 						</div>
 
-						<div class="flex flex-wrap gap-0.5">
+						<div class="flex flex-wrap gap-0.5 ml-4">
 							<For each={Array.from(rowBytes())}>
 								{(byte, idx) => {
 									const globalIndex = () => offset() + idx()
@@ -143,6 +143,7 @@ export const BinaryFileViewer = (props: BinaryFileViewerProps) => {
 			getScrollElement: () => scrollElement,
 			estimateSize: () => rowHeight(),
 			overscan: VIRTUALIZER_OVERSCAN,
+			initialOffset: 0,
 		})
 
 	const virtualRows = () => rowVirtualizer.getVirtualItems()
@@ -182,7 +183,7 @@ export const BinaryFileViewer = (props: BinaryFileViewerProps) => {
 	})
 
 	return (
-		<div class="mt-4 flex-1 overflow-hidden rounded border border-zinc-800/70 bg-zinc-950/30 flex flex-col">
+		<div class="flex-1 overflow-hidden rounded border border-zinc-800/70 bg-zinc-950/30 flex flex-col">
 			<div
 				class="border-b border-zinc-800/70 bg-zinc-900/60 px-3 py-2 text-[11px] uppercase tracking-[0.08em] text-zinc-400"
 				style={{
@@ -205,20 +206,48 @@ export const BinaryFileViewer = (props: BinaryFileViewerProps) => {
 					</div>
 				}
 			>
+				{/* Column headers */}
+				<div class="border-b border-zinc-800/30 bg-zinc-900/30 px-3 py-1 text-[10px] text-zinc-500 font-mono">
+					<div class="flex items-center gap-4">
+						<span class="w-16 shrink-0 text-right">Offset</span>
+						<div class="flex-1 min-w-0">
+							<div class="flex items-center gap-4">
+								<div class="flex gap-0.5 flex-wrap">
+									<For each={Array.from({ length: 16 }, (_, i) => i)}>
+										{(i) => (
+											<>
+												<span class="px-1 text-center min-w-[24px] text-[10px]">
+													{i.toString(16).toUpperCase().padStart(2, '0')}
+												</span>
+												<Show when={i === 7}>
+													<span class="w-2" />
+												</Show>
+											</>
+										)}
+									</For>
+								</div>
+								<div class="text-center ml-4">
+									<span>ASCII</span>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
 				<div
 					ref={(element) => {
 						scrollElement = element
 					}}
-					class="h-full overflow-auto"
+					class="flex-1 overflow-auto relative"
 					style={{
 						'font-size': `${props.fontSize()}px`,
 						'font-family': props.fontFamily(),
 					}}
 				>
 					<div
+						class="relative"
 						style={{
 							height: `${totalHeight()}px`,
-							position: 'relative',
 						}}
 					>
 						<For each={virtualRows()}>
