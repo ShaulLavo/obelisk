@@ -22,7 +22,7 @@ export const Sidebar = (props: SidebarProps) => {
 			<Flex
 				flexDirection="col"
 				alignItems="start"
-				class="p-2 border-b border-border items-start"
+				class="p-2 border-b border-border"
 			>
 				<h1 class="text-xs font-bold tracking-widest text-muted-foreground uppercase">
 					One Table
@@ -76,7 +76,7 @@ export const Sidebar = (props: SidebarProps) => {
 					</Button>
 				</div>
 			</div>
-			<div class="p-4 border-t border-border space-y-2">
+			<Flex flexDirection="col" class="p-4 border-t border-border gap-2">
 				<Button
 					onClick={() => props.onRefreshSchema()}
 					variant="secondary"
@@ -89,7 +89,7 @@ export const Sidebar = (props: SidebarProps) => {
 					onReset={props.onResetDatabase}
 					variant="sidebar"
 				/>
-			</div>
+			</Flex>
 		</aside>
 	)
 }

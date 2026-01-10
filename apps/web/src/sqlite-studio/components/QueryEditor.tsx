@@ -8,10 +8,12 @@ type QueryEditorProps = {
 	onRunQuery: () => void
 }
 
+import { Flex } from '@repo/ui/flex'
+
 export const QueryEditor = (props: QueryEditorProps) => {
 	return (
-		<div class="border-b border-border bg-background">
-			<div class="relative group pl-3">
+		<Flex class="border-b border-border bg-background">
+			<Flex class="relative group pl-3 w-full">
 				<TextField
 					value={props.sqlQuery()}
 					onChange={props.setSqlQuery}
@@ -36,7 +38,7 @@ export const QueryEditor = (props: QueryEditorProps) => {
 						Run
 					</Button>
 				</div>
-			</div>
-		</div>
+			</Flex>
+		</Flex>
 	)
 }

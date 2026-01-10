@@ -127,9 +127,9 @@ export const SqliteStudio: Component = () => {
 												alignItems="stretch"
 												class="gap-2"
 											>
-												<div class="text-xs font-mono text-muted-foreground px-1">
+												<Flex class="text-xs font-mono text-muted-foreground px-1">
 													Result {index() + 1}
-												</div>
+												</Flex>
 												<ResultsTable
 													columns={() => result.columns}
 													rows={() => result.rows}
