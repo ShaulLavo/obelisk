@@ -90,6 +90,14 @@ export const gitRoutes = new Elysia({ prefix: '/git' }).all(
 		)
 
 		return buildGitProxyResponse(upstream)
+	},
+	{
+		detail: {
+			summary: 'Git CORS proxy',
+			description:
+				'Proxies Git HTTP requests to bypass CORS restrictions. Only allows configured hosts.',
+			tags: ['Git'],
+		},
 	}
 )
 

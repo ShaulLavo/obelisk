@@ -48,7 +48,10 @@ self.addEventListener('activate', (event) => {
 			.then((cacheNames) => {
 				return Promise.all(
 					cacheNames.map((cacheName) => {
-						if (cacheName.startsWith('nerdfonts-') && cacheName !== CACHE_NAME) {
+						if (
+							cacheName.startsWith('nerdfonts-') &&
+							cacheName !== CACHE_NAME
+						) {
 							console.log('[SW] Deleting old cache:', cacheName)
 							return caches.delete(cacheName)
 						}
@@ -175,7 +178,7 @@ function extractFontName(pathname: string): string {
 	const match =
 		pathname.match(/\/fonts\/([^/]+)$/) ||
 		pathname.match(/\/api\/fonts\/([^/]+)$/)
-	return match ? match[1] : pathname.split('/').pop() ?? ''
+	return match ? match[1] : (pathname.split('/').pop() ?? '')
 }
 
 /**
