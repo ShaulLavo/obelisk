@@ -19,6 +19,5 @@
 	"chatgpt.commentCodeLensEnabled": false,
 	"window.autoDetectColorScheme": true,
 	"workbench.preferredLightColorTheme": "Tokyo Night Light",
-	"workbench.preferredDarkColorTheme": "poimandres",
-	"typescript.autoClosingTags": false
+	"workbench.preferredDarkColorTheme": "poimandres"
 }
