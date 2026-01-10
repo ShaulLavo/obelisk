@@ -13,7 +13,6 @@ const PREVIEW_CACHE_DIR = path.join(CACHE_DIR, 'previews')
 const FONT_LINKS_FILE = path.join(CACHE_DIR, 'font-links.json')
 const DEFAULT_PREVIEW_TEXT = 'The quick brown fox jumps 0123'
 
-// Ensure cache directories exist
 async function ensureCacheDirs() {
 	if (!existsSync(FONTS_DIR)) {
 		await fs.mkdir(FONTS_DIR, { recursive: true })
@@ -25,7 +24,6 @@ export async function getNerdFontLinks(): Promise<{
 }> {
 	await ensureCacheDirs()
 
-	// Return cached links if available
 	if (existsSync(FONT_LINKS_FILE)) {
 		const content = await fs.readFile(FONT_LINKS_FILE, 'utf-8')
 		return JSON.parse(content)
@@ -53,7 +51,6 @@ export async function getNerdFontLinks(): Promise<{
 			{} as { [fontName: string]: string }
 		)
 
-	// Cache the result
 	await fs.writeFile(FONT_LINKS_FILE, JSON.stringify(links, null, 2))
 	return links
 }
@@ -63,7 +60,6 @@ export async function getExtractedFont(
 ): Promise<ArrayBuffer | null> {
 	await ensureCacheDirs()
 
-	// Check local cache for the extracted font file
 	const cachedFontPath = path.join(FONTS_DIR, `${fontName}.ttf`)
 	if (existsSync(cachedFontPath)) {
 		console.log(`Serving cached font: ${fontName}`)
@@ -80,7 +76,6 @@ export async function getExtractedFont(
 		return null
 	}
 
-	// Download ZIP
 	const response = await fetch(zipUrl)
 	if (!response.ok) {
 		console.error(`Failed to download font: ${zipUrl}`)
@@ -90,7 +85,6 @@ export async function getExtractedFont(
 	const blob = await response.blob()
 	const arrayBuffer = await blob.arrayBuffer()
 
-	// Extract ZIP
 	const zip = new JSZip()
 	const zipContent = await zip.loadAsync(arrayBuffer)
 
@@ -138,7 +132,6 @@ export async function getPreviewSubset(
 ): Promise<Buffer | null> {
 	await ensureCacheDirs()
 
-	// Check preview cache first
 	const textHash = crypto
 		.createHash('md5')
 		.update(previewText)
@@ -153,16 +146,13 @@ export async function getPreviewSubset(
 		return await fs.readFile(cachedPreviewPath)
 	}
 
-	// Get full font (downloads if not cached)
 	const fullFont = await getExtractedFont(fontName)
 	if (!fullFont) return null
 
-	// Create subset with only preview characters
 	const subset = await subsetFont(Buffer.from(fullFont), previewText, {
 		targetFormat: 'woff2',
 	})
 
-	// Cache the subset
 	await fs.mkdir(PREVIEW_CACHE_DIR, { recursive: true })
 	await fs.writeFile(cachedPreviewPath, subset)
 

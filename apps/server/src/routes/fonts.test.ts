@@ -2,7 +2,6 @@ import { describe, expect, it, beforeAll } from 'bun:test'
 import { Elysia } from 'elysia'
 import { fontsRoutes } from './fonts'
 
-// Create a test app with just the fonts routes
 const app = new Elysia().use(fontsRoutes)
 
 describe('Fonts Routes', () => {
@@ -14,7 +13,6 @@ describe('Fonts Routes', () => {
 
 			const data = await response.json()
 			expect(typeof data).toBe('object')
-			// Should have font entries (keys are font names, values are URLs)
 			const keys = Object.keys(data)
 			expect(keys.length).toBeGreaterThan(0)
 		})

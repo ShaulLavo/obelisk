@@ -132,11 +132,9 @@ export class CacheMonitoringService {
 	 */
 	async getCacheStats(): Promise<CacheMonitoringStats> {
 		try {
-			// Get Cache API stats
 			const { fontCacheService } = await import('./FontCacheService')
 			const cacheApiStats = await fontCacheService.getCacheStats()
 
-			// Get Service Worker stats
 			let swStats = null
 			try {
 				if (serviceWorkerManager.isSupported()) {
@@ -146,13 +144,11 @@ export class CacheMonitoringService {
 				console.warn('[CacheMonitoringService] Failed to get SW stats:', error)
 			}
 
-			// Get manifest for offline availability
 			const manifest = await cacheManifestService.generateManifest()
 			const offlineCount = manifest.entries.filter(
 				(e) => e.isAvailableOffline
 			).length
 
-			// Calculate performance metrics
 			const cacheHitRate = this.calculateCacheHitRate()
 			const errorRate = this.calculateErrorRate()
 			const avgDownloadTime = this.calculateAverageDownloadTime()
@@ -199,7 +195,6 @@ export class CacheMonitoringService {
 				error
 			)
 
-			// Return default stats on error
 			return this.getDefaultStats()
 		}
 	}
@@ -223,13 +218,9 @@ export class CacheMonitoringService {
 			const { fontMetadataService } = await import('./FontMetadataService')
 			const { fontCacheService } = await import('./FontCacheService')
 
-			// Get current stats
 			const initialStats = await this.getCacheStats()
-
-			// Get all font metadata for analysis
 			const allMetadata = await fontMetadataService.getAllFontMetadata()
 
-			// Determine fonts to remove
 			const fontsToRemove = this.selectFontsForCleanup(allMetadata, {
 				maxSize,
 				maxAge,
@@ -242,7 +233,6 @@ export class CacheMonitoringService {
 			let freedSpace = 0
 
 			if (!dryRun && fontsToRemove.length > 0) {
-				// Remove fonts from both caches
 				for (const fontName of fontsToRemove) {
 					try {
 						const metadata = await fontMetadataService.getFontMetadata(fontName)
@@ -250,10 +240,8 @@ export class CacheMonitoringService {
 							freedSpace += metadata.size
 						}
 
-						// Remove from Cache API
 						await fontCacheService.removeFont(fontName)
 
-						// Remove from Service Worker cache
 						if (serviceWorkerManager.isSupported()) {
 							await serviceWorkerManager.clearFontCache(fontName)
 						}
@@ -268,7 +256,6 @@ export class CacheMonitoringService {
 				}
 			}
 
-			// Get final stats
 			const finalStats = await this.getCacheStats()
 
 			return {
@@ -303,7 +290,6 @@ export class CacheMonitoringService {
 		try {
 			const stats = await this.getCacheStats()
 
-			// Check cache size
 			const maxRecommendedSize = 100 * 1024 * 1024 // 100MB
 			if (stats.combined.totalSize > maxRecommendedSize) {
 				issues.push(
@@ -312,7 +298,6 @@ export class CacheMonitoringService {
 				recommendations.push('Run cache cleanup to free space')
 			}
 
-			// Check service worker status
 			if (!stats.serviceWorker.active) {
 				issues.push(
 					'Service worker is not active - offline functionality unavailable'
@@ -320,7 +305,6 @@ export class CacheMonitoringService {
 				recommendations.push('Refresh the page to activate service worker')
 			}
 
-			// Check error rate
 			if (stats.performance.errorRate > 0.1) {
 				// 10% error rate
 				issues.push(
@@ -329,7 +313,6 @@ export class CacheMonitoringService {
 				recommendations.push('Check network connectivity and server status')
 			}
 
-			// Check cache hit rate
 			if (stats.performance.cacheHitRate < 0.5) {
 				// 50% hit rate
 				issues.push(
@@ -338,7 +321,6 @@ export class CacheMonitoringService {
 				recommendations.push('Consider pre-caching frequently used fonts')
 			}
 
-			// Check for duplicate storage
 			if (stats.combined.duplicateSize > 10 * 1024 * 1024) {
 				// 10MB
 				issues.push(
@@ -347,7 +329,6 @@ export class CacheMonitoringService {
 				recommendations.push('Optimize cache strategy to reduce duplication')
 			}
 
-			// Determine overall status
 			let status: 'healthy' | 'warning' | 'critical' = 'healthy'
 			if (issues.length > 0) {
 				status = issues.some(
@@ -367,7 +348,6 @@ export class CacheMonitoringService {
 				lastCheck: new Date(),
 			}
 
-			// Log health check results
 			if (status !== 'healthy') {
 				console.warn(
 					'[CacheMonitoringService] Health check issues detected:',
@@ -401,7 +381,6 @@ export class CacheMonitoringService {
 		const metrics = this.performanceMetrics.get(operation)!
 		metrics.push(duration)
 
-		// Keep only last 100 measurements
 		if (metrics.length > 100) {
 			metrics.shift()
 		}
@@ -436,13 +415,11 @@ export class CacheMonitoringService {
 			const usedSpace = stats.combined.totalSize
 			const utilizationPercentage = (usedSpace / totalCapacity) * 100
 
-			// Sort fonts by size (descending)
 			const topFontsBySize = allMetadata
 				.sort((a, b) => b.size - a.size)
 				.slice(0, 10)
 				.map((font) => ({ name: font.name, size: font.size }))
 
-			// Sort fonts by age (oldest first)
 			const now = new Date()
 			const oldestFonts = allMetadata
 				.sort((a, b) => a.installedAt.getTime() - b.installedAt.getTime())
@@ -452,7 +429,6 @@ export class CacheMonitoringService {
 					age: now.getTime() - font.installedAt.getTime(),
 				}))
 
-			// Sort fonts by last accessed (least recent first)
 			const leastUsedFonts = allMetadata
 				.sort((a, b) => a.lastAccessed.getTime() - b.lastAccessed.getTime())
 				.slice(0, 10)
@@ -481,13 +457,10 @@ export class CacheMonitoringService {
 	// Private helper methods
 
 	private async collectMetrics(): Promise<void> {
-		// This would collect periodic metrics in a real implementation
-		// For now, just log that monitoring is active
 		console.log('[CacheMonitoringService] Collecting metrics...')
 	}
 
 	private calculateCacheHitRate(): number {
-		// Simple calculation based on recorded metrics
 		const cacheHits = this.performanceMetrics.get('cache-hit')?.length || 0
 		const cacheMisses = this.performanceMetrics.get('cache-miss')?.length || 0
 		const total = cacheHits + cacheMisses
@@ -508,7 +481,6 @@ export class CacheMonitoringService {
 	}
 
 	private calculateDuplicateSize(cacheApiSize: number, swSize: number): number {
-		// Estimate duplicate storage (fonts stored in both caches)
 		return Math.min(cacheApiSize, swSize)
 	}
 
@@ -528,12 +500,10 @@ export class CacheMonitoringService {
 		const now = new Date()
 		const fontsToRemove: string[] = []
 
-		// Sort by last accessed (oldest first)
 		const sortedFonts = [...metadata].sort(
 			(a, b) => a.lastAccessed.getTime() - b.lastAccessed.getTime()
 		)
 
-		// Remove old fonts first
 		for (const font of sortedFonts) {
 			const age = now.getTime() - font.lastAccessed.getTime()
 			if (age > options.maxAge) {
@@ -541,8 +511,6 @@ export class CacheMonitoringService {
 			}
 		}
 
-		// If still over size limit, remove least recently used fonts
-		// but keep the most recent ones
 		if (
 			fontsToRemove.length === 0 &&
 			sortedFonts.length > options.keepMostRecent
@@ -613,5 +581,4 @@ export class CacheMonitoringService {
 	}
 }
 
-// Singleton instance
 export const cacheMonitoringService = new CacheMonitoringService()

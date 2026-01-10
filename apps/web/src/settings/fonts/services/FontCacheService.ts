@@ -489,11 +489,8 @@ export class FontCacheService {
 	 * Notify user about fallback mode activation
 	 */
 	private notifyFallbackMode(message: string): void {
-		// In a real app, this might show a toast notification
-		// For now, just log a prominent message
 		console.warn(`[FontCacheService] FALLBACK MODE ACTIVE: ${message}`)
 
-		// You could dispatch a custom event here for the UI to catch
 		if (typeof window !== 'undefined') {
 			window.dispatchEvent(
 				new CustomEvent('font-cache-fallback', {
@@ -504,5 +501,4 @@ export class FontCacheService {
 	}
 }
 
-// Singleton instance
 export const fontCacheService = new FontCacheService()

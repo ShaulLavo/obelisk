@@ -160,7 +160,6 @@ export const createFontStore = (): FontStore => {
 
 		try {
 			// Call batch API
-			console.log('[FontStore] Batch downloading fonts:', names)
 			const response = await client.fonts.batch.post({ names })
 
 			if (!response.data) {

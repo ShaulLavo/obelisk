@@ -70,4 +70,5 @@ export const env = {
 	webPort,
 	webOrigin: webOrigin ?? `http://localhost:${webPort}`,
 	gitProxyAllowedHosts,
+	mode: envMode,
 }

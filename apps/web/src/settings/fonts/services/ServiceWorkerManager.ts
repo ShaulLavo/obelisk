@@ -50,13 +50,13 @@ export class ServiceWorkerManager {
 
 			this.isRegistered = true
 
-			// Set up message listener
+			this.isRegistered = true
+
 			navigator.serviceWorker.addEventListener(
 				'message',
 				this.handleServiceWorkerMessage.bind(this)
 			)
 
-			// Handle service worker updates
 			this.registration.addEventListener('updatefound', () => {
 				const newWorker = this.registration!.installing
 
@@ -66,7 +66,6 @@ export class ServiceWorkerManager {
 							newWorker.state === 'installed' &&
 							navigator.serviceWorker.controller
 						) {
-							// Optionally notify the user about the update
 							this.notifyServiceWorkerUpdate()
 						}
 					})
@@ -203,17 +202,14 @@ export class ServiceWorkerManager {
 
 		switch (type) {
 			case 'FONT_ACCESSED':
-				// Handle font access time update
 				this.handleFontAccessed(fontName)
 				break
 
 			case 'STORE_FONT_METADATA':
-				// Handle metadata storage request
 				this.handleStoreMetadata(fontName, metadata)
 				break
 
 			default: {
-				// Check for custom handlers
 				const handler = this.messageHandlers.get(type)
 				if (handler) {
 					handler(event.data)
@@ -227,7 +223,6 @@ export class ServiceWorkerManager {
 	 */
 	private async handleFontAccessed(fontName: string): Promise<void> {
 		try {
-			// Update font access time in IndexedDB via FontMetadataService
 			const { fontMetadataService } = await import('./FontMetadataService')
 			await fontMetadataService.updateLastAccessed(fontName)
 		} catch (error) {
@@ -246,7 +241,6 @@ export class ServiceWorkerManager {
 		metadata: any
 	): Promise<void> {
 		try {
-			// Store metadata in IndexedDB via FontMetadataService
 			const { fontMetadataService } = await import('./FontMetadataService')
 
 			const fontMetadata = {
@@ -279,7 +273,6 @@ export class ServiceWorkerManager {
 	 * Notify about service worker updates
 	 */
 	private notifyServiceWorkerUpdate(): void {
-		// Dispatch custom event for UI to handle
 		if (typeof window !== 'undefined') {
 			window.dispatchEvent(
 				new CustomEvent('service-worker-update', {
@@ -333,5 +326,4 @@ export class ServiceWorkerManager {
 	}
 }
 
-// Singleton instance
 export const serviceWorkerManager = new ServiceWorkerManager()

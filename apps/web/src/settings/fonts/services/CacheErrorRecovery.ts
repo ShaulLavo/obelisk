@@ -166,7 +166,6 @@ export class CacheErrorRecoveryService {
 
 	private async clearAndRebuildCache(): Promise<CacheRecoveryResult> {
 		try {
-			// Clear Cache API if available
 			if ('caches' in window) {
 				try {
 					await caches.delete('nerdfonts-v1')
@@ -175,14 +174,12 @@ export class CacheErrorRecoveryService {
 				}
 			}
 
-			// Clear IndexedDB if available
 			try {
 				await fontMetadataService.clearAllMetadata()
 			} catch (error) {
 				console.warn('[CacheErrorRecovery] Failed to clear IndexedDB:', error)
 			}
 
-			// Clear localStorage fallback
 			try {
 				const keys = Object.keys(localStorage)
 				for (const key of keys) {
@@ -212,7 +209,6 @@ export class CacheErrorRecoveryService {
 
 	private async reduceCacheSize(): Promise<CacheRecoveryResult> {
 		try {
-			// Get all font metadata sorted by last accessed
 			const allMetadata = await fontMetadataService.getAllFontMetadata()
 			const sortedByAccess = allMetadata.sort(
 				(a, b) => a.lastAccessed.getTime() - b.lastAccessed.getTime()
@@ -226,13 +222,11 @@ export class CacheErrorRecoveryService {
 
 			for (const metadata of fontsToRemove) {
 				try {
-					// Remove from Cache API
 					if ('caches' in window) {
 						const cache = await caches.open('nerdfonts-v1')
 						await cache.delete(`/fonts/${metadata.name}`)
 					}
 
-					// Remove metadata
 					await fontMetadataService.removeFontMetadata(metadata.name)
 				} catch (error) {
 					console.warn(
@@ -358,5 +352,4 @@ export class CacheErrorRecoveryService {
 	}
 }
 
-// Export singleton instance
 export const cacheErrorRecovery = CacheErrorRecoveryService.getInstance()

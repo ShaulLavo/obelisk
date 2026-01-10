@@ -1,9 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
 import * as fc from 'fast-check'
 
-import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
-import * as fc from 'fast-check'
-
 // Create a minimal test that doesn't depend on complex imports
 describe('FontCacheService Cache Management', () => {
 	/**
