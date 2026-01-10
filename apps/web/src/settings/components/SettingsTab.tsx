@@ -11,7 +11,7 @@ import { useSettings } from '../SettingsProvider'
 import { FontsSubcategoryUI } from '../fonts/components/FontsSubcategoryUI'
 import { FontFamilySelect } from './FontFamilySelect'
 import { FontCategory } from '../../fonts'
-
+import { Flex } from '@repo/ui/flex'
 export type SettingsTabProps = {
 	initialCategory?: string
 	currentCategory?: string
@@ -155,8 +155,14 @@ export const SettingsTab: Component<SettingsTabProps> = (props) => {
 	// Convert schemas to sidebar format (uses same type now)
 	const sidebarCategories = () => settingsState.schemas
 
+	// ...
+
 	return (
-		<div class="flex flex-col h-full min-h-0 bg-background">
+		<Flex
+			flexDirection="col"
+			class="h-full min-h-0 bg-background"
+			alignItems="stretch"
+		>
 			<div class="shrink-0 px-4 py-2 border-b border-border/60">
 				<SettingsSearch
 					value={searchValue()}
@@ -190,6 +196,6 @@ export const SettingsTab: Component<SettingsTabProps> = (props) => {
 					/>
 				)}
 			</Resizable>
-		</div>
+		</Flex>
 	)
 }

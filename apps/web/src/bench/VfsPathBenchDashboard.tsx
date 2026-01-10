@@ -6,27 +6,18 @@ import { Alert, AlertDescription } from '@repo/ui/alert'
 import {
 	createSolidTable,
 	getCoreRowModel,
-	getPaginationRowModel,
 	flexRender,
 	type ColumnDef,
 	type CellContext,
 } from '@tanstack/solid-table'
 import {
-	Table,
 	TableBody,
 	TableCell,
 	TableHead,
 	TableHeader,
 	TableRow,
 } from '@repo/ui/table'
-import {
-	Pagination,
-	PaginationEllipsis,
-	PaginationItem,
-	PaginationItems,
-	PaginationNext,
-	PaginationPrevious,
-} from '@repo/ui/pagination'
+
 import type {
 	VfsPathScenario,
 	VfsPathResult,
@@ -177,88 +168,50 @@ const VfsPathResultsTable = (props: { data: ScenarioState[] }) => {
 			return columns()
 		},
 		getCoreRowModel: getCoreRowModel(),
-		getPaginationRowModel: getPaginationRowModel(),
-		initialState: {
-			pagination: {
-				pageSize: 10,
-			},
-		},
 	})
 
 	return (
-		<div class="flex flex-col flex-1 min-h-0">
-			<div class="flex-1 overflow-auto min-h-0">
-				<Table class="text-left text-sm text-foreground relative">
-					<TableHeader class="sticky top-0 z-10 bg-card shadow-sm">
-						<For each={table.getHeaderGroups()}>
-							{(headerGroup) => (
-								<TableRow class="bg-muted/50 border-b border-border hover:bg-muted/50">
-									<For each={headerGroup.headers}>
-										{(header) => (
-											<TableHead class="px-4 py-3 font-medium text-muted-foreground whitespace-nowrap bg-card">
-												{header.isPlaceholder
-													? null
-													: flexRender(
-															header.column.columnDef.header,
-															header.getContext()
-														)}
-											</TableHead>
-										)}
-									</For>
-								</TableRow>
-							)}
-						</For>
-					</TableHeader>
-					<TableBody class="divide-y divide-border">
-						<For each={table.getRowModel().rows}>
-							{(row) => (
-								<TableRow class="hover:bg-muted/50 transition-colors">
-									<For each={row.getVisibleCells()}>
-										{(cell) => (
-											<TableCell class="px-4 py-3">
-												{flexRender(
-													cell.column.columnDef.cell,
-													cell.getContext()
-												)}
-											</TableCell>
-										)}
-									</For>
-								</TableRow>
-							)}
-						</For>
-					</TableBody>
-				</Table>
-			</div>
-			<div class="px-4 py-2 bg-muted/30 border-t border-border text-xs text-muted-foreground flex items-center justify-between shrink-0">
-				<span>
-					Showing{' '}
-					{table.getState().pagination.pageIndex *
-						table.getState().pagination.pageSize +
-						1}
-					-
-					{Math.min(
-						(table.getState().pagination.pageIndex + 1) *
-							table.getState().pagination.pageSize,
-						props.data.length
-					)}{' '}
-					of {props.data.length} scenarios
-				</span>
-				<Pagination
-					count={Math.ceil(
-						props.data.length / table.getState().pagination.pageSize
-					)}
-					page={table.getState().pagination.pageIndex + 1}
-					onPageChange={(page) => table.setPageIndex(page - 1)}
-					itemComponent={(props) => (
-						<PaginationItem page={props.page}>{props.page}</PaginationItem>
-					)}
-					ellipsisComponent={() => <PaginationEllipsis />}
-				>
-					<PaginationPrevious />
-					<PaginationItems />
-					<PaginationNext />
-				</Pagination>
-			</div>
+		<div class="flex-1 overflow-auto min-h-0">
+			<table class="w-full caption-bottom text-sm text-left text-foreground relative">
+				<TableHeader class="sticky top-0 z-10 bg-card shadow-sm">
+					<For each={table.getHeaderGroups()}>
+						{(headerGroup) => (
+							<TableRow class="bg-muted/50 border-b border-border hover:bg-muted/50">
+								<For each={headerGroup.headers}>
+									{(header) => (
+										<TableHead class="px-4 py-3 font-medium text-muted-foreground whitespace-nowrap bg-card">
+											{header.isPlaceholder
+												? null
+												: flexRender(
+														header.column.columnDef.header,
+														header.getContext()
+													)}
+										</TableHead>
+									)}
+								</For>
+							</TableRow>
+						)}
+					</For>
+				</TableHeader>
+				<TableBody class="divide-y divide-border">
+					<For each={table.getRowModel().rows}>
+						{(row) => (
+							<TableRow class="hover:bg-muted/50 transition-colors">
+								<For each={row.getVisibleCells()}>
+									{(cell) => (
+										<TableCell class="px-4 py-3">
+											{flexRender(
+												cell.column.columnDef.cell,
+												cell.getContext()
+											)}
+										</TableCell>
+									)}
+								</For>
+							</TableRow>
+						)}
+					</For>
+				</TableBody>
+			</table>
 		</div>
 	)
 }
