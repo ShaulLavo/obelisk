@@ -1,4 +1,10 @@
-import { createMemo, createSignal, untrack, type Accessor } from 'solid-js'
+import {
+	createMemo,
+	createSignal,
+	createEffect,
+	untrack,
+	type Accessor,
+} from 'solid-js'
 import { unwrap } from 'solid-js/store'
 
 import { loggers } from '@repo/logger'
@@ -28,7 +34,6 @@ type CachedLineHighlights = {
 
 type PrecomputedLineHighlights = {
 	segments: LineHighlightSegment[][]
-	indexByLineId: Map<number, number>
 }
 
 export type CreateLineHighlightsOptions = {
@@ -58,11 +63,6 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 		(prev: EditorSyntaxHighlight[] | undefined) => {
 			const highlightsProp = options.highlights?.()
 			if (!highlightsProp?.length) {
-				if (prev !== EMPTY_HIGHLIGHTS) {
-					// TODO get rid of this revsion thing completely
-					//also it's a setter inside a getter
-					setHighlightsRevision((v) => v + 1)
-				}
 				return EMPTY_HIGHLIGHTS
 			}
 
@@ -96,10 +96,17 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 			}
 
 			// Highlights changed - increment revision to notify consumers
-			setHighlightsRevision((v) => v + 1)
 			return highlights.slice().sort((a, b) => a.startIndex - b.startIndex)
 		}
 	)
+
+	createEffect((prev: EditorSyntaxHighlight[] | undefined) => {
+		const current = sortedHighlights()
+		if (prev !== current) {
+			setHighlightsRevision((v) => v + 1)
+		}
+		return current
+	})
 
 	const sortedErrorHighlights = createMemo<ErrorHighlight[]>(() => {
 		const errorsProp = options.errors?.()
@@ -162,7 +169,6 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 
 			const count = options.lineCount()
 			if (count === 0) {
-				setIsPrecomputedReady(false)
 				return undefined
 			}
 
@@ -171,11 +177,9 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 			const hasHighlights = highlights.length > 0
 			const hasErrors = errors.length > 0
 			if (!hasHighlights && !hasErrors) {
-				setIsPrecomputedReady(false)
 				return undefined
 			}
 
-			setIsPrecomputedReady(false)
 			if (hasHighlights && !spatialIndexReady) {
 				const start = performance.now()
 				buildSpatialIndex(highlights)
@@ -209,20 +213,11 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 					)
 				: []
 
-			const indexByLineId = new Map<number, number>()
-
-			// Note: We don't have lineIds here anymore easily?
-			// precomputedSegments returned indexByLineId to help mapping?
-			// The usage in getLineHighlights used indexByLineId to map cache key (lineId) to index.
-			// But getLineHighlights receives `entry`. `entry` knows its index!
-			// Sof indexByLineId might not be needed?
-			// Let's check getLineHighlights usage.
-
 			let result: PrecomputedLineHighlights
 			if (!hasErrors) {
-				result = { segments: highlightSegments, indexByLineId }
+				result = { segments: highlightSegments }
 			} else if (!hasHighlights) {
-				result = { segments: errorSegments, indexByLineId }
+				result = { segments: errorSegments }
 			} else {
 				const merged: LineHighlightSegment[][] = new Array(count)
 				for (let i = 0; i < count; i += 1) {
@@ -232,17 +227,21 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 					)
 					if (mergedLine.length > 0) merged[i] = mergedLine
 				}
-				result = { segments: merged, indexByLineId }
+				result = { segments: merged }
 			}
 
 			const durationMs = performance.now() - start
-			setIsPrecomputedReady(true)
 			log.debug(
 				`precomputedSegments: ${count} lines in ${durationMs.toFixed(1)}ms`
 			)
 			return result
 		}
 	)
+
+	createEffect(() => {
+		const ready = precomputedSegments() !== undefined
+		setIsPrecomputedReady(ready)
+	})
 
 	let precomputedCache = new Map<number, LineHighlightSegment[]>()
 	let lastPrecomputed: PrecomputedLineHighlights | undefined
@@ -349,10 +348,6 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 		}
 	}
 
-	let calcCount = 0
-	let shiftCount = 0
-	let cacheHitCount = 0
-
 	const getLineHighlights = (entry: LineEntry): LineHighlightSegment[] => {
 		const offsets = getValidatedOffsets()
 		const hasOffsets = offsets.length > 0
@@ -424,18 +419,12 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 
 			const precomputedState = lastPrecomputed
 			if (precomputedState) {
-				const mappedIndex =
-					entry.lineId > 0
-						? precomputedState.indexByLineId.get(entry.lineId)
-						: entry.index
-				if (typeof mappedIndex === 'number') {
-					const precomputedLine =
-						precomputedState.segments[mappedIndex] ?? EMPTY_SEGMENTS
-					if (precomputedLine.length > 0) {
-						precomputedCache.set(lineKey, precomputedLine)
-					}
-					return precomputedLine
+				const precomputedLine =
+					precomputedState.segments[entry.index] ?? EMPTY_SEGMENTS
+				if (precomputedLine.length > 0) {
+					precomputedCache.set(lineKey, precomputedLine)
 				}
+				return precomputedLine
 			}
 		}
 
@@ -451,7 +440,6 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 			cached.text === entry.text
 		) {
 			if (cached.appliedShift === offsetShiftAmount) {
-				cacheHitCount++
 				return cached.segments
 			}
 
@@ -471,13 +459,11 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 					shiftedSegments,
 					offsetShiftAmount
 				)
-				shiftCount++
+
 				return shiftedSegments
 			}
 		}
 
-		calcCount++
-		const calcStart = performance.now()
 		let highlightSegments: LineHighlightSegment[]
 		if (highlights.length > 0) {
 			const lookupRange = hasOffsets
@@ -586,19 +572,13 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 					cached.segments,
 					offsetShiftAmount
 				)
-				if (entry.index === 19) {
-					log.debug(
-						`calc (cache match) took ${(performance.now() - calcStart).toFixed(1)}ms`
-					)
-				}
+
 				return cached.segments
 			}
 		}
 
 		cacheLineHighlights(cacheMap, lineKey, entry, result, offsetShiftAmount)
-		if (entry.index === 19) {
-			log.debug(`calc took ${(performance.now() - calcStart).toFixed(1)}ms`)
-		}
+
 		return result
 	}
 

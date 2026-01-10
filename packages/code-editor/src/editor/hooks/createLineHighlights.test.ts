@@ -66,8 +66,10 @@ describe('createLineHighlights', () => {
 				makeEntry(1, 6, 5, 'world'),
 			])
 			const { getLineHighlights } = createLineHighlights({
-				...defaultLineProps,
+				lineCount: () => 2,
 				getLineStart: (i: number) => (i === 0 ? 0 : 6),
+				getLineLength: (i: number) => (i === 0 ? 6 : 5),
+				getLineTextLength: (i: number) => (i === 0 ? 5 : 5),
 				highlights,
 				highlightOffset,
 			})
@@ -165,8 +167,10 @@ describe('createLineHighlights', () => {
 				{ startIndex: 10, endIndex: 12, scope: 'variable' },
 			])
 			const { getLineHighlights } = createLineHighlights({
-				...defaultLineProps,
+				lineCount: () => 2,
 				getLineStart: (i: number) => (i === 0 ? 0 : 10),
+				getLineLength: (i: number) => (i === 0 ? 10 : 4),
+				getLineTextLength: (i: number) => 4,
 				highlights,
 				highlightOffset,
 			})
@@ -205,8 +209,10 @@ describe('createLineHighlights', () => {
 				{ startIndex: 10, endIndex: 12, scope: 'variable' },
 			])
 			const { getLineHighlights } = createLineHighlights({
-				...defaultLineProps,
-				getLineStart: (i: number) => (i === 0 ? 0 : 10),
+				lineCount: () => 4,
+				getLineStart: (i: number) => i * 5,
+				getLineLength: () => 5,
+				getLineTextLength: () => 4,
 				highlights,
 				highlightOffset,
 			})
