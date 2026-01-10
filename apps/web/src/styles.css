@@ -14,6 +14,8 @@
 	   Colorful accents (like syntax-keyword green) should only be opt-in. */
 	--color-accent: var(--editor-gutter-background);
 	--color-accent-foreground: var(--editor-foreground);
+	--color-popover: var(--editor-background);
+	--color-popover-foreground: var(--editor-foreground);
 
 	--font-mono: var(--editor-font-family, 'JetBrains Mono Variable', monospace);
 	--font-serif: 'Geist Variable', sans-serif;
