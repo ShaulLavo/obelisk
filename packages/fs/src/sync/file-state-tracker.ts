@@ -4,7 +4,7 @@ import { ByteContentHandleFactory } from './content-handle'
 // Forward declaration for FsContext - will be properly imported when integrated
 interface FsContext {
 	file(path: string, mode?: 'r' | 'rw' | 'rw-unsafe'): {
-		write(content: string | Uint8Array): Promise<void>
+		write(content: string | BufferSource | import('../vfs/types').VfsReadableStream, opts?: { truncate?: boolean }): Promise<void>
 		text(): Promise<string>
 		lastModified(): Promise<number>
 	}
@@ -31,7 +31,7 @@ export class FileStateTracker {
 	) {
 		this.baseContent = initialContent
 		this.localContent = initialContent
-		this.diskContent = initialContent // Initially, disk content equals base content
+		this.diskContent = initialContent
 		this.diskMtime = initialMtime
 		this.contentHandleFactory = contentHandleFactory
 		this.fsContext = fsContext
@@ -133,7 +133,7 @@ export class FileStateTracker {
 
 		// Write local content to disk
 		const file = this.fsContext.file(this.path, 'rw')
-		await file.write(this.localContent.toBytes())
+		await file.write(this.localContent.toBytes() as BufferSource)
 
 		// Update base and disk content to match local
 		this.baseContent = this.localContent
@@ -184,7 +184,7 @@ export class FileStateTracker {
 
 		// Write merged content to disk
 		const file = this.fsContext.file(this.path, 'rw')
-		await file.write(this.localContent.toBytes())
+		await file.write(this.localContent.toBytes() as BufferSource)
 
 		// Update base and disk content to match the merged content
 		this.baseContent = this.localContent

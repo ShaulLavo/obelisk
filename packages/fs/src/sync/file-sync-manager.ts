@@ -71,49 +71,40 @@ export class FileSyncManager {
 		path: string,
 		options: TrackOptions = {}
 	): Promise<FileStateTracker> {
-		// Check if already tracking
 		const existingTracker = this.trackers.get(path)
 		if (existingTracker) {
 			return existingTracker
 		}
 
-		// Get initial content and mtime
 		let initialContent: Uint8Array
 		let initialMtime: number
 
 		if (options.initialContent) {
-			// Use provided initial content
 			if (typeof options.initialContent === 'string') {
 				initialContent = new TextEncoder().encode(options.initialContent)
 			} else {
 				initialContent = options.initialContent
 			}
-			// Get current mtime from disk
 			try {
 				const file = this.fs.file(path, 'r')
 				initialMtime = await file.lastModified()
 			} catch {
-				// File doesn't exist yet, use current time
 				initialMtime = Date.now()
 			}
 		} else {
-			// Read from disk
 			try {
 				const file = this.fs.file(path, 'r')
 				const content = await file.text()
 				initialContent = new TextEncoder().encode(content)
 				initialMtime = await file.lastModified()
 			} catch {
-				// File doesn't exist, start with empty content
 				initialContent = new Uint8Array(0)
 				initialMtime = Date.now()
 			}
 		}
 
-		// Create content handle
 		const initialHandle = this.contentHandleFactory.fromBytes(initialContent)
 
-		// Create tracker
 		const mode = options.reactive ? 'reactive' : 'tracked'
 		const tracker = new FileStateTracker(
 			path,
@@ -124,10 +115,8 @@ export class FileSyncManager {
 			this.fs
 		)
 
-		// Store tracker
 		this.trackers.set(path, tracker)
 
-		// Start observing if this is the first tracker
 		await this.ensureObserverStarted()
 
 		return tracker
@@ -142,13 +131,10 @@ export class FileSyncManager {
 			return
 		}
 
-		// Remove tracker
 		this.trackers.delete(path)
 
-		// Clear any pending write tokens for this path
 		this.writeTokenManager.clearToken(path)
 
-		// Stop observing if no more trackers
 		if (this.trackers.size === 0) {
 			this.stopObserver()
 		}
@@ -172,9 +158,7 @@ export class FileSyncManager {
 	 * Confirm write completed (clears token on observer match)
 	 */
 	endWrite(token: WriteToken): void {
-		// The token will be automatically cleared when the observer
-		// detects the change and matches it against the token
-		// This method is here for API completeness and future use
+		// Token will be automatically cleared when observer detects change and matches it
 	}
 
 	/**
@@ -190,7 +174,6 @@ export class FileSyncManager {
 		const handlers = this.eventHandlers.get(event)!
 		handlers.add(handler)
 
-		// Return unsubscribe function
 		return () => {
 			handlers.delete(handler)
 			if (handlers.size === 0) {
@@ -222,16 +205,9 @@ export class FileSyncManager {
 	 * Dispose all resources
 	 */
 	dispose(): void {
-		// Clear all trackers
 		this.trackers.clear()
-
-		// Clear all event handlers
 		this.eventHandlers.clear()
-
-		// Dispose write token manager
 		this.writeTokenManager.dispose()
-
-		// Disconnect all observers
 		this.stopObserver()
 	}
 
@@ -240,18 +216,15 @@ export class FileSyncManager {
 	 */
 	private async ensureObserverStarted(): Promise<void> {
 		if (this.observerStrategy) {
-			return // Already started
+			return
 		}
 
-		// Create observer strategy
 		this.observerStrategy = this.observerManager.createStrategy()
 
-		// Subscribe to change events
 		this.observerUnsubscribe = this.observerStrategy.on('change', (changes) => {
 			this.handleFileSystemChanges(changes)
 		})
 
-		// Start observing the root directory
 		try {
 			await this.observerStrategy.observe(this.fs.root)
 		} catch (error) {
@@ -280,7 +253,6 @@ export class FileSyncManager {
 			this.observerStrategy.disconnect()
 			this.observerStrategy = null
 		}
-		// Clear any pending debounce timeouts
 		for (const timeout of this.debounceTimeouts.values()) {
 			clearTimeout(timeout)
 		}
@@ -291,7 +263,6 @@ export class FileSyncManager {
 	 * Handle file system changes from the observer
 	 */
 	private handleFileSystemChanges(changes: FileSystemChangeRecord[]): void {
-		// Group changes by path for debouncing
 		const changesByPath = new Map<string, FileSystemChangeRecord[]>()
 
 		for (const change of changes) {
@@ -302,15 +273,12 @@ export class FileSyncManager {
 			changesByPath.get(path)!.push(change)
 		}
 
-		// Process each path with debouncing
 		for (const [path, pathChanges] of changesByPath) {
-			// Clear existing timeout for this path
 			const existingTimeout = this.debounceTimeouts.get(path)
 			if (existingTimeout) {
 				clearTimeout(existingTimeout)
 			}
 
-			// Set new debounced timeout
 			const timeout = setTimeout(() => {
 				this.debounceTimeouts.delete(path)
 				this.processPathChanges(path, pathChanges)
@@ -329,24 +297,25 @@ export class FileSyncManager {
 	): Promise<void> {
 		const tracker = this.trackers.get(path)
 		if (!tracker) {
-			return // Not tracking this file
+			return
 		}
 
-		// Get the latest change (after debouncing, we only care about final state)
 		const latestChange = changes[changes.length - 1]
+		if (!latestChange) {
+			return
+		}
 
 		try {
 			if (latestChange.type === 'disappeared') {
-				// File was deleted
 				this.emit<'deleted'>('deleted', {
 					type: 'deleted',
 					path,
+					tracker,
 				})
 				return
 			}
 
 			if (latestChange.type === 'appeared' || latestChange.type === 'modified') {
-				// File was created or modified
 				await this.handleFileChange(path, tracker)
 			}
 		} catch (error) {
@@ -362,43 +331,38 @@ export class FileSyncManager {
 		tracker: FileStateTracker
 	): Promise<void> {
 		try {
-			// Read current disk content and mtime
 			const file = this.fs.file(path, 'r')
 			const diskContentStr = await file.text()
 			const diskMtime = await file.lastModified()
 
-			// Check if this change matches a pending write token
 			const matchedToken = this.writeTokenManager.matchToken(path, diskMtime)
 			if (matchedToken) {
-				// This is a self-triggered change, update tracker state
 				const diskContent = new TextEncoder().encode(diskContentStr)
 				tracker.markSynced(diskContent, diskMtime)
 				this.emit<'synced'>('synced', {
 					type: 'synced',
 					path,
+					tracker,
 				})
 				return
 			}
 
-			// This is an external change
 			const diskContent = new TextEncoder().encode(diskContentStr)
 			tracker.updateDiskState(diskContent, diskMtime)
 
 			const syncState = tracker.syncState
 
 			if (tracker.mode === 'reactive') {
-				// Reactive files auto-reload regardless of local changes
 				const hadLocalChanges = tracker.isDirty
 				const newContent = this.contentHandleFactory.fromBytes(diskContent)
 				
-				// Update local content to match disk
 				tracker.setLocalContent(diskContent)
 				tracker.markSynced(diskContent, diskMtime)
 
-				// Emit events
 				this.emit<'reloaded'>('reloaded', {
 					type: 'reloaded',
 					path,
+					tracker,
 					newContent,
 				})
 
@@ -406,22 +370,22 @@ export class FileSyncManager {
 					this.emit<'local-changes-discarded'>('local-changes-discarded', {
 						type: 'local-changes-discarded',
 						path,
+						tracker,
 					})
 				}
 			} else {
-				// Regular tracked files
 				if (syncState === 'external-changes') {
-					// No local changes, just external changes
 					this.emit<'external-change'>('external-change', {
 						type: 'external-change',
 						path,
+						tracker,
 						newMtime: diskMtime,
 					})
 				} else if (syncState === 'conflict') {
-					// Both local and external changes - conflict!
 					this.emit<'conflict'>('conflict', {
 						type: 'conflict',
 						path,
+						tracker,
 						baseContent: tracker.getBaseContent(),
 						localContent: tracker.getLocalContent(),
 						diskContent: tracker.getDiskContent(),

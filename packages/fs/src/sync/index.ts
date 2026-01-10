@@ -1,4 +1,3 @@
-// Types
 export type {
 	SyncState,
 	ContentHandle,
@@ -17,12 +16,19 @@ export type {
 	SyncEventHandler,
 } from './types'
 
-// ContentHandle implementation
 export { ByteContentHandle, ByteContentHandleFactory } from './content-handle'
 
-// FileStateTracker implementation
 export { FileStateTracker } from './file-state-tracker'
 
-// WriteTokenManager implementation
 export { WriteTokenManager } from './write-token-manager'
 export type { WriteTokenManagerOptions } from './write-token-manager'
+
+export { FileSyncManager } from './file-sync-manager'
+export type { FileSyncManagerOptions } from './file-sync-manager'
+
+export {
+	NativeObserverStrategy,
+	PollingObserverStrategy,
+	FileSystemObserverManager,
+} from './observer-strategy'
+export type { ObserverStrategy } from './observer-strategy'

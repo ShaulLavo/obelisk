@@ -1,3 +1,16 @@
+
+// Forward declaration to avoid circular dependency
+export interface FileStateTracker {
+	readonly path: string
+	readonly syncState: SyncState
+	readonly isDirty: boolean
+	readonly hasExternalChanges: boolean
+	readonly mode: 'tracked' | 'reactive'
+	getLocalContent(): ContentHandle
+	getBaseContent(): ContentHandle
+	getDiskContent?(): ContentHandle
+}
+
 /**
  * Sync state representing the relationship between base, local, and disk content
  */
@@ -13,13 +26,10 @@ export type SyncState =
 export interface ContentHandle {
 	/** Get content hash for comparison */
 	hash(): string
-
 	/** Compare with another handle */
 	equals(other: ContentHandle): boolean
-
 	/** Get raw bytes */
 	toBytes(): Uint8Array
-
 	/** Get as string (UTF-8) */
 	toString(): string
 }
@@ -30,10 +40,8 @@ export interface ContentHandle {
 export interface ContentHandleFactory {
 	/** Create handle from bytes */
 	fromBytes(data: Uint8Array): ContentHandle
-
 	/** Create handle from string */
 	fromString(data: string): ContentHandle
-
 	/** Create empty handle */
 	empty(): ContentHandle
 }
@@ -52,9 +60,7 @@ export interface WriteToken {
  * Options for tracking a file
  */
 export interface TrackOptions {
-	/** Initial content (if already loaded) */
 	initialContent?: Uint8Array | string
-	/** Reactive mode: auto-reload on external changes */
 	reactive?: boolean
 }
 
@@ -75,6 +81,7 @@ export type SyncEventType =
 export interface SyncEvent {
 	type: SyncEventType
 	path: string
+	tracker: FileStateTracker
 }
 
 /**

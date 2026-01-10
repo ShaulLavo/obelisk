@@ -3,7 +3,6 @@ import * as fc from 'fast-check'
 import { FileStateTracker } from './file-state-tracker'
 import { ByteContentHandleFactory } from './content-handle'
 
-// Mock FsContext for testing
 const createMockFsContext = () => {
 	const mockFile = {
 		write: vi.fn().mockResolvedValue(undefined),
@@ -13,7 +12,7 @@ const createMockFsContext = () => {
 	
 	return {
 		file: vi.fn().mockReturnValue(mockFile),
-		_mockFile: mockFile, // Expose for test assertions
+		_mockFile: mockFile,
 	}
 }
 
@@ -89,16 +88,13 @@ describe('FileStateTracker', () => {
 			const initialContent = ByteContentHandleFactory.fromString('initial')
 			const tracker = new FileStateTracker('/test.txt', 'tracked', initialContent, 1000, ByteContentHandleFactory, mockFs as any)
 
-			// Create a conflict scenario
 			tracker.setLocalContent('local changes')
-			// Simulate external changes by updating disk state
 			tracker.updateDiskState(new TextEncoder().encode('external changes'), 1500)
 
 			expect(tracker.syncState).toBe('conflict')
 			expect(tracker.getLocalContent().toString()).toBe('local changes')
 			expect(tracker.getDiskContent().toString()).toBe('external changes')
 
-			// Resolve by keeping local
 			await tracker.resolveKeepLocal()
 
 			expect(mockFs._mockFile.write).toHaveBeenCalledWith(new TextEncoder().encode('local changes'))
@@ -192,8 +188,6 @@ describe('FileStateTracker', () => {
 
 	describe('Property 1: Sync State Consistency', () => {
 		it('should maintain consistent sync state based on content relationships', () => {
-			// **Feature: file-sync-layer, Property 1: Sync State Consistency**
-			// **Validates: Requirements 1.2, 1.4**
 			fc.assert(
 				fc.property(
 					fc.string(),
@@ -203,13 +197,9 @@ describe('FileStateTracker', () => {
 						const baseContent = ByteContentHandleFactory.fromString(baseStr)
 						const tracker = new FileStateTracker('/test.txt', 'tracked', baseContent, 1000)
 
-						// Set local content
 						tracker.setLocalContent(localStr)
-						
-						// Set disk content
 						tracker.updateDiskState(new TextEncoder().encode(diskStr), 1500)
 
-						// Get the actual content handles for comparison
 						const localContent = tracker.getLocalContent()
 						const baseContentCheck = tracker.getBaseContent()
 						const diskContent = tracker.getDiskContent()
@@ -217,7 +207,6 @@ describe('FileStateTracker', () => {
 						const localEqualsBase = localContent.equals(baseContentCheck)
 						const baseEqualsDisk = baseContentCheck.equals(diskContent)
 
-						// Verify sync state consistency
 						if (localEqualsBase && baseEqualsDisk) {
 							expect(tracker.syncState).toBe('synced')
 						} else if (!localEqualsBase && baseEqualsDisk) {
@@ -228,10 +217,8 @@ describe('FileStateTracker', () => {
 							expect(tracker.syncState).toBe('conflict')
 						}
 
-						// Verify isDirty consistency
 						expect(tracker.isDirty).toBe(!localEqualsBase)
 
-						// Verify hasExternalChanges consistency
 						const hasExternal = tracker.syncState === 'external-changes' || tracker.syncState === 'conflict'
 						expect(tracker.hasExternalChanges).toBe(hasExternal)
 					}
@@ -243,15 +230,10 @@ describe('FileStateTracker', () => {
 
 	describe('Property 5: Conflict Resolution Completeness', () => {
 		it('should always transition out of conflict state after resolution', async () => {
-			// **Feature: file-sync-layer, Property 5: Conflict Resolution Completeness**
-			// **Validates: Requirements 3.3, 3.4, 3.5**
-			
-			// Test with a concrete conflict scenario
 			const baseContent = ByteContentHandleFactory.fromString('base-content')
 			const mockFs = createMockFsContext()
 			mockFs._mockFile.text.mockResolvedValue('disk-content')
 			
-			// Test resolveKeepLocal
 			const tracker1 = new FileStateTracker('/test.txt', 'tracked', baseContent, 1000, ByteContentHandleFactory, mockFs as any)
 			tracker1.setLocalContent('local-content')
 			tracker1.updateDiskState(new TextEncoder().encode('disk-content'), 1500)
@@ -260,7 +242,6 @@ describe('FileStateTracker', () => {
 			await tracker1.resolveKeepLocal()
 			expect(tracker1.syncState).toBe('synced')
 			
-			// Test resolveAcceptExternal
 			const tracker2 = new FileStateTracker('/test.txt', 'tracked', baseContent, 1000, ByteContentHandleFactory, mockFs as any)
 			tracker2.setLocalContent('local-content')
 			tracker2.updateDiskState(new TextEncoder().encode('disk-content'), 1500)
@@ -269,7 +250,6 @@ describe('FileStateTracker', () => {
 			await tracker2.resolveAcceptExternal()
 			expect(tracker2.syncState).toBe('synced')
 			
-			// Test resolveMerge
 			const tracker3 = new FileStateTracker('/test.txt', 'tracked', baseContent, 1000, ByteContentHandleFactory, mockFs as any)
 			tracker3.setLocalContent('local-content')
 			tracker3.updateDiskState(new TextEncoder().encode('disk-content'), 1500)

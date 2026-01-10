@@ -133,7 +133,7 @@ export class PollingObserverStrategy implements ObserverStrategy {
 		try {
 			for await (const [, entry] of handle.entries()) {
 				if (entry.kind === 'directory') {
-					const childMtime = await this.findLastModified(entry)
+					const childMtime = await this.findLastModified(entry as FileSystemDirectoryHandle)
 					maxMtime = Math.max(maxMtime, childMtime)
 				} else {
 					const file = await (entry as FileSystemFileHandle).getFile()
