@@ -53,8 +53,10 @@ export const CommandPaletteProvider: ParentComponent = (props) => {
 
 	// Initialize built-in commands and shortcuts on mount
 	onMount(() => {
-		// Register built-in commands
-		const unregisterBuiltinCommands = registerBuiltinCommands(registry)
+		// Register built-in commands (pass fsActions for settings commands)
+		const unregisterBuiltinCommands = registerBuiltinCommands(registry, {
+			selectPath: fsActions.selectPath,
+		})
 
 		// Register keyboard shortcuts
 		const unregisterShortcuts = registerCommandPaletteShortcuts(
