@@ -99,8 +99,8 @@ export const useFileSelection = ({
 			return
 		}
 
-		// Note: settings.json now uses the regular file loading path
-		// so it can be edited in the normal editor
+		// Note: .system paths are automatically routed to OPFS by the streaming layer
+		// so settings.json is just a regular file that happens to live in OPFS
 
 		// For files (whether found in tree or not), proceed with file loading
 		// This allows opening files from search results even if their parent directory

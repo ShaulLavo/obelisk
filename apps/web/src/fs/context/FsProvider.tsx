@@ -11,6 +11,7 @@ import { createFsMutations } from '../fsMutations'
 import { restoreHandleCache } from '../runtime/handleCache'
 import { createFsState } from '../hooks/createFsState'
 import type { FsSource } from '../types'
+import type { ViewMode } from '../types/TabIdentity'
 import { FsContext, type FsContextValue } from './FsContext'
 import { replaceDirNodeInTree } from '../utils/treeNodes'
 import { makeTreePrefetch } from '../hooks/useTreePrefetch'
@@ -57,9 +58,16 @@ export function FsProvider(props: { children: JSX.Element }) {
 		clearDeferredMetadata,
 		setScrollPosition,
 		setVisibleContent,
+		setViewMode,
 		collapseAll,
 		setCreationState,
 	} = createFsState()
+
+	// Wrapper for setViewMode that includes stats
+	const setViewModeWithStats = (path: string, viewMode: ViewMode) => {
+		const stats = state.fileStats[path]
+		setViewMode(path, viewMode, stats)
+	}
 
 	const fileCache = createFileCacheController({
 		state,
@@ -310,6 +318,7 @@ export function FsProvider(props: { children: JSX.Element }) {
 			updateSelectedFileErrors,
 			updateSelectedFileScrollPosition,
 			updateSelectedFileVisibleContent,
+			setViewMode: setViewModeWithStats,
 			fileCache,
 			saveFile,
 			setDirtyPath,

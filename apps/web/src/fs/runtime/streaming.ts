@@ -10,6 +10,28 @@ const pendingStreamReads = new Map<string, Promise<string>>()
 const streamControllers = new Map<string, AbortController>()
 const DEFAULT_CHUNK_SIZE = 1024 * 1024 * 1 // 1 MB
 
+/**
+ * Normalize path by stripping leading slash.
+ * This ensures consistent cache keys regardless of path format.
+ */
+const normalizePath = (path: string): string =>
+	path.startsWith('/') ? path.slice(1) : path
+
+/**
+ * Resolves the actual source for a path.
+ * .system paths always use OPFS regardless of active source.
+ */
+export const resolveSourceForPath = (
+	source: FsSource,
+	path: string
+): FsSource => {
+	const normalized = normalizePath(path)
+	if (normalized.startsWith('.system')) {
+		return 'opfs'
+	}
+	return source
+}
+
 export type SafeReadOptions = {
 	sizeLimitBytes?: number
 	chunkSize?: number
@@ -72,8 +94,9 @@ export function resetStreamingState() {
 }
 
 export function cancelOtherStreams(keepPath: string) {
+	const normalizedKeepPath = normalizePath(keepPath)
 	for (const [path, controller] of streamControllers) {
-		if (path === keepPath) continue
+		if (path === normalizedKeepPath) continue
 		controller.abort()
 		streamControllers.delete(path)
 		pendingStreamReads.delete(path)
@@ -84,8 +107,10 @@ export async function readFileText(
 	source: FsSource,
 	path: string
 ): Promise<string> {
-	return trackPendingRead(pendingFileTextReads, path, async () => {
-		const buffer = await readFileBuffer(source, path)
+	const resolvedSource = resolveSourceForPath(source, path)
+	const normalizedPath = normalizePath(path)
+	return trackPendingRead(pendingFileTextReads, normalizedPath, async () => {
+		const buffer = await readFileBuffer(resolvedSource, path)
 		return utf8Decoder.decode(new Uint8Array(buffer))
 	})
 }
@@ -94,8 +119,10 @@ export async function readFileBuffer(
 	source: FsSource,
 	path: string
 ): Promise<ArrayBuffer> {
-	return trackPendingRead(pendingFileBufferReads, path, async () => {
-		const ctx = await ensureFs(source)
+	const resolvedSource = resolveSourceForPath(source, path)
+	const normalizedPath = normalizePath(path)
+	return trackPendingRead(pendingFileBufferReads, normalizedPath, async () => {
+		const ctx = await ensureFs(resolvedSource)
 		const handle = await getOrCreateFileHandle(ctx, path)
 		const file = await handle.getFile()
 		return file.arrayBuffer()
@@ -106,7 +133,8 @@ export async function getFileSize(
 	source: FsSource,
 	path: string
 ): Promise<number> {
-	const ctx = await ensureFs(source)
+	const resolvedSource = resolveSourceForPath(source, path)
+	const ctx = await ensureFs(resolvedSource)
 
 	const handle = await getOrCreateFileHandle(ctx, path)
 
@@ -120,7 +148,8 @@ export async function readFilePreviewBytes(
 	path: string,
 	maxBytes = Infinity
 ): Promise<Uint8Array> {
-	const ctx = await ensureFs(source)
+	const resolvedSource = resolveSourceForPath(source, path)
+	const ctx = await ensureFs(resolvedSource)
 	const handle = await getOrCreateFileHandle(ctx, path)
 	const file = await handle.getFile()
 	const fileSize = file.size
@@ -135,11 +164,13 @@ export async function safeReadFileText(
 	path: string,
 	options?: SafeReadOptions
 ): Promise<SafeReadResult> {
+	const resolvedSource = resolveSourceForPath(source, path)
 	const chunkSize = resolveChunkSize(options?.chunkSize)
 	const sizeLimit = options?.sizeLimitBytes
+	const normalizedPath = normalizePath(path)
 
-	return trackPendingRead(pendingSafeFileTextReads, path, async () => {
-		const ctx = await ensureFs(source)
+	return trackPendingRead(pendingSafeFileTextReads, normalizedPath, async () => {
+		const ctx = await ensureFs(resolvedSource)
 		const handle = await getOrCreateFileHandle(ctx, path)
 		const file = await handle.getFile()
 		const fileSize = file.size
@@ -208,8 +239,9 @@ export async function createFileTextStream(
 	path: string,
 	options?: FileTextStreamOptions
 ): Promise<FileTextStream> {
+	const resolvedSource = resolveSourceForPath(source, path)
 	const chunkSize = resolveChunkSize(options?.chunkSize)
-	const ctx = await ensureFs(source)
+	const ctx = await ensureFs(resolvedSource)
 	const handle = await getOrCreateFileHandle(ctx, path)
 	const file = await handle.getFile()
 	const fileSize = file.size
@@ -318,14 +350,15 @@ export async function streamFileText(
 	path: string,
 	onChunk?: (text: string) => void
 ): Promise<string> {
-	const pending = pendingStreamReads.get(path)
+	const normalizedPath = normalizePath(path)
+	const pending = pendingStreamReads.get(normalizedPath)
 	if (pending) return pending
 
 	const controller = new AbortController()
-	streamControllers.get(path)?.abort()
-	streamControllers.set(path, controller)
+	streamControllers.get(normalizedPath)?.abort()
+	streamControllers.set(normalizedPath, controller)
 
-	return trackPendingRead(pendingStreamReads, path, async () => {
+	return trackPendingRead(pendingStreamReads, normalizedPath, async () => {
 		let stream: FileTextStream | undefined
 
 		try {
@@ -355,8 +388,8 @@ export async function streamFileText(
 			return ''
 		} finally {
 			await stream?.close().catch(() => undefined)
-			if (streamControllers.get(path) === controller) {
-				streamControllers.delete(path)
+			if (streamControllers.get(normalizedPath) === controller) {
+				streamControllers.delete(normalizedPath)
 			}
 		}
 	})

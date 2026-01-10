@@ -14,6 +14,7 @@ import type {
 } from '../cache/fileCacheController'
 import type { FsState, FsSource } from '../types'
 import type { HighlightTransform } from '../hooks/createHighlightState'
+import type { ViewMode } from '../types/TabIdentity'
 
 export type SelectPathOptions = {
 	forceReload?: boolean
@@ -51,6 +52,7 @@ export type FsActions = {
 	updateSelectedFileVisibleContent: (
 		visibleContent: VisibleContentSnapshot | undefined
 	) => void
+	setViewMode: (path: string, viewMode: ViewMode) => void
 	fileCache: FileCacheController
 	saveFile: (path?: string) => Promise<void>
 	setDirtyPath: (path: string, isDirty: boolean) => void

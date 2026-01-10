@@ -1,53 +1,58 @@
 import { describe, it, expect } from 'vitest'
-import { createTabId, parseTabId, migrateTabState } from '../types/TabIdentity'
+import { cleanLegacyTabId, migrateTabState } from '../types/TabIdentity'
 
 describe('Tab Identity System', () => {
-	describe('createTabId', () => {
-		it('should create tab ID from identity', () => {
-			const identity = { path: '/test/file.txt', viewMode: 'editor' as const }
-			expect(createTabId(identity)).toBe('/test/file.txt:editor')
+	describe('cleanLegacyTabId', () => {
+		it('should remove :editor suffix from legacy tab IDs', () => {
+			expect(cleanLegacyTabId('/test/file.txt:editor')).toBe('/test/file.txt')
 		})
 
-		it('should handle different view modes', () => {
-			expect(createTabId({ path: '/settings.json', viewMode: 'ui' })).toBe('/settings.json:ui')
-			expect(createTabId({ path: '/binary.exe', viewMode: 'binary' })).toBe('/binary.exe:binary')
-		})
-	})
-
-	describe('parseTabId', () => {
-		it('should parse tab ID back to identity', () => {
-			const identity = parseTabId('/test/file.txt:editor')
-			expect(identity).toEqual({ path: '/test/file.txt', viewMode: 'editor' })
+		it('should remove :ui suffix from legacy tab IDs', () => {
+			expect(cleanLegacyTabId('/settings.json:ui')).toBe('/settings.json')
 		})
 
-		it('should default to editor mode for legacy tab IDs', () => {
-			const identity = parseTabId('/test/file.txt')
-			expect(identity).toEqual({ path: '/test/file.txt', viewMode: 'editor' })
+		it('should remove :binary suffix from legacy tab IDs', () => {
+			expect(cleanLegacyTabId('/binary.exe:binary')).toBe('/binary.exe')
 		})
 
-		it('should handle different view modes', () => {
-			expect(parseTabId('/settings.json:ui')).toEqual({ path: '/settings.json', viewMode: 'ui' })
-			expect(parseTabId('/binary.exe:binary')).toEqual({ path: '/binary.exe', viewMode: 'binary' })
+		it('should leave paths without view mode suffix unchanged', () => {
+			expect(cleanLegacyTabId('/test/file.txt')).toBe('/test/file.txt')
+		})
+
+		it('should not remove colons that are not view mode suffixes', () => {
+			expect(cleanLegacyTabId('/test/file:name.txt')).toBe(
+				'/test/file:name.txt'
+			)
 		})
 	})
 
 	describe('migrateTabState', () => {
-		it('should migrate legacy tabs without view modes', () => {
-			const legacyTabs = ['/file1.txt', '/file2.txt']
+		it('should remove view mode suffixes from legacy tabs', () => {
+			const legacyTabs = ['/file1.txt:editor', '/file2.txt:ui']
 			const migrated = migrateTabState(legacyTabs)
-			expect(migrated).toEqual(['/file1.txt:editor', '/file2.txt:editor'])
+			expect(migrated).toEqual(['/file1.txt', '/file2.txt'])
 		})
 
-		it('should leave already migrated tabs unchanged', () => {
-			const modernTabs = ['/file1.txt:editor', '/file2.txt:ui']
-			const migrated = migrateTabState(modernTabs)
-			expect(migrated).toEqual(['/file1.txt:editor', '/file2.txt:ui'])
+		it('should leave already clean tabs unchanged', () => {
+			const cleanTabs = ['/file1.txt', '/file2.txt']
+			const migrated = migrateTabState(cleanTabs)
+			expect(migrated).toEqual(['/file1.txt', '/file2.txt'])
 		})
 
-		it('should handle mixed legacy and modern tabs', () => {
-			const mixedTabs = ['/file1.txt', '/file2.txt:ui', '/file3.txt']
+		it('should handle mixed legacy and clean tabs', () => {
+			const mixedTabs = ['/file1.txt:editor', '/file2.txt', '/file3.txt:binary']
 			const migrated = migrateTabState(mixedTabs)
-			expect(migrated).toEqual(['/file1.txt:editor', '/file2.txt:ui', '/file3.txt:editor'])
+			expect(migrated).toEqual(['/file1.txt', '/file2.txt', '/file3.txt'])
+		})
+
+		it('should remove duplicates after migration', () => {
+			const tabsWithDuplicates = [
+				'/file1.txt:editor',
+				'/file1.txt:ui',
+				'/file1.txt',
+			]
+			const migrated = migrateTabState(tabsWithDuplicates)
+			expect(migrated).toEqual(['/file1.txt'])
 		})
 	})
 })

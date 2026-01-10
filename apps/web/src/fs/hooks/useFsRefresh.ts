@@ -13,6 +13,42 @@ import type { TreePrefetchClient } from '../prefetch/treePrefetchClient'
 import { modal } from '@repo/ui/modal'
 import { loggers } from '@repo/logger'
 
+/**
+ * Merges the OPFS .system folder into the main tree.
+ * The .system folder always comes from OPFS regardless of active source.
+ */
+const mergeSystemFolder = (
+	mainTree: FsDirTreeNode,
+	systemTree: FsDirTreeNode | undefined
+): FsDirTreeNode => {
+	if (!systemTree) return mainTree
+
+	// Find .system in the OPFS tree
+	const systemNode = systemTree.children?.find((c) => c.name === '.system')
+	if (!systemNode || systemNode.kind !== 'dir') return mainTree
+
+	// Check if main tree already has .system
+	const existingSystemIndex = mainTree.children?.findIndex(
+		(c) => c.name === '.system'
+	)
+
+	// Clone the main tree's children array
+	const newChildren = mainTree.children ? [...mainTree.children] : []
+
+	if (existingSystemIndex !== undefined && existingSystemIndex >= 0) {
+		// Replace existing .system with OPFS version
+		newChildren[existingSystemIndex] = systemNode
+	} else {
+		// Add .system from OPFS
+		newChildren.unshift(systemNode)
+	}
+
+	return {
+		...mainTree,
+		children: newChildren,
+	}
+}
+
 type UseFsRefreshOptions = {
 	state: FsState
 	setTree: SetStoreFunction<FsDirTreeNode>
@@ -103,12 +139,6 @@ export const useFsRefresh = ({
 			return undefined
 		}
 
-		// If the settings file is currently selected, don't override it with stale localStorage
-		// This happens when settings was the last tab but localStorage hasn't been updated yet
-		if (state.selectedPath === '/.system/settings.json') {
-			return undefined
-		}
-
 		// If we have a stored file path from localStorage, use it directly
 		// The file might not be in the tree yet (parent dir not loaded), but selectPath can handle that
 		if (lastFilePath) {
@@ -134,10 +164,32 @@ export const useFsRefresh = ({
 
 			try {
 				const fsCtx = await ensureFs(source)
-				const built = await buildTree(source, {
-					expandedPaths: state.expanded,
-					ensurePaths,
+				
+				// Always ensure .system is expanded (it contains settings files)
+				const expandedPaths = {
+					...state.expanded,
+					'.system': true,
+				}
+				
+				let built = await buildTree(source, {
+					expandedPaths,
+					ensurePaths: [...ensurePaths, '.system'],
 				})
+
+				// Always merge .system folder from OPFS (regardless of active source)
+				if (source !== 'opfs') {
+					try {
+						const opfsTree = await buildTree('opfs', {
+							expandedPaths: { '.system': true },
+							ensurePaths: ['.system'],
+						})
+						built = mergeSystemFolder(built, opfsTree)
+					} catch (error) {
+						// OPFS .system merge is best-effort, don't fail the whole refresh
+						console.log('[useFsRefresh] Could not merge OPFS .system folder:', error)
+					}
+				}
+
 				const restorablePath = getRestorableFilePath()
 
 				batch(() => {

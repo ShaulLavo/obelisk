@@ -27,13 +27,13 @@ export class ViewModeRegistry {
 	 */
 	getAvailableModes(path: string, stats?: ParseResult): ViewModeDefinition[] {
 		const availableModes: ViewModeDefinition[] = []
-		
+
 		for (const mode of this.modes.values()) {
 			if (mode.isAvailable(path, stats)) {
 				availableModes.push(mode)
 			}
 		}
-		
+
 		return availableModes
 	}
 
@@ -42,13 +42,13 @@ export class ViewModeRegistry {
 	 */
 	getDefaultMode(path: string, stats?: ParseResult): ViewMode {
 		const availableModes = this.getAvailableModes(path, stats)
-		
+
 		// Find explicitly marked default mode
-		const defaultMode = availableModes.find(mode => mode.isDefault)
+		const defaultMode = availableModes.find((mode) => mode.isDefault)
 		if (defaultMode) {
 			return defaultMode.id
 		}
-		
+
 		// Fallback to 'editor' mode (should always be available)
 		return 'editor'
 	}
@@ -56,7 +56,11 @@ export class ViewModeRegistry {
 	/**
 	 * Check if a specific view mode is available for a file
 	 */
-	isViewModeAvailable(viewMode: ViewMode, path: string, stats?: ParseResult): boolean {
+	isViewModeAvailable(
+		viewMode: ViewMode,
+		path: string,
+		stats?: ParseResult
+	): boolean {
 		const mode = this.modes.get(viewMode)
 		return mode ? mode.isAvailable(path, stats) : false
 	}
@@ -81,11 +85,15 @@ viewModeRegistry.register({
 	isDefault: true, // Default for most files
 })
 
+// Helper to normalize paths for comparison (strip leading slash)
+const normalizePath = (path: string): string => 
+	path.startsWith('/') ? path.slice(1) : path
+
 viewModeRegistry.register({
 	id: 'ui',
 	label: 'UI',
 	icon: 'settings-gear',
-	isAvailable: (path) => path === '/.system/settings.json',
+	isAvailable: (path) => normalizePath(path) === '.system/userSettings.json',
 })
 
 viewModeRegistry.register({

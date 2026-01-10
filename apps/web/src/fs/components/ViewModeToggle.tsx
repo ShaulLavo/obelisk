@@ -42,7 +42,7 @@ export const ViewModeToggle: Component<ViewModeToggleProps> = (props) => {
 					{(mode) => {
 						const Icon = getViewModeIcon(mode.id)
 						const isActive = () => mode.id === props.currentViewMode
-						
+
 						return (
 							<button
 								type="button"

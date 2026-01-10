@@ -51,9 +51,7 @@ export const Tabs: Component<TabsProps> = (props) => {
 					</For>
 				</Show>
 			</div>
-			<Show when={props.rightSlot}>
-				{props.rightSlot!()}
-			</Show>
+			<Show when={props.rightSlot}>{props.rightSlot!()}</Show>
 		</div>
 	)
 }

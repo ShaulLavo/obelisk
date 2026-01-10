@@ -189,6 +189,7 @@ export {
 	getFileSize,
 	readFilePreviewBytes,
 	readFileText,
+	resolveSourceForPath,
 	safeReadFileText,
 	streamFileText,
 } from './streaming'

@@ -1,13 +1,17 @@
 import { createMemo, createSignal } from 'solid-js'
 import type { Accessor } from 'solid-js'
 
-const SETTINGS_FILE_PATH = '/.system/settings.json'
+const USER_SETTINGS_FILE_PATH = '.system/userSettings.json'
+
+// Normalize path by stripping leading slash
+const normalizePath = (path: string): string =>
+	path.startsWith('/') ? path.slice(1) : path
 
 type UseSettingsViewStateParams = {
 	selectedPath: Accessor<string | undefined>
 }
 
-// Simple local state for settings UI (exported for direct access from commands)
+// Simple local state for view mode (editor vs UI)
 const [currentCategory, setCurrentCategory] = createSignal<string>('editor')
 const [isJsonView, setIsJsonView] = createSignal(true)
 
@@ -16,15 +20,14 @@ export const setSettingsJsonView = () => setIsJsonView(true)
 export const setSettingsUIView = () => setIsJsonView(false)
 
 export const useSettingsViewState = (params: UseSettingsViewStateParams) => {
-	const isSettingsFile = createMemo(
-		() => params.selectedPath() === SETTINGS_FILE_PATH
-	)
-	const shouldShowSettings = createMemo(() => isSettingsFile())
+	const isSettingsFile = createMemo(() => {
+		const path = params.selectedPath()
+		return path ? normalizePath(path) === USER_SETTINGS_FILE_PATH : false
+	})
 	const shouldShowJSONView = createMemo(() => isJsonView())
 
 	const handleCategoryChange = (categoryId: string) => {
 		setCurrentCategory(categoryId)
-		setIsJsonView(false)
 	}
 
 	const openJSONView = () => {
@@ -37,7 +40,6 @@ export const useSettingsViewState = (params: UseSettingsViewStateParams) => {
 
 	return {
 		isSettingsFile,
-		shouldShowSettings,
 		shouldShowJSONView,
 		handleCategoryChange,
 		currentCategory,

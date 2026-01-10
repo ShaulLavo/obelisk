@@ -3,10 +3,7 @@ import {
 	setSettingsJsonView,
 	setSettingsUIView,
 } from '../fs/hooks/useSettingsViewState'
-
-type FsActions = {
-	selectPath: (path: string) => Promise<void>
-}
+import type { FsActions } from '../fs/context/FsContext'
 
 /**
  * Registers all built-in commands with the command palette registry.
@@ -193,7 +190,7 @@ function registerSettingsCommands(
 	fsActions: FsActions
 ): () => void {
 	const unregisterFunctions: Array<() => void> = []
-	const SETTINGS_FILE_PATH = '/.system/settings.json'
+	const USER_SETTINGS_FILE_PATH = '/.system/userSettings.json'
 
 	const openSettingsCommand: CommandDescriptor = {
 		id: 'settings.open',
@@ -201,8 +198,8 @@ function registerSettingsCommands(
 		category: 'View',
 		shortcut: '⌘,',
 		handler: async () => {
+			await fsActions.selectPath(USER_SETTINGS_FILE_PATH)
 			setSettingsJsonView()
-			await fsActions.selectPath(SETTINGS_FILE_PATH)
 		},
 	}
 
@@ -211,8 +208,8 @@ function registerSettingsCommands(
 		label: 'Open Settings (UI)',
 		category: 'View',
 		handler: async () => {
+			await fsActions.selectPath(USER_SETTINGS_FILE_PATH)
 			setSettingsUIView()
-			await fsActions.selectPath(SETTINGS_FILE_PATH)
 		},
 	}
 
@@ -221,8 +218,8 @@ function registerSettingsCommands(
 		label: 'Open Settings (JSON)',
 		category: 'View',
 		handler: async () => {
+			await fsActions.selectPath(USER_SETTINGS_FILE_PATH)
 			setSettingsJsonView()
-			await fsActions.selectPath(SETTINGS_FILE_PATH)
 		},
 	}
 

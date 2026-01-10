@@ -1,7 +1,7 @@
 import { batch, type Setter } from 'solid-js'
 import type { SetStoreFunction } from 'solid-js/store'
 import type { FsDirTreeNode, FsFileTreeNode } from '@repo/fs'
-import { ensureFs } from './runtime/fsRuntime'
+import { ensureFs, resolveSourceForPath } from './runtime/fsRuntime'
 import type { FsSource, FsState } from './types'
 import { logger } from '../logger'
 import { addNodeToTree, removeNodeFromTree } from './utils/treeMutations'
@@ -202,7 +202,9 @@ export const createFsMutations = ({
 				? getPieceTableText(pieceTable)
 				: state.selectedFileContent
 
-			const ctx = await ensureFs(getActiveSource())
+			// Route .system paths to OPFS
+			const source = resolveSourceForPath(getActiveSource(), filePath)
+			const ctx = await ensureFs(source)
 			await ctx.write(filePath, content)
 
 			const newSnapshot = createPieceTableSnapshot(content)
@@ -219,8 +221,9 @@ export const createFsMutations = ({
 				setDirtyPath(filePath, false)
 			})
 
-			// Sync settings if this is the settings file
-			if (filePath === '/.system/settings.json') {
+			// Sync settings if this is the user settings file
+			const normalizedPath = filePath.startsWith('/') ? filePath.slice(1) : filePath
+			if (normalizedPath === '.system/userSettings.json') {
 				try {
 					const parsed = JSON.parse(content)
 					// Dispatch custom event for settings store to pick up

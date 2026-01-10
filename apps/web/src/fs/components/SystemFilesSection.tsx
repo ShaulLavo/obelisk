@@ -11,8 +11,13 @@ type SystemFile = {
 
 const SYSTEM_FILES: SystemFile[] = [
 	{
-		name: 'settings.json',
-		path: '/.system/settings.json',
+		name: 'defaultSettings.json',
+		path: '/.system/defaultSettings.json',
+		icon: 'settings',
+	},
+	{
+		name: 'userSettings.json',
+		path: '/.system/userSettings.json',
 		icon: 'settings',
 	},
 ]
@@ -22,7 +27,7 @@ export const SystemFilesSection = () => {
 
 	const isSelected = (path: string) => actions.isSelectedPath(path)
 
-	const handleFileSelect = (path: string) => {
+	const handleFileSelect = async (path: string) => {
 		void actions.selectPath(path)
 	}
 

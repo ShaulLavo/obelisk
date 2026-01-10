@@ -68,7 +68,7 @@ export const CommandPaletteProvider: ParentComponent = (props) => {
 		// Register settings shortcuts
 		const unregisterSettingsShortcuts = registerSettingsShortcuts(
 			keymapController,
-			() => fsActions.selectPath('/.system/settings.json')
+			() => fsActions.selectPath('/.system/userSettings.json')
 		)
 
 		// Cleanup on unmount

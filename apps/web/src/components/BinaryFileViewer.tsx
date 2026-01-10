@@ -5,11 +5,11 @@ import {
 } from '@tanstack/solid-virtual'
 import { type Accessor, For, Show, createMemo, createSignal } from 'solid-js'
 import type { ParseResult } from '@repo/utils'
-import { VIRTUALIZER_OVERSCAN } from 'node_modules/@repo/code-editor/src/editor/consts'
 
 const BYTES_PER_ROW = 16
 const LINE_HEIGHT_RATIO = 1.55
 const MIN_ROW_HEIGHT = 18
+const VIRTUALIZER_OVERSCAN = 30
 
 const estimateRowHeight = (fontSize: number) =>
 	Math.max(Math.round(fontSize * LINE_HEIGHT_RATIO), MIN_ROW_HEIGHT)

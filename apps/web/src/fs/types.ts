@@ -10,6 +10,7 @@ import type {
 import type { DeferredDirMetadata } from './prefetch/treePrefetchWorkerTypes'
 import type { ScrollPosition } from './cache/fileCacheController'
 import type { HighlightTransform } from './hooks/createHighlightState'
+import type { ViewMode } from './types/TabIdentity'
 
 export type FsSource = 'memory' | 'local' | 'opfs'
 
@@ -56,6 +57,9 @@ export type FsState = {
 	/** Pre-computed visible content for instant tab switching */
 	visibleContents: Record<string, VisibleContentSnapshot | undefined>
 	selectedFileVisibleContent?: VisibleContentSnapshot
+	/** Current view mode for each file */
+	fileViewModes: Record<string, ViewMode>
+	selectedFileViewMode?: ViewMode
 	creationState?: {
 		type: 'file' | 'folder'
 		parentPath: string

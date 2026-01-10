@@ -1,38 +1,32 @@
 /**
- * Core types for tab identification with view modes
+ * View mode types for files
+ * View mode is stored separately from tab identity - tabs are just file paths
  */
 
 export type ViewMode = 'editor' | 'ui' | 'binary'
 
-export type TabIdentity = {
-	path: string
-	viewMode: ViewMode
-}
-
 /**
- * Creates a unique tab ID from a tab identity
+ * Cleans up legacy tab IDs that had :viewMode suffix
+ * Now tabs are just file paths
  */
-export const createTabId = (identity: TabIdentity): string => 
-	`${identity.path}:${identity.viewMode}`
-
-/**
- * Parses a tab ID back into a tab identity
- * Defaults to 'editor' mode for backward compatibility
- */
-export const parseTabId = (tabId: string): TabIdentity => {
-	const [path, viewMode = 'editor'] = tabId.split(':')
-	return { 
-		path: path!, 
-		viewMode: viewMode as ViewMode 
+export const cleanLegacyTabId = (tabId: string): string => {
+	// Remove any :editor, :ui, :binary suffix from old tab format
+	if (tabId.includes(':')) {
+		const colonIndex = tabId.lastIndexOf(':')
+		const suffix = tabId.slice(colonIndex + 1)
+		if (suffix === 'editor' || suffix === 'ui' || suffix === 'binary') {
+			return tabId.slice(0, colonIndex)
+		}
 	}
+	return tabId
 }
 
 /**
- * Migrates existing tab state that doesn't include view mode information
- * Defaults to 'editor' mode for tabs without explicit view mode
+ * Migrates existing tab state to remove view mode suffixes
+ * Tabs are now just file paths
  */
 export const migrateTabState = (oldTabs: string[]): string[] => {
-	return oldTabs.map(path => 
-		path.includes(':') ? path : `${path}:editor`
-	)
+	const cleaned = oldTabs.map(cleanLegacyTabId)
+	// Remove duplicates that might result from migration
+	return [...new Set(cleaned)]
 }
