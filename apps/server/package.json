@@ -24,6 +24,7 @@
     "zod": "^4.1.13"
   },
   "devDependencies": {
+    "@types/subset-font": "^2.3.0",
     "bun-types": "latest"
   },
   "module": "src/index.js"

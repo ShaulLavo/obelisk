@@ -4,6 +4,7 @@
   "private": true,
   "exports": {
     ".": "./src/index.ts",
+    "./sync": "./src/sync/index.ts",
     "./tokenSummary": "./src/editor/minimap/tokenSummary.ts",
     "./styles.css": "./src/styles.css"
   },
