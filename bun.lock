@@ -42,7 +42,6 @@
         "@elysiajs/eden": "^1.3.0",
         "@elysiajs/static": "^1.4.7",
         "@elysiajs/swagger": "^1.3.1",
-        "@repo/logger": "*",
         "@types/jszip": "^3.4.1",
         "cheerio": "^1.1.2",
         "dotenv": "^17.2.3",
@@ -70,7 +69,6 @@
         "@repo/fs": "*",
         "@repo/icons": "*",
         "@repo/keyboard": "*",
-        "@repo/logger": "*",
         "@repo/perf": "*",
         "@repo/settings": "*",
         "@repo/theme": "*",
@@ -145,7 +143,6 @@
         "@kobalte/core": "^0.13.11",
         "@repo/icons": "*",
         "@repo/keyboard": "*",
-        "@repo/logger": "*",
         "@repo/perf": "*",
         "@repo/theme": "*",
         "@repo/ui": "*",
@@ -194,7 +191,6 @@
       "name": "@repo/fs",
       "version": "0.0.0",
       "dependencies": {
-        "@repo/logger": "*",
         "@repo/perf": "*",
         "@repo/utils": "*",
         "comlink": "^4.4.2",
@@ -289,22 +285,6 @@
         "vitest": "^4.0.16",
       },
     },
-    "packages/logger": {
-      "name": "@repo/logger",
-      "version": "0.0.0",
-      "dependencies": {
-        "consola": "^3.4.2",
-        "picocolors": "^1.1.1",
-        "zod": "^4.1.13",
-      },
-      "devDependencies": {
-        "@repo/eslint-config": "*",
-        "@repo/typescript-config": "*",
-        "@types/node": "^24.10.1",
-        "eslint": "^9.39.1",
-        "typescript": "5.9.2",
-      },
-    },
     "packages/nuqs-solid": {
       "name": "nuqs-monorepo",
       "version": "0.0.0",
@@ -326,7 +306,6 @@
       "name": "@repo/perf",
       "version": "0.0.0",
       "dependencies": {
-        "@repo/logger": "*",
         "zod": "^4.1.13",
       },
       "devDependencies": {
@@ -396,7 +375,6 @@
         "@corvu/resizable": "^0.2.5",
         "@kobalte/core": "^0.13.11",
         "@repo/icons": "*",
-        "@repo/logger": "workspace:*",
         "@repo/theme": "workspace:*",
         "@repo/utils": "workspace:*",
         "@tailwindcss/vite": "^4.1.17",
@@ -869,8 +847,6 @@
     "@repo/icons": ["@repo/icons@workspace:packages/icons"],
 
     "@repo/keyboard": ["@repo/keyboard@workspace:packages/keyboard"],
-
-    "@repo/logger": ["@repo/logger@workspace:packages/logger"],
 
     "@repo/perf": ["@repo/perf@workspace:packages/perf"],
 

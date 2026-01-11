@@ -12,7 +12,6 @@ export default defineConfig({
 	optimizeDeps: {
 		// Don't pre-bundle vitest-browser-solid - let vite-plugin-solid handle it
 		exclude: ['vitest-browser-solid'],
-		include: ['@repo/logger'],
 	},
 	test: {
 		projects: [
@@ -49,7 +48,7 @@ export default defineConfig({
 		],
 		server: {
 			deps: {
-				inline: ['@repo/logger', 'solid-js', 'vitest-browser-solid'],
+				inline: ['solid-js', 'vitest-browser-solid'],
 			},
 		},
 	},

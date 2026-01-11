@@ -19,5 +19,5 @@
 	"chatgpt.commentCodeLensEnabled": false,
 	"window.autoDetectColorScheme": true,
 	"workbench.preferredLightColorTheme": "Default Light Modern",
-	"workbench.preferredDarkColorTheme": "Tokyo Night"
+	"workbench.preferredDarkColorTheme": "Default Dark Modern"
 }
