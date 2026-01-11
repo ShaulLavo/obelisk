@@ -248,7 +248,7 @@ export class CacheMonitoringService {
 
 						removedFonts.push(fontName)
 						console.log(`[CacheMonitoringService] Removed font: ${fontName}`)
-					} catch (error) {
+					} catch (error: any) {
 						const errorMsg = `Failed to remove font ${fontName}: ${error.message}`
 						errors.push(errorMsg)
 						console.error('[CacheMonitoringService]', errorMsg)
@@ -267,7 +267,7 @@ export class CacheMonitoringService {
 				errors,
 				newStats: finalStats,
 			}
-		} catch (error) {
+		} catch (error: any) {
 			console.error('[CacheMonitoringService] Cache cleanup failed:', error)
 
 			return {
@@ -356,7 +356,7 @@ export class CacheMonitoringService {
 			}
 
 			return healthCheck
-		} catch (error) {
+		} catch (error: any) {
 			console.error('[CacheMonitoringService] Health check failed:', error)
 
 			return {

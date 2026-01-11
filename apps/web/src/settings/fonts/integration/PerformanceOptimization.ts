@@ -226,7 +226,7 @@ export class FontPerformanceOptimizer {
 	 */
 	getOptimizationStatus(): {
 		config: OptimizationConfig
-		metrics: ReturnType<typeof usePerformanceMonitor>['getMetrics']
+		metrics: ReturnType<ReturnType<typeof usePerformanceMonitor>['getMetrics']>
 		memoryUsage: number
 		isHealthy: boolean
 	} {

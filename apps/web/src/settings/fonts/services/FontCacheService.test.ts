@@ -147,9 +147,9 @@ describe('FontCacheService Cache Management', () => {
 					// Verify sorting maintains chronological order
 					for (let i = 1; i < sortedByAccess.length; i++) {
 						expect(
-							sortedByAccess[i].lastAccessed.getTime()
+							sortedByAccess[i]!.lastAccessed.getTime()
 						).toBeGreaterThanOrEqual(
-							sortedByAccess[i - 1].lastAccessed.getTime()
+							sortedByAccess[i - 1]!.lastAccessed.getTime()
 						)
 					}
 

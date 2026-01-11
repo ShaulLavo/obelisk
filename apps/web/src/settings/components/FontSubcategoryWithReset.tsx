@@ -3,7 +3,7 @@ import { Button } from '@repo/ui/button'
 import { SettingInput } from '@repo/ui/settings'
 import { useSettings } from '../SettingsProvider'
 import { FontFamilySelect } from './FontFamilySelect'
-import { FontCategory } from '../../fonts'
+import { FontCategory, type FontCategoryType } from '../../fonts'
 import type { FontModule } from '../../hooks/createFontZoomStore'
 
 export type FontSubcategoryWithResetProps = {
@@ -14,10 +14,12 @@ export type FontSubcategoryWithResetProps = {
 	sizeDescription: string
 	familyLabel: string
 	familyDescription: string
-	fontCategory?: FontCategory
+	fontCategory?: FontCategoryType
 }
 
-export const FontSubcategoryWithReset: Component<FontSubcategoryWithResetProps> = (props) => {
+export const FontSubcategoryWithReset: Component<
+	FontSubcategoryWithResetProps
+> = (props) => {
 	const [settingsState, settingsActions] = useSettings()
 
 	const handleSizeChange = (value: unknown) => {
@@ -34,10 +36,16 @@ export const FontSubcategoryWithReset: Component<FontSubcategoryWithResetProps> 
 		settingsActions.resetZoom(props.module)
 	}
 
-	const currentSize = () => settingsState.values[props.sizeKey] ?? settingsState.defaults[props.sizeKey] ?? 14
+	const currentSize = () =>
+		settingsState.values[props.sizeKey] ??
+		settingsState.defaults[props.sizeKey] ??
+		14
 	const zoomedSize = () => settingsActions.getZoomedFontSize(props.module)
 	const hasZoom = () => zoomedSize() !== currentSize()
-	const currentFamily = () => settingsState.values[props.familyKey] ?? settingsState.defaults[props.familyKey] ?? ''
+	const currentFamily = () =>
+		settingsState.values[props.familyKey] ??
+		settingsState.defaults[props.familyKey] ??
+		''
 
 	return (
 		<div class="space-y-4 divide-y divide-border/60">
@@ -57,14 +65,18 @@ export const FontSubcategoryWithReset: Component<FontSubcategoryWithResetProps> 
 						size="sm"
 						onClick={handleReset}
 						class="ml-4"
-						disabled={!hasZoom() && currentSize() === settingsState.defaults[props.sizeKey]}
+						disabled={
+							!hasZoom() &&
+							currentSize() === settingsState.defaults[props.sizeKey]
+						}
 					>
 						Reset
 					</Button>
 				</div>
 				{hasZoom() && (
 					<div class="text-ui-xs text-muted-foreground mt-2">
-						Current effective size: {zoomedSize()}px (base: {currentSize()}px)
+						Current effective size: {String(zoomedSize())}px (base:{' '}
+						{String(currentSize())}px)
 					</div>
 				)}
 			</div>

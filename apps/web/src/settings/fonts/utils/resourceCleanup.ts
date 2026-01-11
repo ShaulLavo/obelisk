@@ -315,7 +315,7 @@ export class FontResourceCleanup {
 		itemsRemoved: number
 		errors: string[]
 	}> {
-		const result = { itemsRemoved: 0, errors: [] }
+		const result = { itemsRemoved: 0, errors: [] as string[] }
 
 		try {
 			if ('caches' in window) {
@@ -346,7 +346,7 @@ export class FontResourceCleanup {
 		itemsRemoved: number
 		errors: string[]
 	}> {
-		const result = { itemsRemoved: 0, errors: [] }
+		const result = { itemsRemoved: 0, errors: [] as string[] }
 
 		try {
 			// Get all entries first
@@ -377,7 +377,7 @@ export class FontResourceCleanup {
 		itemsRemoved: number
 		errors: string[]
 	}> {
-		const result = { itemsRemoved: 0, errors: [] }
+		const result = { itemsRemoved: 0, errors: [] as string[] }
 
 		try {
 			if (document.fonts) {

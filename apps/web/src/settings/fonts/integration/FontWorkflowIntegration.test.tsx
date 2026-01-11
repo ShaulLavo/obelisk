@@ -46,7 +46,7 @@ global.fetch = vi.fn().mockImplementation((url: string) => {
 		})
 	}
 	return Promise.reject(new Error('Unknown endpoint'))
-})
+}) as unknown as typeof fetch
 
 // Mock Cache API
 const mockCache = {
@@ -276,7 +276,11 @@ describe('Font Management Workflow Integration', () => {
 
 			// Mock a failed download
 			const originalFetch = global.fetch
-			global.fetch = vi.fn().mockRejectedValue(new Error('Network error'))
+			global.fetch = vi
+				.fn()
+				.mockRejectedValue(
+					new Error('Network error')
+				) as unknown as typeof fetch
 
 			const hackCard = screen.getByText('Hack').closest('.p-4')
 			const hackDownloadButton = hackCard?.querySelector(

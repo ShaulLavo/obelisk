@@ -21,7 +21,7 @@ export function useMultiSelect<T extends string>() {
 	}
 
 	const clearSelection = () => {
-		setSelected(new Set())
+		setSelected(new Set<T>())
 	}
 
 	const enterSelectMode = () => {

@@ -5,12 +5,6 @@ describe('FontsSubcategoryUI Integration', () => {
 	 * Test that the component structure is correct
 	 */
 	it('should have correct component structure', () => {
-		// Test the component interface
-		const validateComponent = () => {
-			// FontsSubcategoryUI should be a function component
-			return typeof FontsSubcategoryUI === 'function'
-		}
-
 		// Import the component to test
 		import('./FontsSubcategoryUI').then(({ FontsSubcategoryUI }) => {
 			expect(typeof FontsSubcategoryUI).toBe('function')

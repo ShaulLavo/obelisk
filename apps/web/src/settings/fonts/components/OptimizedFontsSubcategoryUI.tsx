@@ -21,7 +21,13 @@ import {
 	onMount,
 	onCleanup,
 } from 'solid-js'
-import { VsSearch, VsRefresh, VsInfo, VsSettings } from '@repo/icons/vs'
+import {
+	VsSearch,
+	VsRefresh,
+	VsInfo,
+	VsSettings,
+	VsCheck,
+} from '@repo/icons/vs'
 import { Card, CardContent } from '@repo/ui/Card'
 import { useFontRegistry, FontSource, FontStatus } from '../../../fonts'
 import type { FontEntry } from '../../../fonts'

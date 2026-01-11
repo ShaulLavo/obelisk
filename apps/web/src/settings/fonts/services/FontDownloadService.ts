@@ -73,7 +73,7 @@ export class FontDownloadService {
 
 			const downloadResult = await RetryService.retryFontDownload(async () => {
 				const response = await client.fonts({ name }).get({
-					signal: abortController.signal,
+					fetch: { signal: abortController.signal },
 				})
 
 				if (abortController.signal.aborted) {
@@ -81,8 +81,10 @@ export class FontDownloadService {
 				}
 
 				if (!response.data || response.error) {
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					const errorValue = (response.error as any)?.value
 					throw new Error(
-						response.error?.message || `Failed to download font: ${name}`
+						errorValue?.message || `Failed to download font: ${name}`
 					)
 				}
 
@@ -113,10 +115,14 @@ export class FontDownloadService {
 
 			// Handle the response data
 			let fontData: ArrayBuffer
-			if (response.data instanceof Response) {
-				fontData = await response.data.arrayBuffer()
-			} else if (response.data instanceof ArrayBuffer) {
-				fontData = response.data
+			if (
+				typeof response.data === 'object' &&
+				response.data !== null &&
+				(response.data as any) instanceof Response
+			) {
+				fontData = await (response.data as any).arrayBuffer()
+			} else if ((response.data as any) instanceof ArrayBuffer) {
+				fontData = response.data as any
 			} else {
 				throw new Error(`Unexpected response data type for font: ${name}`)
 			}

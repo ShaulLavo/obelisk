@@ -246,7 +246,7 @@ export class CacheManifestService {
 		for (const pattern of patterns) {
 			const match = urlOrKey.match(pattern)
 			if (match) {
-				return match[1]
+				return match[1]!
 			}
 		}
 

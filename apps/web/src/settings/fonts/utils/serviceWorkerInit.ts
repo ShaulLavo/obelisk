@@ -93,7 +93,7 @@ export async function initializeServiceWorker(
 			serviceWorkerActive,
 			monitoringActive,
 		}
-	} catch (error) {
+	} catch (error: any) {
 		console.error(
 			'[ServiceWorkerInit] Failed to initialize service worker:',
 			error

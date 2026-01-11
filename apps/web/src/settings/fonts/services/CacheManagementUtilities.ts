@@ -118,7 +118,7 @@ export class CacheManagementUtilities {
 					optimizations.push(`Removed duplicate cache entries`)
 					spaceSaved += duplicateCleanup.spaceSaved
 				}
-			} catch (error) {
+			} catch (error: any) {
 				errors.push(`Failed to remove duplicates: ${error.message}`)
 			}
 
@@ -126,7 +126,7 @@ export class CacheManagementUtilities {
 			try {
 				await this.defragmentCache()
 				optimizations.push('Defragmented cache storage')
-			} catch (error) {
+			} catch (error: any) {
 				errors.push(`Failed to defragment cache: ${error.message}`)
 			}
 
@@ -136,7 +136,7 @@ export class CacheManagementUtilities {
 					await serviceWorkerManager.forceUpdate()
 					optimizations.push('Updated service worker cache')
 				}
-			} catch (error) {
+			} catch (error: any) {
 				errors.push(`Failed to update service worker: ${error.message}`)
 			}
 
@@ -144,7 +144,7 @@ export class CacheManagementUtilities {
 			try {
 				await this.optimizeCacheMetadata()
 				optimizations.push('Optimized cache metadata')
-			} catch (error) {
+			} catch (error: any) {
 				errors.push(`Failed to optimize metadata: ${error.message}`)
 			}
 
@@ -175,7 +175,7 @@ export class CacheManagementUtilities {
 				errors,
 				recommendations,
 			}
-		} catch (error) {
+		} catch (error: any) {
 			console.error(
 				'[CacheManagementUtilities] Cache optimization failed:',
 				error
@@ -283,7 +283,7 @@ export class CacheManagementUtilities {
 					totalSize += fontMetadata.size
 				} catch (error) {
 					errors.push(
-						`Failed to restore font ${fontMetadata.name}: ${error.message}`
+						`Failed to restore font ${fontMetadata.name}: ${(error as any).message}`
 					)
 				}
 			}
@@ -298,7 +298,7 @@ export class CacheManagementUtilities {
 				errors,
 				totalSize,
 			}
-		} catch (error) {
+		} catch (error: any) {
 			console.error(
 				'[CacheManagementUtilities] Failed to restore from backup:',
 				error
