@@ -21,27 +21,28 @@ export function createSplitEditorKeymap(layoutManager: LayoutManager) {
 	// Register commands
 	keymap.registerCommand({
 		id: 'split-editor.focus-up',
-		run: ({ app }) => app.layoutManager.navigateFocus('up'),
+		run: ({ app }) => app?.layoutManager.navigateFocus('up'),
 	})
 
 	keymap.registerCommand({
 		id: 'split-editor.focus-down',
-		run: ({ app }) => app.layoutManager.navigateFocus('down'),
+		run: ({ app }) => app?.layoutManager.navigateFocus('down'),
 	})
 
 	keymap.registerCommand({
 		id: 'split-editor.focus-left',
-		run: ({ app }) => app.layoutManager.navigateFocus('left'),
+		run: ({ app }) => app?.layoutManager.navigateFocus('left'),
 	})
 
 	keymap.registerCommand({
 		id: 'split-editor.focus-right',
-		run: ({ app }) => app.layoutManager.navigateFocus('right'),
+		run: ({ app }) => app?.layoutManager.navigateFocus('right'),
 	})
 
 	keymap.registerCommand({
 		id: 'split-editor.split-horizontal',
 		run: ({ app }) => {
+			if (!app) return
 			const focusedPaneId = app.layoutManager.state.focusedPaneId
 			if (focusedPaneId) {
 				app.layoutManager.splitPane(focusedPaneId, 'horizontal')
@@ -52,6 +53,7 @@ export function createSplitEditorKeymap(layoutManager: LayoutManager) {
 	keymap.registerCommand({
 		id: 'split-editor.split-vertical',
 		run: ({ app }) => {
+			if (!app) return
 			const focusedPaneId = app.layoutManager.state.focusedPaneId
 			if (focusedPaneId) {
 				app.layoutManager.splitPane(focusedPaneId, 'vertical')
@@ -62,6 +64,7 @@ export function createSplitEditorKeymap(layoutManager: LayoutManager) {
 	keymap.registerCommand({
 		id: 'split-editor.close-pane',
 		run: ({ app }) => {
+			if (!app) return
 			const focusedPaneId = app.layoutManager.state.focusedPaneId
 			if (focusedPaneId) {
 				app.layoutManager.closePane(focusedPaneId)
@@ -71,17 +74,18 @@ export function createSplitEditorKeymap(layoutManager: LayoutManager) {
 
 	keymap.registerCommand({
 		id: 'split-editor.cycle-tab-next',
-		run: ({ app }) => app.layoutManager.cycleTab('next'),
+		run: ({ app }) => app?.layoutManager.cycleTab('next'),
 	})
 
 	keymap.registerCommand({
 		id: 'split-editor.cycle-tab-prev',
-		run: ({ app }) => app.layoutManager.cycleTab('prev'),
+		run: ({ app }) => app?.layoutManager.cycleTab('prev'),
 	})
 
 	keymap.registerCommand({
 		id: 'split-editor.focus-pane-1',
 		run: ({ app }) => {
+			if (!app) return
 			const panes = app.layoutManager.paneIds()
 			if (panes[0]) {
 				app.layoutManager.setFocusedPane(panes[0])
@@ -92,6 +96,7 @@ export function createSplitEditorKeymap(layoutManager: LayoutManager) {
 	keymap.registerCommand({
 		id: 'split-editor.focus-pane-2',
 		run: ({ app }) => {
+			if (!app) return
 			const panes = app.layoutManager.paneIds()
 			if (panes[1]) {
 				app.layoutManager.setFocusedPane(panes[1])
@@ -102,6 +107,7 @@ export function createSplitEditorKeymap(layoutManager: LayoutManager) {
 	keymap.registerCommand({
 		id: 'split-editor.focus-pane-3',
 		run: ({ app }) => {
+			if (!app) return
 			const panes = app.layoutManager.paneIds()
 			if (panes[2]) {
 				app.layoutManager.setFocusedPane(panes[2])
@@ -113,73 +119,97 @@ export function createSplitEditorKeymap(layoutManager: LayoutManager) {
 	keymap.registerKeybinding({
 		id: 'focus-up',
 		shortcut: 'cmd+alt+up',
-		preventDefault: true,
+		options: {
+			preventDefault: true,
+		},
 	})
 
 	keymap.registerKeybinding({
 		id: 'focus-down',
 		shortcut: 'cmd+alt+down',
-		preventDefault: true,
+		options: {
+			preventDefault: true,
+		},
 	})
 
 	keymap.registerKeybinding({
 		id: 'focus-left',
 		shortcut: 'cmd+alt+left',
-		preventDefault: true,
+		options: {
+			preventDefault: true,
+		},
 	})
 
 	keymap.registerKeybinding({
 		id: 'focus-right',
 		shortcut: 'cmd+alt+right',
-		preventDefault: true,
+		options: {
+			preventDefault: true,
+		},
 	})
 
 	keymap.registerKeybinding({
 		id: 'split-horizontal',
 		shortcut: 'cmd+\\',
-		preventDefault: true,
+		options: {
+			preventDefault: true,
+		},
 	})
 
 	keymap.registerKeybinding({
 		id: 'split-vertical',
 		shortcut: 'cmd+shift+\\',
-		preventDefault: true,
+		options: {
+			preventDefault: true,
+		},
 	})
 
 	keymap.registerKeybinding({
 		id: 'close-pane',
 		shortcut: 'cmd+w',
-		preventDefault: true,
+		options: {
+			preventDefault: true,
+		},
 	})
 
 	keymap.registerKeybinding({
 		id: 'cycle-tab-next',
 		shortcut: 'cmd+tab',
-		preventDefault: true,
+		options: {
+			preventDefault: true,
+		},
 	})
 
 	keymap.registerKeybinding({
 		id: 'cycle-tab-prev',
 		shortcut: 'cmd+shift+tab',
-		preventDefault: true,
+		options: {
+			preventDefault: true,
+		},
 	})
 
 	keymap.registerKeybinding({
 		id: 'focus-pane-1',
 		shortcut: 'cmd+1',
-		preventDefault: true,
+		options: {
+			preventDefault: true,
+		},
 	})
 
 	keymap.registerKeybinding({
 		id: 'focus-pane-2',
 		shortcut: 'cmd+2',
-		preventDefault: true,
+		options: {
+			preventDefault: true,
+		},
 	})
 
 	keymap.registerKeybinding({
 		id: 'focus-pane-3',
 		shortcut: 'cmd+3',
-		preventDefault: true,
+		options: {
+			preventDefault: true,
+		},
 	})
 
 	// Bind commands to keybindings
