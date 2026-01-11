@@ -413,7 +413,7 @@ export function createLayoutManager() {
 		if (!pane || !isPane(pane)) return null
 
 		// Walk up the tree to find a container that can provide the adjacent pane
-		let currentNode = pane
+		let currentNode: SplitNode = pane
 		let parentId = currentNode.parentId
 
 		while (parentId) {
@@ -445,8 +445,10 @@ export function createLayoutManager() {
 				// Check if target child exists
 				if (targetChildIndex >= 0 && targetChildIndex < parent.children.length) {
 					const targetChildId = parent.children[targetChildIndex]
-					// Find the first pane in the target subtree
-					return findFirstPane(state.nodes, targetChildId)
+					if (targetChildId) {
+						// Find the first pane in the target subtree
+						return findFirstPane(state.nodes, targetChildId)
+					}
 				}
 			}
 
