@@ -279,7 +279,7 @@ export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
 					</Match>
 
 					<Match when={!props.isFileSelected()}>
-						<p class="mt-2 text-sm text-zinc-500">
+						<p class="mt-2 text-ui text-zinc-500">
 							{/* Select a file to view its contents. Click folders to toggle
 						visibility. Click folders to toggle
 						visibility. */}

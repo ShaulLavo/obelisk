@@ -19,7 +19,7 @@ export const FsHeader = (props: FsHeaderProps) => {
 			<Button
 				variant="outline"
 				size="sm"
-				class="h-auto py-1 px-3 text-xs font-medium border-zinc-700/70 bg-zinc-800 text-zinc-100 hover:bg-zinc-700 hover:text-zinc-50"
+				class="h-auto py-1 px-3 text-ui-xs font-medium border-zinc-700/70 bg-zinc-800 text-zinc-100 hover:bg-zinc-700 hover:text-zinc-50"
 				onMouseDown={() => props.onRefresh()}
 			>
 				Refresh

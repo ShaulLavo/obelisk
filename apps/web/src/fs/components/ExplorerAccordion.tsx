@@ -22,7 +22,7 @@ const FsAccordionSection = (props: FsAccordionSectionProps) => (
 		<AccordionPrimitive.Header
 			class={`flex items-center w-full shrink-0 bg-background ${props.headerClass ?? ''}`}
 		>
-			<AccordionPrimitive.Trigger class="flex w-full items-center gap-1 py-1 px-1 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground focus:outline-none [&:not([data-expanded])>svg]:-rotate-90">
+			<AccordionPrimitive.Trigger class="text-ui-xs flex w-full items-center gap-1 py-1 px-1 font-semibold uppercase tracking-[0.08em] text-muted-foreground focus:outline-none [&:not([data-expanded])>svg]:-rotate-90">
 				<VsChevronDown
 					size={16}
 					class="shrink-0 transition-transform duration-200"

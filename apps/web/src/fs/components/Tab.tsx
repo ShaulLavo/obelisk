@@ -42,7 +42,7 @@ export const Tab = (props: TabProps) => {
 	// Get view mode indicator styling
 	const getViewModeIndicatorClass = () => {
 		const baseClass =
-			'inline-flex items-center justify-center w-4 h-4 text-[9px] font-bold rounded-sm'
+			'inline-flex items-center justify-center w-4 h-4 font-bold rounded-sm'
 
 		switch (props.viewMode) {
 			case 'ui':
@@ -74,9 +74,9 @@ export const Tab = (props: TabProps) => {
 			onClick={handleSelect}
 			title={props.title ?? props.value}
 			class={
-				'h-auto gap-2 px-3 py-1 font-semibold transition-colors group text-xs rounded-none border-r border-border/30 first:border-l ' +
+				'h-auto gap-2 px-3 py-1 font-semibold transition-colors group rounded-none border-r border-border/30 first:border-l text-ui ' +
 				'focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none focus:outline-none ring-0 outline-none ' +
-				'hover:bg-muted/50 hover:text-foreground ' + // Override accent hover with neutral muted
+				'hover:bg-muted/50 hover:text-foreground ' +
 				(props.isActive
 					? 'bg-background text-foreground'
 					: 'text-muted-foreground')
@@ -89,7 +89,7 @@ export const Tab = (props: TabProps) => {
 			{/* View mode indicator (Requirements 8.1, 8.2, 8.3) */}
 			<Show when={shouldShowViewModeIndicator()}>
 				<span
-					class={getViewModeIndicatorClass()}
+					class={getViewModeIndicatorClass() + ' text-ui-xs'}
 					title={`${getViewModeIndicatorText()} mode`}
 				>
 					{getViewModeIndicatorText()}

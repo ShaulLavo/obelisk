@@ -139,35 +139,35 @@ export const LocalDirectoryFallbackModal: Component = () => {
 		modalId = modal({
 			heading: 'Import a folder',
 			body: (
-				<Flex flexDirection="col" class="gap-3 text-xs text-muted-foreground">
-					<p class="text-sm text-foreground">{description()}</p>
+				<Flex flexDirection="col" class="gap-3 text-ui-xs text-muted-foreground">
+					<p class="text-ui text-foreground">{description()}</p>
 					{singleMode() ? (
 						<>
-							<p class="rounded-md border border-amber-200 bg-amber-100 px-3 py-2 text-[11px] text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100">
+							<p class="rounded-md border border-amber-200 bg-amber-100 px-3 py-2 text-ui-xs text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100">
 								This browser only supports the temporary memory import. Load a
 								folder to edit it for this session; the workspace will reset as
 								soon as you reload and changes won't sync to disk.
 							</p>
-							<p class="text-[11px] text-muted-foreground">
+							<p class="text-ui-xs text-muted-foreground">
 								For persistent access, open this app in a Chromium-based
 								browser.
 							</p>
 						</>
 					) : (
 						<>
-							<p class="rounded-md border border-amber-200 bg-amber-100 px-3 py-2 text-[11px] text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100">
+							<p class="rounded-md border border-amber-200 bg-amber-100 px-3 py-2 text-ui-xs text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100">
 								Load the folder into memory for a one-off editing session (it
 								resets the moment you reload), or copy it into browser storage
 								(OPFS) to keep it across reloads. Important: OPFS is sandboxed,
 								so changes are saved in the browser but will NOT update your
 								original files on disk.
 							</p>
-							<p class="text-[11px] text-muted-foreground">
+							<p class="text-ui-xs text-muted-foreground">
 								Persisting replaces the existing OPFS workspace for this app.
 							</p>
 						</>
 					)}
-					{error() && <p class="text-sm text-destructive">{error()}</p>}
+					{error() && <p class="text-ui text-destructive">{error()}</p>}
 				</Flex>
 			),
 			dismissable: false,

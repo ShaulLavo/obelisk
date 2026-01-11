@@ -1,6 +1,7 @@
 import { Flex } from '@repo/ui/flex'
 import { Resizable } from '~/components/Resizable'
 import { useFs } from '../../fs/context/FsContext'
+import { SyncStatusProvider } from '../context/SyncStatusContext'
 import { SelectedFilePanel } from './SelectedFilePanel'
 import { TreeView } from './TreeView'
 
@@ -17,24 +18,26 @@ export const Fs = () => {
 	}
 
 	return (
-		<Flex
-			flexDirection="col"
-			class="h-full min-h-0 overflow-hidden rounded-lg border border-border/30 bg-muted/60 shadow-xl"
-		>
-			<Resizable
-				orientation="horizontal"
-				storageKey="fs-horizontal-panel-size"
-				defaultSizes={[0.3, 0.7]}
-				handleAriaLabel="Resize file tree"
+		<SyncStatusProvider>
+			<Flex
+				flexDirection="col"
+				class="h-full min-h-0 overflow-hidden rounded-lg border border-border/30 bg-muted/60 shadow-xl"
 			>
-				<ExplorerAccordion>
-					<TreeView tree={() => state.tree} loading={() => state.loading} />
-				</ExplorerAccordion>
-				<SelectedFilePanel
-					isFileSelected={isFileSelected}
-					currentPath={state.lastKnownFilePath}
-				/>
-			</Resizable>
-		</Flex>
+				<Resizable
+					orientation="horizontal"
+					storageKey="fs-horizontal-panel-size"
+					defaultSizes={[0.3, 0.7]}
+					handleAriaLabel="Resize file tree"
+				>
+					<ExplorerAccordion>
+						<TreeView tree={() => state.tree} loading={() => state.loading} />
+					</ExplorerAccordion>
+					<SelectedFilePanel
+						isFileSelected={isFileSelected}
+						currentPath={state.lastKnownFilePath}
+					/>
+				</Resizable>
+			</Flex>
+		</SyncStatusProvider>
 	)
 }

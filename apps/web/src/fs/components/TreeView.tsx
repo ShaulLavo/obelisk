@@ -14,7 +14,7 @@ export const TreeView = (props: TreeViewProps) => {
 			<Show
 				when={!props.loading() && props.tree()}
 				fallback={
-					<p class="text-sm text-muted-foreground p-2">
+					<p class="text-ui text-muted-foreground p-2">
 						{props.loading() ? '' : 'No filesystem loaded.'}
 					</p>
 				}

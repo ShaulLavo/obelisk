@@ -86,7 +86,7 @@ export const CreationRow = (props: CreationRowProps) => {
 						ref={(el) => (inputRef = el)}
 						onKeyDown={handleKeyDown}
 						onBlur={handleSubmit}
-						class="flatten-input h-full min-h-0 w-full p-0 text-sm bg-transparent border-none focus-visible:ring-0 rounded-none shadow-none leading-tight"
+						class="flatten-input h-full min-h-0 w-full p-0 text-ui bg-transparent border-none focus-visible:ring-0 rounded-none shadow-none leading-tight"
 						placeholder={type() === 'file' ? 'File name...' : 'Folder name...'}
 					/>
 				</TextField>

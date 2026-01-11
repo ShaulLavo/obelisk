@@ -43,13 +43,13 @@ export const Tabs: Component<TabsProps> = (props) => {
 		<Flex
 			role="tablist"
 			alignItems="end"
-			class="shrink-0 gap-1 overflow-x-auto border-b border-border/30 bg-muted/40 text-xs"
+			class="shrink-0 gap-1 overflow-x-auto border-b border-border/30 bg-muted/40 text-ui-xs"
 		>
 			<Flex alignItems="end" class="gap-1 flex-1 overflow-x-auto">
 				<Show
 					when={props.values.length > 0}
 					fallback={
-						<p class="text-[10px] uppercase tracking-[0.08em] text-muted-foreground px-2 py-1">
+						<p class="uppercase tracking-[0.08em] text-muted-foreground px-2 py-1" style={{ "font-size": "calc(var(--ui-font-size, 13px) * 0.77)" }}>
 							{props.emptyLabel ?? 'Open a file to start editing'}
 						</p>
 					}

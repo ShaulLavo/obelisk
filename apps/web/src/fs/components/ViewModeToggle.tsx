@@ -55,7 +55,7 @@ export const ViewModeToggle: Component<ViewModeToggleProps> = (props) => {
 								size="icon"
 								onClick={() => handleModeSelect(mode.id)}
 								title={`Switch to ${mode.label} view`}
-								class="w-6 h-6 p-0 rounded text-xs"
+								class="w-6 h-6 p-0 rounded text-ui-xs"
 								aria-pressed={isActive()}
 								aria-label={`Switch to ${mode.label} view`}
 							>

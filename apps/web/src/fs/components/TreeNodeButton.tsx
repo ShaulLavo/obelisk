@@ -25,7 +25,7 @@ export const TreeNodeButton = (props: TreeNodeButtonProps) => {
 			onMouseDown={props.onClick}
 			onKeyDown={handleKeyDown}
 			aria-expanded={props.isDir ? props.isOpen : undefined}
-			class="tree-node-button justify-start gap-0 h-auto min-h-0 p-0 font-normal text-[13px] hover:bg-transparent text-foreground hover:text-foreground"
+			class="tree-node-button justify-start gap-0 h-auto min-h-0 p-0 font-normal text-ui hover:bg-transparent text-foreground hover:text-foreground"
 		>
 			<TreeNodeIcon
 				isDir={props.isDir}
