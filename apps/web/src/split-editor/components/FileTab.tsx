@@ -13,6 +13,8 @@ import { Editor } from '@repo/code-editor'
 import type { EditorProps, ScrollPosition, DocumentIncrementalEdit } from '@repo/code-editor'
 import { useLayoutManager, useResourceManager } from './SplitEditor'
 import type { Tab, EditorPane } from '../types'
+import { createScrollSyncCoordinator } from '../createScrollSyncCoordinator'
+import type { ScrollEvent } from '../createScrollSyncCoordinator'
 
 export interface FileTabProps {
 	tab: Tab
@@ -34,6 +36,9 @@ export function FileTab(props: FileTabProps) {
 	const resourceManager = useResourceManager()
 
 	console.log(`[FileTab] Rendering FileTab for ${props.filePath}, tabId: ${props.tab.id}`)
+
+	// Create scroll sync coordinator
+	const scrollSyncCoordinator = createScrollSyncCoordinator(layoutManager)
 
 	// Register this tab for the file on mount
 	onMount(() => {
@@ -113,6 +118,20 @@ export function FileTab(props: FileTabProps) {
 			scrollTop: position.lineIndex,
 			scrollLeft: position.scrollLeft,
 		})
+
+		// Create scroll event for sync coordination
+		const scrollEvent: ScrollEvent = {
+			tabId: props.tab.id,
+			scrollTop: position.lineIndex,
+			scrollLeft: position.scrollLeft,
+			scrollHeight: 1000, // TODO: Get actual scroll dimensions from editor
+			scrollWidth: 1000,
+			clientHeight: 500,
+			clientWidth: 500,
+		}
+
+		// Handle scroll sync
+		scrollSyncCoordinator.handleScroll(scrollEvent)
 	}
 
 	// Get initial scroll position from tab state
