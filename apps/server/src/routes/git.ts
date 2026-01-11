@@ -101,5 +101,4 @@ export const gitRoutes = new Elysia({ prefix: '/git' }).all(
 	}
 )
 
-// Export helpers for testing
 export { isAllowedGitHost, buildGitProxyHeaders, buildGitProxyResponse }
