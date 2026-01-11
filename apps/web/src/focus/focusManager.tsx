@@ -6,8 +6,6 @@ import {
 	type Accessor,
 	type ParentComponent,
 } from 'solid-js'
-import { IS_DEV } from '~/env'
-import { logger } from '~/logger'
 
 export type FocusArea = 'global' | 'terminal' | 'editor' | 'fileTree'
 

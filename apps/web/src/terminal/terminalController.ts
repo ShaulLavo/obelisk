@@ -18,7 +18,6 @@ import type { TerminalPrompt } from './prompt'
 import type { TerminalAddonLike, TerminalLike } from './localEcho/types'
 import type { ThemePalette } from '@repo/theme'
 import type { ScrollbarSource } from '@repo/ui/useScrollbar'
-import { logger } from '~/logger'
 
 export type TerminalBackend = 'ghostty' | 'xterm'
 export type XtermRenderer = 'webgl' | 'canvas' | 'dom'
@@ -62,7 +61,6 @@ const GHOSTTY_SCROLLBACK_LINES = 10000
 const GHOSTTY_REPLAY_LIMIT = 2 * 1024 * 1024
 const GHOSTTY_SCROLLBAR_LINE_HEIGHT = 20
 const XTERM_SCROLL_LOOKUP_ATTEMPTS = 8
-const terminalLogger = logger.withTag('terminal')
 
 export const createTerminalController = async (
 	container: HTMLDivElement,
@@ -98,13 +96,6 @@ export const createTerminalController = async (
 	let isReplaying = true
 	const pendingEntries: BufferEntry[] = []
 
-	const logOutputError = (error: unknown) => {
-		const details =
-			error instanceof Error
-				? { message: error.message, stack: error.stack }
-				: { message: String(error) }
-		terminalLogger.error('Terminal output failed', details)
-	}
 	const printEntry = (entry: BufferEntry) => {
 		if (disposed) return
 		try {
@@ -113,8 +104,8 @@ export const createTerminalController = async (
 			} else {
 				echoAddon.print(entry.content)
 			}
-		} catch (error) {
-			logOutputError(error)
+		} catch {
+			// Ignore output errors
 		}
 	}
 	const recordOutput = (type: BufferEntry['type'], text: string) => {
@@ -232,7 +223,6 @@ export const createTerminalController = async (
 
 			if (!xtermScrollLookupWarned) {
 				xtermScrollLookupWarned = true
-				terminalLogger.warn('xterm viewport not found for scrollbar')
 			}
 		}
 
@@ -319,11 +309,6 @@ export const createTerminalController = async (
 			return
 		}
 
-		terminalLogger.debug('Replaying terminal buffer', {
-			backend,
-			entries: sharedBuffer.entries.length,
-			size: sharedBuffer.getTotalSize(),
-		})
 		// For ghostty, reset terminal to get a clean slate
 		// (ghostty may have garbage in WASM memory from previous use)
 		if (backend === 'ghostty' && 'reset' in term) {
@@ -332,12 +317,6 @@ export const createTerminalController = async (
 		// Workaround: Ghostty WASM crashes on large replays, so cap replay size.
 		const maxReplaySize =
 			backend === 'ghostty' ? GHOSTTY_REPLAY_LIMIT : undefined
-		if (maxReplaySize && sharedBuffer.getTotalSize() > maxReplaySize) {
-			terminalLogger.warn('Capping terminal replay for Ghostty', {
-				totalSize: sharedBuffer.getTotalSize(),
-				replayLimit: maxReplaySize,
-			})
-		}
 		await sharedBuffer.replayAsync(echoAddon, {
 			maxSize: maxReplaySize,
 			endSequence: replayEndSequence,
@@ -470,17 +449,11 @@ const createXtermRuntime = (
 				// The error occurs when trying to access _isDisposed on undefined objects
 				originalDispose()
 			} catch (error) {
-				terminalLogger.warn(
-					'WebGL addon disposal error (likely already disposed)',
-					{
-						error: error instanceof Error ? error.message : String(error),
-					}
-				)
+				// WebGL addon disposal error (likely already disposed)
 			}
 		}
 
 		webglAddon.onContextLoss(() => {
-			terminalLogger.debug('WebGL context lost, disposing addon')
 			webglAddon.dispose()
 		})
 

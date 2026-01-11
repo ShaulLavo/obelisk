@@ -22,7 +22,6 @@ import type {
 	TerminalLike,
 	TerminalSize,
 } from './types'
-import { logger } from '~/logger'
 
 const ANSI = {
 	CURSOR_UP: '\x1B[A',
@@ -71,7 +70,6 @@ const CSI_MAX_LENGTH = 64
 const MAX_SANITIZE_LOGS = 3
 const MAX_WRITE_LOGS = 3
 const WRITE_BACKLOG_LOG_THRESHOLD = 200
-const outputLogger = logger.withTag('terminal:output')
 
 const isCsiContinuation = (code: number): boolean =>
 	(code >= 0x30 && code <= 0x3f) || (code >= 0x20 && code <= 0x2f)
@@ -295,10 +293,6 @@ export class LocalEchoController implements ILocalEchoController {
 			this.writeLogCount < MAX_WRITE_LOGS
 		) {
 			this.writeLogCount += 1
-			outputLogger.debug('Terminal output backlog', {
-				pendingWrites: this.pendingWriteCount,
-				length: data.length,
-			})
 		}
 
 		const write = () =>
@@ -309,12 +303,7 @@ export class LocalEchoController implements ILocalEchoController {
 				}
 				try {
 					this.term.write(data, resolve)
-				} catch (error) {
-					const details =
-						error instanceof Error
-							? { message: error.message, stack: error.stack }
-							: { message: String(error) }
-					outputLogger.error('Terminal write failed', details)
+				} catch {
 					resolve()
 				}
 			})
@@ -334,13 +323,6 @@ export class LocalEchoController implements ILocalEchoController {
 			const sanitized = sanitizeAnsiOutput(value)
 			if (sanitized !== value) {
 				this.sanitizeLogCount += 1
-				if (this.sanitizeLogCount <= MAX_SANITIZE_LOGS) {
-					outputLogger.debug('Sanitized terminal output', {
-						length: value.length,
-					})
-				} else if (this.sanitizeLogCount === MAX_SANITIZE_LOGS + 1) {
-					outputLogger.debug('Sanitized terminal output (suppressed)')
-				}
 			}
 			return sanitized
 		}

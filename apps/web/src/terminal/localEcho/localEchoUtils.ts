@@ -1,5 +1,4 @@
 import { parse } from 'shell-quote'
-import { logger } from '~/logger'
 import type { TerminalPosition, AutocompleteHandler } from './types'
 
 /**
@@ -177,8 +176,7 @@ export function collectAutocompleteCandidates(
 			try {
 				const results = fn(index, tokens, ...args)
 				return candidates.concat(results)
-			} catch (err) {
-				logger.withTag('terminal').warn('Autocomplete error', { error: err })
+			} catch {
 				return candidates
 			}
 		},
