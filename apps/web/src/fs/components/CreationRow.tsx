@@ -8,6 +8,7 @@ import { useFs } from '../context/FsContext'
 type CreationRowProps = {
 	depth: number
 	parentPath: string
+	onFileCreate?: (filePath: string) => void
 }
 
 const TREE_INDENT_PX = 8
@@ -34,6 +35,10 @@ export const CreationRow = (props: CreationRowProps) => {
 		if (name) {
 			if (type() === 'file') {
 				await actions.createFile(props.parentPath, name)
+				// Auto-open the newly created file in split editor
+				const filePath = props.parentPath ? `${props.parentPath}/${name}` : name
+				console.log('[CreationRow] Calling onFileCreate with filePath:', filePath)
+				props.onFileCreate?.(filePath)
 			} else {
 				await actions.createDir(props.parentPath, name)
 			}

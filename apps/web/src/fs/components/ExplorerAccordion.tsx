@@ -35,7 +35,12 @@ const FsAccordionSection = (props: FsAccordionSectionProps) => (
 	</AccordionItem>
 )
 
-export const ExplorerAccordion: ParentComponent = (props) => {
+type ExplorerAccordionProps = {
+	children: JSX.Element
+	onSystemFileOpen?: (filePath: string) => void
+}
+
+export const ExplorerAccordion: ParentComponent<ExplorerAccordionProps> = (props) => {
 	const focus = useFocusManager()
 	const [state] = useFs()
 	let containerRef: HTMLDivElement = null!
@@ -78,7 +83,7 @@ export const ExplorerAccordion: ParentComponent = (props) => {
 					class="shrink-0 flex flex-col max-h-[30%] border-b border-border/50"
 				>
 					<div class="overflow-auto max-h-full">
-						<SystemFilesSection />
+						<SystemFilesSection onFileOpen={props.onSystemFileOpen} />
 					</div>
 				</FsAccordionSection>
 

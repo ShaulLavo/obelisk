@@ -4,7 +4,7 @@ import { useFs } from '../../fs/context/FsContext'
 import { SyncStatusProvider } from '../context/SyncStatusContext'
 import { SplitEditorPanel } from './SplitEditorPanel'
 import { TreeView } from './TreeView'
-import { createSignal, createEffect } from 'solid-js'
+import { createSignal } from 'solid-js'
 import type { LayoutManager } from '../../split-editor'
 
 import { ExplorerAccordion } from './ExplorerAccordion'
@@ -16,28 +16,23 @@ export const Fs = () => {
 	// A file is selected only if there's an actual selectedPath pointing to a file
 	const isFileSelected = () => {
 		const path = state.selectedPath
+		const fileNode = state.lastKnownFileNode
+		console.log('[Fs] isFileSelected - selectedPath:', path, 'lastKnownFileNode:', fileNode)
 		if (!path) return false
-		return state.lastKnownFileNode?.kind === 'file'
+		return fileNode?.kind === 'file'
 	}
 
 	// Function to open a file as a tab
 	const openFileAsTab = (filePath: string) => {
+		console.log('[Fs] openFileAsTab called with filePath:', filePath)
 		const manager = layoutManager()
 		if (manager && (manager as any).openFileAsTab) {
+			console.log('[Fs] Layout manager available, calling openFileAsTab')
 			;(manager as any).openFileAsTab(filePath)
+		} else {
+			console.log('[Fs] No layout manager or openFileAsTab method available, manager:', !!manager)
 		}
 	}
-
-	// Auto-open files when they are selected (e.g., after creation)
-	createEffect(() => {
-		const selectedPath = state.selectedPath
-		const fileNode = state.lastKnownFileNode
-		
-		// Only auto-open if it's a file and we have a layout manager
-		if (selectedPath && fileNode?.kind === 'file' && layoutManager()) {
-			openFileAsTab(selectedPath)
-		}
-	})
 
 	return (
 		<SyncStatusProvider>
@@ -51,11 +46,12 @@ export const Fs = () => {
 					defaultSizes={[0.3, 0.7]}
 					handleAriaLabel="Resize file tree"
 				>
-					<ExplorerAccordion>
-						<TreeView 
-							tree={() => state.tree} 
+					<ExplorerAccordion onSystemFileOpen={openFileAsTab}>
+						<TreeView
+							tree={() => state.tree}
 							loading={() => state.loading}
 							onFileOpen={openFileAsTab}
+							onFileCreate={openFileAsTab}
 						/>
 					</ExplorerAccordion>
 					<SplitEditorPanel

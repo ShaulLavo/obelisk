@@ -23,13 +23,19 @@ const SYSTEM_FILES: SystemFile[] = [
 	},
 ]
 
-export const SystemFilesSection = () => {
+type SystemFilesSectionProps = {
+	onFileOpen?: (filePath: string) => void
+}
+
+export const SystemFilesSection = (props: SystemFilesSectionProps) => {
 	const [, actions] = useFs()
 
 	const isSelected = (path: string) => actions.isSelectedPath(path)
 
 	const handleFileSelect = async (path: string) => {
 		void actions.selectPath(path)
+		// Also open the file in the editor
+		props.onFileOpen?.(path)
 	}
 
 	const renderFileIcon = (file: SystemFile) => {

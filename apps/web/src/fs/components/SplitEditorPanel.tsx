@@ -6,7 +6,7 @@
  * tab-based editing with split panes.
  */
 
-import { createMemo, createSignal, onMount, createEffect, type Accessor, type JSX } from 'solid-js'
+import { onMount, type Accessor, type JSX } from 'solid-js'
 import { SplitEditor } from '../../split-editor/components/SplitEditor'
 import { FileTab } from '../../split-editor/components/FileTab'
 import { createLayoutManager } from '../../split-editor/createLayoutManager'
@@ -25,29 +25,44 @@ type SplitEditorPanelProps = {
 
 export const SplitEditorPanel = (props: SplitEditorPanelProps) => {
 	const [state] = useFs()
-	
-	// Create layout and resource managers
-	const layoutManager = createLayoutManager()
+
+	// Create resource manager first (needed for layout manager callback)
 	const resourceManager = createResourceManager()
+
+	// Create layout manager with tab close callback for resource cleanup
+	const layoutManager = createLayoutManager({
+		onTabClose: (_paneId, closedTab) => {
+			// Only cleanup file resources, not empty tabs
+			if (closedTab.content.type !== 'file' || !closedTab.content.filePath) {
+				return
+			}
+
+			const filePath = closedTab.content.filePath
+
+			// Check if any other tabs still have this file open
+			const remainingTab = layoutManager.findTabByFilePath(filePath)
+			if (!remainingTab) {
+				// No more tabs with this file - cleanup resources
+				resourceManager.cleanupFileResources(filePath)
+			}
+		}
+	})
 	
 	// Initialize with single pane
 	onMount(() => {
 		layoutManager.initialize()
-		
+
 		// Notify parent that layout manager is ready
 		props.onLayoutManagerReady?.(layoutManager)
-		
-		// If there's a current file, open it as the first tab
-		const currentPath = props.currentPath
-		if (currentPath && props.isFileSelected()) {
-			openFileAsTab(currentPath)
-		} else {
-			// Open a welcome tab if no file is selected
-			const focusedPaneId = layoutManager.state.focusedPaneId
-			if (focusedPaneId) {
-				const content = { type: 'empty' as const }
-				layoutManager.openTab(focusedPaneId, content)
-			}
+
+		// Always start with an editable untitled file - no welcome screen
+		const focusedPaneId = layoutManager.state.focusedPaneId
+		if (focusedPaneId) {
+			// Create an untitled file that's immediately editable
+			const untitledPath = 'Untitled'
+			resourceManager.preloadFileContent(untitledPath, '')
+			const content = createFileContent(untitledPath)
+			layoutManager.openTab(focusedPaneId, content)
 		}
 	})
 	
@@ -55,7 +70,7 @@ export const SplitEditorPanel = (props: SplitEditorPanelProps) => {
 	const openFileAsTab = async (filePath: string) => {
 		const focusedPaneId = layoutManager.state.focusedPaneId
 		if (!focusedPaneId) return
-		
+
 		// Check if file is already open in any pane
 		const existingTab = layoutManager.findTabByFilePath(filePath)
 		if (existingTab) {
@@ -64,7 +79,7 @@ export const SplitEditorPanel = (props: SplitEditorPanelProps) => {
 			layoutManager.setFocusedPane(existingTab.paneId)
 			return
 		}
-		
+
 		// Pre-load file content
 		let fileContent = ''
 		try {
@@ -74,10 +89,10 @@ export const SplitEditorPanel = (props: SplitEditorPanelProps) => {
 			console.error(`[SplitEditorPanel] Failed to load file content for ${filePath}:`, error)
 			// Continue with empty content - file will be editable as empty file
 		}
-		
+
 		// Pre-populate the buffer with file content before creating the tab
 		resourceManager.preloadFileContent(filePath, fileContent)
-		
+
 		// Create new tab with file content
 		const content = createFileContent(filePath)
 		layoutManager.openTab(focusedPaneId, content)
@@ -88,8 +103,6 @@ export const SplitEditorPanel = (props: SplitEditorPanelProps) => {
 	
 	// Custom tab content renderer that integrates with existing editor
 	const renderTabContent = (tab: Tab, pane: EditorPane): JSX.Element => {
-		console.log('[renderTabContent] tab:', tab.id, 'content.type:', tab.content.type, 'filePath:', tab.content.filePath)
-		
 		if (tab.content.type === 'empty') {
 			// This is the "no tabs" state - show welcome message
 			return (

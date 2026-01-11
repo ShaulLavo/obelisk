@@ -141,7 +141,7 @@ export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
 
 	const getTabViewMode = (tabPath: string): ViewMode => {
 		if (tabPath === state.lastKnownFilePath) {
-			return getCurrentViewMode()
+			return currentViewMode()
 		}
 		// For other tabs, we need to get their stored view mode with error handling
 		const stats =
@@ -175,13 +175,13 @@ export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
 		setViewMode(currentPath, validViewMode)
 	}
 
-	const getCurrentViewMode = (): ViewMode => {
+	const currentViewMode = createMemo((): ViewMode => {
 		const currentPath = state.lastKnownFilePath
 		if (!currentPath) return 'editor'
 
 		const requestedMode = state.selectedFileViewMode || 'editor'
 		return getValidViewMode(requestedMode, currentPath, state.selectedFileStats)
-	}
+	})
 
 	const getAvailableViewModesForCurrentFile = () => {
 		const currentPath = state.lastKnownFilePath
@@ -211,7 +211,7 @@ export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
 				rightSlot={() => (
 					<ViewModeToggle
 						currentPath={state.lastKnownFilePath || ''}
-						currentViewMode={getCurrentViewMode()}
+						currentViewMode={currentViewMode()}
 						availableModes={getAvailableViewModesForCurrentFile()}
 						onModeSelect={handleViewModeSelect}
 					/>
@@ -253,8 +253,7 @@ export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
 						/>
 					}
 				>
-					{/* Settings file in UI mode (Requirements 3.2) */}
-					<Match when={getCurrentViewMode() === 'ui'}>
+					<Match when={currentViewMode() === 'ui'}>
 						<SettingsTab
 							initialCategory={currentCategory()}
 							currentCategory={currentCategory()}
@@ -262,11 +261,10 @@ export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
 						/>
 					</Match>
 
-					{/* Binary file in binary mode (Requirements 4.2) */}
 					<Match
 						when={
 							state.selectedFileStats?.contentKind === 'binary' &&
-							getCurrentViewMode() === 'binary'
+							currentViewMode() === 'binary'
 						}
 					>
 						<BinaryFileViewer
@@ -279,11 +277,7 @@ export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
 					</Match>
 
 					<Match when={!props.isFileSelected()}>
-						<p class="mt-2 text-ui text-zinc-500">
-							{/* Select a file to view its contents. Click folders to toggle
-						visibility. Click folders to toggle
-						visibility. */}
-						</p>
+						<p class="mt-2 text-ui text-zinc-500"></p>
 					</Match>
 				</Switch>
 			</Flex>

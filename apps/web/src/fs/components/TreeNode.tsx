@@ -16,6 +16,7 @@ type TreeNodeProps = {
 	hasParent?: boolean
 	onHover?: (hovered: boolean) => void
 	onFileOpen?: (filePath: string) => void
+	onFileCreate?: (filePath: string) => void
 }
 
 export const TreeNode = (props: TreeNodeProps) => {
@@ -83,12 +84,13 @@ export const TreeNode = (props: TreeNodeProps) => {
 					/>
 					<For each={(props.node as FsDirTreeNode).children}>
 						{(child) => (
-							<TreeNode node={child} hasParent onHover={handleChildHover} onFileOpen={props.onFileOpen} />
+							<TreeNode node={child} hasParent onHover={handleChildHover} onFileOpen={props.onFileOpen} onFileCreate={props.onFileCreate} />
 						)}
 					</For>
 					<CreationRow
 						depth={props.node.depth + 1}
 						parentPath={props.node.path}
+						onFileCreate={props.onFileCreate}
 					/>
 				</div>
 			</Show>
