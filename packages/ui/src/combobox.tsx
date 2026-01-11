@@ -23,7 +23,7 @@ const ComboboxItem = <T extends ValidComponent = 'li'>(
 	return (
 		<ComboboxPrimitive.Item
 			class={cn(
-				'relative flex cursor-default select-none items-center justify-between rounded-sm px-2 py-1.5 text-sm outline-none data-[disabled]:pointer-events-none data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-[disabled]:opacity-50',
+				'relative flex cursor-default select-none items-center justify-between rounded-sm px-2 py-1.5 text-ui outline-none data-[disabled]:pointer-events-none data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-[disabled]:opacity-50',
 				local.class
 			)}
 			{...others}
@@ -66,7 +66,7 @@ const ComboboxSection = <T extends ValidComponent = 'li'>(
 	return (
 		<ComboboxPrimitive.Section
 			class={cn(
-				'overflow-hidden p-1 px-2 py-1.5 text-xs font-medium text-muted-foreground ',
+				'overflow-hidden p-1 px-2 py-1.5 text-ui-xs font-medium text-muted-foreground ',
 				local.class
 			)}
 			{...others}
@@ -105,7 +105,7 @@ const ComboboxInput = <T extends ValidComponent = 'input'>(
 	return (
 		<ComboboxPrimitive.Input
 			class={cn(
-				'flex size-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50',
+				'flex size-full rounded-md bg-transparent py-3 text-ui outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50',
 				local.class
 			)}
 			{...others}

@@ -20,11 +20,11 @@ export const SettingCheckbox: Component<SettingCheckboxProps> = (props) => {
 				class="items-start"
 			>
 				<div class="ml-2 space-y-1">
-					<CheckboxPrimitive.Label class="text-sm font-medium text-foreground leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+					<CheckboxPrimitive.Label class="text-ui font-medium text-foreground leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
 						{props.label}
 					</CheckboxPrimitive.Label>
 					{props.description && (
-						<CheckboxPrimitive.Description class="text-sm text-muted-foreground">
+						<CheckboxPrimitive.Description class="text-ui-sm text-muted-foreground">
 							{props.description}
 						</CheckboxPrimitive.Description>
 					)}

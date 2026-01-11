@@ -53,7 +53,7 @@ const DropdownMenuItem = <T extends ValidComponent = 'div'>(
 	return (
 		<DropdownMenuPrimitive.Item
 			class={cn(
-				'relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+				'relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-ui outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
 				props.class
 			)}
 			{...rest}
@@ -65,7 +65,7 @@ const DropdownMenuShortcut: Component<ComponentProps<'span'>> = (props) => {
 	const [, rest] = splitProps(props, ['class'])
 	return (
 		<span
-			class={cn('ml-auto text-xs tracking-widest opacity-60', props.class)}
+			class={cn('ml-auto text-ui-xs tracking-widest opacity-60', props.class)}
 			{...rest}
 		/>
 	)
@@ -78,7 +78,7 @@ const DropdownMenuLabel: Component<
 	return (
 		<div
 			class={cn(
-				'px-2 py-1.5 text-sm font-semibold',
+				'px-2 py-1.5 text-ui font-semibold',
 				props.inset && 'pl-8',
 				props.class
 			)}
@@ -120,7 +120,7 @@ const DropdownMenuSubTrigger = <T extends ValidComponent = 'div'>(
 	return (
 		<DropdownMenuPrimitive.SubTrigger
 			class={cn(
-				'flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none focus:bg-accent data-[state=open]:bg-accent',
+				'flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-ui outline-none focus:bg-accent data-[state=open]:bg-accent',
 				props.class
 			)}
 			{...rest}
@@ -167,7 +167,7 @@ const DropdownMenuCheckboxItem = <T extends ValidComponent = 'div'>(
 	return (
 		<DropdownMenuPrimitive.CheckboxItem
 			class={cn(
-				'relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+				'relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-ui outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
 				props.class
 			)}
 			{...rest}
@@ -193,7 +193,7 @@ const DropdownMenuGroupLabel = <T extends ValidComponent = 'span'>(
 	const [, rest] = splitProps(props as DropdownMenuGroupLabelProps, ['class'])
 	return (
 		<DropdownMenuPrimitive.GroupLabel
-			class={cn('px-2 py-1.5 text-sm font-semibold', props.class)}
+			class={cn('px-2 py-1.5 text-ui font-semibold', props.class)}
 			{...rest}
 		/>
 	)
@@ -215,7 +215,7 @@ const DropdownMenuRadioItem = <T extends ValidComponent = 'div'>(
 	return (
 		<DropdownMenuPrimitive.RadioItem
 			class={cn(
-				'relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+				'relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-ui outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
 				props.class
 			)}
 			{...rest}

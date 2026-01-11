@@ -68,7 +68,7 @@ const AccordionContent = <T extends ValidComponent = 'div'>(
 	])
 	return (
 		<AccordionPrimitive.Content
-			class={cn('overflow-hidden text-sm', local.class)}
+			class={cn('overflow-hidden text-ui', local.class)}
 			{...others}
 		>
 			{local.children}

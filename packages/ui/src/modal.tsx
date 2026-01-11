@@ -63,14 +63,14 @@ const Modal: Component = () => {
 								onInteractOutside={preventDismiss}
 							>
 								<div class="flex flex-col gap-1 text-left">
-									<DialogPrimitive.Title class="text-base font-medium text-foreground leading-tight">
+									<DialogPrimitive.Title class="text-ui font-medium text-foreground leading-tight">
 										{resolveValue(state().options.heading)}
 									</DialogPrimitive.Title>
 									<Show when={resolveValue(state().options.body)}>
 										{(body) => (
 											<DialogPrimitive.Description
 												as="div"
-												class="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed"
+												class="text-ui text-muted-foreground whitespace-pre-wrap leading-relaxed"
 											>
 												{body()}
 											</DialogPrimitive.Description>

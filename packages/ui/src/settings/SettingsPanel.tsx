@@ -36,7 +36,7 @@ export const SettingsPanel: Component<SettingsPanelProps> = (props) => {
 		>
 			{/* Category header */}
 			<div class="mb-2 bg-muted/40 py-1.5">
-				<h1 class="text-xl font-semibold text-foreground">
+				<h1 class="text-ui-xl font-semibold text-foreground">
 					{props.category.label}
 				</h1>
 			</div>
@@ -68,7 +68,7 @@ export const SettingsPanel: Component<SettingsPanelProps> = (props) => {
 				<For each={props.category.children || []}>
 					{(child) => (
 						<div class="space-y-3">
-							<h2 class="text-sm font-semibold text-foreground/80 capitalize border-b border-border/60 pb-1.5">
+							<h2 class="text-ui font-semibold text-foreground/80 capitalize border-b border-border/60 pb-1.5">
 								{child.label}
 							</h2>
 
@@ -112,10 +112,10 @@ export const SettingsPanel: Component<SettingsPanelProps> = (props) => {
 			>
 				<div class="flex items-center justify-center h-64 text-center">
 					<div class="space-y-2">
-						<p class="text-base font-medium text-muted-foreground">
+						<p class="text-ui font-medium text-muted-foreground">
 							No settings found
 						</p>
-						<p class="text-sm text-muted-foreground">
+						<p class="text-ui-sm text-muted-foreground">
 							There are no settings available for the "{props.category.id}"
 							category.
 						</p>

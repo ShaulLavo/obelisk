@@ -56,7 +56,7 @@ const AlertTitle: Component<ComponentProps<'h5'>> = (props) => {
 const AlertDescription: Component<ComponentProps<'div'>> = (props) => {
 	const [local, others] = splitProps(props, ['class'])
 	return (
-		<div class={cn('text-sm [&_p]:leading-relaxed', local.class)} {...others} />
+		<div class={cn('text-ui [&_p]:leading-relaxed', local.class)} {...others} />
 	)
 }
 

@@ -1,5 +1,5 @@
 import type { Component } from 'solid-js'
-import { createMemo, createSignal } from 'solid-js'
+import { createMemo, createSignal, Show } from 'solid-js'
 import { Button } from '@repo/ui/button'
 import {
 	SettingsSearch,
@@ -93,6 +93,14 @@ export const SettingsTab: Component<SettingsTabProps> = (props) => {
 		settingsActions.setSetting(key, value)
 	}
 
+	// Zoom info for each module
+	const getZoomInfo = (module: 'ui' | 'editor' | 'terminal') => {
+		const baseSize = settingsState.values[`${module}.font.size`] ?? settingsState.defaults[`${module}.font.size`]
+		const zoomedSize = settingsActions.getZoomedFontSize(module)
+		const offset = zoomedSize - (baseSize as number)
+		return { baseSize, zoomedSize, offset }
+	}
+
 	const customSubcategoryComponents = {
 		fonts: () => <FontsSubcategoryUI />,
 	}
@@ -110,6 +118,30 @@ export const SettingsTab: Component<SettingsTabProps> = (props) => {
 				category={FontCategory.MONO}
 			/>
 		),
+		'editor.font.size': () => {
+			const info = getZoomInfo('editor')
+			return (
+				<div class="space-y-2">
+					<div class="flex items-center justify-between">
+						<span>Font Size</span>
+						<input
+							type="number"
+							value={info.baseSize as number}
+							onInput={(e) => handleSettingChange('editor.font.size', Number(e.currentTarget.value))}
+							class="w-20 rounded border bg-background px-2 py-1 text-ui"
+						/>
+					</div>
+					<Show when={info.offset !== 0}>
+						<div class="text-ui-xs text-muted-foreground">
+							Zoom: {info.offset > 0 ? '+' : ''}{info.offset}px → Effective: {info.zoomedSize}px
+							<Button variant="ghost" size="sm" class="ml-2 h-6 px-2 text-ui-xs" onClick={() => settingsActions.resetZoom('editor')}>
+								Reset Zoom
+							</Button>
+						</div>
+					</Show>
+				</div>
+			)
+		},
 		'terminal.font.family': () => (
 			<FontFamilySelect
 				value={String(
@@ -122,6 +154,30 @@ export const SettingsTab: Component<SettingsTabProps> = (props) => {
 				category={FontCategory.MONO}
 			/>
 		),
+		'terminal.font.size': () => {
+			const info = getZoomInfo('terminal')
+			return (
+				<div class="space-y-2">
+					<div class="flex items-center justify-between">
+						<span>Font Size</span>
+						<input
+							type="number"
+							value={info.baseSize as number}
+							onInput={(e) => handleSettingChange('terminal.font.size', Number(e.currentTarget.value))}
+							class="w-20 rounded border bg-background px-2 py-1 text-ui"
+						/>
+					</div>
+					<Show when={info.offset !== 0}>
+						<div class="text-ui-xs text-muted-foreground">
+							Zoom: {info.offset > 0 ? '+' : ''}{info.offset}px → Effective: {info.zoomedSize}px
+							<Button variant="ghost" size="sm" class="ml-2 h-6 px-2 text-ui-xs" onClick={() => settingsActions.resetZoom('terminal')}>
+								Reset Zoom
+							</Button>
+						</div>
+					</Show>
+				</div>
+			)
+		},
 		'ui.font.family': () => (
 			<FontFamilySelect
 				value={String(
@@ -133,6 +189,30 @@ export const SettingsTab: Component<SettingsTabProps> = (props) => {
 				description="Controls the font family for the entire user interface."
 			/>
 		),
+		'ui.font.size': () => {
+			const info = getZoomInfo('ui')
+			return (
+				<div class="space-y-2">
+					<div class="flex items-center justify-between">
+						<span>Font Size</span>
+						<input
+							type="number"
+							value={info.baseSize as number}
+							onInput={(e) => handleSettingChange('ui.font.size', Number(e.currentTarget.value))}
+							class="w-20 rounded border bg-background px-2 py-1 text-ui"
+						/>
+					</div>
+					<Show when={info.offset !== 0}>
+						<div class="text-ui-xs text-muted-foreground">
+							Zoom: {info.offset > 0 ? '+' : ''}{info.offset}px → Effective: {info.zoomedSize}px
+							<Button variant="ghost" size="sm" class="ml-2 h-6 px-2 text-ui-xs" onClick={() => settingsActions.resetZoom('ui')}>
+								Reset Zoom
+							</Button>
+						</div>
+					</Show>
+				</div>
+			)
+		},
 	}
 
 	const sidebarCategories = () => settingsState.schemas

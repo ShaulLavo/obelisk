@@ -77,7 +77,7 @@ const AlertDialogTitle = <T extends ValidComponent = 'h2'>(
 	const [local, others] = splitProps(props as AlertDialogTitleProps, ['class'])
 	return (
 		<AlertDialogPrimitive.Title
-			class={cn('text-lg font-semibold', local.class)}
+			class={cn('text-ui-lg font-semibold', local.class)}
 			{...others}
 		/>
 	)
@@ -96,7 +96,7 @@ const AlertDialogDescription = <T extends ValidComponent = 'p'>(
 	])
 	return (
 		<AlertDialogPrimitive.Description
-			class={cn('text-sm text-muted-foreground', local.class)}
+			class={cn('text-ui text-muted-foreground', local.class)}
 			{...others}
 		/>
 	)

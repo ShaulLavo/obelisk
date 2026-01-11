@@ -8,7 +8,7 @@ const Table: Component<ComponentProps<'table'>> = (props) => {
 	return (
 		<div class="relative w-full overflow-auto">
 			<table
-				class={cn('w-full caption-bottom text-sm', local.class)}
+				class={cn('w-full caption-bottom text-ui', local.class)}
 				{...others}
 			/>
 		</div>
@@ -77,7 +77,7 @@ const TableCaption: Component<ComponentProps<'caption'>> = (props) => {
 	const [local, others] = splitProps(props, ['class'])
 	return (
 		<caption
-			class={cn('mt-4 text-sm text-muted-foreground', local.class)}
+			class={cn('mt-4 text-ui text-muted-foreground', local.class)}
 			{...others}
 		/>
 	)

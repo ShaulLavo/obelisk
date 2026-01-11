@@ -110,7 +110,7 @@ const DialogTitle = <T extends ValidComponent = 'h2'>(
 	return (
 		<DialogPrimitive.Title
 			class={cn(
-				'text-lg font-semibold leading-none tracking-tight',
+				'text-ui-lg font-semibold leading-none tracking-tight',
 				props.class
 			)}
 			{...rest}
@@ -129,7 +129,7 @@ const DialogDescription = <T extends ValidComponent = 'p'>(
 	const [, rest] = splitProps(props as DialogDescriptionProps, ['class'])
 	return (
 		<DialogPrimitive.Description
-			class={cn('text-sm text-muted-foreground', props.class)}
+			class={cn('text-ui text-muted-foreground', props.class)}
 			{...rest}
 		/>
 	)

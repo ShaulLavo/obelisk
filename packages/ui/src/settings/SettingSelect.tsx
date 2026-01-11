@@ -29,9 +29,9 @@ export const SettingSelect: Component<SettingSelectProps> = (props) => {
 
 	return (
 		<div class={cn('space-y-1', props.class)}>
-			<Label>{props.label}</Label>
+			<Label class="text-ui">{props.label}</Label>
 			{props.description && (
-				<p class="text-sm text-muted-foreground">{props.description}</p>
+				<p class="text-ui-sm text-muted-foreground">{props.description}</p>
 			)}
 			<Select
 				value={selectedOption()}

@@ -24,7 +24,7 @@ export const SettingsSearch: Component<SettingsSearchProps> = (props) => {
 					onInput={handleInput}
 					placeholder={props.placeholder || 'Search settings'}
 					class={cn(
-						'w-full h-8 px-2.5 pr-8 text-sm',
+						'w-full h-8 px-2.5 pr-8 text-ui',
 						'bg-background border border-border/60 rounded-sm',
 						'placeholder:text-muted-foreground',
 						'focus-visible:outline-none focus-visible:border-foreground/40',

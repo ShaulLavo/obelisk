@@ -101,7 +101,7 @@ export const SettingsSidebarItem: Component<SettingsSidebarItemProps> = (
 
 	const itemClass = () =>
 		cn(
-			'group flex w-full items-center justify-between gap-2 text-left text-sm',
+			'group flex w-full items-center justify-between gap-2 text-left text-ui',
 			'h-auto py-1 pr-2.5',
 			'border-l-2 border-transparent rounded-none',
 			'transition-colors',

@@ -119,6 +119,25 @@
 	}
 }
 
+@layer utilities {
+	/* Zoomable font size utilities - use CSS variables set by app */
+	.text-ui {
+		font-size: var(--ui-font-size, 13px);
+	}
+	.text-ui-xs {
+		font-size: calc(var(--ui-font-size, 13px) * 0.85);
+	}
+	.text-ui-sm {
+		font-size: calc(var(--ui-font-size, 13px) * 0.92);
+	}
+	.text-ui-lg {
+		font-size: calc(var(--ui-font-size, 13px) * 1.15);
+	}
+	.text-ui-xl {
+		font-size: calc(var(--ui-font-size, 13px) * 1.38);
+	}
+}
+
 @media (max-width: 640px) {
 	.container {
 		@apply px-4;
