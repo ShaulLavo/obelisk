@@ -1,4 +1,3 @@
-import { loggers } from '@repo/logger'
 import {
 	getPieceTableLength,
 	getPieceTableText,
@@ -44,7 +43,6 @@ import type { CursorContextValue, CursorProviderProps } from './types'
 const CursorContext = createContext<CursorContextValue>()
 
 export function CursorProvider(props: CursorProviderProps) {
-	const log = loggers.codeEditor.withTag('cursor')
 	const [documentLength, setDocumentLength] = createSignal(0)
 	const [lineStarts, setLineStarts] = createSignal<number[]>([])
 	const [lineIds, setLineIds] = createSignal<number[]>([])
@@ -606,12 +604,6 @@ export function CursorProvider(props: CursorProviderProps) {
 			syncCursorStateToDocument()
 		})
 		pendingLineDataReset = false
-
-		log.debug('Initialized from piece table', {
-			path: props.filePath(),
-			length,
-			lineCount: starts.length,
-		})
 	}
 
 	const initializeFromContent = (content: string) => {
@@ -629,12 +621,6 @@ export function CursorProvider(props: CursorProviderProps) {
 			syncCursorStateToDocument()
 		})
 		pendingLineDataReset = false
-
-		log.debug('Initialized from content', {
-			path: props.filePath(),
-			length,
-			lineCount: starts.length,
-		})
 	}
 
 	createEffect(() => {
@@ -776,9 +762,6 @@ export function CursorProvider(props: CursorProviderProps) {
 					const data = buildLineDataFromSnapshot(snapshot, ids, starts)
 					setLineDataById(reconcile(data))
 				}
-				log.debug('Rebuilt line data after snapshot update', {
-					mode: options?.mode ?? 'reset',
-				})
 			},
 			applyEdit,
 			lineDataRevision,

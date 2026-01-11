@@ -1,6 +1,5 @@
 import { clsx } from 'clsx'
 import type { JSX } from 'solid-js'
-import { loggers } from '@repo/logger'
 import { useScrollState } from './ScrollState'
 import { useTheme } from '@repo/theme'
 import { Scrollbar as UiScrollbar } from '@repo/ui/Scrollbar'
@@ -17,26 +16,22 @@ const SCROLLBAR_MIN_THUMB_HEIGHT = 20
 export const Scrollbar = (props: ScrollbarProps) => {
 	const { scrollState, scrollElement } = useScrollState()
 	const { theme } = useTheme()
-	const log = loggers.codeEditor.withTag('scrollbar')
 
 	// Read from shared store
 	const thumbTop = () => scrollState.sliderTop
 	const thumbHeight = () =>
 		Math.max(SCROLLBAR_MIN_THUMB_HEIGHT, scrollState.sliderHeight)
 
-	const getScrollElementOrWarn = (context: string) => {
+	const getScrollElementOrWarn = () => {
 		const element = scrollElement()
 		if (!element) {
-			const message = `Scrollbar ${context} ignored: missing scroll element`
-			log.warn(message)
-
 			return null
 		}
 		return element
 	}
 
 	const scrollToRatio = (ratio: number) => {
-		const element = getScrollElementOrWarn('scroll')
+		const element = getScrollElementOrWarn()
 		if (!element) return
 
 		const scrollHeight = element.scrollHeight
@@ -48,7 +43,7 @@ export const Scrollbar = (props: ScrollbarProps) => {
 	}
 
 	const scrollBy = (delta: number) => {
-		const element = getScrollElementOrWarn('wheel')
+		const element = getScrollElementOrWarn()
 		if (!element) return
 
 		element.scrollTop += delta

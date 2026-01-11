@@ -1,7 +1,3 @@
-import { loggers } from '@repo/logger'
-
-const clipboardLogger = loggers.codeEditor.withTag('clipboard')
-
 const createHiddenTextarea = () => {
 	const textarea = document.createElement('textarea')
 	textarea.style.position = 'fixed'
@@ -18,8 +14,6 @@ const execCommandCopy = (text: string) => {
 	textarea.select()
 	try {
 		document.execCommand('copy')
-	} catch {
-		clipboardLogger.debug('Failed to copy')
 	} finally {
 		document.body.removeChild(textarea)
 	}
@@ -33,9 +27,6 @@ const execCommandPaste = (): string => {
 		const ok = document.execCommand('paste')
 		if (!ok) return ''
 		return textarea.value
-	} catch {
-		clipboardLogger.debug('Failed to paste')
-		return ''
 	} finally {
 		document.body.removeChild(textarea)
 	}
@@ -49,8 +40,7 @@ const writeClipboardItem = async (text: string): Promise<boolean> => {
 		const item = new ClipboardItem({ [type]: text })
 		await navigator.clipboard.write([item])
 		return true
-	} catch (e) {
-		clipboardLogger.debug('ClipboardItem write failed', e)
+	} catch {
 		return false
 	}
 }
@@ -59,8 +49,7 @@ const writeNavigatorText = async (text: string): Promise<boolean> => {
 	try {
 		await navigator.clipboard.writeText(text)
 		return true
-	} catch (e) {
-		clipboardLogger.debug('navigator.clipboard.writeText failed', e)
+	} catch {
 		return false
 	}
 }
@@ -75,8 +64,7 @@ const readClipboardItem = async (): Promise<string | null> => {
 			}
 		}
 		return null
-	} catch (e) {
-		clipboardLogger.debug('ClipboardItem read failed', e)
+	} catch {
 		return null
 	}
 }
@@ -84,8 +72,7 @@ const readClipboardItem = async (): Promise<string | null> => {
 const readNavigatorText = async (): Promise<string | null> => {
 	try {
 		return await navigator.clipboard.readText()
-	} catch (e) {
-		clipboardLogger.debug('navigator.clipboard.readText failed', e)
+	} catch {
 		return null
 	}
 }

@@ -7,8 +7,6 @@ import {
 } from 'solid-js'
 import { unwrap } from 'solid-js/store'
 
-import { loggers } from '@repo/logger'
-
 import {
 	mergeLineSegments,
 	mapRangeToOldOffsets,
@@ -49,7 +47,6 @@ export type CreateLineHighlightsOptions = {
 }
 
 export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
-	const log = loggers.codeEditor.withTag('trace')
 	const EMPTY_HIGHLIGHTS: EditorSyntaxHighlight[] = []
 	const EMPTY_ERRORS: ErrorHighlight[] = []
 	const EMPTY_OFFSETS: HighlightOffsets = []
@@ -181,18 +178,9 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 			}
 
 			if (hasHighlights && !spatialIndexReady) {
-				const start = performance.now()
 				buildSpatialIndex(highlights)
 				spatialIndexReady = true
-				log.debug(
-					`buildSpatialIndex: ${highlights.length} highlights in ${(performance.now() - start).toFixed(2)}ms`
-				)
 			}
-
-			const start = performance.now()
-			log.debug(
-				`precomputedSegments: running full computation for ${count} lines`
-			)
 
 			const highlightSegments = hasHighlights
 				? toLineHighlightSegments(
@@ -230,10 +218,6 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 				result = { segments: merged }
 			}
 
-			const durationMs = performance.now() - start
-			log.debug(
-				`precomputedSegments: ${count} lines in ${durationMs.toFixed(1)}ms`
-			)
 			return result
 		}
 	)
@@ -393,12 +377,8 @@ export const createLineHighlights = (options: CreateLineHighlightsOptions) => {
 		}
 
 		if (highlights.length > 0 && !spatialIndexReady) {
-			const start = performance.now()
 			buildSpatialIndex(highlights)
 			spatialIndexReady = true
-			log.debug(
-				`buildSpatialIndex (lazy): ${highlights.length} highlights in ${(performance.now() - start).toFixed(2)}ms`
-			)
 		}
 
 		const offsetShift = hasOffsets

@@ -1,6 +1,5 @@
 import { batch, createMemo } from 'solid-js'
 import { ReactiveMap } from '@solid-primitives/map'
-import { loggers } from '@repo/logger'
 import {
 	createPieceTableSnapshot,
 	deleteFromPieceTable,
@@ -24,16 +23,7 @@ import {
 } from '../utils/historyEntries'
 import { describeIncrementalEdit } from '../../utils'
 
-const historyLogger = loggers.codeEditor.withTag('history')
-
 const historyStore = new ReactiveMap<string, HistoryState>()
-
-const summarizeEntry = (entry: HistoryEntry) => ({
-	offset: entry.offset,
-	insertedLength: entry.insertedText.length,
-	deletedLength: entry.deletedText.length,
-	mergeMode: entry.mergeMode,
-})
 
 export const useHistoryStore = (
 	document: TextEditorDocument
@@ -47,11 +37,6 @@ export const useHistoryStore = (
 
 	const setHistoryState = (path: string, next: HistoryState) => {
 		historyStore.set(path, next)
-		historyLogger.debug('updated history state', {
-			path,
-			undoDepth: next.undoStack.length,
-			redoDepth: next.redoStack.length,
-		})
 	}
 
 	const getHistoryState = (path: string): HistoryState => {
@@ -59,7 +44,6 @@ export const useHistoryStore = (
 		if (existing) return existing
 		const initial = createEmptyHistoryState()
 		setHistoryState(path, initial)
-		historyLogger.debug('created empty history state', { path })
 		return initial
 	}
 
@@ -178,10 +162,6 @@ export const useHistoryStore = (
 		if (!change.insertedText && !change.deletedText) return
 
 		const entry = createHistoryEntry(change, Date.now(), options?.mergeMode)
-		historyLogger.debug('recording history entry', {
-			path,
-			entry: summarizeEntry(entry),
-		})
 		const currentState = getHistoryState(path)
 		const undoStack = currentState.undoStack.slice()
 		const redoStack: HistoryEntry[] = []
@@ -195,27 +175,15 @@ export const useHistoryStore = (
 			const merged = mergeHistoryEntries(lastEntry, entry)
 			if (merged) {
 				undoStack[undoStack.length - 1] = merged
-				historyLogger.debug('merged history entry', {
-					path,
-					result: summarizeEntry(merged),
-				})
 			} else {
 				undoStack.push(entry)
-				historyLogger.debug('could not merge entry, pushed separately', {
-					path,
-				})
 			}
 		} else {
 			undoStack.push(entry)
-			historyLogger.debug('pushed new history entry', { path })
 		}
 
 		if (undoStack.length > MAX_HISTORY_ENTRIES) {
 			undoStack.shift()
-			historyLogger.debug('trimmed history stack to max entries', {
-				path,
-				max: MAX_HISTORY_ENTRIES,
-			})
 		}
 
 		setHistoryState(path, {
@@ -233,7 +201,6 @@ export const useHistoryStore = (
 
 		const entry = state.undoStack[state.undoStack.length - 1]
 		if (!entry) return
-		historyLogger.debug('undo', { path, entry: summarizeEntry(entry) })
 		applyHistoryEntry(entry, 'undo')
 
 		setHistoryState(path, {
@@ -251,7 +218,6 @@ export const useHistoryStore = (
 
 		const entry = state.redoStack[state.redoStack.length - 1]
 		if (!entry) return
-		historyLogger.debug('redo', { path, entry: summarizeEntry(entry) })
 		applyHistoryEntry(entry, 'redo')
 
 		setHistoryState(path, {
@@ -275,7 +241,6 @@ export const useHistoryStore = (
 	const clear = () => {
 		const path = filePath()
 		if (!path) return
-		historyLogger.debug('clearing history state', { path })
 		setHistoryState(path, createEmptyHistoryState())
 	}
 
@@ -298,5 +263,4 @@ export const useHistoryStore = (
 export const deleteHistoryStateForPath = (path: string) => {
 	if (!historyStore.has(path)) return
 	historyStore.delete(path)
-	historyLogger.debug('deleted history state', { path })
 }

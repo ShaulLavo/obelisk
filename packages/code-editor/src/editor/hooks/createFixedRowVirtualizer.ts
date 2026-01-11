@@ -6,7 +6,6 @@ import {
 	untrack,
 	type Accessor,
 } from 'solid-js'
-import { loggers } from '@repo/logger'
 import type { VirtualItem } from '../types'
 
 export type ScrollAlignment = 'start' | 'center' | 'end' | 'auto'
@@ -115,7 +114,6 @@ export const computeFixedRowVirtualItems = (options: {
 export function createFixedRowVirtualizer(
 	options: FixedRowVirtualizerOptions
 ): FixedRowVirtualizer {
-	const log = loggers.codeEditor.withTag('virtualizer')
 	const [scrollTop, setScrollTop] = createSignal(0)
 	const [viewportHeight, setViewportHeight] = createSignal(0)
 	const [isScrolling, setIsScrolling] = createSignal(false)
@@ -132,43 +130,12 @@ export function createFixedRowVirtualizer(
 
 		if (!enabled) return
 		if (!element) {
-			const message = 'Virtualizer enabled but scrollElement is null'
-			log.warn(message)
-
 			return
 		}
 
 		setScrollTop(normalizeNumber(element.scrollTop))
 
-		let warnedZeroHeight = false
-		const updateViewportHeight = (height: number) => {
-			setViewportHeight(height)
-
-			if (height === 0) {
-				if (warnedZeroHeight) return
-				warnedZeroHeight = true
-				const message =
-					'Virtualizer scrollElement has clientHeight=0 (will render only overscan rows)'
-				log.warn(message, {
-					scrollTop: element.scrollTop,
-					clientHeight: element.clientHeight,
-					offsetHeight: element.offsetHeight,
-					count: untrack(() => options.count()),
-					rowHeight: untrack(() => options.rowHeight()),
-				})
-			} else if (warnedZeroHeight) {
-				warnedZeroHeight = false
-				log.debug('Virtualizer scrollElement height recovered', {
-					clientHeight: height,
-				})
-			}
-		}
-
-		log.debug('Virtualizer attached', {
-			overscan: options.overscan,
-			count: untrack(() => options.count()),
-			rowHeight: untrack(() => options.rowHeight()),
-		})
+		const updateViewportHeight = (height: number) => setViewportHeight(height)
 
 		let rafId = 0
 		let prevScrollTop = element.scrollTop
@@ -221,7 +188,6 @@ export function createFixedRowVirtualizer(
 				cancelAnimationFrame(rafId)
 			}
 			scrollElementRef = null
-			log.debug('Virtualizer detached')
 		})
 	})
 

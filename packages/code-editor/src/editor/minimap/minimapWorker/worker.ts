@@ -1,5 +1,4 @@
 import { expose, proxy, wrap, type Remote } from 'comlink'
-import { loggers } from '@repo/logger'
 import { MINIMAP_DEFAULT_PALETTE } from '../tokenSummary'
 import type {
 	MinimapTokenSummary,
@@ -16,8 +15,6 @@ import {
 	wakeWaiters,
 	clearWaiters,
 } from './rendering'
-
-const log = loggers.codeEditor.withTag('minimap')
 
 let canvas: OffscreenCanvas | null = null
 let ctx: OffscreenCanvasRenderingContext2D | null = null
@@ -73,29 +70,18 @@ const api = {
 	},
 
 	async connectTreeSitter(port: MessagePort) {
-		try {
-			log.info('connectTreeSitter called')
-			treeSitterWorker = wrap<TreeSitterMinimapApi>(port)
-			log.info('wrapped port with Comlink')
+		treeSitterWorker = wrap<TreeSitterMinimapApi>(port)
 
-			if (minimapSubscriptionId !== null) {
-				log.info('unsubscribing previous subscription')
-				void treeSitterWorker.unsubscribeMinimapReady(minimapSubscriptionId)
-				minimapSubscriptionId = null
-			}
-
-			log.info('subscribing to minimapReady...')
-			minimapSubscriptionId = await treeSitterWorker.subscribeMinimapReady(
-				proxy(({ path }) => {
-					log.info('minimapReady notification for', path)
-					wakeWaiters(path)
-				})
-			)
-			log.info('subscribeMinimapReady completed, id:', minimapSubscriptionId)
-		} catch (error) {
-			log.error('connectTreeSitter FAILED:', error)
-			throw error
+		if (minimapSubscriptionId !== null) {
+			void treeSitterWorker.unsubscribeMinimapReady(minimapSubscriptionId)
+			minimapSubscriptionId = null
 		}
+
+		minimapSubscriptionId = await treeSitterWorker.subscribeMinimapReady(
+			proxy(({ path }) => {
+				wakeWaiters(path)
+			})
+		)
 	},
 
 	updateLayout(newLayout: MinimapLayout) {
@@ -161,7 +147,6 @@ const api = {
 
 	renderSummary(summary: MinimapTokenSummary) {
 		if (!ctx || !layout) {
-			log.warn('Missing context/layout')
 			return
 		}
 		lastSummary = summary
@@ -171,7 +156,6 @@ const api = {
 	async renderFromPath(path: string, version: number) {
 		const nonce = incrementRenderNonce()
 		if (!treeSitterWorker) {
-			log.warn('Tree-sitter worker not connected')
 			return false
 		}
 
@@ -219,8 +203,7 @@ const api = {
 				maxChars: activeLayout.maxChars,
 				targetLineCount,
 			})
-		} catch (err) {
-			log.error('getMinimapSummary failed:', err)
+		} catch {
 			return false
 		}
 
@@ -228,7 +211,6 @@ const api = {
 
 		if (summary) {
 			if (!ctx || !layout) {
-				log.warn('Missing context/layout')
 				return false
 			}
 			lastSummary = summary
@@ -241,13 +223,11 @@ const api = {
 
 	async renderFromText(text: string, version: number) {
 		if (!treeSitterWorker) {
-			log.warn('Tree-sitter worker not connected')
 			return false
 		}
 
 		const activeLayout = layout
 		if (!activeLayout || !ctx) {
-			log.warn('Missing context/layout')
 			return false
 		}
 
@@ -272,8 +252,8 @@ const api = {
 				)
 				return true
 			}
-		} catch (err) {
-			log.error('getMinimapSummaryFromText failed:', err)
+		} catch {
+			// Ignore errors
 		}
 
 		return false

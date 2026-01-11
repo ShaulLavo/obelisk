@@ -4,10 +4,7 @@
  */
 
 import { createEffect, on, type Accessor } from 'solid-js'
-import { loggers } from '@repo/logger'
 import type { MinimapWorkerController } from './useMinimapWorker'
-
-const log = loggers.codeEditor.withTag('minimap-render')
 
 export type UseMinimapRenderOptions = {
 	/** Worker controller */
@@ -103,7 +100,6 @@ export const useMinimapRender = (options: UseMinimapRenderOptions): void => {
 				}
 
 				if (!rendered) {
-					log.debug('Render failed or no content')
 					return
 				}
 

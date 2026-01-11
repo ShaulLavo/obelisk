@@ -13,7 +13,6 @@ import {
 	type Accessor,
 	type JSX,
 } from 'solid-js'
-import { loggers } from '@repo/logger'
 import { useTheme } from '@repo/theme'
 
 export type HorizontalScrollbarProps = {
@@ -32,7 +31,6 @@ const SCROLLBAR_MIN_THUMB_WIDTH = 20
 
 export const HorizontalScrollbar = (props: HorizontalScrollbarProps) => {
 	const { theme } = useTheme()
-	const log = loggers.codeEditor.withTag('horizontal-scrollbar')
 
 	const [isHovered, setIsHovered] = createSignal(false)
 	const [isDragging, setIsDragging] = createSignal(false)
@@ -51,10 +49,9 @@ export const HorizontalScrollbar = (props: HorizontalScrollbarProps) => {
 
 	let containerRef: HTMLDivElement | undefined
 
-	const getScrollElementOrWarn = (context: string) => {
+	const getScrollElementOrWarn = () => {
 		const element = props.scrollElement()
 		if (!element) {
-			log.warn(`HorizontalScrollbar ${context} ignored: missing scroll element`)
 			return null
 		}
 		return element
@@ -128,7 +125,7 @@ export const HorizontalScrollbar = (props: HorizontalScrollbarProps) => {
 	const handlePointerDown = (event: PointerEvent) => {
 		event.preventDefault()
 
-		const element = getScrollElementOrWarn('pointer-down')
+		const element = getScrollElementOrWarn()
 		if (!element || !containerRef) return
 
 		const rect = containerRef.getBoundingClientRect()
@@ -168,7 +165,7 @@ export const HorizontalScrollbar = (props: HorizontalScrollbarProps) => {
 	const handlePointerMove = (event: PointerEvent) => {
 		if (!dragState || event.pointerId !== dragState.pointerId) return
 
-		const element = getScrollElementOrWarn('pointer-move')
+		const element = getScrollElementOrWarn()
 		if (!element || !containerRef) return
 
 		const rect = containerRef.getBoundingClientRect()
@@ -200,7 +197,7 @@ export const HorizontalScrollbar = (props: HorizontalScrollbarProps) => {
 
 	const handleWheel = (event: WheelEvent) => {
 		event.preventDefault()
-		const element = getScrollElementOrWarn('wheel')
+		const element = getScrollElementOrWarn()
 		if (element) {
 			// For horizontal scrollbar, use deltaX or shift+deltaY
 			element.scrollLeft += event.deltaX || event.deltaY

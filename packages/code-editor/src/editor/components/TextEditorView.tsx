@@ -9,7 +9,6 @@ import {
 
 import { DEFAULT_TAB_SIZE } from '../consts'
 import { useCursor } from '../cursor'
-import { loggers } from '@repo/logger'
 import {
 	createCursorScrollSync,
 	createMouseSelection,
@@ -71,7 +70,6 @@ const getLineOffsetShift = (
 }
 
 export const TextEditorView = (props: EditorProps) => {
-	const log = loggers.codeEditor.withTag('trace')
 	const cursor = useCursor()
 
 	const tabSize = () => props.tabSize?.() ?? DEFAULT_TAB_SIZE
@@ -178,7 +176,6 @@ export const TextEditorView = (props: EditorProps) => {
 
 						const commit = () => {
 							setPrecomputeSettled(true)
-							log.debug('precomputeSettled: ready for edits')
 						}
 
 						// Prefer waiting for idle. If not available, add a small delay to
