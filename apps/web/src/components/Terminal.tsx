@@ -28,7 +28,7 @@ export const Terminal: Component = () => {
 	const focus = useFocusManager()
 	const [state, actions] = useFs()
 	const { theme, trackedTheme } = useTheme()
-	const [settingsState] = useSettings()
+	const [settingsState, settingsActions] = useSettings()
 	const storage = typeof window === 'undefined' ? undefined : dualStorage
 	const [cwd, setCwd] = makePersisted(
 		// eslint-disable-next-line solid/reactivity
@@ -144,14 +144,13 @@ export const Terminal: Component = () => {
 					settingsState.values['terminal.font.size'],
 					settingsState.values['terminal.font.family'],
 					settingsState.isLoaded,
+					settingsActions.getZoomedFontSize('terminal'),
 				],
 				() => {
 					const active = controller()
 					if (!active || !settingsState.isLoaded) return
 
-					const fontSize = (settingsState.values['terminal.font.size'] ??
-						settingsState.defaults['terminal.font.size'] ??
-						14) as number
+					const fontSize = settingsActions.getZoomedFontSize('terminal')
 					const fontFamily = (settingsState.values['terminal.font.family'] ??
 						settingsState.defaults['terminal.font.family'] ??
 						'JetBrains Mono') as string

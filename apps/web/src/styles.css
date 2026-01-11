@@ -174,7 +174,7 @@ body {
 		@apply ml-2 flex-1;
 	}
 	.fs-toolbar-input {
-		@apply w-full rounded border border-border/50 bg-background/50 px-2 py-0.5 text-xs text-foreground outline-none focus:border-accent;
+		@apply w-full rounded border border-border/50 bg-background/50 px-2 py-0.5 text-ui-xs text-foreground outline-none focus:border-accent;
 	}
 
 	/* Line */

@@ -25,7 +25,7 @@ function ResultItem(props: ResultItemProps) {
 			aria-disabled={false}
 			data-selected={props.isSelected}
 			cmdk-item=""
-			class="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors"
+			class="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-ui outline-none transition-colors"
 			classList={{
 				'bg-foreground/15': props.isSelected,
 			}}
@@ -54,14 +54,14 @@ function ResultItem(props: ResultItemProps) {
 			<div class="flex flex-1 items-center gap-2 overflow-hidden">
 				<span class="truncate">{props.result.label}</span>
 				<Show when={props.result.description}>
-					<span class="truncate text-xs text-muted-foreground">
+					<span class="truncate text-ui-xs text-muted-foreground">
 						{props.result.description}
 					</span>
 				</Show>
 			</div>
 
 			<Show when={props.result.shortcut}>
-				<span class="ml-auto text-xs tracking-widest text-muted-foreground">
+				<span class="ml-auto text-ui-xs tracking-widest text-muted-foreground">
 					{props.result.shortcut}
 				</span>
 			</Show>
@@ -71,7 +71,7 @@ function ResultItem(props: ResultItemProps) {
 
 function SearchingFallback() {
 	return (
-		<div cmdk-loading="" class="py-6 text-center text-sm text-muted-foreground">
+		<div cmdk-loading="" class="py-6 text-center text-ui text-muted-foreground">
 			Searching...
 		</div>
 	)
@@ -79,7 +79,7 @@ function SearchingFallback() {
 
 function EmptyState() {
 	return (
-		<div cmdk-empty="" class="py-6 text-center text-sm text-muted-foreground">
+		<div cmdk-empty="" class="py-6 text-center text-ui text-muted-foreground">
 			No results found
 		</div>
 	)
@@ -230,7 +230,7 @@ export function CommandPalette() {
 								value={state().query}
 								onInput={(e) => actions.setQuery(e.currentTarget.value)}
 								onKeyDown={handleKeyDown}
-								class="flex h-11 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+								class="flex h-11 w-full rounded-md bg-transparent py-3 text-ui outline-none placeholder:text-muted-foreground text-foreground disabled:cursor-not-allowed disabled:opacity-50"
 								autocomplete="off"
 								autocorrect="off"
 								spellcheck={false}
