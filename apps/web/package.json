@@ -53,7 +53,6 @@
     "@repo/fs": "*",
     "@repo/icons": "*",
     "@repo/keyboard": "*",
-    "@repo/logger": "*",
     "@repo/perf": "*",
     "@repo/settings": "*",
     "@repo/theme": "*",

@@ -33,7 +33,6 @@
     "@corvu/resizable": "^0.2.5",
     "@kobalte/core": "^0.13.11",
     "@repo/icons": "*",
-    "@repo/logger": "workspace:*",
     "@repo/theme": "workspace:*",
     "@repo/utils": "workspace:*",
     "@tailwindcss/vite": "^4.1.17",

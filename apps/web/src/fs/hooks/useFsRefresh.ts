@@ -11,7 +11,6 @@ import type { FsState, FsSource } from '../types'
 import type { TreePrefetchClient } from '../prefetch/treePrefetchClient'
 
 import { modal } from '@repo/ui/modal'
-import { loggers } from '@repo/logger'
 
 /**
  * Merges the OPFS .system folder into the main tree.
@@ -227,7 +226,6 @@ export const useFsRefresh = ({
 					source = error.nextSource
 					continue
 				}
-				loggers.fs.error('[fs] Failed to refresh filesystem', error)
 				batch(() => {
 					setBackgroundPrefetching(false)
 					setBackgroundIndexedFileCount(0)

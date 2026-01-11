@@ -7,9 +7,6 @@ import type {
 	PrefetchTarget,
 	TreePrefetchWorkerCallbacks,
 } from '../prefetch/treePrefetchWorkerTypes'
-import { logger } from '../../logger'
-
-const cacheLogger = logger.withTag('tree-cache')
 
 describe('ErrorHandling', () => {
 	let cacheController: TreeCacheController
@@ -146,9 +143,8 @@ describe('ErrorHandling', () => {
 								)
 								operationSucceeded = true
 							}
-						} catch (error) {
+						} catch {
 							operationSucceeded = false
-							cacheLogger.debug('Operation failed', { error })
 						}
 
 						expect(operationSucceeded).toBe(true)

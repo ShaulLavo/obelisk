@@ -21,7 +21,6 @@
     "@kobalte/core": "^0.13.11",
     "@repo/icons": "*",
     "@repo/keyboard": "*",
-    "@repo/logger": "*",
     "@repo/perf": "*",
     "@repo/theme": "*",
     "@repo/ui": "*",

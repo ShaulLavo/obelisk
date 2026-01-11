@@ -3,7 +3,6 @@ import { cors } from '@elysiajs/cors'
 import { swagger } from '@elysiajs/swagger'
 import { staticPlugin } from '@elysiajs/static'
 import { env } from './env'
-import { serverLogger } from './logger'
 import { routes } from './routes'
 
 const app = new Elysia()
@@ -36,12 +35,10 @@ const app = new Elysia()
 	.use(routes)
 	.listen(env.serverPort)
 
-serverLogger.ready(
+console.log(
 	`🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`
 )
-serverLogger.ready(
-	`📚 Swagger docs at http://localhost:${env.serverPort}/swagger`
-)
+console.log(`📚 Swagger docs at http://localhost:${env.serverPort}/swagger`)
 
 export { app }
 export type App = typeof app

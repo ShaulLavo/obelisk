@@ -6,7 +6,6 @@ import {
 	DirectoryPickerUnavailableError,
 	type FsContext as VfsContext,
 } from '@repo/fs'
-import { loggers } from '@repo/logger'
 import { trackOperation } from '@repo/perf'
 import { modal } from '@repo/ui/modal'
 import { OPFS_ROOT_NAME } from '../config/constants'
@@ -29,7 +28,6 @@ let awaitingPermissionModalId: string | null = null
 
 const showAwaitingPermissionModal = () => {
 	if (awaitingPermissionModalId !== null) return
-	loggers.fs.info('[fs] Awaiting directory picker permission')
 	awaitingPermissionModalId = modal({
 		heading: 'Waiting for permission',
 		body: 'Click or press a key to continue the directory picker.',
@@ -80,7 +78,7 @@ export async function ensureFs(source: FsSource): Promise<VfsContext> {
 				})
 				fsCache[source] = timeSync('create-fs', () => createFs(rootHandle))
 			},
-			{ metadata: { source }, logger: loggers.fs }
+			{ metadata: { source } }
 		).catch((error) => {
 			delete initPromises[source]
 			delete fsCache[source]
@@ -178,7 +176,7 @@ export async function buildTree(
 
 			return root
 		},
-		{ metadata: { source, rootPath }, logger: loggers.fs }
+		{ metadata: { source, rootPath } }
 	)
 }
 

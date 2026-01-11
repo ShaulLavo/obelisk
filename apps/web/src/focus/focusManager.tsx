@@ -26,22 +26,15 @@ type FocusManagerContext = {
 }
 
 const FocusContext = createContext<FocusManagerContext>()
-const focusLogger = logger.withTag('focus')
 
 export const FocusProvider: ParentComponent = (props) => {
 	const [activeArea, setActiveArea] = createSignal<FocusArea>('global')
 	const registrations = new Map<symbol, AreaRegistration>()
 	const doc = typeof window !== 'undefined' ? window.document : null
 
-	const log = (next: FocusArea, reason: string) => {
-		if (!IS_DEV) return
-		focusLogger.info(`[focus] active area -> ${next} (${reason})`)
-	}
-
-	const applyActiveArea = (next: FocusArea, reason: string) => {
+	const applyActiveArea = (next: FocusArea, _reason: string) => {
 		setActiveArea((prev) => {
 			if (prev === next) return prev
-			log(next, reason)
 			return next
 		})
 	}

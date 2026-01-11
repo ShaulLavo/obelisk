@@ -8,7 +8,6 @@ import type { FsDirTreeNode } from '@repo/fs'
 import { normalizeDirNodeMetadata } from '../utils/treeNodes'
 import type { TreePrefetchClient } from '../prefetch/treePrefetchClient'
 import { toast } from '@repo/ui/toaster'
-import { loggers } from '@repo/logger'
 
 type UseDirectoryLoaderOptions = {
 	state: FsState
@@ -83,7 +82,6 @@ export const useDirectoryLoader = ({
 					error instanceof Error
 						? error.message
 						: 'Failed to load directory contents'
-				loggers.fs.error('[fs] Failed to load directory contents', error)
 				toast.error(message)
 			} finally {
 				subtreeLoads.delete(path)
@@ -144,7 +142,6 @@ export const useDirectoryLoader = ({
 				error instanceof Error
 					? error.message
 					: 'Failed to reload directory contents'
-			loggers.fs.error('[fs] Failed to reload directory contents', error)
 			toast.error(message)
 		}
 	}

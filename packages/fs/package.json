@@ -6,7 +6,6 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@repo/logger": "*",
     "@repo/perf": "*",
     "@repo/utils": "*",
     "comlink": "^4.4.2",
