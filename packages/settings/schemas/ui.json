@@ -8,7 +8,7 @@
             "settings": [
                 {
                     "id": "size",
-                    "default": 13,
+                    "default": 14,
                     "description": "Controls the font size in the user interface."
                 },
                 {

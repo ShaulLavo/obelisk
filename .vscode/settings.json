@@ -18,6 +18,6 @@
 	"chatgpt.openOnStartup": true,
 	"chatgpt.commentCodeLensEnabled": false,
 	"window.autoDetectColorScheme": true,
-	"workbench.preferredLightColorTheme": "Tokyo Night Light",
+	"workbench.preferredLightColorTheme": "Tokyo City Lighter",
 	"workbench.preferredDarkColorTheme": "poimandres"
 }

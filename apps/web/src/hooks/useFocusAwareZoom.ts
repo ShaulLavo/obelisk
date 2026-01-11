@@ -1,5 +1,6 @@
 import { useFocusManager, type FocusArea } from '../focus/focusManager'
 import { createFontZoomStore, type FontModule } from './createFontZoomStore'
+import { useSettings } from '../settings/SettingsProvider'
 
 export type FocusAwareZoomActions = {
 	zoomFocused: (direction: 'in' | 'out') => void
@@ -23,6 +24,7 @@ const mapFocusAreaToModule = (area: FocusArea): FontModule => {
 export const useFocusAwareZoom = (): FocusAwareZoomActions => {
 	const focusManager = useFocusManager()
 	const fontZoomStore = createFontZoomStore()
+	const [, settingsActions] = useSettings()
 
 	const getCurrentModule = (): FontModule => {
 		const activeArea = focusManager.activeArea()
@@ -31,11 +33,20 @@ export const useFocusAwareZoom = (): FocusAwareZoomActions => {
 
 	const zoomFocused = (direction: 'in' | 'out') => {
 		const module = getCurrentModule()
-		if (direction === 'in') {
-			fontZoomStore.actions.zoomIn(module)
-		} else {
-			fontZoomStore.actions.zoomOut(module)
-		}
+		
+		// Get current font size from settings
+		const currentSize = settingsActions.getSetting<number>(`${module}.font.size`)
+		
+		// Calculate new size
+		const newSize = direction === 'in' 
+			? Math.min(48, currentSize + 1)
+			: Math.max(6, currentSize - 1)
+		
+		// Update the actual font size setting
+		settingsActions.setSetting(`${module}.font.size`, newSize)
+		
+		// Reset zoom offset since we're updating the base size
+		fontZoomStore.actions.resetZoom(module)
 	}
 
 	const resetFocusedZoom = () => {

@@ -1,10 +1,54 @@
 import { defineConfig } from 'vitest/config'
+import { playwright } from '@vitest/browser-playwright'
+import solidPlugin from 'vite-plugin-solid'
 
 export default defineConfig({
+	plugins: [solidPlugin()],
+	resolve: {
+		// Use vdev condition to resolve vitest-browser-solid to source files
+		conditions: ['vdev'],
+	},
+	optimizeDeps: {
+		// Don't pre-bundle vitest-browser-solid - let vite-plugin-solid handle it
+		exclude: ['vitest-browser-solid'],
+		include: ['@repo/logger'],
+	},
 	test: {
-		environment: 'jsdom',
-		globals: true,
-		setupFiles: ['./vitest.setup.ts'],
+		projects: [
+			{
+				extends: true,
+				test: {
+					include: ['src/**/*.test.{ts,tsx}'],
+					exclude: [
+						'**/*.browser.test.{ts,tsx}',
+						'**/node_modules/**',
+					],
+					name: 'unit',
+					environment: 'jsdom',
+					globals: true,
+					setupFiles: ['./vitest.setup.ts'],
+				},
+			},
+			{
+				extends: true,
+				test: {
+					include: ['src/**/*.browser.test.{ts,tsx}'],
+					exclude: ['**/node_modules/**'],
+					name: 'browser',
+					browser: {
+						enabled: true,
+						headless: true,
+						provider: playwright(),
+						instances: [{ browser: 'chromium' }],
+					},
+				},
+			},
+		],
+		server: {
+			deps: {
+				inline: ['@repo/logger', 'solid-js', 'vitest-browser-solid'],
+			},
+		},
 	},
 	define: {
 		'import.meta.env.MODE': '"test"',
