@@ -53,7 +53,13 @@ export type {
 } from './grep'
 
 // Sync module
-export { ByteContentHandle, ByteContentHandleFactory, WriteTokenManager, FileSyncManager } from './sync'
+export {
+	ByteContentHandle,
+	ByteContentHandleFactory,
+	WriteTokenManager,
+	FileSyncManager,
+	FileStateTracker,
+} from './sync'
 export type {
 	SyncState,
 	ContentHandle,
