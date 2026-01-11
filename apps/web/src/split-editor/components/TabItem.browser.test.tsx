@@ -20,28 +20,33 @@ describe('TabItem Component', () => {
 	let layoutManager: ReturnType<typeof createLayoutManager>
 	let resourceManager: ReturnType<typeof createResourceManager>
 	let mockTab: Tab
-	let setActiveTabSpy: ReturnType<typeof vi.fn>
-	let closeTabSpy: ReturnType<typeof vi.fn>
 
 	beforeEach(() => {
 		layoutManager = createLayoutManager()
 		resourceManager = createResourceManager()
-		
-		// Spy on layout manager methods
-		setActiveTabSpy = vi.fn()
-		closeTabSpy = vi.fn()
-		layoutManager.setActiveTab = setActiveTabSpy
-		layoutManager.closeTab = closeTabSpy
-		
+
+		// Spy on layout manager methods using vi.spyOn pattern
+		vi.spyOn(layoutManager, 'setActiveTab')
+		vi.spyOn(layoutManager, 'closeTab')
+
 		mockTab = {
 			id: 'test-tab',
 			content: { type: 'file', filePath: '/test/example.js' },
-			state: { scrollTop: 0, scrollLeft: 0, selections: [], cursorPosition: { line: 0, column: 0 } },
-			isDirty: false
+			state: {
+				scrollTop: 0,
+				scrollLeft: 0,
+				selections: [],
+				cursorPosition: { line: 0, column: 0 },
+			},
+			isDirty: false,
 		}
 	})
 
-	const renderTabItem = (tab: Tab = mockTab, isActive = false, paneId = 'test-pane') => {
+	const renderTabItem = (
+		tab: Tab = mockTab,
+		isActive = false,
+		paneId = 'test-pane'
+	) => {
 		return render(() => (
 			<LayoutContext.Provider value={layoutManager}>
 				<ResourceContext.Provider value={resourceManager}>
@@ -52,13 +57,13 @@ describe('TabItem Component', () => {
 	}
 
 	it('shows file name from content', async () => {
-		const screen = renderTabItem()
-		
+		renderTabItem()
+
 		// Should show just the filename, not the full path
 		await expect.element(page.getByText('example.js')).toBeVisible()
 		// Check that full path is not visible (should not throw if not found)
 		const fullPathElements = document.querySelectorAll('*')
-		const hasFullPath = Array.from(fullPathElements).some(el => 
+		const hasFullPath = Array.from(fullPathElements).some((el) =>
 			el.textContent?.includes('/test/example.js')
 		)
 		expect(hasFullPath).toBe(false)
@@ -68,7 +73,7 @@ describe('TabItem Component', () => {
 		// Test file content
 		const fileTab: Tab = {
 			...mockTab,
-			content: { type: 'file', filePath: '/path/to/test.tsx' }
+			content: { type: 'file', filePath: '/path/to/test.tsx' },
 		}
 		const { unmount: unmount1 } = renderTabItem(fileTab)
 		await expect.element(page.getByText('test.tsx')).toBeVisible()
@@ -77,7 +82,7 @@ describe('TabItem Component', () => {
 		// Test diff content
 		const diffTab: Tab = {
 			...mockTab,
-			content: { type: 'diff' }
+			content: { type: 'diff' },
 		}
 		const { unmount: unmount2 } = renderTabItem(diffTab)
 		await expect.element(page.getByText('Diff')).toBeVisible()
@@ -86,7 +91,7 @@ describe('TabItem Component', () => {
 		// Test empty content
 		const emptyTab: Tab = {
 			...mockTab,
-			content: { type: 'empty' }
+			content: { type: 'empty' },
 		}
 		const { unmount: unmount3 } = renderTabItem(emptyTab)
 		await expect.element(page.getByText('Empty')).toBeVisible()
@@ -95,7 +100,7 @@ describe('TabItem Component', () => {
 		// Test custom content
 		const customTab: Tab = {
 			...mockTab,
-			content: { type: 'custom' }
+			content: { type: 'custom' },
 		}
 		renderTabItem(customTab)
 		await expect.element(page.getByText('Custom')).toBeVisible()
@@ -112,7 +117,7 @@ describe('TabItem Component', () => {
 		renderTabItem({ ...mockTab, isDirty: true })
 		dirtyIndicator = document.querySelector('.bg-primary')
 		expect(dirtyIndicator).toBeTruthy()
-		
+
 		// Check that it's a small circular indicator
 		expect(dirtyIndicator?.classList.contains('h-2')).toBe(true)
 		expect(dirtyIndicator?.classList.contains('w-2')).toBe(true)
@@ -121,11 +126,12 @@ describe('TabItem Component', () => {
 
 	it('shows close button', async () => {
 		const screen = renderTabItem()
-		
-		const closeButton = screen.getByRole('button', { name: /close/i }) ||
-		                   document.querySelector('button[aria-label*="Close"]')
+
+		const closeButton =
+			screen.getByRole('button', { name: /close/i }) ||
+			document.querySelector('button[aria-label*="Close"]')
 		expect(closeButton).toBeTruthy()
-		
+
 		// Check that it contains the X icon (SVG) using document.querySelector
 		const svg = document.querySelector('button[aria-label*="Close"] svg')
 		expect(svg).toBeTruthy()
@@ -135,46 +141,53 @@ describe('TabItem Component', () => {
 
 	it('handles click to setActiveTab', async () => {
 		renderTabItem(mockTab, false, 'test-pane')
-		
+
 		const tabItem = document.querySelector('.tab-item')
 		expect(tabItem).toBeTruthy()
-		
+
 		// Click on the tab item
-		await tabItem?.click()
-		
+		;(tabItem as HTMLElement)?.click()
+
 		// Should call setActiveTab with correct parameters
-		expect(setActiveTabSpy).toHaveBeenCalledWith('test-pane', 'test-tab')
+		expect(layoutManager.setActiveTab).toHaveBeenCalledWith(
+			'test-pane',
+			'test-tab'
+		)
 	})
 
 	it('handles close button click to closeTab', async () => {
 		const screen = renderTabItem()
-		
-		const closeButton = screen.getByRole('button', { name: /close/i }) ||
-		                   document.querySelector('button[aria-label*="Close"]')
+
+		const closeButton =
+			screen.getByRole('button', { name: /close/i }) ||
+			document.querySelector('button[aria-label*="Close"]')
 		expect(closeButton).toBeTruthy()
-		
+
 		// Click on the close button
-		await closeButton?.click()
-		
+		const buttonEl = document.querySelector(
+			'button[aria-label*="Close"]'
+		) as HTMLButtonElement
+		buttonEl?.click()
+
 		// Should call closeTab with correct parameters
-		expect(closeTabSpy).toHaveBeenCalledWith('test-pane', 'test-tab')
+		expect(layoutManager.closeTab).toHaveBeenCalledWith('test-pane', 'test-tab')
 	})
 
 	it('prevents event propagation on close button click', async () => {
 		renderTabItem()
-		
+
 		const closeButton = document.querySelector('button[aria-label*="Close"]')
 		const tabItem = document.querySelector('.tab-item')
-		
+
 		expect(closeButton).toBeTruthy()
 		expect(tabItem).toBeTruthy()
-		
+
 		// Click on the close button
-		await closeButton?.click()
-		
+		;(closeButton as HTMLButtonElement)?.click()
+
 		// Should call closeTab but NOT setActiveTab (event should not propagate)
-		expect(closeTabSpy).toHaveBeenCalledWith('test-pane', 'test-tab')
-		expect(setActiveTabSpy).not.toHaveBeenCalled()
+		expect(layoutManager.closeTab).toHaveBeenCalledWith('test-pane', 'test-tab')
+		expect(layoutManager.setActiveTab).not.toHaveBeenCalled()
 	})
 
 	it('applies correct styling for active vs inactive tabs', async () => {
@@ -207,15 +220,15 @@ describe('TabItem Component', () => {
 
 	it('includes proper accessibility attributes', async () => {
 		renderTabItem(mockTab, true)
-		
+
 		const tabItem = document.querySelector('.tab-item')
 		expect(tabItem).toBeTruthy()
-		
+
 		// Check ARIA attributes
 		expect(tabItem?.getAttribute('role')).toBe('tab')
 		expect(tabItem?.getAttribute('aria-selected')).toBe('true')
 		expect(tabItem?.getAttribute('tabindex')).toBe('0')
-		
+
 		// Check close button accessibility
 		const closeButton = document.querySelector('button[aria-label*="Close"]')
 		expect(closeButton?.getAttribute('aria-label')).toContain('Close')
@@ -225,14 +238,22 @@ describe('TabItem Component', () => {
 	it('truncates long file names with title attribute', async () => {
 		const longNameTab: Tab = {
 			...mockTab,
-			content: { type: 'file', filePath: '/very/long/path/to/a-very-long-filename-that-should-be-truncated.js' }
+			content: {
+				type: 'file',
+				filePath:
+					'/very/long/path/to/a-very-long-filename-that-should-be-truncated.js',
+			},
 		}
-		
+
 		renderTabItem(longNameTab)
-		
+
 		const fileNameSpan = document.querySelector('.max-w-32.truncate')
 		expect(fileNameSpan).toBeTruthy()
-		expect(fileNameSpan?.getAttribute('title')).toBe('a-very-long-filename-that-should-be-truncated.js')
-		expect(fileNameSpan?.textContent).toBe('a-very-long-filename-that-should-be-truncated.js')
+		expect(fileNameSpan?.getAttribute('title')).toBe(
+			'a-very-long-filename-that-should-be-truncated.js'
+		)
+		expect(fileNameSpan?.textContent).toBe(
+			'a-very-long-filename-that-should-be-truncated.js'
+		)
 	})
 })

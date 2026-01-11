@@ -31,3 +31,6 @@ export type { PanePortalsProps } from './PanePortals'
 
 export { TabContent, getContentTypeLabel } from './TabContent'
 export type { TabContentProps } from './TabContent'
+
+export { FileTab } from './FileTab'
+export type { FileTabProps } from './FileTab'
