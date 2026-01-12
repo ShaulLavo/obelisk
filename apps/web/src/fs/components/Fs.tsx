@@ -6,12 +6,14 @@ import { SplitEditorPanel } from './SplitEditorPanel'
 import { TreeView } from './TreeView'
 import { createSignal } from 'solid-js'
 import type { LayoutManager } from '../../split-editor'
+import type { EditorFileSyncManager } from '@repo/code-editor/sync'
 
 import { ExplorerAccordion } from './ExplorerAccordion'
 
 export const Fs = () => {
 	const [state] = useFs()
 	const [layoutManager, setLayoutManager] = createSignal<LayoutManager>()
+	const [syncManager, setSyncManager] = createSignal<EditorFileSyncManager>()
 
 	// A file is selected only if there's an actual selectedPath pointing to a file
 	const isFileSelected = () => {
@@ -43,7 +45,7 @@ export const Fs = () => {
 	}
 
 	return (
-		<SyncStatusProvider>
+		<SyncStatusProvider syncManager={syncManager()}>
 			<Flex
 				flexDirection="col"
 				class="h-full min-h-0 overflow-hidden rounded-lg  bg-muted/60 shadow-xl"
@@ -66,6 +68,7 @@ export const Fs = () => {
 						isFileSelected={isFileSelected}
 						currentPath={state.lastKnownFilePath}
 						onLayoutManagerReady={setLayoutManager}
+						onSyncManagerReady={setSyncManager}
 					/>
 				</Resizable>
 			</Flex>

@@ -1,5 +1,5 @@
 import { createStore, reconcile } from 'solid-js/store'
-import type { ScrollPosition } from '../cache/fileCacheController'
+import type { ScrollPosition } from '../store/types'
 
 /**
  * Normalize path by stripping leading slash.

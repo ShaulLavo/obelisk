@@ -62,6 +62,7 @@ export interface WriteToken {
 	readonly path: string
 	readonly createdAt: number
 	readonly expectedMtimeMin: number // mtime should be >= this after write
+	readonly contentHash?: string // Optional hash of content being written for reliable matching
 }
 
 /**

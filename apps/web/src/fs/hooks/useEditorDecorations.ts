@@ -7,7 +7,7 @@ import type {
 	TreeSitterCapture,
 	TreeSitterError,
 } from '../../workers/treeSitter/types'
-import type { HighlightTransform } from './createHighlightState'
+import type { HighlightTransform } from '../store/types'
 
 type UseEditorDecorationsParams = {
 	highlights: Accessor<TreeSitterCapture[] | undefined>

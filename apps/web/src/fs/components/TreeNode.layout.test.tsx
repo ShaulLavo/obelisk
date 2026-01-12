@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createRoot } from 'solid-js'
 import type { FsDirTreeNode, FsFileTreeNode } from '@repo/fs'
+import type { ParseResult } from '@repo/utils/parse'
 import { TreeNode } from './TreeNode'
 import { FsContext, type FsContextValue } from '../context/FsContext'
 

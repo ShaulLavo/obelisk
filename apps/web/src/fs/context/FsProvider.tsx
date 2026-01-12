@@ -19,7 +19,7 @@ import { makeTreePrefetch } from '../hooks/useTreePrefetch'
 import { useDirectoryLoader } from '../hooks/useDirectoryLoader'
 import { useFileSelection } from '../hooks/useFileSelection'
 import { useFsRefresh } from '../hooks/useFsRefresh'
-import { createFileCacheController } from '../cache/fileCacheController'
+import { createFileCacheControllerV2 } from '../cache/fileCacheController'
 import { LocalDirectoryFallbackModal } from '../components/LocalDirectoryFallbackModal'
 import { findNode } from '../runtime/tree'
 import { getRootHandle, invalidateFs } from '../runtime/fsRuntime'
@@ -72,7 +72,7 @@ export function FsProvider(props: { children: JSX.Element }) {
 		setViewMode(path, validViewMode, stats)
 	}
 
-	const fileCache = createFileCacheController({
+	const fileCache = createFileCacheControllerV2({
 		state,
 		setPieceTable,
 		setFileStats,
@@ -281,24 +281,31 @@ export function FsProvider(props: { children: JSX.Element }) {
 
 	// Listen for settings file changes from the UI
 	// When settings UI saves, invalidate the editor cache so it reloads fresh content
-	createEffect(() => {
-		const handleSettingsFileChanged = async (event: CustomEvent<{ path: string; content: string }>) => {
+	// Using onMount since this is a one-time event listener setup, not reactive
+	onMount(() => {
+		const handleSettingsFileChanged = async (event: Event) => {
+			if (!(event instanceof CustomEvent)) return
 			const { path } = event.detail
 			// Clear the cache for this file so editor reloads from disk
 			fileCache.clearContent(path)
-			
+
 			// If this file is currently selected, force reload it
 			const normalizedPath = path.startsWith('/') ? path.slice(1) : path
 			const currentPath = state.lastKnownFilePath
-			const normalizedCurrent = currentPath?.startsWith('/') ? currentPath.slice(1) : currentPath
+			const normalizedCurrent = currentPath?.startsWith('/')
+				? currentPath.slice(1)
+				: currentPath
 			if (normalizedCurrent === normalizedPath) {
 				await selectPath(path, { forceReload: true })
 			}
 		}
 
-		window.addEventListener('settings-file-changed', handleSettingsFileChanged as EventListener)
+		window.addEventListener('settings-file-changed', handleSettingsFileChanged)
 		onCleanup(() => {
-			window.removeEventListener('settings-file-changed', handleSettingsFileChanged as EventListener)
+			window.removeEventListener(
+				'settings-file-changed',
+				handleSettingsFileChanged
+			)
 		})
 	})
 

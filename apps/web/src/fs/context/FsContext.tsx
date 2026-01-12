@@ -13,7 +13,7 @@ import type {
 	ScrollPosition,
 } from '../cache/fileCacheController'
 import type { FsState, FsSource } from '../types'
-import type { HighlightTransform } from '../hooks/createHighlightState'
+import type { HighlightTransform } from '../store/types'
 import type { ViewMode } from '../types/ViewMode'
 
 export type SelectPathOptions = {

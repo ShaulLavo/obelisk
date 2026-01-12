@@ -164,7 +164,7 @@ describe('View Mode Behavior Consistency Properties', () => {
 		)
 	})
 
-	it('property: regular files maintain backward compatibility', () => {
+	it('property: regular files only have editor mode', () => {
 		fc.assert(
 			fc.property(
 				fc.constantFrom(

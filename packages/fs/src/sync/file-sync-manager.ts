@@ -149,9 +149,11 @@ export class FileSyncManager {
 
 	/**
 	 * Notify the manager that a write is about to happen (returns token)
+	 * @param path - The file path being written to
+	 * @param contentHash - Optional hash of the content being written for reliable self-write detection
 	 */
-	beginWrite(path: string): WriteToken {
-		return this.writeTokenManager.generateToken(path)
+	beginWrite(path: string, contentHash?: string): WriteToken {
+		return this.writeTokenManager.generateToken(path, contentHash)
 	}
 
 	/**
@@ -324,6 +326,16 @@ export class FileSyncManager {
 	}
 
 	/**
+	 * Compute SHA-256 hash of content for reliable self-write detection
+	 */
+	private async computeContentHash(content: Uint8Array): Promise<string> {
+		const hashBuffer = await crypto.subtle.digest('SHA-256', content as BufferSource)
+		return Array.from(new Uint8Array(hashBuffer))
+			.map((b) => b.toString(16).padStart(2, '0'))
+			.join('')
+	}
+
+	/**
 	 * Handle a file change (creation or modification)
 	 */
 	private async handleFileChange(
@@ -334,10 +346,13 @@ export class FileSyncManager {
 			const file = this.fs.file(path, 'r')
 			const diskContentStr = await file.text()
 			const diskMtime = await file.lastModified()
+			const diskContent = new TextEncoder().encode(diskContentStr)
 
-			const matchedToken = this.writeTokenManager.matchToken(path, diskMtime)
+			// Compute hash for reliable self-write detection
+			const contentHash = await this.computeContentHash(diskContent)
+
+			const matchedToken = this.writeTokenManager.matchToken(path, diskMtime, contentHash)
 			if (matchedToken) {
-				const diskContent = new TextEncoder().encode(diskContentStr)
 				tracker.markSynced(diskContent, diskMtime)
 				this.emit<'synced'>('synced', {
 					type: 'synced',
@@ -347,15 +362,28 @@ export class FileSyncManager {
 				return
 			}
 
-			const diskContent = new TextEncoder().encode(diskContentStr)
 			tracker.updateDiskState(diskContent, diskMtime)
 
 			const syncState = tracker.syncState
 
 			if (tracker.mode === 'reactive') {
-				const hadLocalChanges = tracker.isDirty
+				// CRITICAL: Never auto-discard local changes - escalate to conflict
+				if (tracker.isDirty) {
+					// updateDiskState already called above (line 365)
+					// Emit conflict - user must explicitly choose to discard or merge
+					this.emit<'conflict'>('conflict', {
+						type: 'conflict',
+						path,
+						tracker,
+						baseContent: tracker.getBaseContent(),
+						localContent: tracker.getLocalContent(),
+						diskContent: tracker.getDiskContent(),
+					})
+					return
+				}
+
+				// Only auto-reload if no local changes (safe)
 				const newContent = this.contentHandleFactory.fromBytes(diskContent)
-				
 				tracker.setLocalContent(diskContent)
 				tracker.markSynced(diskContent, diskMtime)
 
@@ -365,14 +393,6 @@ export class FileSyncManager {
 					tracker,
 					newContent,
 				})
-
-				if (hadLocalChanges) {
-					this.emit<'local-changes-discarded'>('local-changes-discarded', {
-						type: 'local-changes-discarded',
-						path,
-						tracker,
-					})
-				}
 			} else {
 				if (syncState === 'external-changes') {
 					this.emit<'external-change'>('external-change', {

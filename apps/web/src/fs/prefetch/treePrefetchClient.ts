@@ -1,8 +1,6 @@
 import type { FsDirTreeNode } from '@repo/fs'
 import { ComlinkPool } from '../../workers/comlinkPool'
 import { PrefetchQueue } from './prefetchQueue'
-import { CachedPrefetchQueue } from '../cache/cachedPrefetchQueue'
-import { TreeCacheController } from '../cache/treeCacheController'
 import type {
 	TreePrefetchWorkerApi,
 	TreePrefetchWorkerCallbacks,
@@ -30,7 +28,6 @@ const resolveWorkerCount = () => {
 
 export type TreePrefetchClientOptions = {
 	enableCaching?: boolean
-	cacheController?: TreeCacheController
 }
 
 export type TreePrefetchClient = {
@@ -51,7 +48,7 @@ const createNoopTreePrefetchClient = (): TreePrefetchClient => ({
 
 export const createTreePrefetchClient = (
 	callbacks: TreePrefetchWorkerCallbacks,
-	options: TreePrefetchClientOptions = {}
+	_options: TreePrefetchClientOptions = {}
 ): TreePrefetchClient => {
 	if (!supportsWorkers) {
 		return createNoopTreePrefetchClient()
@@ -63,27 +60,11 @@ export const createTreePrefetchClient = (
 		createWorkerInstance
 	)
 
-	// Determine whether to use caching
-	const enableCaching = options.enableCaching ?? true // Default to enabled
-
-	let queue: PrefetchQueue | CachedPrefetchQueue
-
-	if (enableCaching) {
-		// Use CachedPrefetchQueue for cache-enabled operation
-		queue = new CachedPrefetchQueue({
-			workerCount,
-			callbacks,
-			loadDirectory: (target) => pool.api.loadDirectory(target),
-			cacheController: options.cacheController,
-		})
-	} else {
-		// Use regular PrefetchQueue for cache-disabled operation
-		queue = new PrefetchQueue({
-			workerCount,
-			callbacks,
-			loadDirectory: (target) => pool.api.loadDirectory(target),
-		})
-	}
+	const queue = new PrefetchQueue({
+		workerCount,
+		callbacks,
+		loadDirectory: (target) => pool.api.loadDirectory(target),
+	})
 
 	let destroyed = false
 	let initialized = false

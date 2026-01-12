@@ -8,8 +8,7 @@ import type {
 	FoldRange,
 } from '../workers/treeSitter/types'
 import type { DeferredDirMetadata } from './prefetch/treePrefetchWorkerTypes'
-import type { ScrollPosition } from './cache/fileCacheController'
-import type { HighlightTransform } from './hooks/createHighlightState'
+import type { ScrollPosition, HighlightTransform } from './store/types'
 import type { ViewMode } from './types/ViewMode'
 
 export type FsSource = 'memory' | 'local' | 'opfs'

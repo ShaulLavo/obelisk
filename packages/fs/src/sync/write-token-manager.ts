@@ -28,13 +28,14 @@ export class WriteTokenManager {
 		this.tokenExpiryMs = options.tokenExpiryMs ?? 5000
 	}
 
-	generateToken(path: string): WriteToken {
+	generateToken(path: string, contentHash?: string): WriteToken {
 		const now = Date.now()
 		const token: WriteToken = {
 			id: `token_${++this.tokenCounter}_${now}`,
 			path,
 			createdAt: now,
 			expectedMtimeMin: now, // mtime should be >= this after write
+			contentHash, // Store hash of content being written for reliable matching
 		}
 
 		// Clear any existing token for this path
@@ -54,7 +55,7 @@ export class WriteTokenManager {
 		return token
 	}
 
-	matchToken(path: string, mtime: number): WriteToken | undefined {
+	matchToken(path: string, mtime: number, contentHash?: string): WriteToken | undefined {
 		// Find tokens for this path
 		for (const [tokenId, entry] of this.pendingTokens) {
 			const { token } = entry
@@ -63,6 +64,15 @@ export class WriteTokenManager {
 				mtime >= token.expectedMtimeMin &&
 				Date.now() - token.createdAt <= this.tokenExpiryMs
 			) {
+				// If both token and incoming have content hashes, they must match
+				// This provides reliable self-write detection even with timing issues
+				if (token.contentHash !== undefined && contentHash !== undefined) {
+					if (token.contentHash !== contentHash) {
+						// Hash mismatch - this is not our write, continue searching
+						continue
+					}
+				}
+
 				// Found a match - clear the token and return it
 				this.clearTokenById(tokenId)
 				return token

@@ -6,6 +6,22 @@ export {
 	MemoryFileHandle,
 	pickNewLocalRoot,
 } from './getRoot'
+
+// FilePath branded type for normalized paths
+export {
+	type FilePath,
+	createFilePath,
+	filePathEquals,
+	toDisplayPath,
+	getParentPath,
+	getBaseName,
+	getExtension,
+	joinPath,
+	isChildOf,
+	isRootPath,
+	isFilePath,
+	unsafeAsFilePath,
+} from './types'
 export { createFs, createStorage, VDir, VFile } from './vfs'
 export {
 	createWorkerStorage,
@@ -41,6 +57,18 @@ export type {
 	FileSystemObserverCallback,
 	FileSystemObserverOptions,
 } from './FileSystemObserver'
+
+// Unified observer with explicit capabilities
+export {
+	UnifiedObserver,
+	createUnifiedObserver,
+} from './observer'
+export type {
+	ObserverCapabilities,
+	UnifiedChangeRecord,
+	UnifiedObserverCallback,
+	UnifiedObserverOptions,
+} from './observer'
 
 export { grep, grepStream, GrepCoordinator } from './grep'
 export type {

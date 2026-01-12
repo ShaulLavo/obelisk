@@ -6,10 +6,6 @@ import {
 } from '@repo/fs'
 import { expose } from 'comlink'
 import { normalizeDirNodeMetadata } from '../utils/treeNodes'
-import {
-	createWorkerTreeCache,
-	type WorkerTreeCache,
-} from '../cache/workerTreeCache'
 import type {
 	PrefetchTarget,
 	TreePrefetchWorkerApi,
@@ -18,13 +14,11 @@ import type {
 let ctx: FsContext | undefined
 let initialized = false
 let fallbackRootName = 'root'
-let workerCache: WorkerTreeCache | undefined
 
 const ensureContext = () => {
 	if (!ctx || !initialized) {
 		throw new Error('TreePrefetch worker is not initialized')
 	}
-
 	return ctx
 }
 
@@ -38,56 +32,6 @@ const loadDirectoryTarget = async (
 	target: PrefetchTarget
 ): Promise<FsDirTreeNode | undefined> => {
 	const context = ensureContext()
-
-	if (workerCache) {
-		try {
-			const cached = await workerCache.getDirectory(target.path)
-			if (cached) {
-				// Convert cached entry back to tree node
-				const children = cached.children.map((child) => {
-					if (child.kind === 'file') {
-						return {
-							kind: 'file' as const,
-							name: child.name,
-							path: child.path,
-							depth: child.depth,
-							parentPath: child.parentPath,
-							size: child.size,
-							lastModified: child.lastModified,
-						}
-					} else {
-						return {
-							kind: 'dir' as const,
-							name: child.name,
-							path: child.path,
-							depth: child.depth,
-							parentPath: child.parentPath,
-							children: [],
-							isLoaded: child.isLoaded ?? false,
-						}
-					}
-				})
-
-				const treeNode: FsDirTreeNode = {
-					kind: 'dir',
-					name: cached.name,
-					path: cached.path,
-					depth: cached.depth,
-					parentPath: cached.parentPath,
-					children,
-					isLoaded: cached.isLoaded,
-				}
-
-				return treeNode
-			} else {
-				// Cache miss
-			}
-		} catch (error) {
-			console.warn(`Worker cache check failed for ${target.path}:`, error)
-		}
-	} else {
-		// No worker cache
-	}
 
 	const result = await walkDirectory(
 		context,
@@ -113,40 +57,6 @@ const loadDirectoryTarget = async (
 		target.depth
 	)
 
-	// Populate cache with scan results
-	if (workerCache && treeNode) {
-		try {
-			const cachedEntry = {
-				path: treeNode.path,
-				name: treeNode.name,
-				depth: treeNode.depth,
-				parentPath: treeNode.parentPath,
-				cachedAt: Date.now(),
-				lastModified: Date.now(), // TODO: Use actual directory modification time
-				version: 1,
-				children: treeNode.children.map((child) => ({
-					kind: child.kind,
-					name: child.name,
-					path: child.path,
-					depth: child.depth,
-					parentPath: child.parentPath,
-					size: child.kind === 'file' ? child.size : undefined,
-					lastModified: child.kind === 'file' ? child.lastModified : undefined,
-					isLoaded:
-						child.kind === 'dir' ? (child.isLoaded ?? false) : undefined,
-				})),
-				isLoaded: treeNode.isLoaded ?? false,
-			}
-
-			await workerCache.setDirectory(target.path, cachedEntry)
-		} catch (error) {
-			console.warn(
-				`Worker failed to cache scan results for ${target.path}:`,
-				error
-			)
-		}
-	}
-
 	return treeNode
 }
 
@@ -154,18 +64,6 @@ const api: TreePrefetchWorkerApi = {
 	async init(payload) {
 		ctx = createFs(payload.rootHandle)
 		fallbackRootName = payload.rootName || 'root'
-
-		// Initialize worker cache with shared database schema
-		try {
-			workerCache = createWorkerTreeCache({
-				dbName: 'tree-cache', // Same as main thread
-				storeName: 'directories', // Same as main thread
-			})
-		} catch (error) {
-			console.warn('Worker cache initialization failed:', error)
-			workerCache = undefined
-		}
-
 		initialized = true
 	},
 	async loadDirectory(target) {
@@ -174,7 +72,6 @@ const api: TreePrefetchWorkerApi = {
 	},
 	async dispose() {
 		ctx = undefined
-		workerCache = undefined
 		initialized = false
 	},
 }

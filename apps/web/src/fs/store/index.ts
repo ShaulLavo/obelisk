@@ -18,3 +18,5 @@ export {
 	type PersistenceBackend,
 	type FileStateStoreOptions,
 } from './FileStateStore'
+
+export { createIndexedDBBackend } from './IndexedDBBackend'

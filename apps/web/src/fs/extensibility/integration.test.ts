@@ -237,8 +237,8 @@ describe('File View Modes Integration Tests', () => {
 		})
 	})
 
-	describe('Backward Compatibility: Regular Files', () => {
-		it('should maintain existing behavior for files that only support editor mode', () => {
+	describe('Regular Files', () => {
+		it('should only support editor mode for text files', () => {
 			const regularFiles = [
 				'/src/index.ts',
 				'/README.md',
@@ -247,34 +247,28 @@ describe('File View Modes Integration Tests', () => {
 			]
 
 			for (const filePath of regularFiles) {
-				const stats: ParseResult = { contentKind: 'text' }
+				const stats = { contentKind: 'text' } as unknown as ParseResult
 
-				// Should only detect editor mode
 				const availableModes = detectAvailableViewModes(filePath, stats)
 				expect(availableModes).toEqual(['editor'])
 
-				// Should create standard tab ID
 				const tabId = createTabIdentity(filePath, 'editor')
 				expect(tabId).toBe(`${filePath}|editor`)
 
-				// Should parse correctly
 				const identity = parseTabIdentity(tabId)
 				expect(identity).toEqual({ filePath: filePath, viewMode: 'editor' })
 			}
 		})
 
-		it('should handle legacy tab IDs without view mode suffix', () => {
-			// Test migration of old tab format
-			const legacyTabId = '/src/index.ts'
+		it('should default to editor mode when parsing tab IDs without view mode suffix', () => {
+			const tabId = '/src/index.ts'
 
-			// Should parse legacy format with default editor mode
-			const identity = parseTabIdentity(legacyTabId)
+			const identity = parseTabIdentity(tabId)
 			expect(identity).toEqual({
 				filePath: '/src/index.ts',
 				viewMode: 'editor',
 			})
 
-			// Should create proper tab ID from parsed identity
 			const newTabId = createTabIdentity(identity.filePath, identity.viewMode)
 			expect(newTabId).toBe('/src/index.ts|editor')
 		})

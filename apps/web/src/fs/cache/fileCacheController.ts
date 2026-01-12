@@ -8,7 +8,8 @@ import type {
 	FoldRange,
 } from '../../workers/treeSitter/types'
 import { createFilePath, type FilePath } from '@repo/fs'
-import { FileStateStore, createFileStateStore } from '../store'
+import { createFileStateStore } from '../store'
+import { createIndexedDBBackend } from '../store/IndexedDBBackend'
 import { timestamp } from '../freshness'
 import type { SyntaxData, ScrollPosition } from '../store/types'
 import type { FsState } from '../types'
@@ -89,7 +90,10 @@ export const createFileCacheControllerV2 = ({
 	setScrollPosition,
 	setVisibleContent,
 }: FileCacheControllerOptions): FileCacheController => {
-	const store = createFileStateStore()
+	const store = createFileStateStore({
+		persistence: createIndexedDBBackend(),
+		persistenceDebounceMs: 150,
+	})
 	const previews: Record<string, Uint8Array | undefined> = {}
 
 	const toFilePath = (path: string): FilePath => createFilePath(path)

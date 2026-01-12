@@ -253,14 +253,13 @@ describe('FileSyncManager Property Tests', () => {
 	})
 
 	describe('Property 6: Reactive File Auto-Reload', () => {
-		it('should automatically reload reactive files on external changes', async () => {
+		it('should automatically reload reactive files on external changes when no local changes', async () => {
 			await fc.assert(
 				fc.asyncProperty(
 					fc.string({ minLength: 1, maxLength: 20 }).filter(s => /^[a-zA-Z0-9_-]+$/.test(s)),
 					fc.string({ minLength: 0, maxLength: 100 }),
 					fc.string({ minLength: 0, maxLength: 100 }),
-					fc.boolean(),
-					async (fileName, initialContent, newContent, hasLocalChanges) => {
+					async (fileName, initialContent, newContent) => {
 						if (initialContent === newContent) return
 
 						const fileHandle = await rootHandle.getFileHandle(fileName, { create: true })
@@ -272,25 +271,12 @@ describe('FileSyncManager Property Tests', () => {
 						expect(tracker.mode).toBe('reactive')
 						expect(tracker.syncState).toBe('synced')
 
-						if (hasLocalChanges) {
-							tracker.setLocalContent(initialContent + '_local_changes')
-							expect(tracker.isDirty).toBe(true)
-						}
-
 						let reloadedEvent: any = null
-						let localChangesDiscardedEvent: any = null
-						let externalChangeEvent: any = null
 						let conflictEvent: any = null
 
 						const unsubscribers = [
 							syncManager.on('reloaded', (event) => {
 								reloadedEvent = event
-							}),
-							syncManager.on('local-changes-discarded', (event) => {
-								localChangesDiscardedEvent = event
-							}),
-							syncManager.on('external-change', (event) => {
-								externalChangeEvent = event
 							}),
 							syncManager.on('conflict', (event) => {
 								conflictEvent = event
@@ -304,26 +290,80 @@ describe('FileSyncManager Property Tests', () => {
 
 							await syncManager['handleFileChange'](fileName, tracker)
 
+							// When no local changes: auto-reload happens
 							expect(reloadedEvent).not.toBeNull()
 							expect(reloadedEvent.type).toBe('reloaded')
 							expect(reloadedEvent.path).toBe(fileName)
 							expect(reloadedEvent.newContent).toBeDefined()
 							expect(reloadedEvent.newContent.toString()).toBe(newContent)
 
-							if (hasLocalChanges) {
-								expect(localChangesDiscardedEvent).not.toBeNull()
-								expect(localChangesDiscardedEvent.type).toBe('local-changes-discarded')
-								expect(localChangesDiscardedEvent.path).toBe(fileName)
-							} else {
-								expect(localChangesDiscardedEvent).toBeNull()
-							}
-
-							expect(externalChangeEvent).toBeNull()
 							expect(conflictEvent).toBeNull()
-
 							expect(tracker.syncState).toBe('synced')
 							expect(tracker.isDirty).toBe(false)
 							expect(tracker.getLocalContent().toString()).toBe(newContent)
+						} finally {
+							unsubscribers.forEach(unsub => unsub())
+							syncManager.untrack(fileName)
+						}
+					}
+				),
+				{ numRuns: 50 }
+			)
+		})
+
+		it('should escalate to conflict when reactive file has local changes', async () => {
+			await fc.assert(
+				fc.asyncProperty(
+					fc.string({ minLength: 1, maxLength: 20 }).filter(s => /^[a-zA-Z0-9_-]+$/.test(s)),
+					fc.string({ minLength: 0, maxLength: 100 }),
+					fc.string({ minLength: 0, maxLength: 100 }),
+					async (fileName, initialContent, newContent) => {
+						if (initialContent === newContent) return
+
+						const fileHandle = await rootHandle.getFileHandle(fileName, { create: true })
+						const writable = await fileHandle.createWritable()
+						await writable.write(initialContent)
+						await writable.close()
+
+						const tracker = await syncManager.track(fileName, { reactive: true })
+						expect(tracker.mode).toBe('reactive')
+						expect(tracker.syncState).toBe('synced')
+
+						// Make local changes
+						tracker.setLocalContent(initialContent + '_local_changes')
+						expect(tracker.isDirty).toBe(true)
+
+						let reloadedEvent: any = null
+						let conflictEvent: any = null
+
+						const unsubscribers = [
+							syncManager.on('reloaded', (event) => {
+								reloadedEvent = event
+							}),
+							syncManager.on('conflict', (event) => {
+								conflictEvent = event
+							}),
+						]
+
+						try {
+							const writable2 = await fileHandle.createWritable()
+							await writable2.write(newContent)
+							await writable2.close()
+
+							await syncManager['handleFileChange'](fileName, tracker)
+
+							// When local changes exist: escalate to conflict, never auto-discard
+							expect(reloadedEvent).toBeNull()
+							expect(conflictEvent).not.toBeNull()
+							expect(conflictEvent.type).toBe('conflict')
+							expect(conflictEvent.path).toBe(fileName)
+							expect(conflictEvent.baseContent).toBeDefined()
+							expect(conflictEvent.localContent).toBeDefined()
+							expect(conflictEvent.diskContent).toBeDefined()
+
+							// Local content preserved - NOT discarded
+							expect(tracker.isDirty).toBe(true)
+							expect(tracker.getLocalContent().toString()).toBe(initialContent + '_local_changes')
 						} finally {
 							unsubscribers.forEach(unsub => unsub())
 							syncManager.untrack(fileName)

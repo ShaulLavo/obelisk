@@ -13,7 +13,8 @@ describe('SyncStatusIndicator', () => {
 		}
 
 		const { container } = render(() => <SyncStatusIndicator status={status} />)
-		expect(container.querySelector('span')).toBeTruthy()
+		// Synced status intentionally renders nothing (file is in normal state)
+		expect(container.querySelector('span')).toBeFalsy()
 	})
 
 	it('renders dirty status correctly', () => {
@@ -55,15 +56,15 @@ describe('SyncStatusIndicator', () => {
 
 	it('handles undefined status', () => {
 		const { container } = render(() => <SyncStatusIndicator />)
-		// Should still render something for not-watched state
-		expect(container.querySelector('span')).toBeTruthy()
+		// Undefined status (not-watched) intentionally renders nothing
+		expect(container.querySelector('span')).toBeFalsy()
 	})
 
 	it('applies custom size', () => {
 		const status: SyncStatusInfo = {
-			type: 'synced',
+			type: 'dirty',
 			lastSyncTime: Date.now(),
-			hasLocalChanges: false,
+			hasLocalChanges: true,
 			hasExternalChanges: false,
 		}
 
