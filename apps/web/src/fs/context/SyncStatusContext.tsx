@@ -1,30 +1,31 @@
 import { createContext, useContext, type ParentProps } from 'solid-js'
 import type { SyncStatusInfo } from '@repo/code-editor/sync'
-import { syncStatusService } from '../services/SyncStatusService'
+
+/**
+ * Default status for files when sync is not active
+ */
+const NOT_WATCHED_STATUS: SyncStatusInfo = {
+	type: 'not-watched',
+	lastSyncTime: 0,
+	hasLocalChanges: false,
+	hasExternalChanges: false,
+}
 
 type SyncStatusContextType = {
-	getSyncStatus: (path: string) => SyncStatusInfo | undefined
-	updateSyncStatus: (path: string, status: SyncStatusInfo) => void
-	removeSyncStatus: (path: string) => void
-	onSyncStatusChange: (callback: (path: string, status: SyncStatusInfo) => void) => () => void
+	getSyncStatus: (path: string) => SyncStatusInfo
 	getTrackedPaths: () => string[]
-	clearAll: () => void
 }
 
 const SyncStatusContext = createContext<SyncStatusContextType>()
 
 /**
- * Provider for sync status management throughout the application.
- * Uses the singleton SyncStatusService directly.
+ * Provider for sync status.
+ * Currently provides stub implementation until EditorFileSyncManager is wired up.
  */
 export function SyncStatusProvider(props: ParentProps) {
 	const value: SyncStatusContextType = {
-		getSyncStatus: (path) => syncStatusService.getSyncStatus(path),
-		updateSyncStatus: (path, status) => syncStatusService.updateSyncStatus(path, status),
-		removeSyncStatus: (path) => syncStatusService.removeSyncStatus(path),
-		onSyncStatusChange: (callback) => syncStatusService.onSyncStatusChange(callback),
-		getTrackedPaths: () => syncStatusService.getTrackedPaths(),
-		clearAll: () => syncStatusService.clearAll(),
+		getSyncStatus: () => NOT_WATCHED_STATUS,
+		getTrackedPaths: () => [],
 	}
 
 	return (

@@ -442,8 +442,8 @@ describe('EditorFileSyncManager', () => {
 						resolveKeepLocal: vi.fn().mockResolvedValue(undefined),
 						resolveAcceptExternal: vi.fn().mockResolvedValue(undefined),
 						resolveMerge: vi.fn().mockResolvedValue(undefined),
-					}
-					vi.mocked(testSyncManager.getTracker).mockReturnValue(mockTracker as ReturnType<typeof testSyncManager.getTracker>)
+					} as any
+					vi.mocked(testSyncManager.getTracker).mockReturnValue(mockTracker)
 
 					// Track status changes and conflict resolution requests
 					const statusChanges: Array<{ path: string; status: any }> = []
@@ -638,7 +638,7 @@ describe('EditorFileSyncManager', () => {
 						resolveAcceptExternal: vi.fn().mockResolvedValue(undefined),
 						resolveMerge: vi.fn().mockResolvedValue(undefined),
 					}
-					vi.mocked(testSyncManager.getTracker).mockReturnValue(mockTracker as ReturnType<typeof testSyncManager.getTracker>)
+					vi.mocked(testSyncManager.getTracker).mockReturnValue(mockTracker as any)
 
 					const testManager = new EditorFileSyncManager({
 						syncManager: testSyncManager,
@@ -654,8 +654,9 @@ describe('EditorFileSyncManager', () => {
 						const externalChangeEvent = {
 							type: 'external-change' as const,
 							path: scenario.path,
-							tracker: mockTracker as ReturnType<typeof testSyncManager.getTracker>,
+							tracker: mockTracker as any,
 							newContent: ByteContentHandleFactory.fromString(scenario.newContent),
+						newMtime: Date.now(),
 						}
 
 						const onExternalChangeCalls = vi.mocked(testSyncManager.on).mock.calls.filter(
@@ -732,7 +733,7 @@ describe('EditorFileSyncManager', () => {
 						resolveAcceptExternal: vi.fn().mockResolvedValue(undefined),
 						resolveMerge: vi.fn().mockResolvedValue(undefined),
 					}
-					vi.mocked(testSyncManager.getTracker).mockReturnValue(mockTracker as ReturnType<typeof testSyncManager.getTracker>)
+					vi.mocked(testSyncManager.getTracker).mockReturnValue(mockTracker as any)
 
 					const testManager = new EditorFileSyncManager({
 						syncManager: testSyncManager,
@@ -771,7 +772,7 @@ describe('EditorFileSyncManager', () => {
 							const conflictEvent = {
 								type: 'conflict' as const,
 								path: scenario.path,
-								tracker: mockTracker as ReturnType<typeof testSyncManager.getTracker>,
+								tracker: mockTracker as any,
 								baseContent: ByteContentHandleFactory.fromString('base'),
 								localContent: ByteContentHandleFactory.fromString('local'),
 								diskContent: ByteContentHandleFactory.fromString('external'),
@@ -857,7 +858,7 @@ describe('EditorFileSyncManager', () => {
 					}
 
 					vi.mocked(testSyncManager.getTracker).mockImplementation((filePath: string) =>
-						(mockTrackers.get(filePath) || null) as ReturnType<typeof testSyncManager.getTracker>
+						(mockTrackers.get(filePath) || null) as any
 					)
 
 					const testManager = new EditorFileSyncManager({
@@ -885,7 +886,7 @@ describe('EditorFileSyncManager', () => {
 							const conflictEvent = {
 								type: 'conflict' as const,
 								path,
-								tracker: mockTrackers.get(path)! as ReturnType<typeof testSyncManager.getTracker>,
+								tracker: mockTrackers.get(path)! as any,
 								baseContent: ByteContentHandleFactory.fromString('base'),
 								localContent: ByteContentHandleFactory.fromString('local'),
 								diskContent: ByteContentHandleFactory.fromString('external'),
@@ -1074,7 +1075,7 @@ describe('EditorFileSyncManager', () => {
 							resolveAcceptExternal: vi.fn().mockResolvedValue(undefined),
 							resolveMerge: vi.fn().mockResolvedValue(undefined),
 						}
-						vi.mocked(testSyncManager.getTracker).mockReturnValue(mockTracker as ReturnType<typeof testSyncManager.getTracker>)
+						vi.mocked(testSyncManager.getTracker).mockReturnValue(mockTracker as any)
 
 						await testManager.registerOpenFile(path, mockEditor)
 
@@ -1083,8 +1084,9 @@ describe('EditorFileSyncManager', () => {
 							const externalChangeEvent = {
 								type: 'external-change' as const,
 								path,
-								tracker: mockTracker as ReturnType<typeof testSyncManager.getTracker>,
+								tracker: mockTracker as any,
 								newContent: ByteContentHandleFactory.fromString('new content'),
+							newMtime: Date.now(),
 							}
 
 							const onExternalChangeCalls = vi.mocked(testSyncManager.on).mock.calls.filter(
@@ -1160,7 +1162,7 @@ describe('EditorFileSyncManager', () => {
 						vi.mocked(testSyncManager.track).mockRejectedValue(new Error(scenario.errorMessage))
 					}
 
-					vi.mocked(testSyncManager.getTracker).mockReturnValue(mockTracker as ReturnType<typeof testSyncManager.getTracker>)
+					vi.mocked(testSyncManager.getTracker).mockReturnValue(mockTracker as any)
 
 					const testManager = new EditorFileSyncManager({
 						syncManager: testSyncManager,
@@ -1183,7 +1185,7 @@ describe('EditorFileSyncManager', () => {
 							expect(status.errorMessage).toBeDefined()
 						} else {
 							// Normal registration
-							vi.mocked(testSyncManager.track).mockResolvedValue(mockTracker as ReturnType<typeof testSyncManager.track>)
+							vi.mocked(testSyncManager.track).mockResolvedValue(mockTracker as any)
 							await testManager.registerOpenFile(path, mockEditor)
 
 							if (scenario.errorType === 'resolution') {
@@ -1191,7 +1193,7 @@ describe('EditorFileSyncManager', () => {
 								const conflictEvent = {
 									type: 'conflict' as const,
 									path,
-									tracker: mockTracker as ReturnType<typeof testSyncManager.getTracker>,
+									tracker: mockTracker as any,
 									baseContent: ByteContentHandleFactory.fromString('base'),
 									localContent: ByteContentHandleFactory.fromString('local'),
 									diskContent: ByteContentHandleFactory.fromString('external'),

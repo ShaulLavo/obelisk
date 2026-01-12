@@ -342,7 +342,7 @@ export class EditorFileSyncManager {
 	}
 
 	private async onConflict(path: string, event: ConflictEvent): Promise<void> {
-		const info = this.conflicts.createConflict(path, event)
+		const info = this.createConflictFromEvent(path, event)
 		this.setStatus(path, createConflictStatus())
 
 		if (canAutoResolve(this.config.defaultConflictResolution)) {
@@ -448,12 +448,31 @@ export class EditorFileSyncManager {
 					localContent: fileState.previousContent,
 					conflictTimestamp: Date.now(),
 				}
-				this.conflicts.addConflict(updated)
+				this.addConflictInfo(updated)
 				this.setStatus(path, createConflictStatus())
 			}
 		}
 
 		return result
+	}
+
+	// ─── Private: Conflict Helpers ─────────────────────────────────────────
+
+	private createConflictFromEvent(path: string, event: ConflictEvent): ConflictInfo {
+		const conflictInfo: ConflictInfo = {
+			path,
+			baseContent: event.baseContent.toString(),
+			localContent: event.localContent.toString(),
+			externalContent: event.diskContent.toString(),
+			lastModified: Date.now(),
+			conflictTimestamp: Date.now(),
+		}
+		this.pendingConflicts.set(path, { path, conflictInfo, timestamp: Date.now() })
+		return conflictInfo
+	}
+
+	private addConflictInfo(info: ConflictInfo): void {
+		this.pendingConflicts.set(info.path, { path: info.path, conflictInfo: info, timestamp: Date.now() })
 	}
 
 	// ─── Private: Helpers ──────────────────────────────────────────────────

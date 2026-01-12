@@ -76,7 +76,7 @@ export const SyncStatusIndicator = (props: SyncStatusIndicatorProps) => {
 	const statusDisplay = () => getStatusDisplay()
 
 	return (
-		<Show when={props.status || props.status?.type !== 'synced'}>
+		<Show when={props.status && props.status.type !== 'synced'}>
 			<span
 				class={`inline-flex items-center justify-center ${statusDisplay().color} ${props.class || ''}`}
 				title={showTooltip() ? statusDisplay().tooltip : undefined}

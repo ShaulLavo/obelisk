@@ -26,8 +26,8 @@ export type {
 
 export { DEFAULT_EDITOR_SYNC_CONFIG, deriveSyncStatusType } from './types'
 
-// Conflict management
-export { ConflictManager, getStrategyDisplayName, canAutoResolve, createResolution } from './conflict-manager'
+// Conflict resolution utilities
+export { getStrategyDisplayName, canAutoResolve, createResolution } from './conflict-manager'
 
 // Status derivation (pure functions)
 export {
@@ -75,18 +75,8 @@ export {
 } from './context/SyncStatusContext'
 export type { SyncStatusProviderProps } from './context/SyncStatusContext'
 
-export {
-	createStatusFilter,
-	createConflictedFiles,
-	createErrorFiles,
-	createDirtyFiles,
-	createExternalChangedFiles,
-	createSyncStatusHistory,
-	createDebouncedSyncStatus,
-	createAggregatedSyncStatus,
-	createStatusChangeWatcher,
-	createSyncStatusNotifications,
-} from './hooks/createSyncStatusHooks'
+// Aggregated status hook
+export { createAggregatedSyncStatus } from './hooks/createSyncStatusHooks'
 
 // UI Components
 export * from './ui'
