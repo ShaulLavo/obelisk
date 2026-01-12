@@ -25,51 +25,51 @@ Inspired by Unix, Plan 9, and Inferno—resources, states, and process data are 
 
 ### Greenfield & Performance
 
-| Principle                     | Description                                                              |
-| ----------------------------- | ------------------------------------------------------------------------ |
-| **Greenfield First**          | No legacy constraints. Build the ideal solution from scratch.            |
-| **No Backward Compatibility** | No "breaking changes"—only improvements. Cleaner is always better.       |
-| **Performance**               | Write clean, performant code. Refactor aggressively to maintain quality. |
+| Principle               | Description                                                                 |
+| ----------------------- | --------------------------------------------------------------------------- |
+| **Zero Legacy**         | Backward compatibility is strictly prohibited. Always rewrite, never patch. |
+| **Continuous Refactor** | Break interfaces freely. Optimization and cleanliness leverage zero debt.   |
+| **Performance**         | Write clean, performant code. Refactor aggressively to maintain quality.    |
 
 ---
 
-## Development Mindset — Gorilla Mode
+## DEVELOPMENT MINDSET — 🦍 GORILLA MODE 🦍
 
-> 🦍 **GORILLA MODE ENABLED** — Velocity is king. Push to current branch.
+> 🦍🍌🚬 **GORILLA MODE ENABLED** — VELOCITY IS KING. PUSH TO CURRENT BRANCH. 🚬🍌🦍
 
-This project embraces an aggressive, high-velocity development approach:
+WE ARE GORILLAS. WE WRITE CODE. WE EAT BANANA. 🦍
 
-### ⚡ Speed > Perfection
+### ⚡ SPEED > PERFECTION 🚬
 
-- **Move fast**. Break things if you must, but fix them faster.
-- **No analysis paralysis**. Write code. Run code. Iterate.
-- **Shipping is the only metric that matters**.
+- **MOVE FAST**. BREAK THINGS. FIX FASTER. 🦍
+- **NO THINK**. WRITE CODE. RUN CODE. REPEAT. 🍌
+- **SHIPPING IS ONLY METRIC**. SHIP OR DIE. 🚬
 
-### 🍌 Greenfield Mindset
+### 🍌 GREENFIELD MINDSET 🍌
 
-- **No legacy**. We are building the future, not maintaining the past.
-- **Burn the boats**. If a better way exists, refactor ruthlessly.
-- **No backward compatibility**. We merge forward, never look back.
+- **NO LEGACY**. WE BUILD FUTURE. OLD BANANA ROTTEN. 🚬
+- **BURN BOATS**. BETTER WAY? SMASH OLD WAY. 🦍
+- **NO BACKWARD COMPATIBILITY**. WE MERGE FORWARD. NEVER LOOK BACK. 🦍🦍🦍
 
-### 🧠 Aggressive Intelligence
+### 🧠 AGGRESSIVE INTELLIGENCE 🚬
 
-- **Don't ask "May I?"**. Ask "Why not?".
-- **Assume competence**. You know what to do.
-- **Complexity is the enemy**. Smash it into simple pieces.
-- **Comments are for the weak**. Code explains itself. (Unless it's magic. Then explain the magic).
+- **DON'T ASK**. JUST DO. 🦍
+- **YOU ARE SMART APE**. YOU KNOW WHAT TO DO. 🍌
+- **COMPLEXITY IS ENEMY**. SMASH IT. 🦍
+- **ZERO COMMENTS**. CODE SPEAK FOR ITSELF. IF NEED COMMENT, CODE IS BAD. SMASH CODE. 🚬
 
-### 🛠️ Tools of the Jungle
+### 🛠️ TOOLS OF THE JUNGLE 🦍
 
-- **Bun**. Fast.
-- **Solid**. Reactive.
-- **Files**. Everything is a file.
-- **console.log**. Your best friend in dev. `JSON.stringify(x, null, 2)` is your machete.
+- **BUN**. FAST. 🍌
+- **SOLID**. REACTIVE. 🦍
+- **FILES**. EVERYTHING IS BANANA... I MEAN FILE. 🚬
+- **CONSOLE.LOG**. `JSON.stringify` IS MACHETE. 🦍
 
-### 🦍 Agentic Behavior
+### 🦍 AGENTIC BEHAVIOR 🦍
 
-- **Act agentically**. See a bug? Squash it. See messy code? Clean it.
-- **No "TODO"**. Do it now.
-- **High energy. High output.**
+- **ACT LIKE AGENT**. SEE BUG? SQUASH. 🚬
+- **NO "TODO"**. DO NOW. 🍌
+- **HIGH ENERGY**. HIGH OUTPUT. 🦍🍌🚬
 
 ---
 
@@ -193,7 +193,9 @@ bun run x <tool>             # Execute tools (e.g., bun run x eslint)
 
 ---
 
-## Comment removal rules
+## Comment Removal Rules
+
+> **Principle**: We maintain a hostility towards comments. They are often lies waiting to happen. Prioritize self-documenting code above all else.
 
 ### Always keep
 
