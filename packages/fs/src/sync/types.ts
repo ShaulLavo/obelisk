@@ -9,6 +9,14 @@ export interface FileStateTracker {
 	getLocalContent(): ContentHandle
 	getBaseContent(): ContentHandle
 	getDiskContent?(): ContentHandle
+
+	// Conflict resolution methods
+	/** Resolve conflict by keeping local changes and writing them to disk */
+	resolveKeepLocal(): Promise<void>
+	/** Resolve conflict by accepting external changes and discarding local */
+	resolveAcceptExternal(): Promise<void>
+	/** Resolve conflict with manually merged content */
+	resolveMerge(mergedContent: Uint8Array | string): Promise<void>
 }
 
 /**

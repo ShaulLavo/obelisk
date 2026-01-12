@@ -1,6 +1,6 @@
 import { createContext, useContext, type ParentProps } from 'solid-js'
 import type { SyncStatusInfo } from '@repo/code-editor/sync'
-import { useSyncStatus } from '../hooks/useSyncStatus'
+import { syncStatusService } from '../services/SyncStatusService'
 
 type SyncStatusContextType = {
 	getSyncStatus: (path: string) => SyncStatusInfo | undefined
@@ -9,20 +9,26 @@ type SyncStatusContextType = {
 	onSyncStatusChange: (callback: (path: string, status: SyncStatusInfo) => void) => () => void
 	getTrackedPaths: () => string[]
 	clearAll: () => void
-	simulateStatusChange: (path: string, statusType: SyncStatusInfo['type']) => void
 }
 
 const SyncStatusContext = createContext<SyncStatusContextType>()
 
 /**
- * Provider for sync status management throughout the application
- * This will be integrated with EditorFileSyncManager when available
+ * Provider for sync status management throughout the application.
+ * Uses the singleton SyncStatusService directly.
  */
 export function SyncStatusProvider(props: ParentProps) {
-	const syncStatus = useSyncStatus()
+	const value: SyncStatusContextType = {
+		getSyncStatus: (path) => syncStatusService.getSyncStatus(path),
+		updateSyncStatus: (path, status) => syncStatusService.updateSyncStatus(path, status),
+		removeSyncStatus: (path) => syncStatusService.removeSyncStatus(path),
+		onSyncStatusChange: (callback) => syncStatusService.onSyncStatusChange(callback),
+		getTrackedPaths: () => syncStatusService.getTrackedPaths(),
+		clearAll: () => syncStatusService.clearAll(),
+	}
 
 	return (
-		<SyncStatusContext.Provider value={syncStatus}>
+		<SyncStatusContext.Provider value={value}>
 			{props.children}
 		</SyncStatusContext.Provider>
 	)

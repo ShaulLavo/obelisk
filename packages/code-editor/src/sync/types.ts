@@ -1,13 +1,36 @@
 /**
  * Sync status types for editor files
  */
-export type SyncStatusType = 
+export type SyncStatusType =
 	| 'synced'           // File is up to date, no changes
 	| 'dirty'            // Local changes not saved
 	| 'external-changes' // External changes detected, no local changes
 	| 'conflict'         // Both local and external changes
 	| 'error'            // Sync error occurred
 	| 'not-watched'      // File not being watched
+
+/**
+ * Derive the sync status type from the two source booleans.
+ * This is the single source of truth for status type computation.
+ *
+ * Truth table:
+ * - error message present -> 'error'
+ * - hasLocal && hasExternal -> 'conflict'
+ * - hasLocal only -> 'dirty'
+ * - hasExternal only -> 'external-changes'
+ * - neither -> 'synced'
+ */
+export function deriveSyncStatusType(
+	hasLocalChanges: boolean,
+	hasExternalChanges: boolean,
+	errorMessage?: string
+): SyncStatusType {
+	if (errorMessage) return 'error'
+	if (hasLocalChanges && hasExternalChanges) return 'conflict'
+	if (hasLocalChanges) return 'dirty'
+	if (hasExternalChanges) return 'external-changes'
+	return 'synced'
+}
 
 /**
  * Sync status information for a file
@@ -134,7 +157,7 @@ export interface EditorSyncConfig {
 	/** Default conflict resolution strategy */
 	defaultConflictResolution: ConflictResolutionStrategy
 	
-	/** Maximum number of files to watch simultaneously */
+	/** Maximum number of files to watch simultaneously (0 = unlimited) */
 	maxWatchedFiles: number
 	
 	/** Show notifications for auto-reloads */
@@ -211,7 +234,7 @@ export const DEFAULT_EDITOR_SYNC_CONFIG: EditorSyncConfig = {
 	autoReload: true,
 	debounceMs: 100,
 	defaultConflictResolution: 'manual-merge',
-	maxWatchedFiles: 100,
+	maxWatchedFiles: 0, // 0 = unlimited (watches all open tabs)
 	showReloadNotifications: true,
 	preserveEditorState: true,
 }

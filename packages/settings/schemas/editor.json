@@ -49,6 +49,52 @@
                     "description": "Controls how lines should wrap."
                 }
             ]
+        },
+        {
+            "id": "fileSync",
+            "label": "File Synchronization",
+            "settings": [
+                {
+                    "id": "autoWatch",
+                    "default": true,
+                    "description": "Automatically watch open files for external changes."
+                },
+                {
+                    "id": "autoReload",
+                    "default": true,
+                    "description": "Automatically reload files when external changes are detected and there are no local modifications."
+                },
+                {
+                    "id": "showReloadNotifications",
+                    "default": true,
+                    "description": "Show notifications when files are automatically reloaded."
+                },
+                {
+                    "id": "preserveEditorState",
+                    "default": true,
+                    "description": "Preserve cursor position, scroll position, and folded regions when reloading files."
+                },
+                {
+                    "id": "defaultConflictResolution",
+                    "default": "manual-merge",
+                    "options": [
+                        "manual-merge",
+                        "keep-local",
+                        "use-external"
+                    ],
+                    "description": "Default strategy for resolving conflicts when both local and external changes exist."
+                },
+                {
+                    "id": "debounceMs",
+                    "default": 100,
+                    "description": "Delay in milliseconds before processing file change notifications. Higher values reduce CPU usage but increase response time."
+                },
+                {
+                    "id": "maxWatchedFiles",
+                    "default": 0,
+                    "description": "Maximum number of files to watch simultaneously. Set to 0 for unlimited (recommended). Only set a limit if you experience performance issues with many open tabs."
+                }
+            ]
         }
     ]
 }

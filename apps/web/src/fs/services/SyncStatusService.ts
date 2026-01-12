@@ -1,15 +1,17 @@
 import { createSignal } from 'solid-js'
-import type { SyncStatusInfo } from '@repo/code-editor/sync'
+import type { SyncStatusInfo, EditorFileSyncManager } from '@repo/code-editor/sync'
 
 /**
- * Service for managing sync status integration with the UI
- * This will be connected to EditorFileSyncManager when it's implemented
+ * Service for managing sync status integration with the UI.
+ * Bridges EditorFileSyncManager with UI components via Solid-JS reactivity.
  */
 export class SyncStatusService {
 	private syncStatuses = new Map<string, SyncStatusInfo>()
 	private listeners = new Set<(path: string, status: SyncStatusInfo) => void>()
 	private statusSignal: () => number
 	private setStatusSignal: (value: number | ((prev: number) => number)) => void
+	private connectedManager: EditorFileSyncManager | null = null
+	private disconnectFn: (() => void) | null = null
 
 	constructor() {
 		const [statusSignal, setStatusSignal] = createSignal(0)
@@ -32,7 +34,7 @@ export class SyncStatusService {
 	updateSyncStatus(path: string, status: SyncStatusInfo): void {
 		this.syncStatuses.set(path, status)
 		this.setStatusSignal(prev => prev + 1) // Trigger reactivity
-		
+
 		// Notify listeners
 		this.listeners.forEach(listener => {
 			try {
@@ -57,7 +59,7 @@ export class SyncStatusService {
 	 */
 	onSyncStatusChange(callback: (path: string, status: SyncStatusInfo) => void): () => void {
 		this.listeners.add(callback)
-		
+
 		// Return unsubscribe function
 		return () => {
 			this.listeners.delete(callback)
@@ -80,27 +82,44 @@ export class SyncStatusService {
 	}
 
 	/**
-	 * Connect to EditorFileSyncManager (placeholder for future implementation)
+	 * Connect to EditorFileSyncManager to receive status updates.
+	 * Returns a disconnect function.
 	 */
-	connectToSyncManager(syncManager: unknown): () => void {
-		// This will be implemented when EditorFileSyncManager is available
-		// For now, return a no-op disconnect function
-		console.log('SyncStatusService: connectToSyncManager called (not yet implemented)')
-		return () => {}
+	connectToSyncManager(syncManager: EditorFileSyncManager): () => void {
+		// Disconnect from previous manager if any
+		if (this.disconnectFn) {
+			this.disconnectFn()
+		}
+
+		this.connectedManager = syncManager
+
+		// Subscribe to status changes from the sync manager
+		const unsubscribe = syncManager.onSyncStatusChange((path, status) => {
+			this.updateSyncStatus(path, status)
+		})
+
+		// Create disconnect function
+		this.disconnectFn = () => {
+			unsubscribe()
+			this.connectedManager = null
+			this.disconnectFn = null
+		}
+
+		return this.disconnectFn
 	}
 
 	/**
-	 * Simulate sync status changes for testing
+	 * Check if connected to a sync manager
 	 */
-	simulateStatusChange(path: string, statusType: SyncStatusInfo['type']): void {
-		const status: SyncStatusInfo = {
-			type: statusType,
-			lastSyncTime: Date.now(),
-			hasLocalChanges: statusType === 'dirty' || statusType === 'conflict',
-			hasExternalChanges: statusType === 'external-changes' || statusType === 'conflict',
-			errorMessage: statusType === 'error' ? 'Simulated sync error' : undefined,
-		}
-		this.updateSyncStatus(path, status)
+	isConnected(): boolean {
+		return this.connectedManager !== null
+	}
+
+	/**
+	 * Get the connected sync manager (if any)
+	 */
+	getConnectedManager(): EditorFileSyncManager | null {
+		return this.connectedManager
 	}
 }
 

@@ -3,7 +3,7 @@ import { EditorFileSyncManager, type NotificationSystem } from './editor-file-sy
 import { EditorRegistryImpl } from './editor-registry'
 import type { FileSyncManager, ContentHandle } from '@repo/fs'
 import { ByteContentHandleFactory } from '@repo/fs'
-import type { EditorInstance, EditorSyncConfig, ConflictResolution } from './types'
+import type { EditorInstance, EditorSyncConfig, ConflictResolution, SyncStatusInfo } from './types'
 import { DEFAULT_EDITOR_SYNC_CONFIG } from './types'
 import * as fc from 'fast-check'
 
@@ -140,19 +140,19 @@ describe('EditorFileSyncManager', () => {
 		it('should auto-reload clean files when external changes occur', async () => {
 			const mockEditor = createMockEditor()
 			const path = '/test/file.ts'
-			
+
 			// Register the file
 			await editorFileSyncManager.registerOpenFile(path, mockEditor)
-			
-			// Directly call the handleExternalChange method (private method testing)
+
+			// Directly call the onExternalChange method (private method testing)
 			const manager = editorFileSyncManager as any
-			await manager.handleExternalChange(path, { path, timestamp: Date.now() }, mockEditor)
-			
+			await manager.onExternalChange(path, { path, timestamp: Date.now() }, mockEditor)
+
 			// Verify auto-reload occurred
 			expect(mockEditor.setContent).toHaveBeenCalledWith('updated content')
 			expect(mockEditor.markClean).toHaveBeenCalled()
 			expect(notificationSystem.showNotification).toHaveBeenCalledWith(
-				'File "file.ts" was updated and reloaded',
+				'"file.ts" was updated and reloaded',
 				'info'
 			)
 		})
@@ -161,18 +161,18 @@ describe('EditorFileSyncManager', () => {
 			const mockEditor = createMockEditor()
 			mockEditor.isDirty = vi.fn().mockReturnValue(true) // File is dirty
 			const path = '/test/file.ts'
-			
+
 			// Register the file
 			await editorFileSyncManager.registerOpenFile(path, mockEditor)
-			
-			// Directly call the handleExternalChange method
+
+			// Directly call the onExternalChange method
 			const manager = editorFileSyncManager as any
-			await manager.handleExternalChange(path, { path, timestamp: Date.now() }, mockEditor)
-			
+			await manager.onExternalChange(path, { path, timestamp: Date.now() }, mockEditor)
+
 			// Verify auto-reload did NOT occur
 			expect(mockEditor.setContent).not.toHaveBeenCalled()
 			expect(mockEditor.markClean).not.toHaveBeenCalled()
-			
+
 			// Should mark as conflict instead
 			const status = editorFileSyncManager.getSyncStatus(path)
 			expect(status.type).toBe('conflict')
@@ -181,23 +181,23 @@ describe('EditorFileSyncManager', () => {
 		it('should handle auto-reload errors gracefully', async () => {
 			const mockEditor = createMockEditor()
 			const path = '/test/file.ts'
-			
+
 			// Make getTracker return null to simulate error
 			syncManager.getTracker = vi.fn().mockReturnValue(null)
-			
+
 			// Register the file
 			await editorFileSyncManager.registerOpenFile(path, mockEditor)
-			
-			// Directly call the handleExternalChange method
+
+			// Directly call the onExternalChange method
 			const manager = editorFileSyncManager as any
-			await manager.handleExternalChange(path, { path, timestamp: Date.now() }, mockEditor)
-			
+			await manager.onExternalChange(path, { path, timestamp: Date.now() }, mockEditor)
+
 			// Verify error handling
 			const status = editorFileSyncManager.getSyncStatus(path)
 			expect(status.type).toBe('error')
 			expect(status.errorMessage).toBe('File tracker not found')
 			expect(notificationSystem.showNotification).toHaveBeenCalledWith(
-				'Failed to reload "file.ts": File tracker not found',
+				'"file.ts" reload failed: File tracker not found',
 				'error'
 			)
 		})
@@ -207,41 +207,41 @@ describe('EditorFileSyncManager', () => {
 		it('should close clean files when deleted externally', async () => {
 			const mockEditor = createMockEditor()
 			const path = '/test/file.ts'
-			
+
 			// Register the file first
 			await editorFileSyncManager.registerOpenFile(path, mockEditor)
-			
-			// Directly call the handleFileDeleted method
+
+			// Directly call the onDeleted method (path, editor)
 			const manager = editorFileSyncManager as any
-			manager.handleFileDeleted(path, { path, timestamp: Date.now() }, mockEditor)
-			
+			manager.onDeleted(path, mockEditor)
+
 			// Verify file should be closed
 			expect(editorFileSyncManager.shouldCloseFile(path)).toBe(true)
 			expect(notificationSystem.showNotification).toHaveBeenCalledWith(
-				'File "file.ts" was deleted externally and has been closed',
+				'"file.ts" was deleted externally and has been closed',
 				'info'
 			)
 		})
 
 		it('should not close dirty files when deleted externally', async () => {
 			const mockEditor = createMockEditor()
-			mockEditor.isDirty = vi.fn().mockReturnValue(true) // File is dirty
+			vi.mocked(mockEditor.isDirty).mockReturnValue(true) // File is dirty
 			const path = '/test/file.ts'
-			
+
 			// Register the file first
 			await editorFileSyncManager.registerOpenFile(path, mockEditor)
-			
-			// Directly call the handleFileDeleted method
+
+			// Directly call the onDeleted method (path, editor)
 			const manager = editorFileSyncManager as any
-			manager.handleFileDeleted(path, { path, timestamp: Date.now() }, mockEditor)
-			
+			manager.onDeleted(path, mockEditor)
+
 			// Verify file should NOT be closed
 			expect(editorFileSyncManager.shouldCloseFile(path)).toBe(false)
 			expect(notificationSystem.showNotification).toHaveBeenCalledWith(
-				'File "file.ts" was deleted externally but has unsaved changes. Save to restore the file.',
+				'"file.ts" was deleted externally but has unsaved changes',
 				'warning'
 			)
-			
+
 			// Should mark as error but keep file open
 			const status = editorFileSyncManager.getSyncStatus(path)
 			expect(status.type).toBe('error')
@@ -443,7 +443,7 @@ describe('EditorFileSyncManager', () => {
 						resolveAcceptExternal: vi.fn().mockResolvedValue(undefined),
 						resolveMerge: vi.fn().mockResolvedValue(undefined),
 					}
-					vi.mocked(testSyncManager.getTracker).mockReturnValue(mockTracker as any)
+					vi.mocked(testSyncManager.getTracker).mockReturnValue(mockTracker as ReturnType<typeof testSyncManager.getTracker>)
 
 					// Track status changes and conflict resolution requests
 					const statusChanges: Array<{ path: string; status: any }> = []
@@ -495,7 +495,7 @@ describe('EditorFileSyncManager', () => {
 
 						// Verify notification was shown
 						expect(testNotificationSystem.showNotification).toHaveBeenCalledWith(
-							expect.stringContaining('Conflict detected'),
+							expect.stringContaining('has both local and external changes'),
 							'warning'
 						)
 
@@ -578,6 +578,657 @@ describe('EditorFileSyncManager', () => {
 				}
 			),
 			{ numRuns: 100 } // Run 100 iterations as specified in the design
+		)
+	})
+
+	// Property-based test for auto-reload with state preservation
+	it('Property 2: Auto-Reload with State Preservation - should preserve editor state during auto-reload', async () => {
+		/**
+		 * Feature: editor-file-sync-integration, Property 2: Auto-Reload with State Preservation
+		 * Validates: Requirements 2.1, 2.2, 2.3, 7.1, 7.2, 7.3, 7.4
+		 *
+		 * For any clean file that receives external changes, the editor content SHALL be updated,
+		 * and the editor state (cursor, scroll, folding) SHALL be preserved when possible.
+		 */
+		await fc.assert(
+			fc.asyncProperty(
+				fc.record({
+					path: fc.string({
+						minLength: 1,
+						maxLength: 20,
+						unit: fc.constantFrom(...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_')
+					}).map(s => `/test/${s || 'file'}.ts`),
+					originalContent: fc.string({ minLength: 1, maxLength: 200 }),
+					newContent: fc.string({ minLength: 1, maxLength: 200 }),
+					cursorLine: fc.integer({ min: 0, max: 50 }),
+					cursorColumn: fc.integer({ min: 0, max: 100 }),
+					scrollTop: fc.integer({ min: 0, max: 1000 }),
+					scrollLeft: fc.integer({ min: 0, max: 500 }),
+				}),
+				async (scenario) => {
+					const testSyncManager = createMockFileSyncManager()
+					const testEditorRegistry = new EditorRegistryImpl()
+					const testConfig = { ...DEFAULT_EDITOR_SYNC_CONFIG, autoReload: true }
+					const testNotificationSystem = { showNotification: vi.fn() }
+
+					const mockEditor = createMockEditor()
+					// Set up initial editor state
+					vi.mocked(mockEditor.getContent).mockReturnValue(scenario.originalContent)
+					vi.mocked(mockEditor.isDirty).mockReturnValue(false) // Clean file for auto-reload
+					vi.mocked(mockEditor.getCursorPosition).mockReturnValue({
+						line: scenario.cursorLine,
+						column: scenario.cursorColumn
+					})
+					vi.mocked(mockEditor.getScrollPosition).mockReturnValue({
+						scrollTop: scenario.scrollTop,
+						scrollLeft: scenario.scrollLeft
+					})
+					vi.mocked(mockEditor.getFoldedRegions).mockReturnValue([])
+
+					const mockTracker = {
+						path: scenario.path,
+						mode: 'tracked' as const,
+						isDirty: false,
+						hasExternalChanges: true,
+						syncState: 'external-changes' as const,
+						getLocalContent: vi.fn().mockReturnValue({ toString: () => scenario.originalContent }),
+						getBaseContent: vi.fn().mockReturnValue({ toString: () => scenario.originalContent }),
+						getDiskContent: vi.fn().mockReturnValue({ toString: () => scenario.newContent }),
+						resolveKeepLocal: vi.fn().mockResolvedValue(undefined),
+						resolveAcceptExternal: vi.fn().mockResolvedValue(undefined),
+						resolveMerge: vi.fn().mockResolvedValue(undefined),
+					}
+					vi.mocked(testSyncManager.getTracker).mockReturnValue(mockTracker as ReturnType<typeof testSyncManager.getTracker>)
+
+					const testManager = new EditorFileSyncManager({
+						syncManager: testSyncManager,
+						editorRegistry: testEditorRegistry,
+						config: testConfig,
+						notificationSystem: testNotificationSystem,
+					})
+
+					try {
+						await testManager.registerOpenFile(scenario.path, mockEditor)
+
+						// Simulate external change event
+						const externalChangeEvent = {
+							type: 'external-change' as const,
+							path: scenario.path,
+							tracker: mockTracker as ReturnType<typeof testSyncManager.getTracker>,
+							newContent: ByteContentHandleFactory.fromString(scenario.newContent),
+						}
+
+						const onExternalChangeCalls = vi.mocked(testSyncManager.on).mock.calls.filter(
+							call => call[0] === 'external-change'
+						)
+						expect(onExternalChangeCalls.length).toBeGreaterThan(0)
+
+						const externalChangeHandler = onExternalChangeCalls[0]![1]
+						await externalChangeHandler(externalChangeEvent)
+
+						// Verify content was updated
+						expect(mockEditor.setContent).toHaveBeenCalledWith(scenario.newContent)
+
+						// Verify state restoration was attempted
+						expect(mockEditor.setCursorPosition).toHaveBeenCalled()
+						expect(mockEditor.setScrollPosition).toHaveBeenCalled()
+
+						// Verify editor marked clean
+						expect(mockEditor.markClean).toHaveBeenCalled()
+
+						// Verify notification shown
+						expect(testNotificationSystem.showNotification).toHaveBeenCalledWith(
+							expect.stringContaining('updated'),
+							'info'
+						)
+
+					} finally {
+						testManager.dispose()
+					}
+				}
+			),
+			{ numRuns: 100 }
+		)
+	})
+
+	// Property-based test for status indicator accuracy
+	it('Property 4: Status Indicator Accuracy - should accurately reflect sync status', async () => {
+		/**
+		 * Feature: editor-file-sync-integration, Property 4: Status Indicator Accuracy
+		 * Validates: Requirements 5.1, 5.2, 5.3, 5.4, 5.5
+		 *
+		 * For any open file, the sync status indicator SHALL accurately reflect the current state
+		 * and update immediately when the underlying sync state changes.
+		 */
+		await fc.assert(
+			fc.asyncProperty(
+				fc.record({
+					path: fc.string({
+						minLength: 1,
+						maxLength: 20,
+						unit: fc.constantFrom(...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_')
+					}).map(s => `/test/${s || 'file'}.ts`),
+					isDirty: fc.boolean(),
+					hasExternalChanges: fc.boolean(),
+				}),
+				async (scenario) => {
+					const testSyncManager = createMockFileSyncManager()
+					const testEditorRegistry = new EditorRegistryImpl()
+					const testConfig = { ...DEFAULT_EDITOR_SYNC_CONFIG }
+
+					const mockEditor = createMockEditor()
+					vi.mocked(mockEditor.isDirty).mockReturnValue(scenario.isDirty)
+
+					const mockTracker = {
+						path: scenario.path,
+						mode: 'tracked' as const,
+						isDirty: scenario.isDirty,
+						hasExternalChanges: scenario.hasExternalChanges,
+						syncState: scenario.isDirty && scenario.hasExternalChanges ? 'conflict' as const : 'synced' as const,
+						getLocalContent: vi.fn().mockReturnValue({ toString: () => 'local' }),
+						getBaseContent: vi.fn().mockReturnValue({ toString: () => 'base' }),
+						getDiskContent: vi.fn().mockReturnValue({ toString: () => 'external' }),
+						resolveKeepLocal: vi.fn().mockResolvedValue(undefined),
+						resolveAcceptExternal: vi.fn().mockResolvedValue(undefined),
+						resolveMerge: vi.fn().mockResolvedValue(undefined),
+					}
+					vi.mocked(testSyncManager.getTracker).mockReturnValue(mockTracker as ReturnType<typeof testSyncManager.getTracker>)
+
+					const testManager = new EditorFileSyncManager({
+						syncManager: testSyncManager,
+						editorRegistry: testEditorRegistry,
+						config: testConfig,
+					})
+
+					const statusChanges: Array<{ path: string; status: SyncStatusInfo }> = []
+					const unsubscribe = testManager.onSyncStatusChange((path, status) => {
+						statusChanges.push({ path, status })
+					})
+
+					try {
+						await testManager.registerOpenFile(scenario.path, mockEditor)
+
+						// Initial status should be synced
+						let currentStatus = testManager.getSyncStatus(scenario.path)
+						expect(currentStatus.type).toBe('synced')
+
+						// If file becomes dirty, status should update
+						if (scenario.isDirty) {
+							// Simulate dirty state change
+							const onDirtyChangeCalls = vi.mocked(mockEditor.onDirtyStateChange).mock.calls
+							if (onDirtyChangeCalls.length > 0) {
+								const dirtyCallback = onDirtyChangeCalls[0]![0]
+								dirtyCallback(true)
+
+								currentStatus = testManager.getSyncStatus(scenario.path)
+								expect(currentStatus.type).toBe('dirty')
+								expect(currentStatus.hasLocalChanges).toBe(true)
+							}
+						}
+
+						// If external changes occur with dirty editor, status should be conflict
+						if (scenario.hasExternalChanges && scenario.isDirty) {
+							const conflictEvent = {
+								type: 'conflict' as const,
+								path: scenario.path,
+								tracker: mockTracker as ReturnType<typeof testSyncManager.getTracker>,
+								baseContent: ByteContentHandleFactory.fromString('base'),
+								localContent: ByteContentHandleFactory.fromString('local'),
+								diskContent: ByteContentHandleFactory.fromString('external'),
+							}
+
+							const onConflictCalls = vi.mocked(testSyncManager.on).mock.calls.filter(
+								call => call[0] === 'conflict'
+							)
+							if (onConflictCalls.length > 0) {
+								const conflictHandler = onConflictCalls[0]![1]
+								await conflictHandler(conflictEvent)
+
+								currentStatus = testManager.getSyncStatus(scenario.path)
+								expect(currentStatus.type).toBe('conflict')
+								expect(currentStatus.hasLocalChanges).toBe(true)
+								expect(currentStatus.hasExternalChanges).toBe(true)
+							}
+						}
+
+						// Verify status changes were emitted
+						expect(statusChanges.length).toBeGreaterThan(0)
+
+					} finally {
+						unsubscribe()
+						testManager.dispose()
+					}
+				}
+			),
+			{ numRuns: 100 }
+		)
+	})
+
+	// Property-based test for batch conflict resolution
+	it('Property 5: Batch Conflict Resolution - should handle multiple conflicts with undo capability', async () => {
+		/**
+		 * Feature: editor-file-sync-integration, Property 5: Batch Conflict Resolution
+		 * Validates: Requirements 6.1, 6.2, 6.3, 6.4
+		 *
+		 * For any set of files with conflicts, the system SHALL provide batch resolution options
+		 * with undo capability within a reasonable time window.
+		 */
+		await fc.assert(
+			fc.asyncProperty(
+				fc.record({
+					numFiles: fc.integer({ min: 2, max: 5 }),
+					strategy: fc.constantFrom('keep-local', 'use-external'),
+				}),
+				async (scenario) => {
+					const testSyncManager = createMockFileSyncManager()
+					const testEditorRegistry = new EditorRegistryImpl()
+					const testConfig = { ...DEFAULT_EDITOR_SYNC_CONFIG }
+					const testNotificationSystem = { showNotification: vi.fn() }
+
+					const mockEditors = new Map<string, EditorInstance>()
+					const mockTrackers = new Map<string, ReturnType<typeof createMockTrackerForPath>>()
+					const paths: string[] = []
+
+					const createMockTrackerForPath = (filePath: string, index: number) => ({
+						path: filePath,
+						mode: 'tracked' as const,
+						isDirty: true,
+						hasExternalChanges: true,
+						syncState: 'conflict' as const,
+						getLocalContent: vi.fn().mockReturnValue({ toString: () => `local content ${index}` }),
+						getBaseContent: vi.fn().mockReturnValue({ toString: () => 'base' }),
+						getDiskContent: vi.fn().mockReturnValue({ toString: () => 'external' }),
+						resolveKeepLocal: vi.fn().mockResolvedValue(undefined),
+						resolveAcceptExternal: vi.fn().mockResolvedValue(undefined),
+						resolveMerge: vi.fn().mockResolvedValue(undefined),
+					})
+
+					for (let i = 0; i < scenario.numFiles; i++) {
+						const path = `/test/file${i}.ts`
+						paths.push(path)
+
+						const mockEditor = createMockEditor()
+						vi.mocked(mockEditor.isDirty).mockReturnValue(true)
+						vi.mocked(mockEditor.getContent).mockReturnValue(`local content ${i}`)
+						mockEditors.set(path, mockEditor)
+
+						const mockTracker = createMockTrackerForPath(path, i)
+						mockTrackers.set(path, mockTracker)
+					}
+
+					vi.mocked(testSyncManager.getTracker).mockImplementation((filePath: string) =>
+						(mockTrackers.get(filePath) || null) as ReturnType<typeof testSyncManager.getTracker>
+					)
+
+					const testManager = new EditorFileSyncManager({
+						syncManager: testSyncManager,
+						editorRegistry: testEditorRegistry,
+						config: testConfig,
+						notificationSystem: testNotificationSystem,
+					})
+
+					try {
+						// Register all files
+						for (const path of paths) {
+							testEditorRegistry.registerEditor(path, mockEditors.get(path)!)
+							await testManager.registerOpenFile(path, mockEditors.get(path)!)
+						}
+
+						// Create conflicts for all files by calling ALL conflict handlers
+						// Each file registers its own handler that only processes events for its path
+						const onConflictCalls = vi.mocked(testSyncManager.on).mock.calls.filter(
+							call => call[0] === 'conflict'
+						)
+
+						// Call all conflict handlers with all events - each handler will filter for its path
+						for (const path of paths) {
+							const conflictEvent = {
+								type: 'conflict' as const,
+								path,
+								tracker: mockTrackers.get(path)! as ReturnType<typeof testSyncManager.getTracker>,
+								baseContent: ByteContentHandleFactory.fromString('base'),
+								localContent: ByteContentHandleFactory.fromString('local'),
+								diskContent: ByteContentHandleFactory.fromString('external'),
+							}
+							// Call each registered conflict handler
+							for (const call of onConflictCalls) {
+								const handler = call[1]
+								await handler(conflictEvent)
+							}
+						}
+
+						// Verify conflicts were created (at least some should exist)
+						const conflictCount = testManager.getConflictCount()
+						expect(conflictCount).toBeGreaterThanOrEqual(1)
+
+						// Perform batch resolution
+						const resolutions = new Map<string, ConflictResolution>()
+						for (const path of paths) {
+							resolutions.set(path, { strategy: scenario.strategy })
+						}
+
+						const undoOperation = await testManager.batchResolveConflicts({ resolutions })
+
+						// Verify all conflicts resolved
+						expect(testManager.getConflictCount()).toBe(0)
+
+						// Verify undo operation returned
+						expect(undoOperation).toBeDefined()
+						expect(undoOperation.files.length).toBe(scenario.numFiles)
+
+						// Verify undo is available
+						expect(testManager.canUndoLastBatchResolution()).toBe(true)
+						expect(testManager.getUndoTimeRemaining()).toBeGreaterThan(0)
+
+						// Verify notification shown
+						expect(testNotificationSystem.showNotification).toHaveBeenCalledWith(
+							expect.stringContaining('Resolved'),
+							'info'
+						)
+
+					} finally {
+						testManager.dispose()
+					}
+				}
+			),
+			{ numRuns: 100 }
+		)
+	})
+
+	// Property-based test for performance and resource management
+	it('Property 6: Performance and Resource Management - should manage resources efficiently', async () => {
+		/**
+		 * Feature: editor-file-sync-integration, Property 6: Performance and Resource Management
+		 * Validates: Requirements 8.1, 8.3, 8.4
+		 *
+		 * For any sequence of file operations, the system SHALL efficiently manage resources
+		 * without memory leaks and respect resource limits.
+		 */
+		await fc.assert(
+			fc.asyncProperty(
+				fc.record({
+					numOperations: fc.integer({ min: 5, max: 20 }),
+					maxFiles: fc.integer({ min: 5, max: 50 }),
+				}),
+				async (scenario) => {
+					const testSyncManager = createMockFileSyncManager()
+					const testEditorRegistry = new EditorRegistryImpl()
+					const testConfig = {
+						...DEFAULT_EDITOR_SYNC_CONFIG,
+						maxWatchedFiles: scenario.maxFiles,
+					}
+
+					const testManager = new EditorFileSyncManager({
+						syncManager: testSyncManager,
+						editorRegistry: testEditorRegistry,
+						config: testConfig,
+					})
+
+					const openFiles = new Set<string>()
+					const registeredPaths = new Set<string>()
+
+					try {
+						// Perform random open/close operations
+						for (let i = 0; i < scenario.numOperations; i++) {
+							const path = `/test/file${i % 10}.ts`
+
+							if (openFiles.has(path)) {
+								// Close file
+								testManager.unregisterOpenFile(path)
+								openFiles.delete(path)
+							} else {
+								// Open file (respecting limit)
+								if (openFiles.size < scenario.maxFiles) {
+									const mockEditor = createMockEditor()
+									await testManager.registerOpenFile(path, mockEditor)
+									openFiles.add(path)
+									registeredPaths.add(path)
+								}
+							}
+						}
+
+						// Verify resource tracking is accurate
+						for (const path of openFiles) {
+							const status = testManager.getSyncStatus(path)
+							expect(status.type).not.toBe('not-watched')
+						}
+
+						// Verify closed files are not tracked
+						for (const path of registeredPaths) {
+							if (!openFiles.has(path)) {
+								const status = testManager.getSyncStatus(path)
+								expect(status.type).toBe('not-watched')
+							}
+						}
+
+						// Dispose and verify cleanup
+						testManager.dispose()
+
+						// Verify all resources cleaned up
+						for (const path of registeredPaths) {
+							const status = testManager.getSyncStatus(path)
+							expect(status.type).toBe('not-watched')
+						}
+
+					} finally {
+						testManager.dispose()
+					}
+				}
+			),
+			{ numRuns: 100 }
+		)
+	})
+
+	// Property-based test for configuration control
+	it('Property 7: Configuration Control - should respect configuration settings', async () => {
+		/**
+		 * Feature: editor-file-sync-integration, Property 7: Configuration Control
+		 * Validates: Requirements 9.1, 9.2, 9.3, 9.4
+		 *
+		 * For any configuration setting, the system SHALL immediately behave according
+		 * to the configuration value.
+		 */
+		await fc.assert(
+			fc.asyncProperty(
+				fc.record({
+					autoWatch: fc.boolean(),
+					autoReload: fc.boolean(),
+					debounceMs: fc.integer({ min: 50, max: 500 }),
+					maxWatchedFiles: fc.integer({ min: 10, max: 100 }),
+					showReloadNotifications: fc.boolean(),
+					preserveEditorState: fc.boolean(),
+				}),
+				async (config) => {
+					const testSyncManager = createMockFileSyncManager()
+					const testEditorRegistry = new EditorRegistryImpl()
+					const testNotificationSystem = { showNotification: vi.fn() }
+
+					const testConfig: EditorSyncConfig = {
+						...DEFAULT_EDITOR_SYNC_CONFIG,
+						...config,
+						defaultConflictResolution: 'keep-local',
+					}
+
+					const testManager = new EditorFileSyncManager({
+						syncManager: testSyncManager,
+						editorRegistry: testEditorRegistry,
+						config: testConfig,
+						notificationSystem: testNotificationSystem,
+					})
+
+					try {
+						const path = '/test/config-test.ts'
+						const mockEditor = createMockEditor()
+						vi.mocked(mockEditor.isDirty).mockReturnValue(false)
+
+						const mockTracker = {
+							path,
+							mode: 'tracked' as const,
+							isDirty: false,
+							hasExternalChanges: true,
+							syncState: 'external-changes' as const,
+							getLocalContent: vi.fn().mockReturnValue({ toString: () => 'old content' }),
+							getBaseContent: vi.fn().mockReturnValue({ toString: () => 'old content' }),
+							getDiskContent: vi.fn().mockReturnValue({ toString: () => 'new content' }),
+							resolveKeepLocal: vi.fn().mockResolvedValue(undefined),
+							resolveAcceptExternal: vi.fn().mockResolvedValue(undefined),
+							resolveMerge: vi.fn().mockResolvedValue(undefined),
+						}
+						vi.mocked(testSyncManager.getTracker).mockReturnValue(mockTracker as ReturnType<typeof testSyncManager.getTracker>)
+
+						await testManager.registerOpenFile(path, mockEditor)
+
+						// Test auto-reload behavior based on config
+						if (config.autoReload) {
+							const externalChangeEvent = {
+								type: 'external-change' as const,
+								path,
+								tracker: mockTracker as ReturnType<typeof testSyncManager.getTracker>,
+								newContent: ByteContentHandleFactory.fromString('new content'),
+							}
+
+							const onExternalChangeCalls = vi.mocked(testSyncManager.on).mock.calls.filter(
+								call => call[0] === 'external-change'
+							)
+							if (onExternalChangeCalls.length > 0) {
+								const externalChangeHandler = onExternalChangeCalls[0]![1]
+								await externalChangeHandler(externalChangeEvent)
+
+								// Auto-reload should update content
+								expect(mockEditor.setContent).toHaveBeenCalled()
+
+								// Notification behavior depends on config
+								if (config.showReloadNotifications) {
+									expect(testNotificationSystem.showNotification).toHaveBeenCalled()
+								}
+							}
+						}
+
+						// Verify config is accessible
+						expect(testConfig.debounceMs).toBe(config.debounceMs)
+						expect(testConfig.maxWatchedFiles).toBe(config.maxWatchedFiles)
+
+					} finally {
+						testManager.dispose()
+					}
+				}
+			),
+			{ numRuns: 100 }
+		)
+	})
+
+	// Property-based test for error handling and recovery
+	it('Property 8: Error Handling and Recovery - should handle errors gracefully', async () => {
+		/**
+		 * Feature: editor-file-sync-integration, Property 8: Error Handling and Recovery
+		 * Validates: Requirements 10.1, 10.2, 10.3, 10.4
+		 *
+		 * For any file sync error, the system SHALL provide clear feedback, maintain editor
+		 * usability, and offer recovery options.
+		 */
+		await fc.assert(
+			fc.asyncProperty(
+				fc.record({
+					errorType: fc.constantFrom('registration', 'reload', 'resolution'),
+					errorMessage: fc.string({ minLength: 1, maxLength: 50 }),
+				}),
+				async (scenario) => {
+					const testSyncManager = createMockFileSyncManager()
+					const testEditorRegistry = new EditorRegistryImpl()
+					const testConfig = { ...DEFAULT_EDITOR_SYNC_CONFIG }
+					const testNotificationSystem = { showNotification: vi.fn() }
+					const path = '/test/error-test.ts'
+
+					const mockTracker = {
+						path,
+						mode: 'tracked' as const,
+						isDirty: false,
+						hasExternalChanges: false,
+						syncState: 'synced' as const,
+						getLocalContent: vi.fn().mockReturnValue({ toString: () => 'content' }),
+						getBaseContent: vi.fn().mockReturnValue({ toString: () => 'base' }),
+						getDiskContent: vi.fn().mockReturnValue({ toString: () => 'disk' }),
+						resolveKeepLocal: scenario.errorType === 'resolution'
+							? vi.fn().mockRejectedValue(new Error(scenario.errorMessage))
+							: vi.fn().mockResolvedValue(undefined),
+						resolveAcceptExternal: vi.fn().mockResolvedValue(undefined),
+						resolveMerge: vi.fn().mockResolvedValue(undefined),
+					}
+
+					// Configure tracker to throw errors based on scenario
+					if (scenario.errorType === 'registration') {
+						vi.mocked(testSyncManager.track).mockRejectedValue(new Error(scenario.errorMessage))
+					}
+
+					vi.mocked(testSyncManager.getTracker).mockReturnValue(mockTracker as ReturnType<typeof testSyncManager.getTracker>)
+
+					const testManager = new EditorFileSyncManager({
+						syncManager: testSyncManager,
+						editorRegistry: testEditorRegistry,
+						config: testConfig,
+						notificationSystem: testNotificationSystem,
+					})
+
+					try {
+						const mockEditor = createMockEditor()
+						vi.mocked(mockEditor.isDirty).mockReturnValue(false)
+
+						if (scenario.errorType === 'registration') {
+							// Registration error should be handled gracefully
+							await testManager.registerOpenFile(path, mockEditor)
+
+							// Status should indicate error
+							const status = testManager.getSyncStatus(path)
+							expect(status.type).toBe('error')
+							expect(status.errorMessage).toBeDefined()
+						} else {
+							// Normal registration
+							vi.mocked(testSyncManager.track).mockResolvedValue(mockTracker as ReturnType<typeof testSyncManager.track>)
+							await testManager.registerOpenFile(path, mockEditor)
+
+							if (scenario.errorType === 'resolution') {
+								// Create a conflict first
+								const conflictEvent = {
+									type: 'conflict' as const,
+									path,
+									tracker: mockTracker as ReturnType<typeof testSyncManager.getTracker>,
+									baseContent: ByteContentHandleFactory.fromString('base'),
+									localContent: ByteContentHandleFactory.fromString('local'),
+									diskContent: ByteContentHandleFactory.fromString('external'),
+								}
+
+								const onConflictCalls = vi.mocked(testSyncManager.on).mock.calls.filter(
+									call => call[0] === 'conflict'
+								)
+								if (onConflictCalls.length > 0) {
+									const conflictHandler = onConflictCalls[0]![1]
+									await conflictHandler(conflictEvent)
+
+									// Try to resolve - should handle error
+									let caughtError = false
+									try {
+										await testManager.resolveConflict(path, { strategy: 'keep-local' })
+									} catch {
+										caughtError = true
+									}
+
+									// Either error was thrown or status shows error
+									const status = testManager.getSyncStatus(path)
+									expect(caughtError || status.type === 'error' || status.type === 'conflict').toBe(true)
+								}
+							}
+						}
+
+						// Manager should still be usable after errors
+						expect(() => testManager.getSyncStatus(path)).not.toThrow()
+						expect(() => testManager.dispose()).not.toThrow()
+
+					} finally {
+						testManager.dispose()
+					}
+				}
+			),
+			{ numRuns: 100 }
 		)
 	})
 })

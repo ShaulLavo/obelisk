@@ -6,7 +6,21 @@ import type {
 	SyncedEvent,
 } from '@repo/fs'
 import { EditorStateManager } from './editor-state-manager'
+import { BatchUndoManager, type BatchUndoOperation, type UndoResult } from './batch-undo-manager'
+import { getStrategyDisplayName, canAutoResolve } from './conflict-manager'
+import {
+	createInitialStatus,
+	createErrorStatus,
+	createSyncedStatus,
+	createConflictStatus,
+	deriveStatusFromExternalChange,
+	deriveStatusFromDirtyChange,
+	deriveStatusFromSynced,
+	deriveStatusFromDeletion,
+	NOT_WATCHED_STATUS,
+} from './status-derivation'
 import type {
+	BatchResolutionResult,
 	ConflictInfo,
 	ConflictResolution,
 	ConflictResolutionStrategy,
@@ -18,7 +32,6 @@ import type {
 } from './types'
 
 export interface NotificationSystem {
-	/** Show a notification to the user */
 	showNotification(message: string, type?: 'info' | 'warning' | 'error'): void
 }
 
@@ -30,175 +43,105 @@ export interface EditorFileSyncManagerOptions {
 }
 
 /**
- * Central coordinator that manages file sync integration with the editor.
- * Bridges the File Sync Layer with the code editor to provide real-time file synchronization,
- * conflict resolution UI, and seamless user experience.
+ * Orchestrates file sync between FileSyncManager and editor instances.
+ * Delegates to specialized managers for conflicts, undo, and state preservation.
  */
 export class EditorFileSyncManager {
 	private readonly syncManager: FileSyncManager
 	private readonly config: EditorSyncConfig
 	private readonly editorRegistry: EditorRegistry
-	private readonly notificationSystem?: NotificationSystem
-	private readonly stateManager: EditorStateManager
-
-	/** Map of file paths to their sync status */
-	private readonly syncStatuses = new Map<string, SyncStatusInfo>()
-
-	/** Map of file paths to their sync event unsubscribers */
-	private readonly syncUnsubscribers = new Map<string, (() => void)[]>()
-
-	/** Map of file paths to pending conflicts */
+	private readonly notify?: NotificationSystem
+	private readonly stateManager = new EditorStateManager()
 	private readonly pendingConflicts = new Map<string, PendingConflict>()
+	private readonly undoManager: BatchUndoManager
 
-	/** Status change event handlers */
-	private readonly statusChangeHandlers = new Set<
-		(path: string, status: SyncStatusInfo) => void
-	>()
-
-	/** Conflict resolution request handlers */
-	private readonly conflictResolutionRequestHandlers = new Set<
-		(path: string, conflictInfo: ConflictInfo) => void
-	>()
-
-	/** Registry event unsubscribers */
+	private readonly syncStatuses = new Map<string, SyncStatusInfo>()
+	private readonly syncUnsubscribers = new Map<string, (() => void)[]>()
+	private readonly statusChangeHandlers = new Set<(path: string, status: SyncStatusInfo) => void>()
+	private readonly conflictRequestHandlers = new Set<(path: string, info: ConflictInfo) => void>()
 	private registryUnsubscribers: (() => void)[] = []
 
 	constructor(options: EditorFileSyncManagerOptions) {
 		this.syncManager = options.syncManager
 		this.config = options.config
 		this.editorRegistry = options.editorRegistry
-		this.notificationSystem = options.notificationSystem
-		this.stateManager = new EditorStateManager()
-
+		this.notify = options.notificationSystem
+		this.undoManager = new BatchUndoManager({
+			undoTimeoutMs: 30000,
+			onUndoExpired: (op) => this.notify?.showNotification(
+				`Undo for batch resolution of ${op.files.length} files has expired`,
+				'info'
+			),
+		})
 		this.setupRegistryEventHandlers()
 	}
 
+	// ─── File Registration ─────────────────────────────────────────────────
+
 	async registerOpenFile(path: string, editor: EditorInstance): Promise<void> {
-		// Skip if already registered
-		if (this.syncStatuses.has(path)) {
-			return
-		}
+		if (this.syncStatuses.has(path)) return
 
 		try {
-			// Track the file with the sync manager
-			const tracker = await this.syncManager.track(path, {
-				reactive: false, // Use tracked mode for editor integration
-			})
-
-			// Initialize sync status
-			const initialStatus: SyncStatusInfo = {
-				type: tracker.isDirty ? 'dirty' : 'synced',
-				lastSyncTime: Date.now(),
-				hasLocalChanges: tracker.isDirty,
-				hasExternalChanges: tracker.hasExternalChanges,
-			}
-
-			this.syncStatuses.set(path, initialStatus)
-
+			const tracker = await this.syncManager.track(path, { reactive: false })
+			const status = createInitialStatus(tracker.isDirty, tracker.hasExternalChanges)
+			this.setStatus(path, status)
 			this.setupFileEventHandlers(path, editor)
-
-			// Emit initial status
-			this.emitStatusChange(path, initialStatus)
 		} catch (error) {
-			// Handle registration errors gracefully
-			const errorStatus: SyncStatusInfo = {
-				type: 'error',
-				lastSyncTime: Date.now(),
-				hasLocalChanges: false,
-				hasExternalChanges: false,
-				errorMessage: error instanceof Error ? error.message : 'Unknown error',
-			}
-
-			this.syncStatuses.set(path, errorStatus)
-			this.emitStatusChange(path, errorStatus)
+			this.setStatus(path, createErrorStatus(
+				error instanceof Error ? error.message : 'Unknown error'
+			))
 		}
 	}
 
 	unregisterOpenFile(path: string): void {
-		const unsubscribers = this.syncUnsubscribers.get(path)
-		if (unsubscribers) {
-			unsubscribers.forEach((unsub) => unsub())
-			this.syncUnsubscribers.delete(path)
-		}
-
+		this.syncUnsubscribers.get(path)?.forEach((unsub) => unsub())
+		this.syncUnsubscribers.delete(path)
 		this.syncStatuses.delete(path)
-
 		this.syncManager.untrack(path)
 	}
 
 	getSyncStatus(path: string): SyncStatusInfo {
-		return (
-			this.syncStatuses.get(path) ?? {
-				type: 'not-watched',
-				lastSyncTime: 0,
-				hasLocalChanges: false,
-				hasExternalChanges: false,
-			}
-		)
+		return this.syncStatuses.get(path) ?? NOT_WATCHED_STATUS
 	}
 
+	// ─── Conflict Access ───────────────────────────────────────────────────
+
 	getConflictInfo(path: string): ConflictInfo | undefined {
-		const pendingConflict = this.pendingConflicts.get(path)
-		return pendingConflict?.conflictInfo
+		return this.conflicts.getConflictInfo(path)
 	}
 
 	getPendingConflicts(): ConflictInfo[] {
-		return Array.from(this.pendingConflicts.values()).map(
-			(pc) => pc.conflictInfo
-		)
-	}
-
-	showConflictResolution(path: string): void {
-		const conflictInfo = this.getConflictInfo(path)
-		if (!conflictInfo) {
-			console.warn(`No conflict found for path: ${path}`)
-			return
-		}
-
-		this.emitConflictResolutionRequest(path, conflictInfo)
-	}
-
-	skipConflict(path: string): void {
-		const pendingConflict = this.pendingConflicts.get(path)
-		if (!pendingConflict) {
-			return
-		}
-
-		// Remove the conflict but keep the status as conflict
-		// This allows the user to manually resolve later
-		this.pendingConflicts.delete(path)
-
-		if (this.notificationSystem) {
-			const fileName = path.split('/').pop() || path
-			this.notificationSystem.showNotification(
-				`Conflict in "${fileName}" was skipped. You can resolve it later.`,
-				'info'
-			)
-		}
+		return this.conflicts.getPendingConflicts()
 	}
 
 	hasConflict(path: string): boolean {
-		return this.pendingConflicts.has(path)
+		return this.conflicts.hasConflict(path)
 	}
 
 	getConflictCount(): number {
-		return this.pendingConflicts.size
+		return this.conflicts.getConflictCount()
 	}
 
-	async resolveConflict(
-		path: string,
-		resolution: ConflictResolution
-	): Promise<void> {
-		const pendingConflict = this.pendingConflicts.get(path)
-		if (!pendingConflict) {
-			throw new Error(`No conflict found for path: ${path}`)
-		}
+	showConflictResolution(path: string): void {
+		const info = this.conflicts.getConflictInfo(path)
+		if (info) this.emitConflictRequest(path, info)
+		else console.warn(`No conflict found for path: ${path}`)
+	}
 
-		const { conflictInfo } = pendingConflict
-		const editor = this.editorRegistry.getEditor(path)
-		if (!editor) {
-			throw new Error(`No editor found for path: ${path}`)
+	// ─── Conflict Resolution ───────────────────────────────────────────────
+
+	skipConflict(path: string): void {
+		if (this.conflicts.removeConflict(path)) {
+			this.showNotification(path, 'was skipped. You can resolve it later.', 'info')
 		}
+	}
+
+	async resolveConflict(path: string, resolution: ConflictResolution): Promise<void> {
+		const info = this.conflicts.getConflictInfo(path)
+		if (!info) throw new Error(`No conflict found for path: ${path}`)
+
+		const editor = this.editorRegistry.getEditor(path)
+		if (!editor) throw new Error(`No editor found for path: ${path}`)
 
 		if (resolution.strategy === 'skip') {
 			this.skipConflict(path)
@@ -206,608 +149,330 @@ export class EditorFileSyncManager {
 		}
 
 		try {
-			await this.applyConflictResolution(path, conflictInfo, resolution, editor)
-
-			this.pendingConflicts.delete(path)
-
-			const newStatus: SyncStatusInfo = {
-				type: 'synced',
-				lastSyncTime: Date.now(),
-				hasLocalChanges: false,
-				hasExternalChanges: false,
-			}
-			this.updateSyncStatus(path, newStatus)
-
-			if (this.notificationSystem) {
-				const fileName = path.split('/').pop() || path
-				const strategyName = this.getStrategyDisplayName(resolution.strategy)
-				this.notificationSystem.showNotification(
-					`Conflict in "${fileName}" resolved using ${strategyName}`,
-					'info'
-				)
-			}
+			await this.applyResolution(path, info, resolution, editor)
+			this.conflicts.removeConflict(path)
+			this.setStatus(path, createSyncedStatus())
+			this.showNotification(path, `resolved using ${getStrategyDisplayName(resolution.strategy)}`, 'info')
 		} catch (error) {
-			console.error(`Failed to resolve conflict for ${path}:`, error)
-
-			const errorStatus: SyncStatusInfo = {
-				type: 'error',
-				lastSyncTime: Date.now(),
-				hasLocalChanges: true,
-				hasExternalChanges: true,
-				errorMessage:
-					error instanceof Error ? error.message : 'Conflict resolution failed',
-			}
-			this.updateSyncStatus(path, errorStatus)
-
-			// Show error notification
-			if (this.notificationSystem) {
-				const fileName = path.split('/').pop() || path
-				this.notificationSystem.showNotification(
-					`Failed to resolve conflict in "${fileName}": ${errorStatus.errorMessage}`,
-					'error'
-				)
-			}
-
+			const msg = error instanceof Error ? error.message : 'Resolution failed'
+			this.setStatus(path, createErrorStatus(msg, true, true))
+			this.showNotification(path, `resolution failed: ${msg}`, 'error')
 			throw error
 		}
 	}
 
-	/**
-	 * Try to automatically resolve a conflict based on default configuration
-	 */
-	private async tryAutoResolveConflict(
-		path: string,
-		_conflictInfo: ConflictInfo
-	): Promise<boolean> {
-		const defaultStrategy = this.config.defaultConflictResolution
+	// ─── Batch Resolution ──────────────────────────────────────────────────
 
-		// Only auto-resolve if the default strategy is not manual-merge or skip
-		if (defaultStrategy === 'manual-merge' || defaultStrategy === 'skip') {
-			return false
+	async batchResolveConflicts(result: BatchResolutionResult): Promise<BatchUndoOperation> {
+		const conflicts: ConflictInfo[] = []
+
+		for (const [path, res] of result.resolutions) {
+			if (res.strategy === 'manual-merge' || res.strategy === 'skip') continue
+			const info = this.conflicts.getConflictInfo(path)
+			if (info) conflicts.push(info)
 		}
 
-		try {
-			const resolution: ConflictResolution = { strategy: defaultStrategy }
-			await this.resolveConflict(path, resolution)
+		const undoOp = this.undoManager.capturePreResolutionState(
+			conflicts,
+			result.resolutions,
+			(path) => this.editorRegistry.getEditor(path)
+		)
 
-			if (this.notificationSystem) {
-				const fileName = path.split('/').pop() || path
-				const strategyName = this.getStrategyDisplayName(defaultStrategy)
-				this.notificationSystem.showNotification(
-					`Conflict in "${fileName}" auto-resolved using ${strategyName}`,
-					'info'
-				)
-			}
+		const resolved: string[] = []
+		const errors: { path: string; error: Error }[] = []
 
-			return true
-		} catch (error) {
-			console.error(`Auto-resolution failed for ${path}:`, error)
-			return false
-		}
-	}
+		for (const conflict of conflicts) {
+			const res = result.resolutions.get(conflict.path)
+			if (!res) continue
 
-	private getStrategyDisplayName(strategy: ConflictResolutionStrategy): string {
-		switch (strategy) {
-			case 'keep-local':
-				return 'Keep Local Changes'
-			case 'use-external':
-				return 'Use External Changes'
-			case 'manual-merge':
-				return 'Manual Merge'
-			case 'skip':
-				return 'Skip'
-			default:
-				return 'Unknown Strategy'
-		}
-	}
-
-	async batchResolveConflicts(
-		paths: string[],
-		strategy: ConflictResolutionStrategy
-	): Promise<void> {
-		const errors: Array<{ path: string; error: Error }> = []
-
-		for (const path of paths) {
 			try {
-				const conflictInfo = this.getConflictInfo(path)
-				if (conflictInfo) {
-					await this.resolveConflict(path, { strategy })
-				}
+				await this.resolveConflict(conflict.path, res)
+				resolved.push(conflict.path)
 			} catch (error) {
-				errors.push({
-					path,
-					error: error instanceof Error ? error : new Error('Unknown error'),
-				})
+				errors.push({ path: conflict.path, error: error instanceof Error ? error : new Error('Unknown') })
 			}
 		}
 
-		if (errors.length > 0) {
-			const errorMessage = `Failed to resolve conflicts for ${errors.length} files: ${errors
-				.map((e) => `${e.path} (${e.error.message})`)
-				.join(', ')}`
-			throw new Error(errorMessage)
-		}
-	}
-
-	onSyncStatusChange(
-		callback: (path: string, status: SyncStatusInfo) => void
-	): () => void {
-		this.statusChangeHandlers.add(callback)
-
-		return () => {
-			this.statusChangeHandlers.delete(callback)
-		}
-	}
-
-	onConflictResolutionRequest(
-		callback: (path: string, conflictInfo: ConflictInfo) => void
-	): () => void {
-		this.conflictResolutionRequestHandlers.add(callback)
-
-		return () => {
-			this.conflictResolutionRequestHandlers.delete(callback)
-		}
-	}
-
-	/**
-	 * Check if a file should be closed due to deletion
-	 * Returns true if the file was deleted and has no unsaved changes
-	 */
-	shouldCloseFile(path: string): boolean {
-		const status = this.getSyncStatus(path)
-		return (
-			status.type === 'error' &&
-			status.errorMessage === 'File was deleted externally' &&
-			!status.hasLocalChanges
-		)
-	}
-
-	dispose(): void {
-		for (const unsubscribers of this.syncUnsubscribers.values()) {
-			unsubscribers.forEach((unsub) => unsub())
-		}
-		this.syncUnsubscribers.clear()
-
-		this.registryUnsubscribers.forEach((unsub) => unsub())
-		this.registryUnsubscribers = []
-
-		this.syncStatuses.clear()
-		this.statusChangeHandlers.clear()
-		this.conflictResolutionRequestHandlers.clear()
-
-		this.pendingConflicts.clear()
-	}
-
-	private setupRegistryEventHandlers(): void {
-		const onEditorOpen = this.editorRegistry.onEditorOpen((path, editor) => {
-			if (this.config.autoWatch) {
-				this.registerOpenFile(path, editor).catch((error) => {
-					console.error(`Failed to register file ${path}:`, error)
-				})
-			}
-		})
-
-		const onEditorClose = this.editorRegistry.onEditorClose((path) => {
-			this.unregisterOpenFile(path)
-		})
-
-		this.registryUnsubscribers.push(onEditorOpen, onEditorClose)
-	}
-
-	private setupFileEventHandlers(path: string, editor: EditorInstance): void {
-		const unsubscribers: (() => void)[] = []
-
-		const onExternalChange = this.syncManager.on(
-			'external-change',
-			(event: ExternalChangeEvent) => {
-				if (event.path === path) {
-					this.handleExternalChange(path, event, editor).catch((error) => {
-						console.error(`Error handling external change for ${path}:`, error)
-					})
-				}
-			}
-		)
-
-		const onConflict = this.syncManager.on(
-			'conflict',
-			(event: ConflictEvent) => {
-				if (event.path === path) {
-					this.handleConflict(path, event).catch((error) => {
-						console.error(`Error handling conflict for ${path}:`, error)
-					})
-				}
-			}
-		)
-
-		const onDeleted = this.syncManager.on('deleted', (event: DeletedEvent) => {
-			if (event.path === path) {
-				this.handleFileDeleted(path, editor)
-			}
-		})
-
-		const onSynced = this.syncManager.on('synced', (event: SyncedEvent) => {
-			if (event.path === path) {
-				this.handleSynced(path, event, editor)
-			}
-		})
-
-		const onContentChange = editor.onContentChange((content) => {
-			this.handleEditorContentChange(path, content, editor)
-		})
-
-		const onDirtyStateChange = editor.onDirtyStateChange((isDirty) => {
-			this.handleEditorDirtyStateChange(path, isDirty)
-		})
-
-		unsubscribers.push(
-			onExternalChange,
-			onConflict,
-			onDeleted,
-			onSynced,
-			onContentChange,
-			onDirtyStateChange
-		)
-
-		this.syncUnsubscribers.set(path, unsubscribers)
-	}
-
-	private async handleExternalChange(
-		path: string,
-		event: ExternalChangeEvent,
-		editor: EditorInstance
-	): Promise<void> {
-		const currentStatus = this.getSyncStatus(path)
-
-		const isDirty = editor.isDirty()
-
-		if (!isDirty && this.config.autoReload) {
-			await this.performAutoReload(path, event, editor)
+		if (errors.length === 0) {
+			this.notify?.showNotification(`Resolved ${resolved.length} file conflicts. Undo available for 30s.`, 'info')
 		} else {
-			const newStatus: SyncStatusInfo = {
-				...currentStatus,
-				type: isDirty ? 'conflict' : 'external-changes',
-				hasExternalChanges: true,
-				lastSyncTime: Date.now(),
-			}
-
-			this.updateSyncStatus(path, newStatus)
-		}
-	}
-
-	/**
-	 * Perform auto-reload of a clean file with external changes
-	 */
-	private async performAutoReload(
-		path: string,
-		event: ExternalChangeEvent,
-		editor: EditorInstance
-	): Promise<void> {
-		try {
-			const editorState = this.config.preserveEditorState
-				? this.stateManager.captureState(editor)
-				: undefined
-
-			const tracker = this.syncManager.getTracker(path)
-			if (!tracker) {
-				throw new Error('File tracker not found')
-			}
-
-			const newContent = tracker.getDiskContent()?.toString() || ''
-			editor.setContent(newContent)
-
-			editor.markClean()
-
-			if (editorState && this.config.preserveEditorState) {
-				this.stateManager.restoreState(editor, editorState, newContent)
-			}
-
-			const newStatus: SyncStatusInfo = {
-				type: 'synced',
-				lastSyncTime: Date.now(),
-				hasLocalChanges: false,
-				hasExternalChanges: false,
-			}
-			this.updateSyncStatus(path, newStatus)
-
-			if (this.config.showReloadNotifications && this.notificationSystem) {
-				const fileName = path.split('/').pop() || path
-				this.notificationSystem.showNotification(
-					`File "${fileName}" was updated and reloaded`,
-					'info'
-				)
-			}
-		} catch (error) {
-			console.error(`Failed to auto-reload file ${path}:`, error)
-
-			const errorStatus: SyncStatusInfo = {
-				type: 'error',
-				lastSyncTime: Date.now(),
-				hasLocalChanges: false,
-				hasExternalChanges: true,
-				errorMessage:
-					error instanceof Error ? error.message : 'Auto-reload failed',
-			}
-			this.updateSyncStatus(path, errorStatus)
-
-			if (this.notificationSystem) {
-				const fileName = path.split('/').pop() || path
-				this.notificationSystem.showNotification(
-					`Failed to reload "${fileName}": ${errorStatus.errorMessage}`,
-					'error'
-				)
-			}
-		}
-	}
-
-	private async handleConflict(
-		path: string,
-		event: ConflictEvent
-	): Promise<void> {
-		const currentStatus = this.getSyncStatus(path)
-
-		const conflictInfo: ConflictInfo = {
-			path,
-			baseContent: event.baseContent.toString(),
-			localContent: event.localContent.toString(),
-			externalContent: event.diskContent.toString(),
-			lastModified: Date.now(),
-			conflictTimestamp: Date.now(),
-		}
-
-		const pendingConflict: PendingConflict = {
-			path,
-			conflictInfo,
-			timestamp: Date.now(),
-		}
-		this.pendingConflicts.set(path, pendingConflict)
-
-		const conflictStatus: SyncStatusInfo = {
-			...currentStatus,
-			type: 'conflict',
-			hasLocalChanges: true,
-			hasExternalChanges: true,
-			lastSyncTime: Date.now(),
-		}
-		this.updateSyncStatus(path, conflictStatus)
-
-		const autoResolved = await this.tryAutoResolveConflict(path, conflictInfo)
-
-		if (!autoResolved) {
-			if (this.notificationSystem) {
-				const fileName = path.split('/').pop() || path
-				this.notificationSystem.showNotification(
-					`Conflict detected in "${fileName}". Both local and external changes found.`,
-					'warning'
-				)
-			}
-		}
-	}
-
-	private handleFileDeleted(path: string, editor: EditorInstance): void {
-		const currentStatus = this.getSyncStatus(path)
-		const isDirty = editor.isDirty()
-
-		if (!isDirty) {
-			this.closeEditorForDeletedFile(path)
-		} else {
-			const newStatus: SyncStatusInfo = {
-				...currentStatus,
-				type: 'error',
-				errorMessage: 'File was deleted externally but has unsaved changes',
-				lastSyncTime: Date.now(),
-			}
-
-			this.updateSyncStatus(path, newStatus)
-
-			if (this.notificationSystem) {
-				const fileName = path.split('/').pop() || path
-				this.notificationSystem.showNotification(
-					`File "${fileName}" was deleted externally but has unsaved changes. Save to restore the file.`,
-					'warning'
-				)
-			}
-		}
-	}
-
-	private closeEditorForDeletedFile(path: string): void {
-		const deletedStatus: SyncStatusInfo = {
-			type: 'error',
-			lastSyncTime: Date.now(),
-			hasLocalChanges: false,
-			hasExternalChanges: false,
-			errorMessage: 'File was deleted externally',
-		}
-
-		this.updateSyncStatus(path, deletedStatus)
-
-		if (this.notificationSystem) {
-			const fileName = path.split('/').pop() || path
-			this.notificationSystem.showNotification(
-				`File "${fileName}" was deleted externally and has been closed`,
-				'info'
+			this.notify?.showNotification(
+				`Resolved ${resolved.length} files, ${errors.length} failed`,
+				'warning'
 			)
 		}
 
-		// Note: The actual editor tab closing should be handled by the editor system
-		// This manager just updates the sync status and provides notifications
-		// The editor registry or UI layer should listen to these status changes
-		// and close the appropriate tabs
-		// TODO: check if this is already handled by the editor registry
+		return undoOp
 	}
 
-	private handleSynced(
-		path: string,
-		event: SyncedEvent,
-		editor: EditorInstance
-	): void {
-		const currentStatus = this.getSyncStatus(path)
+	/** @deprecated Use batchResolveConflicts(BatchResolutionResult) */
+	async batchResolveConflictsSimple(paths: string[], strategy: ConflictResolutionStrategy): Promise<BatchUndoOperation> {
+		const resolutions = new Map(paths.map((p) => [p, { strategy }] as const))
+		return this.batchResolveConflicts({ resolutions })
+	}
 
-		const newStatus: SyncStatusInfo = {
-			...currentStatus,
-			type: editor.isDirty() ? 'dirty' : 'synced',
-			hasExternalChanges: false,
-			lastSyncTime: Date.now(),
+	// ─── Undo ──────────────────────────────────────────────────────────────
+
+	canUndoLastBatchResolution(): boolean {
+		return this.undoManager.getLatestUndoableOperation() !== undefined
+	}
+
+	getUndoTimeRemaining(): number {
+		const op = this.undoManager.getLatestUndoableOperation()
+		return op ? this.undoManager.getTimeRemaining(op.id) : 0
+	}
+
+	async undoLastBatchResolution(): Promise<UndoResult> {
+		const op = this.undoManager.getLatestUndoableOperation()
+		if (!op) {
+			return { success: false, restoredFiles: [], failedFiles: [{ path: '*', error: 'No undoable operation' }] }
+		}
+		return this.performUndo(op)
+	}
+
+	async undoBatchResolution(operationId: string): Promise<UndoResult> {
+		return this.undoManager.performUndo(
+			operationId,
+			(path) => this.editorRegistry.getEditor(path),
+			async (path, content) => {
+				const tracker = this.syncManager.getTracker(path)
+				if (tracker) await tracker.resolveMerge(content)
+			}
+		)
+	}
+
+	// ─── Event Subscriptions ───────────────────────────────────────────────
+
+	onSyncStatusChange(callback: (path: string, status: SyncStatusInfo) => void): () => void {
+		this.statusChangeHandlers.add(callback)
+		return () => this.statusChangeHandlers.delete(callback)
+	}
+
+	onConflictResolutionRequest(callback: (path: string, info: ConflictInfo) => void): () => void {
+		this.conflictRequestHandlers.add(callback)
+		return () => this.conflictRequestHandlers.delete(callback)
+	}
+
+	shouldCloseFile(path: string): boolean {
+		const s = this.getSyncStatus(path)
+		return s.type === 'error' && s.errorMessage === 'File was deleted externally' && !s.hasLocalChanges
+	}
+
+	dispose(): void {
+		for (const unsubs of this.syncUnsubscribers.values()) unsubs.forEach((u) => u())
+		this.syncUnsubscribers.clear()
+		this.registryUnsubscribers.forEach((u) => u())
+		this.registryUnsubscribers = []
+		this.syncStatuses.clear()
+		this.statusChangeHandlers.clear()
+		this.conflictRequestHandlers.clear()
+		this.conflicts.clear()
+		this.undoManager.dispose()
+	}
+
+	// ─── Private: Event Setup ──────────────────────────────────────────────
+
+	private setupRegistryEventHandlers(): void {
+		this.registryUnsubscribers.push(
+			this.editorRegistry.onEditorOpen((path, editor) => {
+				if (this.config.autoWatch) {
+					this.registerOpenFile(path, editor).catch((e) => console.error(`Failed to register ${path}:`, e))
+				}
+			}),
+			this.editorRegistry.onEditorClose((path) => this.unregisterOpenFile(path))
+		)
+	}
+
+	private setupFileEventHandlers(path: string, editor: EditorInstance): void {
+		const unsubs = [
+			this.syncManager.on('external-change', (e: ExternalChangeEvent) => {
+				if (e.path === path) this.onExternalChange(path, e, editor)
+			}),
+			this.syncManager.on('conflict', (e: ConflictEvent) => {
+				if (e.path === path) this.onConflict(path, e)
+			}),
+			this.syncManager.on('deleted', (e: DeletedEvent) => {
+				if (e.path === path) this.onDeleted(path, editor)
+			}),
+			this.syncManager.on('synced', (e: SyncedEvent) => {
+				if (e.path === path) this.onSynced(path, editor)
+			}),
+			editor.onContentChange(() => this.onContentChange(path)),
+			editor.onDirtyStateChange((dirty) => this.onDirtyChange(path, dirty)),
+		]
+		this.syncUnsubscribers.set(path, unsubs)
+	}
+
+	// ─── Private: Event Handlers ───────────────────────────────────────────
+
+	private async onExternalChange(path: string, _event: ExternalChangeEvent, editor: EditorInstance): Promise<void> {
+		const isDirty = editor.isDirty()
+
+		if (!isDirty && this.config.autoReload) {
+			await this.performAutoReload(path, editor)
+		} else {
+			this.setStatus(path, deriveStatusFromExternalChange(this.getSyncStatus(path), isDirty))
+		}
+	}
+
+	private async performAutoReload(path: string, editor: EditorInstance): Promise<void> {
+		try {
+			const editorState = this.config.preserveEditorState ? this.stateManager.captureState(editor) : undefined
+			const tracker = this.syncManager.getTracker(path)
+			if (!tracker) throw new Error('File tracker not found')
+
+			const content = tracker.getDiskContent()?.toString() || ''
+			editor.setContent(content)
+			editor.markClean()
+
+			if (editorState && this.config.preserveEditorState) {
+				this.stateManager.restoreState(editor, editorState, content)
+			}
+
+			this.setStatus(path, createSyncedStatus())
+			if (this.config.showReloadNotifications) {
+				this.showNotification(path, 'was updated and reloaded', 'info')
+			}
+		} catch (error) {
+			const msg = error instanceof Error ? error.message : 'Auto-reload failed'
+			console.error(`Failed to auto-reload file ${path}:`, error)
+			this.setStatus(path, createErrorStatus(msg, false, true))
+			this.showNotification(path, `reload failed: ${msg}`, 'error')
+		}
+	}
+
+	private async onConflict(path: string, event: ConflictEvent): Promise<void> {
+		const info = this.conflicts.createConflict(path, event)
+		this.setStatus(path, createConflictStatus())
+
+		if (canAutoResolve(this.config.defaultConflictResolution)) {
+			try {
+				await this.resolveConflict(path, { strategy: this.config.defaultConflictResolution })
+				this.showNotification(path, `auto-resolved using ${getStrategyDisplayName(this.config.defaultConflictResolution)}`, 'info')
+				return
+			} catch (e) {
+				console.error(`Auto-resolution failed for ${path}:`, e)
+			}
 		}
 
-		this.updateSyncStatus(path, newStatus)
+		this.showNotification(path, 'has both local and external changes', 'warning')
 	}
 
-	private handleEditorContentChange(
-		path: string,
-		_content: string,
-		_editor: EditorInstance
-	): void {
+	private onDeleted(path: string, editor: EditorInstance): void {
+		const isDirty = editor.isDirty()
+		this.setStatus(path, deriveStatusFromDeletion(isDirty))
+
+		if (isDirty) {
+			this.showNotification(path, 'was deleted externally but has unsaved changes', 'warning')
+		} else {
+			this.showNotification(path, 'was deleted externally and has been closed', 'info')
+		}
+	}
+
+	private onSynced(path: string, editor: EditorInstance): void {
+		this.setStatus(path, deriveStatusFromSynced(this.getSyncStatus(path), editor.isDirty()))
+	}
+
+	private onContentChange(path: string): void {
+		// Content sync is handled through dirty state changes
 		const tracker = this.syncManager.getTracker(path)
 		if (tracker) {
-			// Note: This would need to be implemented in the FileStateTracker
-			// For now, we'll rely on the dirty state change handler
-			// TODO: this
+			// Future: update tracker with new content
 		}
 	}
 
-	private handleEditorDirtyStateChange(path: string, isDirty: boolean): void {
-		const currentStatus = this.getSyncStatus(path)
-
-		let newType: SyncStatusInfo['type'] = 'synced'
-
-		if (isDirty && currentStatus.hasExternalChanges) {
-			newType = 'conflict'
-		} else if (isDirty) {
-			newType = 'dirty'
-		} else if (currentStatus.hasExternalChanges) {
-			newType = 'external-changes'
-		}
-
-		const newStatus: SyncStatusInfo = {
-			...currentStatus,
-			type: newType,
-			hasLocalChanges: isDirty,
-			lastSyncTime: Date.now(),
-		}
-
-		this.updateSyncStatus(path, newStatus)
+	private onDirtyChange(path: string, isDirty: boolean): void {
+		this.setStatus(path, deriveStatusFromDirtyChange(this.getSyncStatus(path), isDirty))
 	}
 
-	private updateSyncStatus(path: string, status: SyncStatusInfo): void {
-		this.syncStatuses.set(path, status)
-		this.emitStatusChange(path, status)
-	}
+	// ─── Private: Resolution Logic ─────────────────────────────────────────
 
-	private async applyConflictResolution(
+	private async applyResolution(
 		path: string,
-		conflictInfo: ConflictInfo,
+		info: ConflictInfo,
 		resolution: ConflictResolution,
 		editor: EditorInstance
 	): Promise<void> {
 		const tracker = this.syncManager.getTracker(path)
-		if (!tracker) {
-			throw new Error(`No tracker found for path: ${path}`)
-		}
+		if (!tracker) throw new Error(`No tracker for: ${path}`)
 
 		switch (resolution.strategy) {
-			case 'keep-local': {
-				//TODO why we have all the unused vars
-
-				if (
-					'resolveKeepLocal' in tracker &&
-					typeof tracker.resolveKeepLocal === 'function'
-				) {
-					await tracker.resolveKeepLocal()
-				} else {
-					// Fallback: manually write using sync manager's write token system
-					this.syncManager.beginWrite(path)
-					try {
-						// We need to access the filesystem - this is a limitation of the current design
-						// For now, we'll throw an error and handle this in the UI layer
-						throw new Error(
-							'Direct file writing not yet implemented - use editor save functionality'
-						)
-					} catch (error) {
-						console.error(`Failed to save local changes for ${path}:`, error)
-						throw error
-					}
-				}
-
+			case 'keep-local':
+				await tracker.resolveKeepLocal()
 				editor.markClean()
 				break
-			}
 
 			case 'use-external': {
-				const externalContent = conflictInfo.externalContent
-
-				const editorState = this.config.preserveEditorState
-					? this.stateManager.captureState(editor)
-					: undefined
-
-				editor.setContent(externalContent)
+				const state = this.config.preserveEditorState ? this.stateManager.captureState(editor) : undefined
+				editor.setContent(info.externalContent)
 				editor.markClean()
-
-				if (editorState && this.config.preserveEditorState) {
-					this.stateManager.restoreState(editor, editorState, externalContent)
-				}
-
-				if (
-					'resolveAcceptExternal' in tracker &&
-					typeof tracker.resolveAcceptExternal === 'function'
-				) {
-					await tracker.resolveAcceptExternal()
-				}
+				if (state) this.stateManager.restoreState(editor, state, info.externalContent)
+				await tracker.resolveAcceptExternal()
 				break
 			}
 
 			case 'manual-merge':
-				if (!resolution.mergedContent) {
-					throw new Error('Manual merge strategy requires merged content')
-				}
-
+				if (!resolution.mergedContent) throw new Error('Manual merge requires merged content')
 				editor.setContent(resolution.mergedContent)
-
-				if (
-					'resolveMerge' in tracker &&
-					typeof tracker.resolveMerge === 'function'
-				) {
-					await tracker.resolveMerge(resolution.mergedContent)
-				} else {
-					throw new Error(
-						'Direct file writing not yet implemented - use editor save functionality'
-					)
-				}
-
+				await tracker.resolveMerge(resolution.mergedContent)
 				editor.markClean()
 				break
 
 			case 'skip':
-				throw new Error(
-					'Skip strategy should not be applied through resolveConflict'
-				)
-
-			default:
-				throw new Error(
-					`Unknown conflict resolution strategy: ${resolution.strategy}`
-				)
+				return
 		}
 	}
 
-	private emitStatusChange(path: string, status: SyncStatusInfo): void {
+	private async performUndo(op: BatchUndoOperation): Promise<UndoResult> {
+		const result = await this.undoManager.performUndo(
+			op.id,
+			(path) => this.editorRegistry.getEditor(path),
+			async (path, content) => {
+				const tracker = this.syncManager.getTracker(path)
+				if (tracker) await tracker.resolveMerge(content)
+			}
+		)
+
+		if (result.success) {
+			this.notify?.showNotification(`Undone: restored ${result.restoredFiles.length} files`, 'info')
+		} else {
+			this.notify?.showNotification(`Undo partially failed: ${result.failedFiles.length} files could not be restored`, 'error')
+		}
+
+		// Restore conflicts for undone files
+		for (const path of result.restoredFiles) {
+			const fileState = op.files.find((f) => f.path === path)
+			if (fileState) {
+				const updated: ConflictInfo = {
+					...fileState.conflictInfo,
+					localContent: fileState.previousContent,
+					conflictTimestamp: Date.now(),
+				}
+				this.conflicts.addConflict(updated)
+				this.setStatus(path, createConflictStatus())
+			}
+		}
+
+		return result
+	}
+
+	// ─── Private: Helpers ──────────────────────────────────────────────────
+
+	private setStatus(path: string, status: SyncStatusInfo): void {
+		this.syncStatuses.set(path, status)
 		for (const handler of this.statusChangeHandlers) {
-			try {
-				handler(path, status)
-			} catch (error) {
-				console.error('Error in sync status change handler:', error)
-			}
+			try { handler(path, status) } catch (e) { console.error('Status handler error:', e) }
 		}
 	}
 
-	private emitConflictResolutionRequest(
-		path: string,
-		conflictInfo: ConflictInfo
-	): void {
-		for (const handler of this.conflictResolutionRequestHandlers) {
-			try {
-				handler(path, conflictInfo)
-			} catch (error) {
-				console.error('Error in conflict resolution request handler:', error)
-			}
+	private emitConflictRequest(path: string, info: ConflictInfo): void {
+		for (const handler of this.conflictRequestHandlers) {
+			try { handler(path, info) } catch (e) { console.error('Conflict handler error:', e) }
 		}
+	}
+
+	private showNotification(path: string, message: string, type: 'info' | 'warning' | 'error'): void {
+		const fileName = path.split('/').pop() || path
+		this.notify?.showNotification(`"${fileName}" ${message}`, type)
 	}
 }
