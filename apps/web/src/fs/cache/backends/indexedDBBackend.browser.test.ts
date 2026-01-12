@@ -104,7 +104,7 @@ describe('IndexedDBBackend', () => {
 
 					// Add entries sequentially with small delays to ensure distinct timestamps
 					for (let i = 0; i < keys.length; i++) {
-						await backend.set(keys[i], `value-${i}`)
+						await backend.set(keys[i]!, `value-${i}`)
 
 						// Small delay to ensure different access timestamps
 						if (i < keys.length - 1) {
@@ -252,25 +252,25 @@ describe('IndexedDBBackend', () => {
 			debounceDelay: 10,
 		})
 
-		expect(await backend.estimateSize()).toBe(0)
+		expect(await backend.estimateSize?.()).toBe(0)
 
 		await backend.set('small', 'hi')
-		const smallSize = await backend.estimateSize()
+		const smallSize = await backend.estimateSize?.()
 		expect(smallSize).toBeGreaterThan(0)
 
 		await backend.set(
 			'large',
 			'this is a much longer string that should take more space'
 		)
-		const largeSize = await backend.estimateSize()
+		const largeSize = await backend.estimateSize?.()
 		expect(largeSize).toBeGreaterThan(smallSize)
 
 		await backend.remove('large')
-		const afterRemoval = await backend.estimateSize()
+		const afterRemoval = await backend.estimateSize?.()
 		expect(afterRemoval).toBeLessThan(largeSize)
 
 		await backend.clear()
-		expect(await backend.estimateSize()).toBe(0)
+		expect(await backend.estimateSize?.()).toBe(0)
 	})
 
 	it('clears all data', async () => {
@@ -285,12 +285,12 @@ describe('IndexedDBBackend', () => {
 		await new Promise((resolve) => setTimeout(resolve, 20)) // Wait for debounced writes
 
 		expect((await backend.keys()).length).toBe(2)
-		expect(await backend.estimateSize()).toBeGreaterThan(0)
+		expect(await backend.estimateSize?.()).toBeGreaterThan(0)
 
 		await backend.clear()
 
 		expect(await backend.keys()).toEqual([])
-		expect(await backend.estimateSize()).toBe(0)
+		expect(await backend.estimateSize?.()).toBe(0)
 		expect(await backend.has('key1')).toBe(false)
 		expect(await backend.has('key2')).toBe(false)
 	})

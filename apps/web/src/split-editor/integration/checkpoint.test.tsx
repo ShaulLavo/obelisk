@@ -71,7 +71,7 @@ describe('Split Editor Checkpoint: File Content and Empty Files', () => {
         const pane = layoutManager.state.nodes[focusedPaneId] as any
         expect(pane?.tabs.length).toBe(1) // New tab
         
-        const fileTab = pane?.tabs.find(t => t.content.type === 'file')
+        const fileTab = pane?.tabs.find((t: any) => t.content.type === 'file')
         expect(fileTab?.content.filePath).toBe('test.txt')
       }
     })
