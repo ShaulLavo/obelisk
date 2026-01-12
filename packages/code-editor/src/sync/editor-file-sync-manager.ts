@@ -107,23 +107,23 @@ export class EditorFileSyncManager {
 	// ─── Conflict Access ───────────────────────────────────────────────────
 
 	getConflictInfo(path: string): ConflictInfo | undefined {
-		return this.conflicts.getConflictInfo(path)
+		return this.pendingConflicts.get(path)?.conflictInfo
 	}
 
 	getPendingConflicts(): ConflictInfo[] {
-		return this.conflicts.getPendingConflicts()
+		return Array.from(this.pendingConflicts.values()).map((pc) => pc.conflictInfo)
 	}
 
 	hasConflict(path: string): boolean {
-		return this.conflicts.hasConflict(path)
+		return this.pendingConflicts.has(path)
 	}
 
 	getConflictCount(): number {
-		return this.conflicts.getConflictCount()
+		return this.pendingConflicts.size
 	}
 
 	showConflictResolution(path: string): void {
-		const info = this.conflicts.getConflictInfo(path)
+		const info = this.pendingConflicts.get(path)?.conflictInfo
 		if (info) this.emitConflictRequest(path, info)
 		else console.warn(`No conflict found for path: ${path}`)
 	}
@@ -131,13 +131,13 @@ export class EditorFileSyncManager {
 	// ─── Conflict Resolution ───────────────────────────────────────────────
 
 	skipConflict(path: string): void {
-		if (this.conflicts.removeConflict(path)) {
+		if (this.pendingConflicts.delete(path)) {
 			this.showNotification(path, 'was skipped. You can resolve it later.', 'info')
 		}
 	}
 
 	async resolveConflict(path: string, resolution: ConflictResolution): Promise<void> {
-		const info = this.conflicts.getConflictInfo(path)
+		const info = this.pendingConflicts.get(path)?.conflictInfo
 		if (!info) throw new Error(`No conflict found for path: ${path}`)
 
 		const editor = this.editorRegistry.getEditor(path)
@@ -150,7 +150,7 @@ export class EditorFileSyncManager {
 
 		try {
 			await this.applyResolution(path, info, resolution, editor)
-			this.conflicts.removeConflict(path)
+			this.pendingConflicts.delete(path)
 			this.setStatus(path, createSyncedStatus())
 			this.showNotification(path, `resolved using ${getStrategyDisplayName(resolution.strategy)}`, 'info')
 		} catch (error) {
@@ -168,7 +168,7 @@ export class EditorFileSyncManager {
 
 		for (const [path, res] of result.resolutions) {
 			if (res.strategy === 'manual-merge' || res.strategy === 'skip') continue
-			const info = this.conflicts.getConflictInfo(path)
+			const info = this.pendingConflicts.get(path)?.conflictInfo
 			if (info) conflicts.push(info)
 		}
 
@@ -266,7 +266,7 @@ export class EditorFileSyncManager {
 		this.syncStatuses.clear()
 		this.statusChangeHandlers.clear()
 		this.conflictRequestHandlers.clear()
-		this.conflicts.clear()
+		this.pendingConflicts.clear()
 		this.undoManager.dispose()
 	}
 
