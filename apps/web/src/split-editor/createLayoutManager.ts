@@ -66,6 +66,11 @@ export function createLayoutManager(options: LayoutManagerOptions = {}) {
 		scrollSyncGroups: [],
 	})
 
+	// Handlers for dirty state change notifications
+	const dirtyChangeHandlers = new Set<
+		(paneId: NodeId, tabId: TabId, isDirty: boolean) => void
+	>()
+
 	const paneIds = createMemo(() =>
 		Object.values(state.nodes)
 			.filter((n): n is EditorPane => isPane(n))
@@ -370,6 +375,24 @@ export function createLayoutManager(options: LayoutManagerOptions = {}) {
 				}
 			})
 		)
+
+		// Notify all dirty change handlers
+		for (const handler of dirtyChangeHandlers) {
+			try {
+				handler(paneId, tabId, isDirty)
+			} catch (error) {
+				console.error('Error in dirty change handler:', error)
+			}
+		}
+	}
+
+	function onTabDirtyChange(
+		callback: (paneId: NodeId, tabId: TabId, isDirty: boolean) => void
+	): () => void {
+		dirtyChangeHandlers.add(callback)
+		return () => {
+			dirtyChangeHandlers.delete(callback)
+		}
 	}
 
 	function setTabViewMode(
@@ -636,6 +659,7 @@ export function createLayoutManager(options: LayoutManagerOptions = {}) {
 		moveTab,
 		updateTabState,
 		setTabDirty,
+		onTabDirtyChange,
 		setTabViewMode,
 		cycleViewMode,
 		updateViewSettings,

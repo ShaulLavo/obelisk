@@ -84,8 +84,7 @@ export const useViewModeBehavior = (
 	})
 
 	/**
-	 * Check if this is a regular file (backward compatibility)
-	 * Requirements: 6.1, 6.3, 6.4 - Maintain existing behavior for regular files
+	 * Check if this is a regular file (single view mode only)
 	 */
 	const isRegularFile = createMemo(() => {
 		const availableModes = viewModeManager.availableViewModes()

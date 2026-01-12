@@ -37,21 +37,21 @@ describe('TabBar Component', () => {
 					id: 'tab-1',
 					content: { type: 'file', filePath: '/test/file1.txt' },
 					state: { scrollTop: 0, scrollLeft: 0, selections: [], cursorPosition: { line: 0, column: 0 } },
-					isDirty: false
+					isDirty: false,
 			viewMode: 'editor' as const,
 				},
 				{
 					id: 'tab-2',
 					content: { type: 'file', filePath: '/test/file2.js' },
 					state: { scrollTop: 0, scrollLeft: 0, selections: [], cursorPosition: { line: 0, column: 0 } },
-					isDirty: true
+					isDirty: true,
 			viewMode: 'editor' as const,
 				},
 				{
 					id: 'tab-3',
 					content: { type: 'diff' },
 					state: { scrollTop: 0, scrollLeft: 0, selections: [], cursorPosition: { line: 0, column: 0 } },
-					isDirty: false
+					isDirty: false,
 			viewMode: 'editor' as const,
 				}
 			] as Tab[],
@@ -105,7 +105,7 @@ describe('TabBar Component', () => {
 				id: `tab-${i}`,
 				content: { type: 'file', filePath: `/test/very-long-filename-${i}.txt` },
 				state: { scrollTop: 0, scrollLeft: 0, selections: [], cursorPosition: { line: 0, column: 0 } },
-				isDirty: false
+				isDirty: false,
 			viewMode: 'editor' as const,
 			})) as Tab[]
 		}

@@ -1,5 +1,4 @@
 import { Accessor, createEffect, createSignal } from 'solid-js'
-import { migrateTabState } from '../types/ViewMode'
 
 export type UseTabsOptions = {
 	maxTabs?: number
@@ -15,11 +14,9 @@ const loadTabs = (key: string): string[] => {
 		if (stored) {
 			const parsed = JSON.parse(stored)
 			if (Array.isArray(parsed)) {
-				const validTabs = parsed.filter(
+				return parsed.filter(
 					(item): item is string => typeof item === 'string'
 				)
-				// Migrate old tabs that had :viewMode suffix
-				return migrateTabState(validTabs)
 			}
 		}
 	} catch {
@@ -42,11 +39,9 @@ const loadHistory = (key: string): string[] => {
 		if (stored) {
 			const parsed = JSON.parse(stored)
 			if (Array.isArray(parsed)) {
-				const validHistory = parsed.filter(
+				return parsed.filter(
 					(item): item is string => typeof item === 'string'
 				)
-				// Migrate old history that had :viewMode suffix
-				return migrateTabState(validHistory)
 			}
 		}
 	} catch {

@@ -1,225 +1,183 @@
 /**
- * Resource Manager
- *
- * Manages shared resources (tree-sitter workers, syntax highlighting, buffers)
- * across tabs showing the same file. Uses reference counting for cleanup.
- *
- * Requirements: 5.3, 5.4, 5.5 - Error handling, file type detection, large files
+ * Resource Manager - Manages shared resources (buffers, highlights) across tabs.
  */
 
-import { createSignal, type Accessor } from 'solid-js';
-import type { TabId } from './types';
+import { batch, createSignal, type Accessor } from 'solid-js'
+import type { TabId } from './types'
 import type {
 	TreeSitterCapture,
 	TreeSitterParseResult,
 	BracketInfo,
 	FoldRange,
 	TreeSitterError,
-} from '../workers/treeSitter/types';
+} from '../workers/treeSitter/types'
 import {
 	ensureTreeSitterWorkerReady,
 	parseBufferWithTreeSitter,
 	applyTreeSitterEdit,
-} from '../treeSitter/workerClient';
-import type { TreeSitterEditPayload } from '../workers/treeSitter/types';
+} from '../treeSitter/workerClient'
+import type { TreeSitterEditPayload } from '../workers/treeSitter/types'
 import {
 	createFileLoadingState,
 	type FileLoadingState,
 	type FileLoadingError,
-} from './fileLoadingErrors';
+} from './fileLoadingErrors'
 
-/** Text edit operation */
 export interface TextEdit {
-	startIndex: number;
-	oldEndIndex: number;
-	newEndIndex: number;
-	startPosition: { row: number; column: number; };
-	oldEndPosition: { row: number; column: number; };
-	newEndPosition: { row: number; column: number; };
-	insertedText: string;
+	startIndex: number
+	oldEndIndex: number
+	newEndIndex: number
+	startPosition: { row: number; column: number }
+	oldEndPosition: { row: number; column: number }
+	newEndPosition: { row: number; column: number }
+	insertedText: string
 }
 
-/** Highlight state for a file */
 export interface HighlightState {
-	captures: Accessor<TreeSitterCapture[]>;
-	brackets: Accessor<BracketInfo[]>;
-	folds: Accessor<FoldRange[]>;
-	errors: Accessor<TreeSitterError[]>;
-	setCaptures: (captures: TreeSitterCapture[]) => void;
-	setBrackets: (brackets: BracketInfo[]) => void;
-	setFolds: (folds: FoldRange[]) => void;
-	setErrors: (errors: TreeSitterError[]) => void;
-	updateFromParseResult: (result: TreeSitterParseResult) => void;
+	captures: Accessor<TreeSitterCapture[]>
+	brackets: Accessor<BracketInfo[]>
+	folds: Accessor<FoldRange[]>
+	errors: Accessor<TreeSitterError[]>
+	setCaptures: (captures: TreeSitterCapture[]) => void
+	setBrackets: (brackets: BracketInfo[]) => void
+	setFolds: (folds: FoldRange[]) => void
+	setErrors: (errors: TreeSitterError[]) => void
+	updateFromParseResult: (result: TreeSitterParseResult) => void
 }
 
-/** Shared buffer for multi-tab editing */
 export interface SharedBuffer {
-	/** The file path */
-	filePath: string;
-
-	/** Current content */
-	content: Accessor<string>;
-
-	/** Set content directly */
-	setContent: (content: string) => void;
-
-	/** Apply an edit from any tab */
-	applyEdit: (edit: TextEdit) => Promise<void>;
-
-	/** Subscribe to edits */
-	onEdit: (callback: (edit: TextEdit) => void) => () => void;
+	filePath: string
+	content: Accessor<string>
+	/** Increments on external content replacement (not incremental edits) */
+	contentVersion: Accessor<number>
+	setContent: (content: string) => void
+	applyEdit: (edit: TextEdit) => Promise<void>
+	onEdit: (callback: (edit: TextEdit) => void) => () => void
 }
 
-/** Internal file resource entry */
 interface FileResource {
-	/** Tabs using this file */
-	tabIds: Set<TabId>;
-
-	/** Shared buffer */
-	buffer: SharedBuffer;
-
-	/** Highlight state */
-	highlights: HighlightState;
-
-	/** Worker initialized flag */
-	workerReady: boolean;
-
-	/** File loading state (error handling, progress, etc.) */
-	loadingState: FileLoadingState;
-
-	/** Cached line start offsets for instant tab switching */
-	lineStarts?: number[];
+	tabIds: Set<TabId>
+	buffer: SharedBuffer
+	highlights: HighlightState
+	workerReady: boolean
+	loadingState: FileLoadingState
+	lineStarts?: number[]
 }
 
-/** Build lineStarts array from text (O(n) scan) */
 function buildLineStartsFromText(text: string): number[] {
-	const starts: number[] = [0];
-	let index = text.indexOf('\n');
+	const starts: number[] = [0]
+	let index = text.indexOf('\n')
 	while (index !== -1) {
-		starts.push(index + 1);
-		index = text.indexOf('\n', index + 1);
+		starts.push(index + 1)
+		index = text.indexOf('\n', index + 1)
 	}
-	return starts;
+	return starts
 }
 
-/** Cached highlight data from persistent storage */
 export interface CachedHighlightData {
-	captures?: TreeSitterCapture[];
-	brackets?: BracketInfo[];
-	folds?: FoldRange[];
-	errors?: TreeSitterError[];
+	captures?: TreeSitterCapture[]
+	brackets?: BracketInfo[]
+	folds?: FoldRange[]
+	errors?: TreeSitterError[]
 }
 
-/** Resource Manager interface */
 export interface ResourceManager {
-	/** Get shared buffer for a file */
-	getBuffer: (filePath: string) => SharedBuffer | undefined;
-
-	/** Get highlight state for a file */
-	getHighlightState: (filePath: string) => HighlightState | undefined;
-
-	/** Get loading state for a file */
-	getLoadingState: (filePath: string) => FileLoadingState | undefined;
-
-	/** Get cached line starts for instant tab switching */
-	getLineStarts: (filePath: string) => number[] | undefined;
-
-	/** Register a tab as using a file */
-	registerTabForFile: (tabId: TabId, filePath: string) => void;
-
-	/** Unregister a tab from a file */
-	unregisterTabFromFile: (tabId: TabId, filePath: string) => void;
-
-	/** Check if a file has resources */
-	hasResourcesForFile: (filePath: string) => boolean;
-
-	/** Get tab count for a file */
-	getTabCountForFile: (filePath: string) => number;
-
-	/** Get all tracked files */
-	getTrackedFiles: () => string[];
-
-	/** Cleanup all resources */
-	cleanup: () => void;
-
-	/** Pre-populate content for a file before any tabs register */
-	preloadFileContent: (filePath: string, content: string) => void;
-
-	/** Hydrate highlight state from cached data (call before tree-sitter finishes) */
-	hydrateCachedHighlights: (filePath: string, data: CachedHighlightData) => void;
-
-	/** Set an error for a file */
-	setFileError: (filePath: string, error: FileLoadingError | null) => void;
-
-	/** Set loading status for a file */
-	setFileLoadingStatus: (filePath: string, status: 'idle' | 'loading' | 'loaded' | 'error') => void;
-
-	/** Set file metadata (size, binary detection) */
-	setFileMetadata: (filePath: string, metadata: { size?: number; isBinary?: boolean }) => void;
-
-	/** Cleanup resources for a specific file (call when tab is actually closed) */
-	cleanupFileResources: (filePath: string) => void;
-
-	// Legacy aliases for backward compatibility with tests
-	registerPaneForFile: (paneId: string, filePath: string) => void;
-	unregisterPaneFromFile: (paneId: string, filePath: string) => void;
-	getPaneCountForFile: (filePath: string) => number;
+	getBuffer: (filePath: string) => SharedBuffer | undefined
+	getHighlightState: (filePath: string) => HighlightState | undefined
+	getLoadingState: (filePath: string) => FileLoadingState | undefined
+	getLineStarts: (filePath: string) => number[] | undefined
+	registerTabForFile: (tabId: TabId, filePath: string) => void
+	unregisterTabFromFile: (tabId: TabId, filePath: string) => void
+	hasResourcesForFile: (filePath: string) => boolean
+	getTabCountForFile: (filePath: string) => number
+	getTrackedFiles: () => string[]
+	cleanup: () => void
+	preloadFileContent: (filePath: string, content: string) => void
+	hydrateCachedHighlights: (filePath: string, data: CachedHighlightData) => void
+	setFileError: (filePath: string, error: FileLoadingError | null) => void
+	setFileLoadingStatus: (
+		filePath: string,
+		status: 'idle' | 'loading' | 'loaded' | 'error'
+	) => void
+	setFileMetadata: (
+		filePath: string,
+		metadata: { size?: number; isBinary?: boolean }
+	) => void
+	cleanupFileResources: (filePath: string) => void
 }
 
-/** Apply text edit to content string */
 function applyTextEdit(content: string, edit: TextEdit): string {
-	const before = content.slice(0, edit.startIndex);
-	const after = content.slice(edit.oldEndIndex);
-	return before + edit.insertedText + after;
+	const before = content.slice(0, edit.startIndex)
+	const after = content.slice(edit.oldEndIndex)
+	return before + edit.insertedText + after
 }
 
-/**
- * Create a shared buffer for a file
- *
- * The SharedBuffer provides signal-based content storage that coordinates
- * edits across multiple tabs showing the same file. When an edit is applied
- * from one tab, all other tabs are notified via the listener mechanism.
- */
-function createSharedBuffer(filePath: string): SharedBuffer {
-	// Signal-based content storage for reactivity
-	const [content, setContent] = createSignal('');
+function getEndPosition(text: string): { row: number; column: number } {
+	if (text.length === 0) return { row: 0, column: 0 }
+	let row = 0
+	let lastNewlineIndex = -1
+	for (let i = 0; i < text.length; i++) {
+		if (text[i] === '\n') {
+			row++
+			lastNewlineIndex = i
+		}
+	}
+	return { row, column: text.length - lastNewlineIndex - 1 }
+}
 
-	// Edit listeners for coordinating across panes
-	const listeners = new Set<(edit: TextEdit) => void>();
-
-	// Track edit version for ordering
-	let editVersion = 0;
+function createSharedBuffer(
+	filePath: string,
+	onContentReplaced?: (newContent: string) => void
+): SharedBuffer {
+	const [content, setContentSignal] = createSignal('')
+	const [contentVersion, setContentVersion] = createSignal(0)
+	const listeners = new Set<(edit: TextEdit) => void>()
 
 	return {
 		filePath,
 		content,
+		contentVersion,
 
 		setContent(newContent: string) {
-			setContent(newContent);
-			editVersion++;
+			const previousContent = content()
+			if (previousContent === newContent) return
+
+			// Update lineStarts BEFORE signals so reactive reads get fresh data
+			onContentReplaced?.(newContent)
+
+			// Batch so content+version change atomically (prevents stale version reads)
+			batch(() => {
+				setContentSignal(newContent)
+				setContentVersion((v) => v + 1)
+			})
+
+			// Tree-sitter re-parse
+			const payload: TreeSitterEditPayload = {
+				path: filePath,
+				startIndex: 0,
+				oldEndIndex: previousContent.length,
+				newEndIndex: newContent.length,
+				startPosition: { row: 0, column: 0 },
+				oldEndPosition: getEndPosition(previousContent),
+				newEndPosition: getEndPosition(newContent),
+				insertedText: newContent,
+			}
+			applyTreeSitterEdit(payload).catch(() => {})
 		},
 
 		async applyEdit(edit: TextEdit) {
-			// Apply edit to content atomically
-			const previousContent = content();
-			const newContent = applyTextEdit(previousContent, edit);
-			setContent(newContent);
-			editVersion++;
+			const previousContent = content()
+			const newContent = applyTextEdit(previousContent, edit)
 
-			// Notify all listeners (other tabs showing same file)
-			// This allows tabs to update their view state accordingly
+			// Don't increment contentVersion - that's only for external replacements
+			setContentSignal(newContent)
+
 			listeners.forEach((cb) => {
 				try {
-					cb(edit);
-				} catch (error) {
-					console.error(
-						`[SharedBuffer] Listener error for ${filePath}:`,
-						error
-					);
-				}
-			});
+					cb(edit)
+				} catch {}
+			})
 
-			// Send to tree-sitter worker for incremental re-parsing
 			try {
 				const payload: TreeSitterEditPayload = {
 					path: filePath,
@@ -230,37 +188,23 @@ function createSharedBuffer(filePath: string): SharedBuffer {
 					oldEndPosition: edit.oldEndPosition,
 					newEndPosition: edit.newEndPosition,
 					insertedText: edit.insertedText,
-				};
-
-				await applyTreeSitterEdit(payload);
-			} catch (error) {
-				console.error(
-					`[SharedBuffer] Tree-sitter edit failed for ${filePath}:`,
-					error
-				);
-			}
+				}
+				await applyTreeSitterEdit(payload)
+			} catch {}
 		},
 
 		onEdit(callback) {
-			listeners.add(callback);
-			return () => {
-				listeners.delete(callback);
-			};
+			listeners.add(callback)
+			return () => listeners.delete(callback)
 		},
-	};
+	}
 }
 
-/**
- * Create highlight state for a file
- *
- * Provides reactive signals for syntax highlighting data that can be
- * shared across multiple tabs showing the same file.
- */
 function createHighlightStateForFile(): HighlightState {
-	const [captures, setCaptures] = createSignal<TreeSitterCapture[]>([]);
-	const [brackets, setBrackets] = createSignal<BracketInfo[]>([]);
-	const [folds, setFolds] = createSignal<FoldRange[]>([]);
-	const [errors, setErrors] = createSignal<TreeSitterError[]>([]);
+	const [captures, setCaptures] = createSignal<TreeSitterCapture[]>([])
+	const [brackets, setBrackets] = createSignal<BracketInfo[]>([])
+	const [folds, setFolds] = createSignal<FoldRange[]>([])
+	const [errors, setErrors] = createSignal<TreeSitterError[]>([])
 
 	return {
 		captures,
@@ -272,236 +216,183 @@ function createHighlightStateForFile(): HighlightState {
 		setFolds,
 		setErrors,
 		updateFromParseResult(result: TreeSitterParseResult) {
-			setCaptures(result.captures);
-			setBrackets(result.brackets);
-			setFolds(result.folds);
-			setErrors(result.errors);
+			setCaptures(result.captures)
+			setBrackets(result.brackets)
+			setFolds(result.folds)
+			setErrors(result.errors)
 		},
-	};
+	}
 }
 
-/** Callback for persisting highlights to cache */
 export type OnHighlightsUpdate = (
 	filePath: string,
 	data: {
-		captures: TreeSitterCapture[];
-		brackets: BracketInfo[];
-		folds: FoldRange[];
-		errors: TreeSitterError[];
+		captures: TreeSitterCapture[]
+		brackets: BracketInfo[]
+		folds: FoldRange[]
+		errors: TreeSitterError[]
 	}
-) => void;
+) => void
 
-/** Options for creating the resource manager */
 export interface ResourceManagerOptions {
-	/** Called when tree-sitter parsing completes with new highlights */
-	onHighlightsUpdate?: OnHighlightsUpdate;
+	onHighlightsUpdate?: OnHighlightsUpdate
 }
 
-/** Create the resource manager */
-export function createResourceManager(options: ResourceManagerOptions = {}): ResourceManager {
-	const { onHighlightsUpdate } = options;
-	// Track resources per file
-	const resources = new Map<string, FileResource>();
+export function createResourceManager(
+	options: ResourceManagerOptions = {}
+): ResourceManager {
+	const { onHighlightsUpdate } = options
+	const resources = new Map<string, FileResource>()
 
-	/** Get or create resources for a file */
 	function getOrCreateResource(filePath: string): FileResource {
-		let resource = resources.get(filePath);
+		let resource = resources.get(filePath)
 		if (!resource) {
 			resource = {
 				tabIds: new Set(),
-				buffer: createSharedBuffer(filePath),
+				buffer: null as unknown as SharedBuffer,
 				highlights: createHighlightStateForFile(),
 				workerReady: false,
 				loadingState: createFileLoadingState(),
-			};
-			resources.set(filePath, resource);
+			}
+			resources.set(filePath, resource)
+
+			const capturedResource = resource
+			resource.buffer = createSharedBuffer(filePath, (newContent: string) => {
+				capturedResource.lineStarts = buildLineStartsFromText(newContent)
+			})
 		}
-		return resource;
+		return resource
 	}
 
-	/** Initialize worker for a file */
 	async function initializeWorkerForFile(
 		filePath: string,
 		resource: FileResource
 	): Promise<void> {
-		if (resource.workerReady) return;
+		if (resource.workerReady) return
 
 		try {
-			await ensureTreeSitterWorkerReady();
-			resource.workerReady = true;
+			await ensureTreeSitterWorkerReady()
+			resource.workerReady = true
 
-			// Trigger initial parsing since we have content
-			const content = resource.buffer.content();
+			const content = resource.buffer.content()
 			if (content.length > 0) {
 				try {
-					const encoder = new TextEncoder();
-					const buffer = encoder.encode(content).buffer;
-					const parseResult = await parseBufferWithTreeSitter(filePath, buffer);
+					const encoder = new TextEncoder()
+					const buffer = encoder.encode(content).buffer
+					const parseResult = await parseBufferWithTreeSitter(filePath, buffer)
 					if (parseResult) {
-						resource.highlights.updateFromParseResult(parseResult);
-
-						// Notify callback to persist highlights to cache
-						if (onHighlightsUpdate) {
-							console.log('[ResourceManager] Persisting highlights after tree-sitter parse', {
-								filePath,
-								captures: parseResult.captures.length,
-								brackets: parseResult.brackets.length,
-								folds: parseResult.folds.length,
-								errors: parseResult.errors.length,
-							});
-							onHighlightsUpdate(filePath, parseResult);
-						}
+						resource.highlights.updateFromParseResult(parseResult)
+						onHighlightsUpdate?.(filePath, parseResult)
 					}
-				} catch (parseError) {
-					console.error(`[ResourceManager] Parse failed for ${filePath}:`, parseError);
-				}
+				} catch {}
 			}
-		} catch (error) {
-			console.error(`[ResourceManager] Failed to initialize worker for ${filePath}:`, error);
-		}
+		} catch {}
 	}
 
-	/** Register a tab as using a file */
 	function registerTabForFile(tabId: TabId, filePath: string): void {
-		const resource = getOrCreateResource(filePath);
-		resource.tabIds.add(tabId);
-
-		// Initialize worker lazily
-		void initializeWorkerForFile(filePath, resource);
+		const resource = getOrCreateResource(filePath)
+		resource.tabIds.add(tabId)
+		void initializeWorkerForFile(filePath, resource)
 	}
 
-	/** Unregister a tab from a file */
 	function unregisterTabFromFile(tabId: TabId, filePath: string): void {
-		const resource = resources.get(filePath);
-		if (!resource) return;
-
-		resource.tabIds.delete(tabId);
-
-		// DON'T cleanup resources here - they should persist as long as any tab
-		// in the layout references this file. Cleanup happens when the tab is
-		// actually closed (removed from layout), not when the component unmounts.
-		// This prevents the race condition where switching tabs causes the old
-		// FileTab to cleanup before the new one mounts.
+		const resource = resources.get(filePath)
+		if (!resource) return
+		resource.tabIds.delete(tabId)
+		// Don't cleanup here - cleanup happens when tab is closed from layout
 	}
 
-	/** Get shared buffer for a file */
 	function getBuffer(filePath: string): SharedBuffer | undefined {
-		return resources.get(filePath)?.buffer;
+		return resources.get(filePath)?.buffer
 	}
 
-	/** Get highlight state for a file */
 	function getHighlightState(filePath: string): HighlightState | undefined {
-		return resources.get(filePath)?.highlights;
+		return resources.get(filePath)?.highlights
 	}
 
-	/** Check if a file has resources */
 	function hasResourcesForFile(filePath: string): boolean {
-		return resources.has(filePath);
+		return resources.has(filePath)
 	}
 
-	/** Get tab count for a file */
 	function getTabCountForFile(filePath: string): number {
-		return resources.get(filePath)?.tabIds.size ?? 0;
+		return resources.get(filePath)?.tabIds.size ?? 0
 	}
 
-	/** Get all tracked files */
 	function getTrackedFiles(): string[] {
-		return Array.from(resources.keys());
+		return Array.from(resources.keys())
 	}
 
-	/** Cleanup all resources */
 	function cleanup(): void {
-		resources.clear();
+		resources.clear()
 	}
 
-	/** Pre-populate content for a file before any tabs register */
 	function preloadFileContent(filePath: string, content: string): void {
-		console.log('[ResourceManager] preloadFileContent', {
-			filePath,
-			contentLength: content.length,
-		});
-		const resource = getOrCreateResource(filePath);
-		resource.buffer.setContent(content);
-		resource.loadingState.setStatus('loaded');
-		// Cache lineStarts for instant tab switching
-		resource.lineStarts = buildLineStartsFromText(content);
-		console.log('[ResourceManager] lineStarts cached', {
-			filePath,
-			lineCount: resource.lineStarts.length,
-		});
+		const resource = getOrCreateResource(filePath)
+		resource.buffer.setContent(content)
+		resource.loadingState.setStatus('loaded')
+		resource.lineStarts = buildLineStartsFromText(content)
 	}
 
-	/** Get loading state for a file */
 	function getLoadingState(filePath: string): FileLoadingState | undefined {
-		return resources.get(filePath)?.loadingState;
+		return resources.get(filePath)?.loadingState
 	}
 
-	/** Get cached line starts for instant tab switching */
 	function getLineStarts(filePath: string): number[] | undefined {
-		return resources.get(filePath)?.lineStarts;
+		return resources.get(filePath)?.lineStarts
 	}
 
-	/** Set an error for a file */
-	function setFileError(filePath: string, error: FileLoadingError | null): void {
-		const resource = resources.get(filePath);
+	function setFileError(
+		filePath: string,
+		error: FileLoadingError | null
+	): void {
+		const resource = resources.get(filePath)
 		if (resource) {
-			resource.loadingState.setError(error);
-			if (error) {
-				resource.loadingState.setStatus('error');
-			}
+			resource.loadingState.setError(error)
+			if (error) resource.loadingState.setStatus('error')
 		}
 	}
 
-	/** Set loading status for a file */
-	function setFileLoadingStatus(filePath: string, status: 'idle' | 'loading' | 'loaded' | 'error'): void {
-		const resource = resources.get(filePath);
+	function setFileLoadingStatus(
+		filePath: string,
+		status: 'idle' | 'loading' | 'loaded' | 'error'
+	): void {
+		const resource = resources.get(filePath)
+		if (resource) resource.loadingState.setStatus(status)
+	}
+
+	function setFileMetadata(
+		filePath: string,
+		metadata: { size?: number; isBinary?: boolean }
+	): void {
+		const resource = resources.get(filePath)
 		if (resource) {
-			resource.loadingState.setStatus(status);
+			if (metadata.size !== undefined) resource.loadingState.setFileSize(metadata.size)
+			if (metadata.isBinary !== undefined) resource.loadingState.setIsBinary(metadata.isBinary)
 		}
 	}
 
-	/** Set file metadata (size, binary detection) */
-	function setFileMetadata(filePath: string, metadata: { size?: number; isBinary?: boolean }): void {
-		const resource = resources.get(filePath);
-		if (resource) {
-			if (metadata.size !== undefined) {
-				resource.loadingState.setFileSize(metadata.size);
-			}
-			if (metadata.isBinary !== undefined) {
-				resource.loadingState.setIsBinary(metadata.isBinary);
-			}
-		}
-	}
-
-	/** Cleanup resources for a specific file (call when tab is actually closed) */
 	function cleanupFileResources(filePath: string): void {
-		resources.delete(filePath);
+		resources.delete(filePath)
 	}
 
-	/** Hydrate highlight state from cached data */
-	function hydrateCachedHighlights(filePath: string, data: CachedHighlightData): void {
-		const resource = resources.get(filePath);
-		if (!resource) {
-			console.warn(`[ResourceManager] hydrateCachedHighlights: no resource for ${filePath}`);
-			return;
-		}
+	function hydrateCachedHighlights(
+		filePath: string,
+		data: CachedHighlightData
+	): void {
+		const resource = resources.get(filePath)
+		if (!resource) return
 
-		const hasData = data.captures?.length || data.brackets?.length || data.folds?.length || data.errors?.length;
-		if (!hasData) {
-			return;
-		}
+		const hasData =
+			data.captures?.length ||
+			data.brackets?.length ||
+			data.folds?.length ||
+			data.errors?.length
+		if (!hasData) return
 
-		console.log(`[ResourceManager] hydrateCachedHighlights: ${filePath}`, {
-			captures: data.captures?.length ?? 0,
-			brackets: data.brackets?.length ?? 0,
-			folds: data.folds?.length ?? 0,
-			errors: data.errors?.length ?? 0,
-		});
-
-		if (data.captures) resource.highlights.setCaptures(data.captures);
-		if (data.brackets) resource.highlights.setBrackets(data.brackets);
-		if (data.folds) resource.highlights.setFolds(data.folds);
-		if (data.errors) resource.highlights.setErrors(data.errors);
+		if (data.captures) resource.highlights.setCaptures(data.captures)
+		if (data.brackets) resource.highlights.setBrackets(data.brackets)
+		if (data.folds) resource.highlights.setFolds(data.folds)
+		if (data.errors) resource.highlights.setErrors(data.errors)
 	}
 
 	return {
@@ -521,11 +412,7 @@ export function createResourceManager(options: ResourceManagerOptions = {}): Res
 		setFileLoadingStatus,
 		setFileMetadata,
 		cleanupFileResources,
-		// Legacy aliases for backward compatibility with tests
-		registerPaneForFile: registerTabForFile,
-		unregisterPaneFromFile: unregisterTabFromFile,
-		getPaneCountForFile: getTabCountForFile,
-	};
+	}
 }
 
-export type { TreeSitterCapture, BracketInfo, FoldRange, TreeSitterError };
+export type { TreeSitterCapture, BracketInfo, FoldRange, TreeSitterError }

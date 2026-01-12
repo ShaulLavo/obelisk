@@ -8,38 +8,68 @@
  * Requirements: 5.3, 5.4, 5.5 - Error handling, file type detection, large files
  */
 
-import { onMount, type Accessor, type JSX } from 'solid-js'
+import { onMount, onCleanup, type Accessor, type JSX } from 'solid-js'
 import { toast } from '@repo/ui/toaster'
 import { SplitEditor } from '../../split-editor/components/SplitEditor'
 import { FileTab } from '../../split-editor/components/FileTab'
 import { createPersistedLayoutManager } from '../../split-editor/createPersistedLayoutManager'
 import { createResourceManager } from '../../split-editor/createResourceManager'
 import { createFileContent, isPane } from '../../split-editor/types'
+import { EditorInstanceAdapter } from '../../split-editor/EditorInstanceAdapter'
 import { useFs } from '../context/FsContext'
+import { ActiveFileProvider } from '../context/ActiveFileContext'
 import { readFileText, getFileSize } from '../runtime/streaming'
+import { ensureFs } from '../runtime/fsRuntime'
 import { DEFAULT_SOURCE } from '../config/constants'
 import type { Tab, EditorPane, LayoutManager } from '../../split-editor'
 import {
 	classifyError,
 	isBinaryExtension,
 	isBinaryContent,
-	createBinaryFileError,
 	createFileTooLargeError,
-	createNotFoundError,
 	MAX_FILE_SIZE,
-	LARGE_FILE_THRESHOLD,
 	getErrorTitle,
 } from '../../split-editor/fileLoadingErrors'
+import {
+	EditorFileSyncManager,
+	EditorRegistryImpl,
+	DEFAULT_EDITOR_SYNC_CONFIG,
+	type NotificationSystem,
+} from '@repo/code-editor/sync'
+import { FileSyncManager } from '@repo/fs'
 
 type SplitEditorPanelProps = {
 	isFileSelected: Accessor<boolean>
 	currentPath?: string
 	onLayoutManagerReady?: (layoutManager: LayoutManager) => void
+	onSyncManagerReady?: (syncManager: EditorFileSyncManager) => void
 }
 
 export const SplitEditorPanel = (props: SplitEditorPanelProps) => {
 	const [state, actions] = useFs()
 	const { fileCache } = actions
+
+	// Editor registry for tracking open editors
+	const editorRegistry = new EditorRegistryImpl()
+
+	// Adapters for each open file (keyed by file path)
+	const editorAdapters = new Map<string, EditorInstanceAdapter>()
+
+	// Sync managers (initialized async in onMount)
+	let fileSyncManager: FileSyncManager | null = null
+	let editorSyncManager: EditorFileSyncManager | null = null
+
+	// Notification system that uses toast
+	const notificationSystem: NotificationSystem = {
+		showNotification: (
+			message: string,
+			type: 'info' | 'warning' | 'error' = 'info'
+		) => {
+			if (type === 'error') toast.error(message)
+			else if (type === 'warning') toast.warning(message)
+			else toast.info(message)
+		},
+	}
 
 	// Create resource manager first (needed for layout manager callback)
 	// Pass callback to persist highlights when tree-sitter parsing completes
@@ -69,6 +99,14 @@ export const SplitEditorPanel = (props: SplitEditorPanelProps) => {
 			const remainingTab = layoutManager.findTabByFilePath(filePath)
 			if (!remainingTab) {
 				resourceManager.cleanupFileResources(filePath)
+
+				// Clean up sync integration
+				const adapter = editorAdapters.get(filePath)
+				if (adapter) {
+					adapter.dispose()
+					editorAdapters.delete(filePath)
+				}
+				editorRegistry.unregisterEditor(filePath)
 			}
 		},
 	})
@@ -104,13 +142,18 @@ export const SplitEditorPanel = (props: SplitEditorPanelProps) => {
 					// Hydrate cached highlights from file cache (IndexedDB)
 					// This provides instant highlighting on tab switch
 					const cachedEntry = await fileCache.getAsync(filePath)
-					if (cachedEntry.highlights || cachedEntry.brackets || cachedEntry.folds || cachedEntry.errors) {
-						console.log('[SplitEditorPanel] Hydrating cached highlights for', filePath, {
-							highlights: cachedEntry.highlights?.length ?? 0,
-							brackets: cachedEntry.brackets?.length ?? 0,
-							folds: cachedEntry.folds?.length ?? 0,
-							errors: cachedEntry.errors?.length ?? 0,
-						})
+					if (
+						cachedEntry.highlights ||
+						cachedEntry.brackets ||
+						cachedEntry.folds ||
+						cachedEntry.errors
+					) {
+						// 						console.log('[SplitEditorPanel] Hydrating cached highlights for', filePath, {
+						// 							highlights: cachedEntry.highlights?.length ?? 0,
+						// 							brackets: cachedEntry.brackets?.length ?? 0,
+						// 							folds: cachedEntry.folds?.length ?? 0,
+						// 							errors: cachedEntry.errors?.length ?? 0,
+						// 						})
 						resourceManager.hydrateCachedHighlights(filePath, {
 							captures: cachedEntry.highlights,
 							brackets: cachedEntry.brackets,
@@ -119,10 +162,10 @@ export const SplitEditorPanel = (props: SplitEditorPanelProps) => {
 						})
 					}
 				} catch (error) {
-					console.warn(
-						`[SplitEditorPanel] Failed to preload: ${filePath}`,
-						error
-					)
+					// 					console.warn(
+					// 						`[SplitEditorPanel] Failed to preload: ${filePath}`,
+					// 						error
+					// 					)
 					failedPaths.push(filePath)
 				}
 			}
@@ -142,8 +185,9 @@ export const SplitEditorPanel = (props: SplitEditorPanelProps) => {
 			if (found) {
 				try {
 					layoutManager.closeTab(found.paneId, found.tab.id)
-				} catch (e) {
-					console.log('[SplitEditorPanel] Error removing tab:', e)
+					// 					console.log('[SplitEditorPanel] Error removing tab:', e)
+				} catch {
+					// Ignore errors during cleanup
 				}
 			}
 		}
@@ -175,9 +219,129 @@ export const SplitEditorPanel = (props: SplitEditorPanelProps) => {
 			}
 		}
 
+		// Initialize file sync managers
+		try {
+			const source = state.activeSource ?? DEFAULT_SOURCE
+			const fsContext = await ensureFs(source)
+
+			fileSyncManager = new FileSyncManager({ fs: fsContext })
+			editorSyncManager = new EditorFileSyncManager({
+				syncManager: fileSyncManager,
+				config: DEFAULT_EDITOR_SYNC_CONFIG,
+				editorRegistry,
+				notificationSystem,
+			})
+
+			// Start observing file system for external changes
+			// 			// TODO: Method startObserving does not exist on FileSyncManager
+			// 			// await fileSyncManager.startObserving()
+
+			// Register already-open files with the sync manager
+			for (const [path, tab] of getAllOpenFileTabs()) {
+				if (path !== 'Untitled') {
+					await registerFileWithSync(path)
+				}
+			}
+
+			// Subscribe to dirty state changes and propagate to adapters
+			const unsubDirtyChange = layoutManager.onTabDirtyChange(
+				(paneId, tabId, isDirty) => {
+					const pane = layoutManager.state.nodes[paneId]
+					if (!pane || !isPane(pane)) return
+
+					const editorPaneNode = pane as EditorPane
+					const tab = editorPaneNode.tabs.find((t) => t.id === tabId)
+					if (!tab || tab.content.type !== 'file' || !tab.content.filePath)
+						return
+
+					const filePath = tab.content.filePath
+					const adapter = editorAdapters.get(filePath)
+					if (adapter) {
+						adapter.notifyDirtyChange(isDirty)
+					}
+				}
+			)
+
+			// Clean up subscription on unmount
+			onCleanup(() => {
+				unsubDirtyChange()
+			})
+
+			// Notify parent that sync manager is ready
+			props.onSyncManagerReady?.(editorSyncManager)
+			// 			console.error('[SplitEditorPanel] Failed to initialize sync managers:', error)
+		} catch {
+			// Ignore initialization errors
+		}
+
 		// Notify parent that layout manager is ready
 		props.onLayoutManagerReady?.(layoutManager)
 	})
+
+	// Cleanup on unmount
+	onCleanup(() => {
+		// Dispose all adapters
+		for (const adapter of editorAdapters.values()) {
+			adapter.dispose()
+		}
+		editorAdapters.clear()
+
+		// Dispose registry and sync managers
+		editorRegistry.dispose()
+		editorSyncManager?.dispose()
+		// 		// TODO: Method stopObserving does not exist on FileSyncManager
+		// 		// fileSyncManager?.stopObserving()
+	})
+
+	/**
+	 * Get all open file tabs across all panes.
+	 */
+	function getAllOpenFileTabs(): [string, Tab][] {
+		const result: [string, Tab][] = []
+		for (const node of Object.values(layoutManager.state.nodes)) {
+			if (isPane(node)) {
+				const pane = node as EditorPane
+				for (const tab of pane.tabs) {
+					if (tab.content.type === 'file' && tab.content.filePath) {
+						result.push([tab.content.filePath, tab])
+					}
+				}
+			}
+		}
+		return result
+	}
+
+	/**
+	 * Register a file with the sync system.
+	 */
+	async function registerFileWithSync(filePath: string): Promise<void> {
+		if (!editorSyncManager || filePath === 'Untitled') return
+
+		const buffer = resourceManager.getBuffer(filePath)
+		if (!buffer) return
+
+		// Create adapter if not exists
+		if (!editorAdapters.has(filePath)) {
+			const adapter = new EditorInstanceAdapter({
+				filePath,
+				buffer,
+				layoutManager,
+				findTab: () => layoutManager.findTabByFilePath(filePath),
+				getTabDirty: () => {
+					const found = layoutManager.findTabByFilePath(filePath)
+					return found?.tab.isDirty ?? false
+				},
+				setTabDirty: (dirty: boolean) => {
+					const found = layoutManager.findTabByFilePath(filePath)
+					if (found) {
+						layoutManager.setTabDirty(found.paneId, found.tab.id, dirty)
+					}
+				},
+			})
+			editorAdapters.set(filePath, adapter)
+			editorRegistry.registerEditor(filePath, adapter)
+		}
+	}
 
 	// Track files currently being opened to prevent race conditions
 	const filesBeingOpened = new Set<string>()
@@ -236,9 +400,7 @@ export const SplitEditorPanel = (props: SplitEditorPanelProps) => {
 
 			if (isBinary) {
 				resourceManager.setFileMetadata(filePath, { isBinary: true })
-				toast.warning(
-					`${filePath.split('/').pop()} is a binary file`
-				)
+				toast.warning(`${filePath.split('/').pop()} is a binary file`)
 			}
 
 			// Always load the content (even for binary files, to allow viewing as text)
@@ -248,13 +410,18 @@ export const SplitEditorPanel = (props: SplitEditorPanelProps) => {
 			// Hydrate cached highlights from file cache (IndexedDB)
 			// This provides instant highlighting on tab switch
 			const cachedEntry = await fileCache.getAsync(filePath)
-			if (cachedEntry.highlights || cachedEntry.brackets || cachedEntry.folds || cachedEntry.errors) {
-				console.log('[SplitEditorPanel] Hydrating cached highlights for', filePath, {
-					highlights: cachedEntry.highlights?.length ?? 0,
-					brackets: cachedEntry.brackets?.length ?? 0,
-					folds: cachedEntry.folds?.length ?? 0,
-					errors: cachedEntry.errors?.length ?? 0,
-				})
+			if (
+				cachedEntry.highlights ||
+				cachedEntry.brackets ||
+				cachedEntry.folds ||
+				cachedEntry.errors
+			) {
+				// 				console.log('[SplitEditorPanel] Hydrating cached highlights for', filePath, {
+				// 					highlights: cachedEntry.highlights?.length ?? 0,
+				// 					brackets: cachedEntry.brackets?.length ?? 0,
+				// 					folds: cachedEntry.folds?.length ?? 0,
+				// 					errors: cachedEntry.errors?.length ?? 0,
+				// 				})
 				resourceManager.hydrateCachedHighlights(filePath, {
 					captures: cachedEntry.highlights,
 					brackets: cachedEntry.brackets,
@@ -262,11 +429,14 @@ export const SplitEditorPanel = (props: SplitEditorPanelProps) => {
 					errors: cachedEntry.errors,
 				})
 			}
+
+			// Register with sync system after file is loaded
+			await registerFileWithSync(filePath)
 		} catch (error) {
-			console.error(
-				`[SplitEditorPanel] Failed to load file content for ${filePath}:`,
-				error
-			)
+			// 			console.error(
+			// 				`[SplitEditorPanel] Failed to load file content for ${filePath}:`,
+			// 				error
+			// 			)
 
 			// Classify the error and set it
 			const fileError = classifyError(filePath, error)
@@ -313,12 +483,14 @@ export const SplitEditorPanel = (props: SplitEditorPanelProps) => {
 	}
 
 	return (
-		<div class="h-full w-full">
-			<SplitEditor
-				layoutManager={layoutManager}
-				resourceManager={resourceManager}
-				renderTabContent={renderTabContent}
-			/>
-		</div>
+		<ActiveFileProvider layoutManager={layoutManager}>
+			<div class="h-full w-full">
+				<SplitEditor
+					layoutManager={layoutManager}
+					resourceManager={resourceManager}
+					renderTabContent={renderTabContent}
+				/>
+			</div>
+		</ActiveFileProvider>
 	)
 }

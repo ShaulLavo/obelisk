@@ -50,22 +50,22 @@ export interface FileTabProps {
  * FileTab - Renders file content with shared resources and independent state
  */
 export function FileTab(props: FileTabProps) {
-	console.log('[FileTab] component created', {
-		tabId: props.tab.id,
-		filePath: props.filePath,
-		scrollTop: props.tab.state.scrollTop,
-		scrollLeft: props.tab.state.scrollLeft,
-	})
+	// 	console.log('[FileTab] component created', {
+	// 		tabId: props.tab.id,
+	// 		filePath: props.filePath,
+	// 		scrollTop: props.tab.state.scrollTop,
+	// 		scrollLeft: props.tab.state.scrollLeft,
+	// 	})
 
 	const layoutManager = useLayoutManager()
 	const resourceManager = useResourceManager()
 	const focus = useFocusManager()
 
 	onMount(() => {
-		console.log('[FileTab] onMount', {
-			tabId: props.tab.id,
-			filePath: props.filePath,
-		})
+		// 		console.log('[FileTab] onMount', {
+		// 			tabId: props.tab.id,
+		// 			filePath: props.filePath,
+		// 		})
 	})
 
 	const scrollSyncCoordinator = createScrollSyncCoordinator(layoutManager)
@@ -92,11 +92,11 @@ export function FileTab(props: FileTabProps) {
 
 	const buffer = createMemo(() => {
 		const buf = resourceManager.getBuffer(props.filePath)
-		console.log('[FileTab] buffer memo', {
-			filePath: props.filePath,
-			hasBuffer: !!buf,
-			contentLength: buf?.content()?.length,
-		})
+		// 		console.log('[FileTab] buffer memo', {
+		// 			filePath: props.filePath,
+		// 			hasBuffer: !!buf,
+		// 			contentLength: buf?.content()?.length,
+		// 		})
 		return buf
 	})
 
@@ -133,14 +133,14 @@ export function FileTab(props: FileTabProps) {
 	const document = createMemo(() => {
 		const sharedBuffer = buffer()
 
-		console.log('[FileTab] document memo', {
-			filePath: props.filePath,
-			hasSharedBuffer: !!sharedBuffer,
-			contentLength: sharedBuffer?.content()?.length,
-		})
+		// 		console.log('[FileTab] document memo', {
+		// 			filePath: props.filePath,
+		// 			hasSharedBuffer: !!sharedBuffer,
+		// 			contentLength: sharedBuffer?.content()?.length,
+		// 		})
 
 		if (!sharedBuffer) {
-			console.log('[FileTab] document: NO BUFFER, returning empty doc')
+			// 			console.log('[FileTab] document: NO BUFFER, returning empty doc')
 			return {
 				filePath: () => props.filePath,
 				content: () => '',
@@ -184,7 +184,7 @@ export function FileTab(props: FileTabProps) {
 	})
 
 	const handleScrollPositionChange = (position: ScrollPosition) => {
-		console.log(`[FileTab] handleScrollPositionChange: lineIndex=${position.lineIndex}, scrollLeft=${position.scrollLeft}, tabId=${props.tab.id}`)
+		// 		console.log(`[FileTab] handleScrollPositionChange: lineIndex=${position.lineIndex}, scrollLeft=${position.scrollLeft}, tabId=${props.tab.id}`)
 		layoutManager.updateTabState(props.pane.id, props.tab.id, {
 			scrollTop: position.lineIndex,
 			scrollLeft: position.scrollLeft,
@@ -203,31 +203,38 @@ export function FileTab(props: FileTabProps) {
 		scrollSyncCoordinator.handleScroll(scrollEvent)
 	}
 
-	const initialScrollPosition = createMemo(
-		(): ScrollPosition => {
-			const pos = {
-				lineIndex: props.tab.state.scrollTop,
-				scrollLeft: props.tab.state.scrollLeft,
-			}
-			console.log(`[FileTab] initialScrollPosition: lineIndex=${pos.lineIndex}, scrollLeft=${pos.scrollLeft}, tabId=${props.tab.id}`)
-			return pos
+	const initialScrollPosition = createMemo((): ScrollPosition => {
+		const pos = {
+			lineIndex: props.tab.state.scrollTop,
+			scrollLeft: props.tab.state.scrollLeft,
 		}
-	)
+		// 			console.log(`[FileTab] initialScrollPosition: lineIndex=${pos.lineIndex}, scrollLeft=${pos.scrollLeft}, tabId=${props.tab.id}`)
+		return pos
+	})
 
 	const handleSave = () => {
 		layoutManager.setTabDirty(props.pane.id, props.tab.id, false)
 	}
 
 	// Get cached lineStarts for instant tab switching
+	// Depends on buffer content so it re-runs when content changes (e.g., external file reload)
 	const cachedLineStarts = createMemo(() => {
+		const buf = buffer()
+		// Access content to establish reactive dependency
+		// This ensures we re-fetch lineStarts after content is replaced
+		buf?.content()
+
 		const lineStarts = resourceManager.getLineStarts(props.filePath)
-		console.log('[FileTab] cachedLineStarts memo', {
-			filePath: props.filePath,
-			hasLineStarts: !!lineStarts,
-			lineCount: lineStarts?.length,
-		})
+		// 		console.log('[FileTab] cachedLineStarts memo', {
+		// 			filePath: props.filePath,
+		// 			hasLineStarts: !!lineStarts,
+		// 			lineCount: lineStarts?.length,
+		// 		})
 		return lineStarts
 	})
+
+	// Get contentVersion from buffer for external change detection
+	const contentVersion = createMemo(() => buffer()?.contentVersion() ?? 0)
 
 	const editorProps = createMemo((): EditorProps => {
 		const doc = document()
@@ -255,6 +262,7 @@ export function FileTab(props: FileTabProps) {
 			initialVisibleContent: () => undefined,
 			onCaptureVisibleContent: () => {},
 			precomputedLineStarts: cachedLineStarts,
+			contentVersion,
 		}
 	})
 
@@ -309,12 +317,18 @@ export function FileTab(props: FileTabProps) {
 			</Show>
 
 			<Show
-				when={status() !== 'loading' && status() !== 'error' && (!isBinary() || viewBinaryAsText())}
+				when={
+					status() !== 'loading' &&
+					status() !== 'error' &&
+					(!isBinary() || viewBinaryAsText())
+				}
 			>
 				<div class="flex h-full flex-col">
 					<Show when={isBinary() && viewBinaryAsText()}>
 						<div class="flex items-center justify-between bg-amber-500/10 px-3 py-1.5 text-xs text-amber-600 dark:text-amber-400">
-							<span>Viewing binary file as text (content may appear garbled)</span>
+							<span>
+								Viewing binary file as text (content may appear garbled)
+							</span>
 							<button
 								type="button"
 								class="rounded px-2 py-0.5 hover:bg-amber-500/20"

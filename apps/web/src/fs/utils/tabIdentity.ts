@@ -17,7 +17,6 @@ export const parseTabIdentity = (tabId: string): { filePath: string; viewMode: V
 	const lastPipeIndex = tabId.lastIndexOf('|')
 	
 	if (lastPipeIndex === -1) {
-		// Fallback for legacy tab IDs without view mode
 		return { filePath: tabId, viewMode: 'editor' }
 	}
 	

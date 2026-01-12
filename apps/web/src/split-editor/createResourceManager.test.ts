@@ -20,36 +20,36 @@ describe('Resource Manager Properties', () => {
 	const filePathArb = fc.stringMatching(/^[a-z][a-z0-9_-]*\.(ts|js|tsx|jsx|json|md)$/)
 
 	/**
-	 * Helper: Generate a valid pane ID (UUID-like)
+	 * Helper: Generate a valid tab ID (UUID-like)
 	 */
-	const paneIdArb = fc.uuid()
+	const tabIdArb = fc.uuid()
 
 	/**
 	 * Property 4: Resource Sharing Consistency
-	 * For any file open in multiple panes, all panes SHALL share the same tree-sitter worker
-	 * instance and syntax highlighting state, and edits in one pane SHALL be reflected in
-	 * all other panes showing the same file.
+	 * For any file open in multiple tabs, all tabs SHALL share the same tree-sitter worker
+	 * instance and syntax highlighting state, and edits in one tab SHALL be reflected in
+	 * all other tabs showing the same file.
 	 * **Validates: Requirements 2.1, 2.2, 2.5**
 	 */
-	it('property: resource sharing consistency across multiple panes', () => {
+	it('property: resource sharing consistency across multiple tabs', () => {
 		fc.assert(
 			fc.property(
 				fc.record({
 					filePath: filePathArb,
-					paneIds: fc.array(paneIdArb, { minLength: 2, maxLength: 5 }),
+					tabIds: fc.array(tabIdArb, { minLength: 2, maxLength: 5 }),
 				}),
 				(config) => {
 					// Reset resource manager
 					resourceManager = createResourceManager()
 
-					const { filePath, paneIds } = config
+					const { filePath, tabIds } = config
 
-					// Register all panes for the same file
-					for (const paneId of paneIds) {
-						resourceManager.registerPaneForFile(paneId, filePath)
+					// Register all tabs for the same file
+					for (const tabId of tabIds) {
+						resourceManager.registerTabForFile(tabId, filePath)
 					}
 
-					// Verify all panes share the same buffer instance
+					// Verify all tabs share the same buffer instance
 					const buffer1 = resourceManager.getBuffer(filePath)
 					expect(buffer1).toBeDefined()
 					if (!buffer1) return
@@ -58,7 +58,7 @@ describe('Resource Manager Properties', () => {
 					const buffer2 = resourceManager.getBuffer(filePath)
 					expect(buffer2).toBe(buffer1)
 
-					// Verify all panes share the same highlight state
+					// Verify all tabs share the same highlight state
 					const highlights1 = resourceManager.getHighlightState(filePath)
 					expect(highlights1).toBeDefined()
 					if (!highlights1) return
@@ -66,8 +66,8 @@ describe('Resource Manager Properties', () => {
 					const highlights2 = resourceManager.getHighlightState(filePath)
 					expect(highlights2).toBe(highlights1)
 
-					// Verify pane count is correct
-					expect(resourceManager.getPaneCountForFile(filePath)).toBe(paneIds.length)
+					// Verify tab count is correct
+					expect(resourceManager.getTabCountForFile(filePath)).toBe(tabIds.length)
 
 					// Verify file is tracked
 					expect(resourceManager.hasResourcesForFile(filePath)).toBe(true)
@@ -79,15 +79,15 @@ describe('Resource Manager Properties', () => {
 	})
 
 	/**
-	 * Property 4 (continued): Edits in one pane are reflected in all panes
+	 * Property 4 (continued): Edits in one tab are reflected in all tabs
 	 * **Validates: Requirements 2.5**
 	 */
-	it('property: edits are coordinated across panes showing same file', () => {
+	it('property: edits are coordinated across tabs showing same file', () => {
 		fc.assert(
 			fc.property(
 				fc.record({
 					filePath: filePathArb,
-					paneIds: fc.array(paneIdArb, { minLength: 2, maxLength: 4 }),
+					tabIds: fc.array(tabIdArb, { minLength: 2, maxLength: 4 }),
 					initialContent: fc.string({ minLength: 0, maxLength: 100 }),
 					insertText: fc.string({ minLength: 1, maxLength: 20 }),
 				}),
@@ -95,11 +95,11 @@ describe('Resource Manager Properties', () => {
 					// Reset resource manager
 					resourceManager = createResourceManager()
 
-					const { filePath, paneIds, initialContent, insertText } = config
+					const { filePath, tabIds, initialContent, insertText } = config
 
-					// Register all panes
-					for (const paneId of paneIds) {
-						resourceManager.registerPaneForFile(paneId, filePath)
+					// Register all tabs
+					for (const tabId of tabIds) {
+						resourceManager.registerTabForFile(tabId, filePath)
 					}
 
 					const buffer = resourceManager.getBuffer(filePath)
@@ -155,18 +155,18 @@ describe('Resource Manager Properties', () => {
 				fc.record({
 					filePath1: filePathArb,
 					filePath2: filePathArb,
-					paneId1: paneIdArb,
-					paneId2: paneIdArb,
+					tabId1: tabIdArb,
+					tabId2: tabIdArb,
 				}).filter((c) => c.filePath1 !== c.filePath2),
 				(config) => {
 					// Reset resource manager
 					resourceManager = createResourceManager()
 
-					const { filePath1, filePath2, paneId1, paneId2 } = config
+					const { filePath1, filePath2, tabId1, tabId2 } = config
 
-					// Register panes for different files
-					resourceManager.registerPaneForFile(paneId1, filePath1)
-					resourceManager.registerPaneForFile(paneId2, filePath2)
+					// Register tabs for different files
+					resourceManager.registerTabForFile(tabId1, filePath1)
+					resourceManager.registerTabForFile(tabId2, filePath2)
 
 					// Verify separate buffers
 					const buffer1 = resourceManager.getBuffer(filePath1)
@@ -196,7 +196,7 @@ describe('Resource Manager Properties', () => {
 
 	/**
 	 * Property 5: Resource Cleanup
-	 * For any file, when the last pane showing that file is closed, the associated
+	 * For any file, when the last tab showing that file is closed, the associated
 	 * tree-sitter worker and syntax highlighting state SHALL be cleaned up.
 	 * **Validates: Requirements 2.4**
 	 */
@@ -205,36 +205,36 @@ describe('Resource Manager Properties', () => {
 			fc.property(
 				fc.record({
 					filePath: filePathArb,
-					paneIds: fc.array(paneIdArb, { minLength: 1, maxLength: 5 }),
+					tabIds: fc.array(tabIdArb, { minLength: 1, maxLength: 5 }),
 				}),
 				(config) => {
 					// Reset resource manager
 					resourceManager = createResourceManager()
 
-					const { filePath, paneIds } = config
+					const { filePath, tabIds } = config
 
-					// Register all panes
-					for (const paneId of paneIds) {
-						resourceManager.registerPaneForFile(paneId, filePath)
+					// Register all tabs
+					for (const tabId of tabIds) {
+						resourceManager.registerTabForFile(tabId, filePath)
 					}
 
 					// Verify resources exist
 					expect(resourceManager.hasResourcesForFile(filePath)).toBe(true)
-					expect(resourceManager.getPaneCountForFile(filePath)).toBe(paneIds.length)
+					expect(resourceManager.getTabCountForFile(filePath)).toBe(tabIds.length)
 
-					// Unregister panes one by one - resources should persist
-					for (let i = 0; i < paneIds.length; i++) {
-						const paneId = paneIds[i]
-						if (!paneId) continue
+					// Unregister tabs one by one - resources should persist
+					for (let i = 0; i < tabIds.length; i++) {
+						const tabId = tabIds[i]
+						if (!tabId) continue
 
-						resourceManager.unregisterPaneFromFile(paneId, filePath)
+						resourceManager.unregisterTabFromFile(tabId, filePath)
 
-						const remainingPanes = paneIds.length - i - 1
+						const remainingPanes = tabIds.length - i - 1
 
-						// Resources should still exist even after all panes unregister
+						// Resources should still exist even after all tabs unregister
 						// (to prevent race conditions during tab switching)
 						expect(resourceManager.hasResourcesForFile(filePath)).toBe(true)
-						expect(resourceManager.getPaneCountForFile(filePath)).toBe(remainingPanes)
+						expect(resourceManager.getTabCountForFile(filePath)).toBe(remainingPanes)
 					}
 
 					// Explicitly cleanup resources
@@ -242,7 +242,7 @@ describe('Resource Manager Properties', () => {
 
 					// Now resources should be cleaned up
 					expect(resourceManager.hasResourcesForFile(filePath)).toBe(false)
-					expect(resourceManager.getPaneCountForFile(filePath)).toBe(0)
+					expect(resourceManager.getTabCountForFile(filePath)).toBe(0)
 					expect(resourceManager.getBuffer(filePath)).toBeUndefined()
 					expect(resourceManager.getHighlightState(filePath)).toBeUndefined()
 					expect(resourceManager.getTrackedFiles()).not.toContain(filePath)
@@ -256,29 +256,29 @@ describe('Resource Manager Properties', () => {
 	 * Property 5 (continued): Cleanup is idempotent
 	 * **Validates: Requirements 2.4**
 	 */
-	it('property: unregistering non-existent pane is safe', () => {
+	it('property: unregistering non-existent tab is safe', () => {
 		fc.assert(
 			fc.property(
 				fc.record({
 					filePath: filePathArb,
-					paneId: paneIdArb,
-					nonExistentPaneId: paneIdArb,
-				}).filter((c) => c.paneId !== c.nonExistentPaneId),
+					tabId: tabIdArb,
+					nonExistentPaneId: tabIdArb,
+				}).filter((c) => c.tabId !== c.nonExistentPaneId),
 				(config) => {
 					// Reset resource manager
 					resourceManager = createResourceManager()
 
-					const { filePath, paneId, nonExistentPaneId } = config
+					const { filePath, tabId, nonExistentPaneId } = config
 
-					// Register one pane
-					resourceManager.registerPaneForFile(paneId, filePath)
-					expect(resourceManager.getPaneCountForFile(filePath)).toBe(1)
+					// Register one tab
+					resourceManager.registerTabForFile(tabId, filePath)
+					expect(resourceManager.getTabCountForFile(filePath)).toBe(1)
 
-					// Unregister a non-existent pane - should be safe
-					resourceManager.unregisterPaneFromFile(nonExistentPaneId, filePath)
+					// Unregister a non-existent tab - should be safe
+					resourceManager.unregisterTabFromFile(nonExistentPaneId, filePath)
 
-					// Original pane should still be registered
-					expect(resourceManager.getPaneCountForFile(filePath)).toBe(1)
+					// Original tab should still be registered
+					expect(resourceManager.getTabCountForFile(filePath)).toBe(1)
 					expect(resourceManager.hasResourcesForFile(filePath)).toBe(true)
 				}
 			),
@@ -295,17 +295,17 @@ describe('Resource Manager Properties', () => {
 			fc.property(
 				fc.record({
 					filePath: filePathArb,
-					paneId: paneIdArb,
+					tabId: tabIdArb,
 				}),
 				(config) => {
 					// Reset resource manager
 					resourceManager = createResourceManager()
 
-					const { filePath, paneId } = config
+					const { filePath, tabId } = config
 
 					// Unregister from a file that was never registered - should be safe
 					expect(() => {
-						resourceManager.unregisterPaneFromFile(paneId, filePath)
+						resourceManager.unregisterTabFromFile(tabId, filePath)
 					}).not.toThrow()
 
 					// No resources should exist
@@ -327,7 +327,7 @@ describe('Resource Manager Properties', () => {
 					files: fc.array(
 						fc.record({
 							filePath: filePathArb,
-							paneIds: fc.array(paneIdArb, { minLength: 1, maxLength: 3 }),
+							tabIds: fc.array(tabIdArb, { minLength: 1, maxLength: 3 }),
 						}),
 						{ minLength: 1, maxLength: 5 }
 					),
@@ -336,10 +336,10 @@ describe('Resource Manager Properties', () => {
 					// Reset resource manager
 					resourceManager = createResourceManager()
 
-					// Register multiple files with multiple panes
+					// Register multiple files with multiple tabs
 					for (const file of config.files) {
-						for (const paneId of file.paneIds) {
-							resourceManager.registerPaneForFile(paneId, file.filePath)
+						for (const tabId of file.tabIds) {
+							resourceManager.registerTabForFile(tabId, file.filePath)
 						}
 					}
 

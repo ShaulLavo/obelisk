@@ -13,7 +13,6 @@ import {
 	createMemo,
 	createSignal,
 	For,
-	Index,
 	onMount,
 	Show,
 	type JSX,
@@ -61,11 +60,11 @@ function PanePortal(props: PanePortalProps) {
 	const activeTabId = createMemo(() => {
 		const p = pane()
 		const tabId = p?.activeTabId ?? null
-		console.log('[PanePortal] activeTabId memo', {
-			paneId: props.paneId,
-			activeTabId: tabId,
-			tabCount: p?.tabs.length,
-		})
+		// 		console.log('[PanePortal] activeTabId memo', {
+		// 			paneId: props.paneId,
+		// 			activeTabId: tabId,
+		// 			tabCount: p?.tabs.length,
+		// 		})
 		return tabId
 	})
 
@@ -81,12 +80,12 @@ function PanePortal(props: PanePortalProps) {
 		const tabList = tabs()
 		if (!tabId) return null
 		const tab = tabList.find((t) => t.id === tabId) ?? null
-		console.log('[PanePortal] activeTab memo', {
-			paneId: props.paneId,
-			tabId,
-			hasTab: !!tab,
-			filePath: tab?.content.type === 'file' ? tab.content.filePath : null,
-		})
+		// 		console.log('[PanePortal] activeTab memo', {
+		// 			paneId: props.paneId,
+		// 			tabId,
+		// 			hasTab: !!tab,
+		// 			filePath: tab?.content.type === 'file' ? tab.content.filePath : null,
+		// 		})
 		return tab
 	})
 
@@ -109,8 +108,8 @@ function PanePortal(props: PanePortalProps) {
 
 	return (
 		<Show when={target() && pane()}>
-			{(_) => {
-				const currentPane = pane()!
+			{(paneAccessor) => {
+				const currentPane = paneAccessor()
 				return (
 					<Portal mount={target()!}>
 						<div
