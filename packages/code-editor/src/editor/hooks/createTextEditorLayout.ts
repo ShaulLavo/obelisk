@@ -150,7 +150,16 @@ export function createTextEditorLayout(
 ): TextEditorLayout {
 	const cursor = useCursor()
 
-	const hasLineEntries = createMemo(() => cursor.lines.lineCount() > 0)
+	const hasLineEntries = createMemo(() => {
+		const lineCount = cursor.lines.lineCount()
+		const hasEntries = lineCount > 0
+		console.log('[createTextEditorLayout] hasLineEntries', {
+			lineCount,
+			hasEntries,
+			filePath: options.filePath?.(),
+		})
+		return hasEntries
+	})
 
 	const activeLineIndex = createMemo<number | null>(() => {
 		if (!cursor.lines.lineCount()) return null
@@ -197,13 +206,25 @@ export function createTextEditorLayout(
 	const getLineId = (displayIndex: number) =>
 		cursor.lines.getLineId(foldMapping.displayToLine(displayIndex))
 
+	const virtualizerEnabled = createMemo(() => {
+		const isSelected = options.isFileSelected()
+		const hasEntries = hasLineEntries()
+		const hasScroll = Boolean(options.scrollElement())
+		const enabled = isSelected && hasEntries && hasScroll
+		console.log('[createTextEditorLayout] virtualizerEnabled', {
+			isSelected,
+			hasEntries,
+			hasScroll,
+			enabled,
+			filePath: options.filePath?.(),
+		})
+		return enabled
+	})
+
 	const rowVirtualizer = create2DVirtualizer({
 		// Use visible count from fold mapping instead of total line count
 		count: foldMapping.visibleCount,
-		enabled: () =>
-			options.isFileSelected() &&
-			hasLineEntries() &&
-			Boolean(options.scrollElement()),
+		enabled: virtualizerEnabled,
 		scrollElement: () => options.scrollElement(),
 		rowHeight: lineHeight,
 		charWidth,
@@ -218,7 +239,9 @@ export function createTextEditorLayout(
 	const totalSize = createMemo(() => {
 		const baseSize = rowVirtualizer.totalSize()
 		const padding = rowVirtualizer.viewportHeight() * 0.5
-		return baseSize + padding
+		const total = baseSize + padding
+		console.log(`[createTextEditorLayout] totalSize: baseSize=${baseSize}, padding=${padding}, total=${total}`)
+		return total
 	})
 
 	const [maxColumnsSeen, setMaxColumnsSeen] = createSignal(0)
@@ -494,6 +517,7 @@ export function createTextEditorLayout(
 
 	const scrollToLine = (lineIndex: number): void => {
 		const displayIndex = foldMapping.lineToDisplay(lineIndex)
+		console.log(`[createTextEditorLayout] scrollToLine: lineIndex=${lineIndex}, displayIndex=${displayIndex}, willScroll=${displayIndex >= 0}`)
 		if (displayIndex >= 0) {
 			rowVirtualizer.scrollToIndex(displayIndex, { align: 'start' })
 		}

@@ -144,6 +144,8 @@ export type EditorProps = {
 	initialVisibleContent?: Accessor<VisibleContentSnapshot | undefined>
 	/** Called to capture visible content when switching away from this file */
 	onCaptureVisibleContent?: (snapshot: VisibleContentSnapshot) => void
+	/** Pre-computed line starts for instant tab switching (skip O(n) computation) */
+	precomputedLineStarts?: Accessor<number[] | undefined>
 }
 
 export type ScrollPosition = {

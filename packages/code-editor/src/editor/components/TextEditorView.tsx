@@ -348,13 +348,19 @@ export const TextEditorView = (props: EditorProps) => {
 		const initialPos = props.initialScrollPosition?.()
 		const lineCount = cursor.lines.lineCount()
 
-		if (!path || lineCount <= 1) return
+		console.log(`[TextEditorView] scroll restore effect: path=${path}, lineIndex=${initialPos?.lineIndex}, lineCount=${lineCount}, restoreAttemptedForPath=${restoreAttemptedForPath}`)
+
+		if (!path || lineCount <= 1) {
+			console.log(`[TextEditorView] scroll restore: early return (path=${path}, lineCount=${lineCount})`)
+			return
+		}
 
 		if (
 			initialPos &&
 			restoreAttemptedForPath !== path &&
 			initialPos.lineIndex < lineCount
 		) {
+			console.log(`[TextEditorView] scroll restore: scrolling to line ${initialPos.lineIndex}`)
 			restoreAttemptedForPath = path
 			layout.scrollToLine(initialPos.lineIndex)
 		}
@@ -363,12 +369,14 @@ export const TextEditorView = (props: EditorProps) => {
 	createEffect(() => {
 		const element = scrollElement()
 		const onScroll = props.onScrollPositionChange
+		console.log(`[TextEditorView] scroll listener effect: hasElement=${!!element}, hasOnScroll=${!!onScroll}`)
 		if (!element || !onScroll) return
 
 		const handleScroll = () => {
 			if (saveTimeoutId != null) clearTimeout(saveTimeoutId)
 			saveTimeoutId = setTimeout(() => {
 				const range = layout.visibleLineRange()
+				console.log(`[TextEditorView] handleScroll saving position: start=${range.start}, scrollLeft=${element.scrollLeft}`)
 				onScroll({
 					lineIndex: range.start,
 					scrollLeft: element.scrollLeft,
