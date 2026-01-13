@@ -7,6 +7,7 @@ import { Show, type ParentComponent } from 'solid-js'
 import { ThemedToaster } from './ThemedToaster'
 import { FocusProvider } from './focus/focusManager'
 import { FsProvider } from './fs/context/FsProvider'
+import { LayoutManagerProvider } from './fs/context/LayoutManagerContext'
 import { FontRegistryProvider } from './fonts'
 import { SettingsProvider } from './settings/SettingsProvider'
 import { SettingsEffects } from './settings/SettingsEffects'
@@ -33,6 +34,7 @@ export const Providers: ParentComponent = (props) => {
 							<FocusProvider>
 								<FontZoomProvider>
 									<FsProvider>
+									<LayoutManagerProvider>
 										<FontRegistryProvider>
 											<CommandPaletteProvider>
 												<ThemedToaster />
@@ -64,6 +66,7 @@ export const Providers: ParentComponent = (props) => {
 												</Show>
 											</CommandPaletteProvider>
 										</FontRegistryProvider>
+									</LayoutManagerProvider>
 									</FsProvider>
 								</FontZoomProvider>
 							</FocusProvider>

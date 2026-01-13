@@ -20,14 +20,10 @@ type FsMutationDeps = {
 	setExpanded: SetStoreFunction<Record<string, boolean>>
 	setSelectedPath: (value: string | undefined) => void
 	setSelectedFileSize: Setter<number | undefined>
-	setSelectedFileContent: Setter<string>
-	updateSelectedFilePieceTable: (
-		updater: (
-			current: PieceTableSnapshot | undefined
-		) => PieceTableSnapshot | undefined
-	) => void
+	setPieceTable: (path: string, snapshot?: PieceTableSnapshot) => void
 	setSaving: Setter<boolean>
 	setDirtyPath: (path: string, isDirty: boolean) => void
+	setSavedContent: (path: string, content: string) => void
 }
 
 const buildPath = (parentPath: string, name: string) =>
@@ -41,10 +37,10 @@ export const createFsMutations = ({
 	setExpanded,
 	setSelectedPath,
 	setSelectedFileSize,
-	setSelectedFileContent,
-	updateSelectedFilePieceTable,
+	setPieceTable,
 	setSaving,
 	setDirtyPath,
+	setSavedContent,
 	getState,
 }: FsMutationDeps) => {
 	const createDir = async (parentPath: string, name: string) => {
@@ -166,15 +162,10 @@ export const createFsMutations = ({
 		}
 	}
 
-	const saveFile = async (path?: string) => {
+	const saveFile = async (path: string) => {
 		const state = getState()
-		const filePath = path ?? state.lastKnownFilePath
+		const filePath = path
 		if (!filePath) return
-
-		if (path && path !== state.lastKnownFilePath) {
-			toast.error('Can only save the currently selected file')
-			return
-		}
 
 		const normalizedPath = createFilePath(filePath)
 
@@ -184,14 +175,16 @@ export const createFsMutations = ({
 			return
 		}
 
+		const pieceTable = state.pieceTables[normalizedPath]
+		if (!pieceTable) {
+			toast.error('No content to save')
+			return
+		}
+
 		setSaving(true)
 
 		try {
-			const pieceTable = state.pieceTables[normalizedPath]
-
-			const content = pieceTable
-				? getPieceTableText(pieceTable)
-				: state.selectedFileContent
+			const content = getPieceTableText(pieceTable)
 
 			const source = resolveSourceForPath(getActiveSource(), filePath)
 			const ctx = await ensureFs(source)
@@ -200,14 +193,13 @@ export const createFsMutations = ({
 			const newSnapshot = createPieceTableSnapshot(content)
 
 			batch(() => {
-				updateSelectedFilePieceTable(() => newSnapshot)
+				setPieceTable(filePath, newSnapshot)
 
 				if (filePath === state.selectedPath) {
 					setSelectedFileSize(new Blob([content]).size)
 				}
 
-				setSelectedFileContent(content)
-
+				setSavedContent(filePath, content)
 				setDirtyPath(filePath, false)
 			})
 

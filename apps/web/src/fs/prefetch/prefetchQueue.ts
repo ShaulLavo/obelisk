@@ -131,6 +131,7 @@ export class PrefetchQueue {
 		for (const path of loadedPaths) {
 			this.loadedDirPaths.add(path)
 		}
+
 		if (!this.cacheRestored) {
 			this.indexedFileCount = totalFileCount
 		}
@@ -245,12 +246,20 @@ export class PrefetchQueue {
 
 	private enqueueTargets(targets: readonly PrefetchTarget[]) {
 		let added = false
+		let skipped = 0
+		let alreadyInQueue = 0
 		for (const target of targets) {
 			if (!this.hasPrefetchBudget()) break
-			if (this.shouldSkipTarget(target)) continue
+			if (this.shouldSkipTarget(target)) {
+				skipped++
+				continue
+			}
 			const isDeferred = this.shouldDeferPath(target.path)
 			const queue = isDeferred ? this.deferredQueue : this.primaryQueue
-			if (queue.has(target.path)) continue
+			if (queue.has(target.path)) {
+				alreadyInQueue++
+				continue
+			}
 			queue.set(target.path, target)
 			if (!isDeferred) {
 				this.primaryPhaseComplete = false
@@ -532,7 +541,6 @@ export class PrefetchQueue {
 				? this.totalDurationMs / this.processedCount
 				: 0,
 		}
-
 		if (milestone) {
 			const milestonePayload: PrefetchStatusMilestone = {
 				processedCount: this.processedCount,
@@ -572,11 +580,15 @@ export class PrefetchQueue {
 	private logPhaseCompletion(_kind: PrefetchPriority) {}
 
 	async tryRestoreFromCache(rootChildren: string[]): Promise<boolean> {
-		if (this.cacheRestored) return false
+		if (this.cacheRestored) {
+			return false
+		}
 
 		try {
 			const cached = await loadPrefetchCache()
-			if (!cached) return false
+			if (!cached) {
+				return false
+			}
 
 			if (!cached.loadedDirFileCounts) {
 				await clearPrefetchCache()
@@ -594,10 +606,20 @@ export class PrefetchQueue {
 			const dirCount = Object.keys(cached.loadedDirFileCounts).length
 			const fileCount = cached.indexedFileCount
 
+			// Sanity check: if we have directories but no/few files, cache might be corrupt
+			if (dirCount > 0 && (!fileCount || fileCount === 0)) {
+				await clearPrefetchCache()
+				return false
+			}
+
+			// Sanity check: if file count is suspiciously low for the number of directories
+			if (dirCount > 50 && fileCount < dirCount / 2) {
+				await clearPrefetchCache()
+				return false
+			}
+
 			// Sanity check: if we have many directories but very few files, cache is corrupt
-			// Typical ratio is at least 1 file per directory on average
 			if (dirCount > 100 && fileCount < dirCount) {
-				console.warn('[PrefetchQueue] Cache appears corrupt, clearing', { dirCount, fileCount })
 				await clearPrefetchCache()
 				return false
 			}

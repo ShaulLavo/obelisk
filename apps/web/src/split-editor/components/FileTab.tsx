@@ -1,12 +1,8 @@
 /**
  * FileTab Component
  *
- * A tab component that renders file content using the shared Resource Manager.
- * Registers/unregisters with Resource Manager on mount/cleanup and uses
- * shared buffer for content while maintaining independent tab state.
- * Supports multiple view modes: editor, ui (settings).
- *
- * Requirements: 2.1, 2.5, 5.3, 5.4, 5.5, 8.1, 8.2, 8.4, View Mode Support
+ * Renders file content using FsState (piece tables, highlights, loading state, line starts).
+ * All state is managed in FsState - no separate ResourceManager needed.
  */
 
 import {
@@ -15,8 +11,6 @@ import {
 	createResource,
 	createSignal,
 	Match,
-	onCleanup,
-	onMount,
 	Show,
 	Switch,
 } from 'solid-js'
@@ -25,10 +19,12 @@ import { CursorMode } from '@repo/code-editor'
 import type {
 	EditorProps,
 	ScrollPosition,
-	DocumentIncrementalEdit,
 } from '@repo/code-editor'
 import { toast } from '@repo/ui/toaster'
-import { useLayoutManager, useResourceManager } from './SplitEditor'
+import { createFilePath } from '@repo/fs'
+import { getCachedPieceTableContent } from '@repo/utils'
+import { useLayoutManager } from './SplitEditor'
+import { useFs } from '~/fs/context/FsContext'
 import { useFocusManager } from '~/focus/focusManager'
 import { getTreeSitterWorker } from '~/treeSitter/workerClient'
 import { SettingsTab } from '~/settings/components/SettingsTab'
@@ -48,26 +44,12 @@ export interface FileTabProps {
 }
 
 /**
- * FileTab - Renders file content with shared resources and independent state
+ * FileTab - Renders file content from FsState with independent view state per tab
  */
 export function FileTab(props: FileTabProps) {
-	// 	console.log('[FileTab] component created', {
-	// 		tabId: props.tab.id,
-	// 		filePath: props.filePath,
-	// 		scrollTop: props.tab.state.scrollTop,
-	// 		scrollLeft: props.tab.state.scrollLeft,
-	// 	})
-
 	const layoutManager = useLayoutManager()
-	const resourceManager = useResourceManager()
+	const [state, actions] = useFs()
 	const focus = useFocusManager()
-
-	onMount(() => {
-		// 		console.log('[FileTab] onMount', {
-		// 			tabId: props.tab.id,
-		// 			filePath: props.filePath,
-		// 		})
-	})
 
 	const scrollSyncCoordinator = createScrollSyncCoordinator(layoutManager)
 
@@ -82,105 +64,39 @@ export function FileTab(props: FileTabProps) {
 		return getTreeSitterWorker()
 	})
 
-	// Register for file IMMEDIATELY (not in onMount) so buffer exists when memo runs
-	createEffect(() => {
-		resourceManager.registerTabForFile(props.tab.id, props.filePath)
+	// Normalized path for FsState lookups
+	const normalizedPath = createMemo(() => createFilePath(props.filePath))
 
-		onCleanup(() => {
-			resourceManager.unregisterTabFromFile(props.tab.id, props.filePath)
-		})
+	// Get piece table from FsState (single source of truth)
+	const pieceTable = () => state.pieceTables[normalizedPath()]
+
+	// Get highlights from FsState (accessors for Editor props)
+	const highlights = () => state.fileHighlights[normalizedPath()]
+	const folds = () => state.fileFolds[normalizedPath()]
+	const brackets = () => state.fileBrackets[normalizedPath()]
+	const errors = () => state.fileErrors[normalizedPath()]
+
+	// Get content from piece table
+	const content = createMemo(() => {
+		const pt = pieceTable()
+		if (!pt) return ''
+		return getCachedPieceTableContent(pt)
 	})
 
-	const buffer = createMemo(() => {
-		const buf = resourceManager.getBuffer(props.filePath)
-		// 		console.log('[FileTab] buffer memo', {
-		// 			filePath: props.filePath,
-		// 			hasBuffer: !!buf,
-		// 			contentLength: buf?.content()?.length,
-		// 		})
-		return buf
-	})
-
-	const highlightState = createMemo(() =>
-		resourceManager.getHighlightState(props.filePath)
-	)
-
-	const loadingState = createMemo(() =>
-		resourceManager.getLoadingState(props.filePath)
-	)
-
-	// Create reactive accessors for highlights
-	const highlights = createMemo(() => {
-		const state = highlightState()
-		if (!state) return undefined
-
-		return {
-			captures: state.captures,
-			folds: state.folds,
-			brackets: state.brackets,
-			errors: state.errors,
-		}
-	})
-
-	createEffect(() => {
-		const sharedBuffer = buffer()
-		if (!sharedBuffer) return
-
-		const unsubscribe = sharedBuffer.onEdit(() => {})
-		onCleanup(unsubscribe)
-	})
-
-	// Create document interface for the Editor
+	// Create document interface for the Editor using FsState
 	const document = createMemo(() => {
-		const sharedBuffer = buffer()
-
-		// 		console.log('[FileTab] document memo', {
-		// 			filePath: props.filePath,
-		// 			hasSharedBuffer: !!sharedBuffer,
-		// 			contentLength: sharedBuffer?.content()?.length,
-		// 		})
-
-		if (!sharedBuffer) {
-			// 			console.log('[FileTab] document: NO BUFFER, returning empty doc')
-			return {
-				filePath: () => props.filePath,
-				content: () => '',
-				pieceTable: () => undefined,
-				updatePieceTable: () => {},
-				isEditable: () => true,
-				applyIncrementalEdit: undefined,
-			}
-		}
+		const pt = pieceTable()
+		const contentValue = content()
 
 		return {
 			filePath: () => props.filePath,
-			content: sharedBuffer.content,
-			pieceTable: () => undefined,
-			updatePieceTable: () => {},
-			isEditable: () => true,
-			applyIncrementalEdit: (edit: DocumentIncrementalEdit) => {
-				const textEdit = {
-					startIndex: edit.startIndex,
-					oldEndIndex: edit.oldEndIndex,
-					newEndIndex: edit.newEndIndex,
-					startPosition: {
-						row: edit.startPosition.row,
-						column: edit.startPosition.column,
-					},
-					oldEndPosition: {
-						row: edit.oldEndPosition.row,
-						column: edit.oldEndPosition.column,
-					},
-					newEndPosition: {
-						row: edit.newEndPosition.row,
-						column: edit.newEndPosition.column,
-					},
-					insertedText: edit.insertedText,
-				}
-
-				void sharedBuffer.applyEdit(textEdit)
-				layoutManager.setTabDirty(props.pane.id, props.tab.id, true)
+			content: () => contentValue,
+			pieceTable: () => pt,
+			updatePieceTable: (updater: (current: typeof pt) => typeof pt | undefined) => {
+				actions.updatePieceTableForPath(props.filePath, updater)
 			},
+			isEditable: () => true,
+			applyIncrementalEdit: undefined,
 		}
 	})
 
@@ -250,28 +166,18 @@ export function FileTab(props: FileTabProps) {
 	}
 
 	// Get cached lineStarts for instant tab switching
-	// Depends on buffer content so it re-runs when content changes (e.g., external file reload)
 	const cachedLineStarts = createMemo(() => {
-		const buf = buffer()
 		// Access content to establish reactive dependency
-		// This ensures we re-fetch lineStarts after content is replaced
-		buf?.content()
-
-		const lineStarts = resourceManager.getLineStarts(props.filePath)
-		// 		console.log('[FileTab] cachedLineStarts memo', {
-		// 			filePath: props.filePath,
-		// 			hasLineStarts: !!lineStarts,
-		// 			lineCount: lineStarts?.length,
-		// 		})
-		return lineStarts
+		content()
+		return state.fileLineStarts[normalizedPath()]
 	})
 
-	// Get contentVersion from buffer for external change detection
-	const contentVersion = createMemo(() => buffer()?.contentVersion() ?? 0)
+	// TODO: Add externalLoadVersion counter to FsState that increments on file reload
+	// This would let Editor reset cursor/scroll when file is externally modified
+	const contentVersion = () => 0
 
 	const editorProps = createMemo((): EditorProps => {
 		const doc = document()
-		const highlightData = highlights()
 		const tsWorker = treeSitterWorker()
 
 		return {
@@ -284,10 +190,10 @@ export function FileTab(props: FileTabProps) {
 			tabSize: () => 4,
 			registerEditorArea: (resolver) => focus.registerArea('editor', resolver),
 			activeScopes: focus.activeScopes,
-			highlights: highlightData?.captures,
-			folds: highlightData?.folds,
-			brackets: highlightData?.brackets,
-			errors: highlightData?.errors,
+			highlights,
+			folds,
+			brackets,
+			errors,
 			treeSitterWorker: tsWorker ?? undefined,
 			onSave: handleSave,
 			initialScrollPosition: () => initialScrollPosition(),
@@ -307,23 +213,19 @@ export function FileTab(props: FileTabProps) {
 	// Must be an accessor function for reactivity in SolidJS
 	const viewMode = () => props.tab.viewMode ?? 'editor'
 
-	// Reactive accessors for loading state
-	const status = () => loadingState()?.status() ?? 'idle'
-	const error = () => loadingState()?.error() ?? null
-	const isBinary = () => loadingState()?.isBinary() ?? false
-	const progress = () => loadingState()?.progress() ?? 0
-	const fileSize = () => loadingState()?.fileSize() ?? null
-	const retryCount = () => loadingState()?.retryCount() ?? 0
+	// Reactive accessors for loading state from FsState
+	const status = () => state.fileLoadingStatus[normalizedPath()] ?? 'idle'
+	const loadingError = () => state.fileLoadingErrors[normalizedPath()] ?? null
+	const fileStats = () => state.fileStats[normalizedPath()]
+	const isBinary = () => fileStats()?.contentKind === 'binary'
+	// Note: File size isn't stored in ParseResult - BinaryFileIndicator handles undefined gracefully
 
 	// Handle retry for errors
 	const handleRetry = () => {
-		const state = loadingState()
-		if (state) {
-			state.incrementRetryCount()
-			state.setStatus('loading')
-			state.setError(null)
-			// Trigger reload - the parent should handle the actual file loading
-		}
+		// Reset error and set to loading
+		actions.setFileLoadingError(props.filePath, null)
+		actions.setFileLoadingStatus(props.filePath, 'loading')
+		// The parent component (SplitEditorPanel) should detect this and reload
 	}
 
 	return (
@@ -334,14 +236,14 @@ export function FileTab(props: FileTabProps) {
 			data-tab-id={props.tab.id}
 		>
 			<Show when={status() === 'loading'}>
-				<FileLoadingIndicator filePath={props.filePath} progress={progress()} />
+				<FileLoadingIndicator filePath={props.filePath} progress={0} />
 			</Show>
 
-			<Show when={status() === 'error' && error()}>
+			<Show when={status() === 'error' && loadingError()}>
 				<FileLoadingErrorDisplay
-					error={error()!}
+					error={loadingError()!}
 					filePath={props.filePath}
-					retryCount={retryCount()}
+					retryCount={0}
 					onRetry={handleRetry}
 				/>
 			</Show>
@@ -349,7 +251,6 @@ export function FileTab(props: FileTabProps) {
 			<Show when={isBinary() && status() !== 'error' && !viewBinaryAsText()}>
 				<BinaryFileIndicator
 					filePath={props.filePath}
-					fileSize={fileSize() ?? undefined}
 					onViewAsText={() => setViewBinaryAsText(true)}
 				/>
 			</Show>

@@ -1,5 +1,6 @@
 import { createMemo, Show } from 'solid-js'
 import { useFs } from '~/fs/context/FsContext'
+import { useActiveFilePath } from '~/fs/context/ActiveFileContext'
 import type { FsSource } from '~/fs/types'
 import { formatBytes } from '@repo/utils'
 import { useFocusManager, type FocusArea } from '~/focus/focusManager'
@@ -22,14 +23,16 @@ const FOCUS_LABELS: Record<FocusArea, string> = {
 export const StatusBar = () => {
 	const [state] = useFs()
 	const focus = useFocusManager()
+	const activeFilePath = useActiveFilePath()
 
-	const filePath = createMemo(() => state.selectedPath ?? 'No file selected')
+	const filePath = createMemo(() => activeFilePath() ?? 'No file selected')
 
 	const sizeLabel = createMemo(() => {
-		if (!state.selectedPath) return '--'
-		return state.selectedFileSize !== undefined
-			? formatBytes(state.selectedFileSize)
-			: 'calculating...'
+		const path = activeFilePath()
+		if (!path) return '--'
+		// File size is available during loading but not stored in ParseResult
+		// Could be added to FsState if needed
+		return '--'
 	})
 
 	const badgeClass = 'border-border/40 bg-muted text-muted-foreground'
@@ -37,7 +40,7 @@ export const StatusBar = () => {
 	const statusIndicator = createMemo(() => ({
 		label: state.loading
 			? 'Loading filesystem...'
-			: state.selectedPath
+			: activeFilePath()
 				? 'Ready'
 				: 'Idle',
 		class: badgeClass,

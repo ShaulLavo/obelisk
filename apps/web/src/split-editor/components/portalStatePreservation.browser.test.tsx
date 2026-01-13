@@ -16,7 +16,7 @@ import fc from 'fast-check'
 import { render, cleanup } from 'vitest-browser-solid'
 import { createMemo, onMount, onCleanup as solidOnCleanup } from 'solid-js'
 import { createLayoutManager } from '../createLayoutManager'
-import { createResourceManager } from '../createResourceManager'
+
 import { SplitEditor } from './SplitEditor'
 import type { EditorPane, Tab, SplitDirection } from '../types'
 
@@ -81,7 +81,6 @@ describe('Portal State Preservation (Property 10)', () => {
 
 	it('should not remount tab content when changing layout via split', async () => {
 		const layoutManager = createLayoutManager()
-		const resourceManager = createResourceManager()
 		layoutManager.initialize()
 
 		// Get the initial pane
@@ -95,7 +94,6 @@ describe('Portal State Preservation (Property 10)', () => {
 			<div style={{ width: '800px', height: '600px' }}>
 				<SplitEditor
 					layoutManager={layoutManager}
-					resourceManager={resourceManager}
 					renderTabContent={(tab, pane) => (
 						<TrackingFileContent tab={tab} pane={pane} />
 					)}
@@ -131,7 +129,6 @@ describe('Portal State Preservation (Property 10)', () => {
 
 	it('should not remount tab content when resizing panes', async () => {
 		const layoutManager = createLayoutManager()
-		const resourceManager = createResourceManager()
 		layoutManager.initialize()
 
 		const initialPaneId = layoutManager.state.rootId
@@ -153,7 +150,6 @@ describe('Portal State Preservation (Property 10)', () => {
 			<div style={{ width: '800px', height: '600px' }}>
 				<SplitEditor
 					layoutManager={layoutManager}
-					resourceManager={resourceManager}
 					renderTabContent={(tab, pane) => (
 						<TrackingFileContent tab={tab} pane={pane} />
 					)}
@@ -212,7 +208,6 @@ describe('Portal State Preservation (Property 10)', () => {
 					mountTrackers.clear()
 
 					const layoutManager = createLayoutManager()
-					const resourceManager = createResourceManager()
 					layoutManager.initialize()
 
 					const initialPaneId = layoutManager.state.rootId
@@ -227,7 +222,6 @@ describe('Portal State Preservation (Property 10)', () => {
 						<div style={{ width: '800px', height: '600px' }}>
 							<SplitEditor
 								layoutManager={layoutManager}
-								resourceManager={resourceManager}
 								renderTabContent={(tab, pane) => (
 									<TrackingFileContent tab={tab} pane={pane} />
 								)}
@@ -289,7 +283,6 @@ describe('Portal State Preservation (Property 10)', () => {
 
 	it('should preserve state when closing sibling panes', async () => {
 		const layoutManager = createLayoutManager()
-		const resourceManager = createResourceManager()
 		layoutManager.initialize()
 
 		const initialPaneId = layoutManager.state.rootId
@@ -313,7 +306,6 @@ describe('Portal State Preservation (Property 10)', () => {
 			<div style={{ width: '800px', height: '600px' }}>
 				<SplitEditor
 					layoutManager={layoutManager}
-					resourceManager={resourceManager}
 					renderTabContent={(tab, pane) => (
 						<TrackingFileContent tab={tab} pane={pane} />
 					)}
@@ -342,7 +334,6 @@ describe('Portal State Preservation (Property 10)', () => {
 
 	it('should render correct content for different tab types', async () => {
 		const layoutManager = createLayoutManager()
-		const resourceManager = createResourceManager()
 		layoutManager.initialize()
 
 		const paneId = layoutManager.state.rootId
@@ -357,7 +348,6 @@ describe('Portal State Preservation (Property 10)', () => {
 			<div style={{ width: '800px', height: '600px' }}>
 				<SplitEditor
 					layoutManager={layoutManager}
-					resourceManager={resourceManager}
 				/>
 			</div>
 		))
@@ -375,7 +365,6 @@ describe('Portal State Preservation (Property 10)', () => {
 
 	it('should switch content when active tab changes', async () => {
 		const layoutManager = createLayoutManager()
-		const resourceManager = createResourceManager()
 		layoutManager.initialize()
 
 		const paneId = layoutManager.state.rootId
@@ -394,7 +383,6 @@ describe('Portal State Preservation (Property 10)', () => {
 			<div style={{ width: '800px', height: '600px' }}>
 				<SplitEditor
 					layoutManager={layoutManager}
-					resourceManager={resourceManager}
 				/>
 			</div>
 		))

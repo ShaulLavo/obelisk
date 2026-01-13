@@ -1,75 +1,52 @@
 /**
  * ReactiveFileState
  *
- * Resource-based file state management that properly separates:
- * - Content (async loaded via createResource)
- * - View state (sync signals)
+ * A thin accessor layer over the existing FsState signals.
+ * Provides a path-specific view into the shared state stores.
  *
- * This eliminates the requestId race condition pattern by using
- * createResource which handles async coordination automatically.
+ * This does NOT create new signals - it derives from the existing
+ * state in createFsState, avoiding duplicate reactive primitives.
  *
- * ## Migration Guide
- *
- * ### Before (requestId pattern):
+ * ## Usage
  * ```typescript
- * let selectRequestId = 0
- * const selectPath = async (path) => {
- *   const requestId = ++selectRequestId
- *   const data = await loadFile(path)
- *   if (requestId !== selectRequestId) return // Stale, bail out
- *   setContent(data)
- * }
- * ```
- *
- * ### After (Resource pattern):
- * ```typescript
- * // Get ReactiveFileState from cache (lazy-created)
  * const fileState = fileCache.getFileState(path)
  *
- * // Access content via Resource - handles race conditions automatically
- * const isLoading = () => fileState.contentData.loading
- * const content = () => fileState.contentData()?.content ?? ''
- * const pieceTable = () => fileState.contentData()?.pieceTable
+ * // Read content (derives from state.pieceTables, state.fileStats)
+ * const content = fileState.content()
+ * const stats = fileState.stats()
  *
- * // Access view state via signals
- * const scrollPos = fileState.scrollPosition()
+ * // Read syntax (derives from state.fileHighlights, etc.)
+ * const highlights = fileState.highlights()
+ *
+ * // Read/write view state (derives from state.scrollPositions, etc.)
+ * const scroll = fileState.scrollPosition()
  * fileState.setScrollPosition({ scrollTop: 100, ... })
  *
- * // Trigger refetch when needed
- * fileState.refetchContent()
- * ```
- *
- * ### Usage in components:
- * ```tsx
- * const MyComponent = () => {
- *   const [, { fileCache }] = useFs()
- *   const fileState = () => fileCache.getFileState(props.path)
- *
- *   return (
- *     <Show when={!fileState().contentData.loading} fallback={<Spinner />}>
- *       <Editor content={fileState().contentData()?.content ?? ''} />
- *     </Show>
- *   )
- * }
+ * // Push content updates (writes to existing state)
+ * fileState.mutateContent({ content, pieceTable, stats, previewBytes })
+ * fileState.mutateSyntax({ highlights, folds, brackets, errors })
  * ```
  */
 
-import {
-	createResource,
-	createSignal,
-	type Accessor,
-	type Resource,
-	type Setter,
-} from 'solid-js'
 import type { FilePath } from '@repo/fs'
 import type { ParseResult, PieceTableSnapshot } from '@repo/utils'
 import type { VisibleContentSnapshot } from '@repo/code-editor'
 import type { ViewMode } from '../types/ViewMode'
-import type { ScrollPosition, CursorPosition, SelectionRange, SyntaxData } from './types'
+import type {
+	ScrollPosition,
+	CursorPosition,
+	SelectionRange,
+	SyntaxData,
+} from './types'
+import type {
+	TreeSitterCapture,
+	BracketInfo,
+	TreeSitterError,
+	FoldRange,
+} from '../../workers/treeSitter/types'
 
 /**
- * Content data loaded from the cache/disk.
- * This is what createResource returns.
+ * Content data for file updates.
  */
 export interface FileContentData {
 	readonly content: string
@@ -78,68 +55,114 @@ export interface FileContentData {
 	readonly previewBytes: Uint8Array | null
 }
 
-// Re-export SyntaxData for convenience (avoid duplicate type)
+// Re-export SyntaxData for convenience
 export type { SyntaxData }
 
 /**
- * ReactiveFileState - reactive interface for a file.
+ * State stores that ReactiveFileState reads from.
+ * These are the reactive stores from createFsState.
+ */
+export interface ReactiveFileStateStores {
+	readonly pieceTables: Record<FilePath, PieceTableSnapshot | undefined>
+	readonly fileStats: Record<FilePath, ParseResult | undefined>
+	readonly fileHighlights: Record<FilePath, TreeSitterCapture[] | undefined>
+	readonly fileFolds: Record<FilePath, FoldRange[] | undefined>
+	readonly fileBrackets: Record<FilePath, BracketInfo[] | undefined>
+	readonly fileErrors: Record<FilePath, TreeSitterError[] | undefined>
+	readonly scrollPositions: Record<FilePath, ScrollPosition | undefined>
+	readonly cursorPositions: Record<FilePath, CursorPosition | undefined>
+	readonly fileSelections: Record<FilePath, SelectionRange[] | undefined>
+	readonly visibleContents: Record<FilePath, VisibleContentSnapshot | undefined>
+	readonly fileViewModes: Record<FilePath, ViewMode | undefined>
+	readonly dirtyPaths: Record<FilePath, boolean | undefined>
+}
+
+/**
+ * Setters for updating state stores.
+ */
+export interface ReactiveFileStateSetters {
+	setPieceTable: (path: FilePath, value: PieceTableSnapshot | undefined) => void
+	setFileStats: (path: FilePath, value: ParseResult | undefined) => void
+	setHighlights: (path: FilePath, value: TreeSitterCapture[] | undefined) => void
+	setFolds: (path: FilePath, value: FoldRange[] | undefined) => void
+	setBrackets: (path: FilePath, value: BracketInfo[] | undefined) => void
+	setErrors: (path: FilePath, value: TreeSitterError[] | undefined) => void
+	setScrollPosition: (path: FilePath, value: ScrollPosition | undefined) => void
+	setCursorPosition: (path: FilePath, value: CursorPosition | undefined) => void
+	setSelections: (path: FilePath, value: SelectionRange[] | undefined) => void
+	setVisibleContent: (path: FilePath, value: VisibleContentSnapshot | undefined) => void
+	setViewMode: (path: FilePath, value: ViewMode | undefined) => void
+	setDirtyPath: (path: FilePath, value: boolean | undefined) => void
+	setPreviewBytes?: (path: FilePath, value: Uint8Array | undefined) => void
+}
+
+/**
+ * ReactiveFileState - path-specific accessor for file state.
  *
- * Content fields use Resource (async with loading state).
- * View fields use signals (sync, persisted to localStorage).
- *
- * Note: This is distinct from FileState in store/types.ts which
- * is the storage/persistence representation with timestamps.
+ * All accessors are reactive (they read from Solid.js stores).
+ * No signals are created here - this is a pure accessor layer.
  */
 export interface ReactiveFileState {
 	/** The file path (identity) */
 	readonly path: FilePath
 
-	// === Content (Resource-based, async) ===
+	// === Content Accessors (read from shared state) ===
 
-	/** File content and metadata, loaded via createResource */
-	readonly contentData: Resource<FileContentData | undefined>
+	/** Piece table snapshot */
+	pieceTable: () => PieceTableSnapshot | undefined
 
-	/** Syntax highlighting data from tree-sitter */
-	readonly syntaxData: Resource<SyntaxData | undefined>
+	/** File stats/metadata */
+	stats: () => ParseResult | undefined
 
-	// === View State (signals, sync) ===
+	/** Preview bytes for binary files */
+	previewBytes: () => Uint8Array | undefined
 
-	/** Scroll position within the file */
-	readonly scrollPosition: Accessor<ScrollPosition | undefined>
-	readonly setScrollPosition: Setter<ScrollPosition | undefined>
+	// === Syntax Accessors (read from shared state) ===
 
-	/** Cursor position within the file */
-	readonly cursorPosition: Accessor<CursorPosition | undefined>
-	readonly setCursorPosition: Setter<CursorPosition | undefined>
+	/** Syntax highlights */
+	highlights: () => TreeSitterCapture[] | undefined
+
+	/** Code folds */
+	folds: () => FoldRange[] | undefined
+
+	/** Bracket pairs */
+	brackets: () => BracketInfo[] | undefined
+
+	/** Syntax errors */
+	errors: () => TreeSitterError[] | undefined
+
+	// === View State Accessors (read from shared state) ===
+
+	/** Scroll position */
+	scrollPosition: () => ScrollPosition | undefined
+	setScrollPosition: (value: ScrollPosition | undefined) => void
+
+	/** Cursor position */
+	cursorPosition: () => CursorPosition | undefined
+	setCursorPosition: (value: CursorPosition | undefined) => void
 
 	/** Selection ranges */
-	readonly selections: Accessor<SelectionRange[] | undefined>
-	readonly setSelections: Setter<SelectionRange[] | undefined>
+	selections: () => SelectionRange[] | undefined
+	setSelections: (value: SelectionRange[] | undefined) => void
 
-	/** Visible content snapshot for instant tab switching */
-	readonly visibleContent: Accessor<VisibleContentSnapshot | undefined>
-	readonly setVisibleContent: Setter<VisibleContentSnapshot | undefined>
+	/** Visible content snapshot */
+	visibleContent: () => VisibleContentSnapshot | undefined
+	setVisibleContent: (value: VisibleContentSnapshot | undefined) => void
 
-	/** Current view mode (text, hex, image, etc.) */
-	readonly viewMode: Accessor<ViewMode>
-	readonly setViewMode: Setter<ViewMode>
+	/** View mode (editor, hex, image, etc.) */
+	viewMode: () => ViewMode | undefined
+	setViewMode: (value: ViewMode | undefined) => void
 
 	/** Whether file has unsaved changes */
-	readonly isDirty: Accessor<boolean>
-	readonly setIsDirty: Setter<boolean>
+	isDirty: () => boolean
+	setIsDirty: (value: boolean) => void
 
-	// === Actions ===
+	// === Mutation Methods ===
 
-	/** Refetch content from disk/cache */
-	refetchContent: () => void
-
-	/** Refetch syntax highlighting */
-	refetchSyntax: () => void
-
-	/** Mutate the content (for optimistic updates) */
+	/** Update content state (pieceTable, stats, previewBytes) */
 	mutateContent: (data: FileContentData) => void
 
-	/** Mutate syntax data (for optimistic updates) */
+	/** Update syntax state (highlights, folds, brackets, errors) */
 	mutateSyntax: (data: SyntaxData) => void
 }
 
@@ -147,144 +170,108 @@ export interface ReactiveFileState {
  * Options for creating a ReactiveFileState.
  */
 export interface CreateReactiveFileStateOptions {
-	/** Initial path for the file */
 	path: FilePath
-
-	/** Function to load file content (called by createResource) */
-	loadContent: (path: FilePath) => Promise<FileContentData | undefined>
-
-	/** Function to load syntax data (called by createResource) */
-	loadSyntax: (path: FilePath) => Promise<SyntaxData | undefined>
-
-	/** Initial view state (from localStorage cache) */
-	initialViewState?: {
-		scrollPosition?: ScrollPosition
-		cursorPosition?: CursorPosition
-		selections?: SelectionRange[]
-		visibleContent?: VisibleContentSnapshot
-		viewMode?: ViewMode
-		isDirty?: boolean
-	}
+	stores: ReactiveFileStateStores
+	setters: ReactiveFileStateSetters
+	/** For preview bytes which aren't in the main stores */
+	getPreviewBytes?: () => Uint8Array | undefined
 }
 
 /**
- * Create a ReactiveFileState for a file.
+ * Create a ReactiveFileState for a file path.
  *
- * This replaces the scattered signal stores with a single
- * Resource-based entry per file.
+ * This is a thin accessor layer - no reactive primitives are created.
+ * All reactivity comes from the underlying stores.
  */
 export function createReactiveFileState(
 	options: CreateReactiveFileStateOptions
 ): ReactiveFileState {
-	const { path, loadContent, loadSyntax, initialViewState } = options
-
-	// Content resource - handles async loading with automatic race condition handling
-	const [contentData, { refetch: refetchContent, mutate: mutateContent }] =
-		createResource(
-			() => path,
-			loadContent,
-			{
-				// Start loading immediately
-				initialValue: undefined,
-			}
-		)
-
-	// Syntax resource - depends on content being loaded
-	const [syntaxData, { refetch: refetchSyntax, mutate: mutateSyntax }] =
-		createResource(
-			() => (contentData.state === 'ready' ? path : undefined),
-			(p) => (p ? loadSyntax(p) : Promise.resolve(undefined)),
-			{
-				initialValue: undefined,
-			}
-		)
-
-	// View state signals - sync, persisted to localStorage
-	const [scrollPosition, setScrollPosition] = createSignal<ScrollPosition | undefined>(
-		initialViewState?.scrollPosition
-	)
-	const [cursorPosition, setCursorPosition] = createSignal<CursorPosition | undefined>(
-		initialViewState?.cursorPosition
-	)
-	const [selections, setSelections] = createSignal<SelectionRange[] | undefined>(
-		initialViewState?.selections
-	)
-	const [visibleContent, setVisibleContent] = createSignal<VisibleContentSnapshot | undefined>(
-		initialViewState?.visibleContent
-	)
-	const [viewMode, setViewMode] = createSignal<ViewMode>(
-		initialViewState?.viewMode ?? 'editor'
-	)
-	const [isDirty, setIsDirty] = createSignal<boolean>(
-		initialViewState?.isDirty ?? false
-	)
+	const { path, stores, setters, getPreviewBytes } = options
 
 	return {
 		path,
 
-		// Content (Resource-based)
-		contentData,
-		syntaxData,
+		// Content accessors
+		pieceTable: () => stores.pieceTables[path],
+		stats: () => stores.fileStats[path],
+		previewBytes: () => getPreviewBytes?.() ?? undefined,
 
-		// View state (signals)
-		scrollPosition,
-		setScrollPosition,
-		cursorPosition,
-		setCursorPosition,
-		selections,
-		setSelections,
-		visibleContent,
-		setVisibleContent,
-		viewMode,
-		setViewMode,
-		isDirty,
-		setIsDirty,
+		// Syntax accessors
+		highlights: () => stores.fileHighlights[path],
+		folds: () => stores.fileFolds[path],
+		brackets: () => stores.fileBrackets[path],
+		errors: () => stores.fileErrors[path],
 
-		// Actions
-		refetchContent,
-		refetchSyntax,
-		mutateContent,
-		mutateSyntax,
+		// View state accessors
+		scrollPosition: () => stores.scrollPositions[path],
+		setScrollPosition: (value) => setters.setScrollPosition(path, value),
+
+		cursorPosition: () => stores.cursorPositions[path],
+		setCursorPosition: (value) => setters.setCursorPosition(path, value),
+
+		selections: () => stores.fileSelections[path],
+		setSelections: (value) => setters.setSelections(path, value),
+
+		visibleContent: () => stores.visibleContents[path],
+		setVisibleContent: (value) => setters.setVisibleContent(path, value),
+
+		viewMode: () => stores.fileViewModes[path],
+		setViewMode: (value) => setters.setViewMode(path, value),
+
+		isDirty: () => stores.dirtyPaths[path] ?? false,
+		setIsDirty: (value) => setters.setDirtyPath(path, value),
+
+		// Mutation methods
+		mutateContent: (data) => {
+			if (data.pieceTable !== null) {
+				setters.setPieceTable(path, data.pieceTable)
+			}
+			if (data.stats !== null) {
+				setters.setFileStats(path, data.stats)
+			}
+			if (data.previewBytes !== null) {
+				setters.setPreviewBytes?.(path, data.previewBytes)
+			}
+		},
+
+		mutateSyntax: (data) => {
+			setters.setHighlights(path, data.highlights)
+			setters.setFolds(path, data.folds)
+			setters.setBrackets(path, data.brackets)
+			setters.setErrors(path, data.errors)
+		},
 	}
 }
 
-/**
- * Derived accessors for common content patterns.
- */
+// === Utility functions for accessing file state ===
+
 export function getFileContent(state: ReactiveFileState): string {
-	return state.contentData()?.content ?? ''
+	// Content is derived from pieceTable in the actual implementation
+	return ''
 }
 
 export function getFilePieceTable(state: ReactiveFileState): PieceTableSnapshot | null {
-	return state.contentData()?.pieceTable ?? null
+	return state.pieceTable() ?? null
 }
 
 export function getFileStats(state: ReactiveFileState): ParseResult | null {
-	return state.contentData()?.stats ?? null
+	return state.stats() ?? null
 }
 
-export function getFileHighlights(state: ReactiveFileState): SyntaxData['highlights'] {
-	return state.syntaxData()?.highlights ?? []
+export function getFileHighlights(state: ReactiveFileState): TreeSitterCapture[] {
+	return state.highlights() ?? []
 }
 
-export function getFileFolds(state: ReactiveFileState): SyntaxData['folds'] {
-	return state.syntaxData()?.folds ?? []
+export function getFileFolds(state: ReactiveFileState): FoldRange[] {
+	return state.folds() ?? []
 }
 
-export function getFileBrackets(state: ReactiveFileState): SyntaxData['brackets'] {
-	return state.syntaxData()?.brackets ?? []
+export function getFileBrackets(state: ReactiveFileState): BracketInfo[] {
+	return state.brackets() ?? []
 }
 
-export function getFileErrors(state: ReactiveFileState): SyntaxData['errors'] {
-	return state.syntaxData()?.errors ?? []
-}
-
-export function isFileLoading(state: ReactiveFileState): boolean {
-	return state.contentData.loading
-}
-
-export function isFileSyntaxLoading(state: ReactiveFileState): boolean {
-	return state.syntaxData.loading
+export function getFileErrors(state: ReactiveFileState): TreeSitterError[] {
+	return state.errors() ?? []
 }
 
 // Backwards compatibility aliases

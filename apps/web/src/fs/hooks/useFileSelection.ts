@@ -1,29 +1,16 @@
 import { batch } from 'solid-js'
-import {
-	createMinimalBinaryParseResult,
-	detectBinaryFromPreview,
-	parseFileBuffer,
-	createPieceTableSnapshot,
-	getPieceTableText,
-} from '@repo/utils'
-import type { PieceTableSnapshot, ParseResult } from '@repo/utils'
+import { getPieceTableText, createPieceTableSnapshot } from '@repo/utils'
+import type { PieceTableSnapshot } from '@repo/utils'
 import { trackOperation } from '@repo/perf'
-import {
-	getFileSize,
-	readFilePreviewBytes,
-	readFileBuffer,
-} from '../runtime/streaming'
 import { DEFAULT_SOURCE } from '../config/constants'
 import type { FsState } from '../types'
 import type { FsContextValue, SelectPathOptions } from '../context/FsContext'
 import type { FileCacheController } from '../cache/fileCacheController'
-import { parseBufferWithTreeSitter } from '../../treeSitter/workerClient'
+import { loadFile } from '../services/FileLoadingService'
 import { viewTransitionBatched } from '@repo/utils/viewTransition'
 import { toast } from '@repo/ui/toaster'
 import { useSettings } from '~/settings/SettingsProvider'
 import { createFilePath } from '@repo/fs'
-
-const textDecoder = new TextDecoder()
 
 export const enum FileSelectionAnimation {
 	Blur = 'blur',
@@ -38,10 +25,10 @@ type UseFileSelectionOptions = {
 	setSelectedFileContent: (content: string) => void
 	setSelectedFileLoading: (value: boolean) => void
 	setDirtyPath: (path: string, isDirty: boolean) => void
+	setSavedContent: (path: string, content: string) => void
+	updateDirtyFromPieceTable: (path: string, pieceTable: PieceTableSnapshot | undefined) => void
 	fileCache: FileCacheController
 }
-
-const MAX_FILE_SIZE_BYTES = Infinity
 
 export const useFileSelection = ({
 	state,
@@ -51,6 +38,8 @@ export const useFileSelection = ({
 	setSelectedFileContent,
 	setSelectedFileLoading,
 	setDirtyPath,
+	setSavedContent,
+	updateDirtyFromPieceTable,
 	fileCache,
 }: UseFileSelectionOptions) => {
 	const [settingsState] = useSettings()
@@ -134,144 +123,62 @@ export const useFileSelection = ({
 		try {
 			await trackOperation(
 				'fs:selectPath',
-				async ({ timeSync, timeAsync }) => {
-					const fileSize = await timeAsync('get-file-size', () =>
-						getFileSize(source, path)
-					)
-
-					perfMetadata.fileSize = fileSize
-					if (requestId !== selectRequestId) {
-						return
-					}
-
-					let selectedFileContentValue = ''
-					let pieceTableSnapshot: PieceTableSnapshot | undefined
-					let fileStatsResult: ParseResult | undefined
-
-					let binaryPreviewBytes: Uint8Array | undefined
-
-					if (fileSize > MAX_FILE_SIZE_BYTES) {
-						// Skip processing for large files
-					} else {
-						const previewBytes = await timeAsync('read-preview-bytes', () =>
-							readFilePreviewBytes(source, path)
-						)
-						if (requestId !== selectRequestId) return
-
-						const cachedEntry = await timeAsync('hydrate-cache', () =>
-							fileCache.getAsync(path)
-						)
-						if (requestId !== selectRequestId) return
-
-						const { pieceTable: existingSnapshot, stats: existingFileStats } =
-							cachedEntry
-						const detection = detectBinaryFromPreview(path, previewBytes)
-						const isBinary = !detection.isText
-
-						if (existingSnapshot) {
-							selectedFileContentValue = getPieceTableText(existingSnapshot)
-							fileStatsResult =
-								existingFileStats ??
-								timeSync('parse-file-buffer', () =>
-									parseFileBuffer(selectedFileContentValue, {
-										path,
-										textHeuristic: detection,
-									})
-								)
-							pieceTableSnapshot = existingSnapshot
-						} else if (isBinary) {
-							// Binary files: load both binary preview AND text content
-							// Text content is needed for editor mode (broken UTF-8 display like VS Code)
-							binaryPreviewBytes = previewBytes
-
-							// Also load full content as UTF-8 text for editor mode
-							const buffer = await timeAsync('read-file-buffer', () =>
-								readFileBuffer(source, path)
-							)
+				async ({ timeSync }) => {
+					// Use FileLoadingService - single source of truth for file loading
+					const result = await loadFile({
+						source,
+						path,
+						fileCache,
+						forceReload: options?.forceReload,
+						onSyntaxReady: (syntax) => {
+							// Check race condition before applying syntax
 							if (requestId !== selectRequestId) return
+							fileCache.getFileState(path).mutateSyntax(syntax)
+						},
+					})
 
-							const textBytes = new Uint8Array(buffer)
-							const text = textDecoder.decode(textBytes)
-							selectedFileContentValue = text
+					perfMetadata.fileSize = result.fileSize
 
-							fileStatsResult =
-								existingFileStats ??
-								timeSync('binary-file-metadata', () =>
-									createMinimalBinaryParseResult(text, detection)
-								)
-						} else {
-							const buffer = await timeAsync('read-file-buffer', () =>
-								readFileBuffer(source, path)
-							)
-							if (requestId !== selectRequestId) return
+					// Race condition check after file load
+					if (requestId !== selectRequestId) return
 
-							const textBytes = new Uint8Array(buffer)
-							const text = textDecoder.decode(textBytes)
-							selectedFileContentValue = text
-
-							const parseResultPromise = parseBufferWithTreeSitter(path, buffer)
-							if (parseResultPromise) {
-								void parseResultPromise
-									.then((result) => {
-										if (requestId !== selectRequestId) return
-										if (result) {
-											fileCache.set(path, {
-												highlights: result.captures,
-												folds: result.folds,
-												brackets: result.brackets,
-												errors: result.errors,
-											})
-											fileCache.getFileState(path).mutateSyntax({
-												highlights: result.captures,
-												folds: result.folds,
-												brackets: result.brackets,
-												errors: result.errors,
-											})
-										}
-									})
-									.catch(() => {})
-							}
-
-							fileStatsResult = timeSync('parse-file-buffer', () =>
-								parseFileBuffer(text, {
-									path,
-									textHeuristic: detection,
-								})
-							)
-
-							if (fileStatsResult.contentKind === 'text') {
-								pieceTableSnapshot = timeSync('create-piece-table', () =>
-									createPieceTableSnapshot(text)
-								)
-							}
-						}
-					}
+					// Apply state updates
 					timeSync('apply-selection-state', ({ timeSync }) => {
 						const updateState = () => {
 							timeSync('set-selected-path', () => setSelectedPath(path))
 							timeSync('set-selected-file-size', () =>
-								setSelectedFileSize(fileSize)
+								setSelectedFileSize(result.fileSize)
 							)
 							timeSync('set-selected-file-preview-bytes', () =>
-								setSelectedFilePreviewBytes(binaryPreviewBytes)
+								setSelectedFilePreviewBytes(
+									result.isBinary ? result.previewBytes ?? undefined : undefined
+								)
 							)
 							timeSync('set-selected-file-content', () =>
-								setSelectedFileContent(selectedFileContentValue)
+								setSelectedFileContent(result.content)
 							)
-							if (pieceTableSnapshot || fileStatsResult || binaryPreviewBytes) {
+
+							// Set saved content baseline for dirty tracking (only for fresh loads)
+							if (!result.fromCache) {
+								setSavedContent(path, result.content)
+							}
+
+							if (result.pieceTable || result.stats || result.previewBytes) {
 								timeSync('set-cache-entry', () =>
 									fileCache.set(path, {
-										pieceTable: pieceTableSnapshot,
-										stats: fileStatsResult,
-										previewBytes: binaryPreviewBytes,
+										pieceTable: result.pieceTable ?? undefined,
+										stats: result.stats ?? undefined,
+										previewBytes: result.isBinary
+											? result.previewBytes ?? undefined
+											: undefined,
 									})
 								)
 								timeSync('populate-reactive-file-state', () =>
 									fileCache.getFileState(path).mutateContent({
-										content: selectedFileContentValue,
-										pieceTable: pieceTableSnapshot ?? null,
-										stats: fileStatsResult ?? null,
-										previewBytes: binaryPreviewBytes ?? null,
+										content: result.content,
+										pieceTable: result.pieceTable,
+										stats: result.stats,
+										previewBytes: result.previewBytes,
 									})
 								)
 							}
@@ -301,88 +208,63 @@ export const useFileSelection = ({
 		}
 	}
 
-	const updateSelectedFilePieceTable: FsContextValue[1]['updateSelectedFilePieceTable'] =
-		(updater) => {
-			const path = state.lastKnownFilePath
-			if (!path) {
-				return
-			}
+	const updatePieceTableForPath: FsContextValue[1]['updatePieceTableForPath'] =
+		(path, updater) => {
+			if (!path) return
 
-			const current = state.selectedFilePieceTable
+			const normalizedPath = createFilePath(path)
+			const current = state.pieceTables[normalizedPath]
 			const next = updater(current)
 			if (!next) return
 
 			fileCache.set(path, { pieceTable: next })
-			// Mark the file as dirty so its piece table won't be cleared when switching files
-			setDirtyPath(path, true)
+			updateDirtyFromPieceTable(path, next)
 		}
 
-	const updateSelectedFileHighlights: FsContextValue[1]['updateSelectedFileHighlights'] =
-		(highlights) => {
-			const path = state.lastKnownFilePath
+	const updateHighlightsForPath: FsContextValue[1]['updateHighlightsForPath'] =
+		(path, highlights) => {
 			if (!path) return
 			fileCache.set(path, { highlights })
 		}
 
-	const updateSelectedFileFolds: FsContextValue[1]['updateSelectedFileFolds'] =
-		(folds) => {
-			const path = state.lastKnownFilePath
+	const updateFoldsForPath: FsContextValue[1]['updateFoldsForPath'] =
+		(path, folds) => {
 			if (!path) return
 			fileCache.set(path, { folds })
 		}
 
-	const updateSelectedFileBrackets: FsContextValue[1]['updateSelectedFileBrackets'] =
-		(brackets) => {
-			const path = state.lastKnownFilePath
+	const updateBracketsForPath: FsContextValue[1]['updateBracketsForPath'] =
+		(path, brackets) => {
 			if (!path) return
 			fileCache.set(path, { brackets })
 		}
 
-	const updateSelectedFileErrors: FsContextValue[1]['updateSelectedFileErrors'] =
-		(errors) => {
-			const path = state.lastKnownFilePath
+	const updateErrorsForPath: FsContextValue[1]['updateErrorsForPath'] =
+		(path, errors) => {
 			if (!path) return
 			fileCache.set(path, { errors })
 		}
 
-	const updateSelectedFileScrollPosition: FsContextValue[1]['updateSelectedFileScrollPosition'] =
-		(scrollPosition) => {
-			const path = state.lastKnownFilePath
+	const setPieceTableContent: FsContextValue[1]['setPieceTableContent'] =
+		(path, content) => {
 			if (!path) return
-			fileCache.set(path, { scrollPosition })
-		}
-
-	const updateSelectedFileVisibleContent: FsContextValue[1]['updateSelectedFileVisibleContent'] =
-		(visibleContent) => {
-			const path = state.lastKnownFilePath
-			if (!path) return
-			fileCache.set(path, { visibleContent })
-		}
-
-	const updateSelectedFileCursorPosition: FsContextValue[1]['updateSelectedFileCursorPosition'] =
-		(cursorPosition) => {
-			const path = state.lastKnownFilePath
-			if (!path) return
-			fileCache.set(path, { cursorPosition })
-		}
-
-	const updateSelectedFileSelections: FsContextValue[1]['updateSelectedFileSelections'] =
-		(selections) => {
-			const path = state.lastKnownFilePath
-			if (!path) return
-			fileCache.set(path, { selections })
+			const pieceTable = createPieceTableSnapshot(content)
+			batch(() => {
+				fileCache.set(path, { pieceTable })
+				// Update saved content baseline so file shows as clean after reload
+				setSavedContent(path, content)
+				// Mark as not dirty since we just set content to match saved
+				setDirtyPath(path, false)
+			})
 		}
 
 	return {
 		selectPath,
-		updateSelectedFilePieceTable,
-		updateSelectedFileHighlights,
-		updateSelectedFileFolds,
-		updateSelectedFileBrackets,
-		updateSelectedFileErrors,
-		updateSelectedFileScrollPosition,
-		updateSelectedFileVisibleContent,
-		updateSelectedFileCursorPosition,
-		updateSelectedFileSelections,
+		updatePieceTableForPath,
+		updateHighlightsForPath,
+		updateFoldsForPath,
+		updateBracketsForPath,
+		updateErrorsForPath,
+		setPieceTableContent,
 	}
 }

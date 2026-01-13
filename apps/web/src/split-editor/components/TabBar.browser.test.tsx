@@ -10,19 +10,16 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { render } from 'vitest-browser-solid'
 import { page } from 'vitest/browser'
 import { TabBar } from './TabBar'
-import { LayoutContext, ResourceContext } from './SplitEditor'
+import { LayoutContext } from './SplitEditor'
 import { createLayoutManager } from '../createLayoutManager'
-import { createResourceManager } from '../createResourceManager'
 import type { EditorPane, Tab } from '../types'
 
 describe('TabBar Component', () => {
 	let layoutManager: ReturnType<typeof createLayoutManager>
-	let resourceManager: ReturnType<typeof createResourceManager>
 	let mockPane: EditorPane
 
 	beforeEach(() => {
 		layoutManager = createLayoutManager()
-		resourceManager = createResourceManager()
 		
 		// Initialize layout manager and set up the pane in the store
 		layoutManager.initialize()
@@ -68,12 +65,10 @@ describe('TabBar Component', () => {
 	const renderTabBar = (pane: EditorPane = mockPane) => {
 		// Inject the pane into the layout manager's store for testing
 		;(layoutManager as any).state.nodes[pane.id] = pane
-		
+
 		return render(() => (
 			<LayoutContext.Provider value={layoutManager}>
-				<ResourceContext.Provider value={resourceManager}>
-					<TabBar paneId={pane.id} />
-				</ResourceContext.Provider>
+				<TabBar paneId={pane.id} />
 			</LayoutContext.Provider>
 		))
 	}

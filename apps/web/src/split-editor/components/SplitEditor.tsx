@@ -11,13 +11,11 @@ import { PanePortals } from './PanePortals'
 import { createSplitEditorKeymap } from '../createSplitEditorKeymap'
 import { CONTAINMENT_MODE } from '../constants'
 import type { LayoutManager } from '../createLayoutManager'
-import type { ResourceManager } from '../createResourceManager'
 import type { EditorPane, Tab } from '../types'
 
 const LayoutContext = createContext<LayoutManager>()
-const ResourceContext = createContext<ResourceManager>()
 
-export { LayoutContext, ResourceContext }
+export { LayoutContext }
 
 export function useLayoutManager(): LayoutManager {
 	const ctx = useContext(LayoutContext)
@@ -27,17 +25,8 @@ export function useLayoutManager(): LayoutManager {
 	return ctx
 }
 
-export function useResourceManager(): ResourceManager {
-	const ctx = useContext(ResourceContext)
-	if (!ctx) {
-		throw new Error('useResourceManager must be used within a SplitEditor')
-	}
-	return ctx
-}
-
 export interface SplitEditorProps {
 	layoutManager: LayoutManager
-	resourceManager: ResourceManager
 	class?: string
 	renderTabContent?: (tab: Tab, pane: EditorPane) => JSX.Element
 	enableKeyboardShortcuts?: boolean
@@ -55,15 +44,13 @@ export function SplitEditor(props: SplitEditorProps) {
 
 	return (
 		<LayoutContext.Provider value={props.layoutManager}>
-			<ResourceContext.Provider value={props.resourceManager}>
-				<div
-					class={`split-editor h-full w-full ${props.class ?? ''}`}
-					style={{ contain: CONTAINMENT_MODE }}
-				>
-					<SplitNode nodeId={props.layoutManager.state.rootId} />
-					<PanePortals renderTabContent={props.renderTabContent} />
-				</div>
-			</ResourceContext.Provider>
+			<div
+				class={`split-editor h-full w-full ${props.class ?? ''}`}
+				style={{ contain: CONTAINMENT_MODE }}
+			>
+				<SplitNode nodeId={props.layoutManager.state.rootId} />
+				<PanePortals renderTabContent={props.renderTabContent} />
+			</div>
 		</LayoutContext.Provider>
 	)
 }

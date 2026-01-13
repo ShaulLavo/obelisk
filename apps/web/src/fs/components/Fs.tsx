@@ -11,36 +11,17 @@ import type { EditorFileSyncManager } from '@repo/code-editor/sync'
 import { ExplorerAccordion } from './ExplorerAccordion'
 
 export const Fs = () => {
-	const [state] = useFs()
+	const [state, actions] = useFs()
 	const [layoutManager, setLayoutManager] = createSignal<LayoutManager>()
 	const [syncManager, setSyncManager] = createSignal<EditorFileSyncManager>()
 
-	// A file is selected only if there's an actual selectedPath pointing to a file
-	const isFileSelected = () => {
-		const path = state.selectedPath
-		const fileNode = state.lastKnownFileNode
-		console.log(
-			'[Fs] isFileSelected - selectedPath:',
-			path,
-			'lastKnownFileNode:',
-			fileNode
-		)
-		if (!path) return false
-		return fileNode?.kind === 'file'
-	}
-
 	// Function to open a file as a tab
 	const openFileAsTab = (filePath: string) => {
-		console.log('[Fs] openFileAsTab called with filePath:', filePath)
 		const manager = layoutManager()
 		if (manager && (manager as any).openFileAsTab) {
-			console.log('[Fs] Layout manager available, calling openFileAsTab')
 			;(manager as any).openFileAsTab(filePath)
-		} else {
-			console.log(
-				'[Fs] No layout manager or openFileAsTab method available, manager:',
-				!!manager
-			)
+			// Sync tree selection with opened file (updates lastKnownFilePath via effect)
+			actions.setSelectedPathOnly(filePath)
 		}
 	}
 
@@ -65,8 +46,6 @@ export const Fs = () => {
 						/>
 					</ExplorerAccordion>
 					<SplitEditorPanel
-						isFileSelected={isFileSelected}
-						currentPath={state.lastKnownFilePath}
 						onLayoutManagerReady={setLayoutManager}
 						onSyncManagerReady={setSyncManager}
 					/>

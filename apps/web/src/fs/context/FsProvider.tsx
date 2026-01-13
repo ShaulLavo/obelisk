@@ -47,11 +47,12 @@ export function FsProvider(props: { children: JSX.Element }) {
 		setPieceTable,
 		clearPieceTables,
 		setHighlights,
-		applyHighlightOffset,
 		setFolds,
 		setBrackets,
 		setErrors,
 		setDirtyPath,
+		setSavedContent,
+		updateDirtyFromPieceTable,
 		setBackgroundPrefetching,
 		setBackgroundIndexedFileCount,
 		setLastPrefetchedPath,
@@ -68,6 +69,11 @@ export function FsProvider(props: { children: JSX.Element }) {
 		setViewMode,
 		collapseAll,
 		setCreationState,
+		setFileLoadingStatus,
+		setFileLoadingError,
+		setFileLineStarts,
+		preloadFileContent,
+		clearFileLoadingState,
 	} = createFsState()
 
 	// Wrapper for setViewMode that includes stats and error handling
@@ -127,7 +133,7 @@ export function FsProvider(props: { children: JSX.Element }) {
 			setPrefetchAverageDurationMs,
 		})
 
-	const { buildEnsurePaths, ensureDirLoaded, toggleDir, reloadDirectory } =
+	const { buildEnsurePaths, ensureDirLoaded, toggleDir } =
 		useDirectoryLoader({
 			state,
 			setExpanded,
@@ -139,15 +145,12 @@ export function FsProvider(props: { children: JSX.Element }) {
 
 	const {
 		selectPath: selectPathInternal,
-		updateSelectedFilePieceTable,
-		updateSelectedFileHighlights,
-		updateSelectedFileFolds,
-		updateSelectedFileBrackets,
-		updateSelectedFileErrors,
-		updateSelectedFileScrollPosition,
-		updateSelectedFileVisibleContent,
-		updateSelectedFileCursorPosition,
-		updateSelectedFileSelections,
+		updatePieceTableForPath,
+		updateHighlightsForPath,
+		updateFoldsForPath,
+		updateBracketsForPath,
+		updateErrorsForPath,
+		setPieceTableContent,
 	} = useFileSelection({
 		state,
 		setSelectedPath,
@@ -156,6 +159,8 @@ export function FsProvider(props: { children: JSX.Element }) {
 		setSelectedFileContent,
 		setSelectedFileLoading,
 		setDirtyPath,
+		setSavedContent,
+		updateDirtyFromPieceTable,
 		fileCache,
 	})
 
@@ -163,7 +168,8 @@ export function FsProvider(props: { children: JSX.Element }) {
 		path: string,
 		options?: Parameters<typeof selectPathInternal>[1]
 	) => {
-		const previousPath = state.lastKnownFilePath
+		// Use selectedPath to track previous file for cache flushing
+		const previousPath = state.selectedPath
 		if (previousPath && previousPath !== path) {
 			await fileCache.flush()
 			fileCache.setActiveFile(null)
@@ -187,14 +193,6 @@ export function FsProvider(props: { children: JSX.Element }) {
 		if (node?.kind === 'file') {
 			fileCache.setActiveFile(path)
 		}
-	}
-
-	const applySelectedFileHighlightOffset = (
-		transform: Parameters<typeof applyHighlightOffset>[1]
-	) => {
-		const path = state.lastKnownFilePath
-		if (!path) return
-		applyHighlightOffset(path, transform)
 	}
 
 	const { refresh } = useFsRefresh({
@@ -224,10 +222,10 @@ export function FsProvider(props: { children: JSX.Element }) {
 		setExpanded,
 		setSelectedPath,
 		setSelectedFileSize,
-		setSelectedFileContent,
-		updateSelectedFilePieceTable,
+		setPieceTable,
 		setSaving,
 		setDirtyPath,
+		setSavedContent,
 		getState: () => state,
 		getActiveSource: () => state.activeSource,
 	})
@@ -269,17 +267,6 @@ export function FsProvider(props: { children: JSX.Element }) {
 	const setSource = (source: FsSource) => refresh(source)
 
 	const { startObserving, stopObserving } = useFileSystemObserver({
-		state,
-		reloadFile: async (path: string) => {
-			if (path !== state.lastKnownFilePath) {
-				return
-			}
-			await selectPath(path, { forceReload: true })
-		},
-		reloadDirectory,
-		hasLocalEdits: (path: string) => {
-			return !!state.dirtyPaths[path]
-		},
 		getRootHandle: () => getRootHandle(state.activeSource ?? DEFAULT_SOURCE),
 		pollIntervalMs: 1000,
 	})
@@ -327,7 +314,8 @@ export function FsProvider(props: { children: JSX.Element }) {
 			const normalizedPath = createFilePath(path)
 			fileCache.clearContent(normalizedPath)
 
-			if (state.lastKnownFilePath === normalizedPath) {
+			// Reload the file if it's currently selected
+			if (state.selectedPath === normalizedPath) {
 				await selectPath(normalizedPath, { forceReload: true })
 			}
 		}
@@ -384,28 +372,31 @@ export function FsProvider(props: { children: JSX.Element }) {
 			setSource,
 			toggleDir,
 			selectPath,
+			setSelectedPathOnly: setSelectedPath,
 			isSelectedPath,
 			createDir,
 			createFile,
 			deleteNode,
 			ensureDirPathLoaded,
-			updateSelectedFilePieceTable,
-			updateSelectedFileHighlights,
-			applySelectedFileHighlightOffset,
-			updateSelectedFileFolds,
-			updateSelectedFileBrackets,
-			updateSelectedFileErrors,
-			updateSelectedFileScrollPosition,
-			updateSelectedFileVisibleContent,
-			updateSelectedFileCursorPosition,
-			updateSelectedFileSelections,
+			updatePieceTableForPath,
+			updateHighlightsForPath,
+			updateFoldsForPath,
+			updateBracketsForPath,
+			updateErrorsForPath,
 			setViewMode: setViewModeWithStats,
 			fileCache,
 			saveFile,
 			setDirtyPath,
+			setSavedContent,
+			setPieceTableContent,
 			pickNewRoot,
 			collapseAll,
 			setCreationState,
+			setFileLoadingStatus,
+			setFileLoadingError,
+			setFileLineStarts,
+			preloadFileContent,
+			clearFileLoadingState,
 		},
 	]
 

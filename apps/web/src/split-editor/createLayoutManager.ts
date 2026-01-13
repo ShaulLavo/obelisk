@@ -71,6 +71,9 @@ export function createLayoutManager(options: LayoutManagerOptions = {}) {
 		(paneId: NodeId, tabId: TabId, isDirty: boolean) => void
 	>()
 
+	// Handlers for tab close notifications
+	const tabCloseHandlers = new Set<(paneId: NodeId, tab: Tab) => void>()
+
 	const paneIds = createMemo(() =>
 		Object.values(state.nodes)
 			.filter((n): n is EditorPane => isPane(n))
@@ -100,6 +103,34 @@ export function createLayoutManager(options: LayoutManagerOptions = {}) {
 			}
 		}
 		return null
+	}
+
+	const getAllTabsForFile = (filePath: string) => {
+		const result: Array<{ paneId: NodeId; tab: Tab }> = []
+		for (const node of Object.values(state.nodes)) {
+			if (isPane(node)) {
+				for (const tab of node.tabs) {
+					if (tab.content.filePath === filePath) {
+						result.push({ paneId: node.id, tab })
+					}
+				}
+			}
+		}
+		return result
+	}
+
+	const getTabCountForFile = (filePath: string) => {
+		let count = 0
+		for (const node of Object.values(state.nodes)) {
+			if (isPane(node)) {
+				for (const tab of node.tabs) {
+					if (tab.content.filePath === filePath) {
+						count++
+					}
+				}
+			}
+		}
+		return count
 	}
 
 	function initialize(): void {
@@ -286,8 +317,18 @@ export function createLayoutManager(options: LayoutManagerOptions = {}) {
 			})
 		)
 
-		if (closedTab && options.onTabClose) {
-			options.onTabClose(paneId, closedTab)
+		if (closedTab) {
+			// Call options callback (for backwards compatibility)
+			options.onTabClose?.(paneId, closedTab)
+
+			// Notify all tab close handlers
+			for (const handler of tabCloseHandlers) {
+				try {
+					handler(paneId, closedTab)
+				} catch (error) {
+					console.error('Error in tab close handler:', error)
+				}
+			}
 		}
 
 		if (shouldClosePane) {
@@ -398,6 +439,15 @@ export function createLayoutManager(options: LayoutManagerOptions = {}) {
 		dirtyChangeHandlers.add(callback)
 		return () => {
 			dirtyChangeHandlers.delete(callback)
+		}
+	}
+
+	function onTabClose(
+		callback: (paneId: NodeId, tab: Tab) => void
+	): () => void {
+		tabCloseHandlers.add(callback)
+		return () => {
+			tabCloseHandlers.delete(callback)
 		}
 	}
 
@@ -656,6 +706,8 @@ export function createLayoutManager(options: LayoutManagerOptions = {}) {
 		paneIds,
 		getAllTabs,
 		findTabByFilePath,
+		getAllTabsForFile,
+		getTabCountForFile,
 		initialize,
 		splitPane,
 		closePane,
@@ -666,6 +718,7 @@ export function createLayoutManager(options: LayoutManagerOptions = {}) {
 		updateTabState,
 		setTabDirty,
 		onTabDirtyChange,
+		onTabClose,
 		setTabViewMode,
 		cycleViewMode,
 		updateViewSettings,

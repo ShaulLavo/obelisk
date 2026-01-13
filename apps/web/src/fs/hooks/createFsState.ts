@@ -1,7 +1,6 @@
 /* eslint-disable solid/reactivity */
-import type { FsFileTreeNode, FsTreeNode, FilePath } from '@repo/fs'
-import { createFilePath } from '@repo/fs'
-import { createEffect, createMemo, createSignal } from 'solid-js'
+import type { FsTreeNode, FilePath } from '@repo/fs'
+import { createMemo, createSignal } from 'solid-js'
 import type { FsState } from '../types'
 
 import { createTreeState } from './createTreeState'
@@ -21,6 +20,7 @@ import { createCursorPositionState } from './createCursorPositionState'
 import { createSelectionsState } from './createSelectionsState'
 import { createVisibleContentState } from './createVisibleContentState'
 import { createViewModeState } from './createViewModeState'
+import { createFileLoadingStateStore } from './createFileLoadingStateStore'
 
 export const createFsState = () => {
 	const treeState = createTreeState()
@@ -74,7 +74,14 @@ export const createFsState = () => {
 	const { fileFolds, setFolds, clearFolds } = createFoldState()
 	const { fileBrackets, setBrackets, clearBrackets } = createBracketState()
 	const { fileErrors, setErrors, clearErrors } = createErrorState()
-	const { dirtyPaths, setDirtyPath, clearDirtyPaths } = createDirtyState()
+	const {
+		dirtyPaths,
+		setDirtyPath,
+		setSavedContent,
+		clearSavedContent,
+		updateDirtyFromPieceTable,
+		clearDirtyPaths,
+	} = createDirtyState()
 	const { scrollPositions, setScrollPosition, clearScrollPositions } =
 		createScrollPositionState()
 	const { cursorPositions, setCursorPosition, clearCursorPositions } =
@@ -85,42 +92,22 @@ export const createFsState = () => {
 		createVisibleContentState()
 	const { fileViewModes, setViewMode, getViewMode, clearViewModes } =
 		createViewModeState()
+	const {
+		fileLoadingStatus,
+		fileLoadingErrors,
+		fileLineStarts,
+		setFileLoadingStatus,
+		setFileLoadingError,
+		setFileLineStarts,
+		preloadFileContent,
+		clearFileLoadingState,
+		clearAllFileLoadingState,
+	} = createFileLoadingStateStore()
 
 	const selectedNode = createMemo<FsTreeNode | undefined>(() => {
 		const path = selectedPath()
 		return path ? getNode(path) : undefined
 	})
-
-	const [lastKnownFilePathSignal, setLastKnownFilePathSignal] = createSignal<
-		FilePath | undefined
-	>(undefined)
-
-	createEffect(() => {
-		const path = selectedPath()
-		if (!path) return
-
-		const node = getNode(path)
-		if (node?.kind === 'file') {
-			setLastKnownFilePathSignal(path)
-			return
-		}
-
-		if (!node && path.includes('.') && !path.endsWith('/')) {
-			setLastKnownFilePathSignal(path)
-		}
-	})
-
-	const lastKnownFileNode = createMemo<FsFileTreeNode | undefined>((prev) => {
-		const path = lastKnownFilePathSignal()
-		if (!path) return prev
-
-		const node = getNode(path)
-		if (node?.kind === 'file') {
-			return node
-		}
-		return prev
-	})
-	const lastKnownFilePath = () => lastKnownFilePathSignal()
 
 	const [creationState, setCreationState] = createSignal<{
 		type: 'file' | 'folder'
@@ -145,6 +132,9 @@ export const createFsState = () => {
 		fileSelections,
 		visibleContents,
 		fileViewModes,
+		fileLoadingStatus,
+		fileLoadingErrors,
+		fileLineStarts,
 		get creationState() {
 			return creationState()
 		},
@@ -196,78 +186,11 @@ export const createFsState = () => {
 		get deferredMetadata() {
 			return deferredMetadata
 		},
-		get selectedFileStats() {
-			const path = lastKnownFilePath()
-			if (!path) return undefined
-			return fileStats[createFilePath(path)]
-		},
-		get selectedFilePieceTable() {
-			const path = lastKnownFilePath()
-			if (!path) return undefined
-			return pieceTables[createFilePath(path)]
-		},
-		get selectedFileHighlights() {
-			const path = lastKnownFilePath()
-			if (!path) return undefined
-			return fileHighlights[createFilePath(path)]
-		},
-		get selectedFileHighlightOffset() {
-			const path = lastKnownFilePath()
-			if (!path) return undefined
-			return highlightOffsets[createFilePath(path)]
-		},
-		get selectedFileFolds() {
-			const path = lastKnownFilePath()
-			if (!path) return undefined
-			return fileFolds[createFilePath(path)]
-		},
-		get selectedFileBrackets() {
-			const path = lastKnownFilePath()
-			if (!path) return undefined
-			return fileBrackets[createFilePath(path)]
-		},
-		get selectedFileErrors() {
-			const path = lastKnownFilePath()
-			if (!path) return undefined
-			return fileErrors[createFilePath(path)]
-		},
 		get selectedNode() {
 			return selectedNode()
 		},
-		get lastKnownFileNode() {
-			return lastKnownFileNode()
-		},
-		get lastKnownFilePath() {
-			return lastKnownFilePath()
-		},
 		get dirtyPaths() {
 			return dirtyPaths
-		},
-		get selectedFileScrollPosition() {
-			const path = lastKnownFilePath()
-			if (!path) return undefined
-			return scrollPositions[createFilePath(path)]
-		},
-		get selectedFileCursorPosition() {
-			const path = lastKnownFilePath()
-			if (!path) return undefined
-			return cursorPositions[createFilePath(path)]
-		},
-		get selectedFileSelections() {
-			const path = lastKnownFilePath()
-			if (!path) return undefined
-			return fileSelections[createFilePath(path)]
-		},
-		get selectedFileVisibleContent() {
-			const path = lastKnownFilePath()
-			if (!path) return undefined
-			return visibleContents[createFilePath(path)]
-		},
-		get selectedFileViewMode() {
-			const path = lastKnownFilePath()
-			if (!path) return 'editor'
-			const normalized = createFilePath(path)
-			return getViewMode(normalized, fileStats[normalized])
 		},
 	} satisfies FsState
 
@@ -311,6 +234,9 @@ export const createFsState = () => {
 		setErrors,
 		clearErrors,
 		setDirtyPath,
+		setSavedContent,
+		clearSavedContent,
+		updateDirtyFromPieceTable,
 		clearDirtyPaths,
 		setScrollPosition,
 		clearScrollPositions,
@@ -324,5 +250,11 @@ export const createFsState = () => {
 		clearViewModes,
 		collapseAll,
 		setCreationState,
+		setFileLoadingStatus,
+		setFileLoadingError,
+		setFileLineStarts,
+		preloadFileContent,
+		clearFileLoadingState,
+		clearAllFileLoadingState,
 	}
 }

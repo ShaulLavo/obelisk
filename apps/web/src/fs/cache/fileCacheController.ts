@@ -1,5 +1,4 @@
 import { batch } from 'solid-js'
-import { ReactiveMap } from '@solid-primitives/map'
 import type { ParseResult, PieceTableSnapshot } from '@repo/utils'
 import type { VisibleContentSnapshot } from '@repo/code-editor'
 import type {
@@ -15,11 +14,10 @@ import { timestamp } from '../freshness'
 import type { SyntaxData, ScrollPosition, CursorPosition, SelectionRange } from '../store/types'
 import type { ViewMode } from '../types/ViewMode'
 import type { FsState } from '../types'
-import { createLocalStorageCache, type LocalStorageCache } from './LocalStorageCache'
+import { createLocalStorageCache } from './LocalStorageCache'
 import {
 	createReactiveFileState,
 	type ReactiveFileState,
-	type FileContentData,
 } from '../store/ReactiveFileState'
 
 // Types should be imported directly from store/types, not re-exported here
@@ -423,99 +421,56 @@ export const createFileCacheControllerV2 = ({
 	}
 
 	// === ReactiveFileState management ===
-	const fileStates = new ReactiveMap<FilePath, ReactiveFileState>()
-
-	/**
-	 * Load content data for a path.
-	 * This is used by ReactiveFileState's createResource.
-	 */
-	const loadContentForPath = async (path: FilePath): Promise<FileContentData | undefined> => {
-		if (DISABLE_CACHE) return undefined
-
-		// First check memory
-		const memoryPieceTable = state.pieceTables[path]
-		const memoryStats = state.fileStats[path]
-		const memoryPreview = previews[path]
-
-		if (memoryPieceTable || memoryStats) {
-			return {
-				content: '', // Content will be derived from pieceTable
-				pieceTable: memoryPieceTable ?? null,
-				stats: memoryStats ?? null,
-				previewBytes: memoryPreview ?? null,
-			}
-		}
-
-		// Load from IndexedDB
-		const persistedState = await store.getAsync(path)
-		if (!persistedState) return undefined
-
-		return {
-			content: '',
-			pieceTable: persistedState.pieceTable?.value ?? null,
-			stats: persistedState.stats?.value ?? null,
-			previewBytes: persistedState.previewBytes ?? null,
-		}
-	}
-
-	/**
-	 * Load syntax data for a path.
-	 * This is used by ReactiveFileState's createResource.
-	 */
-	const loadSyntaxForPath = async (path: FilePath): Promise<SyntaxData | undefined> => {
-		if (DISABLE_CACHE) return undefined
-
-		// First check memory
-		const memoryHighlights = state.fileHighlights[path]
-		const memoryFolds = state.fileFolds[path]
-		const memoryBrackets = state.fileBrackets[path]
-		const memoryErrors = state.fileErrors[path]
-
-		if (memoryHighlights || memoryFolds || memoryBrackets || memoryErrors) {
-			return {
-				highlights: memoryHighlights ?? [],
-				folds: memoryFolds ?? [],
-				brackets: memoryBrackets ?? [],
-				errors: memoryErrors ?? [],
-			}
-		}
-
-		// Load from IndexedDB
-		const persistedState = await store.getAsync(path)
-		if (!persistedState?.syntax) return undefined
-
-		return {
-			highlights: persistedState.syntax.value.highlights ?? [],
-			folds: persistedState.syntax.value.folds ?? [],
-			brackets: persistedState.syntax.value.brackets ?? [],
-			errors: persistedState.syntax.value.errors ?? [],
-		}
-	}
+	// Simple Map since ReactiveFileState is now a thin accessor (no reactive primitives)
+	const fileStates = new Map<FilePath, ReactiveFileState>()
 
 	/**
 	 * Get or create a ReactiveFileState for a path.
-	 * Uses Resource-based loading which handles race conditions automatically.
+	 * This is a thin accessor layer over the existing state stores.
 	 */
 	const getFileState = (path: string): ReactiveFileState => {
 		const p = createFilePath(path)
 		let fileState = fileStates.get(p)
 
 		if (!fileState) {
-			// Get initial view state from localStorage
-			const lsState = lsCache.get(p)
-
 			fileState = createReactiveFileState({
 				path: p,
-				loadContent: loadContentForPath,
-				loadSyntax: loadSyntaxForPath,
-				initialViewState: {
-					scrollPosition: lsState?.scroll ?? undefined,
-					cursorPosition: lsState?.cursor ?? undefined,
-					selections: lsState?.selections ?? undefined,
-					visibleContent: lsState?.visible ?? undefined,
-					viewMode: lsState?.viewMode ?? undefined,
-					isDirty: lsState?.isDirty ?? false,
+				stores: {
+					pieceTables: state.pieceTables,
+					fileStats: state.fileStats,
+					fileHighlights: state.fileHighlights,
+					fileFolds: state.fileFolds,
+					fileBrackets: state.fileBrackets,
+					fileErrors: state.fileErrors,
+					scrollPositions: state.scrollPositions,
+					cursorPositions: state.cursorPositions,
+					fileSelections: state.fileSelections,
+					visibleContents: state.visibleContents,
+					fileViewModes: state.fileViewModes,
+					dirtyPaths: state.dirtyPaths,
 				},
+				setters: {
+					setPieceTable,
+					setFileStats,
+					setHighlights,
+					setFolds,
+					setBrackets,
+					setErrors,
+					setScrollPosition,
+					setCursorPosition,
+					setSelections,
+					setVisibleContent,
+					setViewMode,
+					setDirtyPath,
+					setPreviewBytes: (path, value) => {
+						if (value) {
+							previews[path] = value
+						} else {
+							delete previews[path]
+						}
+					},
+				},
+				getPreviewBytes: () => previews[p],
 			})
 
 			fileStates.set(p, fileState)

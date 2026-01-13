@@ -7,7 +7,6 @@
 export {
 	SplitEditor,
 	useLayoutManager,
-	useResourceManager,
 } from './SplitEditor'
 export type { SplitEditorProps } from './SplitEditor'
 

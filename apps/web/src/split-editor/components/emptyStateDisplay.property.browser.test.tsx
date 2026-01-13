@@ -13,22 +13,19 @@ import fc from 'fast-check'
 import { render, cleanup } from 'vitest-browser-solid'
 import { SplitEditor } from './SplitEditor'
 import { createLayoutManager } from '../createLayoutManager'
-import { createResourceManager } from '../createResourceManager'
+
 import { createFileContent } from '../types'
 
 describe('Empty State Display Properties', () => {
 	let layoutManager: ReturnType<typeof createLayoutManager>
-	let resourceManager: ReturnType<typeof createResourceManager>
 
 	beforeEach(() => {
 		layoutManager = createLayoutManager()
-		resourceManager = createResourceManager()
 		layoutManager.initialize()
 	})
 
 	afterEach(() => {
 		cleanup()
-		resourceManager.cleanup()
 	})
 
 	/**
@@ -51,13 +48,11 @@ describe('Empty State Display Properties', () => {
 				async (config) => {
 					// Reset layout for each test case
 					layoutManager = createLayoutManager()
-					resourceManager = createResourceManager()
 					layoutManager.initialize()
 
 					const { unmount } = render(() => (
 						<SplitEditor
 							layoutManager={layoutManager}
-							resourceManager={resourceManager}
 							renderTabContent={(tab, pane) => (
 								<div data-testid="file-tab" data-file-path={tab.content.type === 'file' ? tab.content.filePath : ''}>
 									File content placeholder
@@ -105,7 +100,6 @@ describe('Empty State Display Properties', () => {
 					}
 
 					unmount()
-					resourceManager.cleanup()
 				}
 			),
 			{ numRuns: 20 }
@@ -129,13 +123,11 @@ describe('Empty State Display Properties', () => {
 				async (config) => {
 					// Reset layout
 					layoutManager = createLayoutManager()
-					resourceManager = createResourceManager()
 					layoutManager.initialize()
 
 					const { unmount } = render(() => (
 						<SplitEditor
 							layoutManager={layoutManager}
-							resourceManager={resourceManager}
 							renderTabContent={(tab, pane) => (
 								<div data-testid="file-tab" data-file-path={tab.content.type === 'file' ? tab.content.filePath : ''}>
 									File content placeholder
@@ -173,7 +165,6 @@ describe('Empty State Display Properties', () => {
 					expect(fileTab?.getAttribute('data-empty-state')).not.toBe('no-tabs')
 
 					unmount()
-					resourceManager.cleanup()
 				}
 			),
 			{ numRuns: 10 }
@@ -200,13 +191,11 @@ describe('Empty State Display Properties', () => {
 				async (config) => {
 					// Reset layout
 					layoutManager = createLayoutManager()
-					resourceManager = createResourceManager()
 					layoutManager.initialize()
 
 					const { unmount } = render(() => (
 						<SplitEditor
 							layoutManager={layoutManager}
-							resourceManager={resourceManager}
 							renderTabContent={(tab, pane) => (
 								<div data-testid="file-tab" data-file-path={tab.content.type === 'file' ? tab.content.filePath : ''}>
 									File content placeholder
@@ -250,7 +239,6 @@ describe('Empty State Display Properties', () => {
 					expect(emptyState?.getAttribute('data-empty-state')).toBe('no-tabs')
 
 					unmount()
-					resourceManager.cleanup()
 				}
 			),
 			{ numRuns: 15 }
@@ -267,13 +255,11 @@ describe('Empty State Display Properties', () => {
 				fc.constant(null), // No random input needed, just verifying static content
 				() => {
 					layoutManager = createLayoutManager()
-					resourceManager = createResourceManager()
 					layoutManager.initialize()
 
 					const { unmount } = render(() => (
 						<SplitEditor
 							layoutManager={layoutManager}
-							resourceManager={resourceManager}
 						/>
 					))
 
@@ -298,7 +284,6 @@ describe('Empty State Display Properties', () => {
 					}
 
 					unmount()
-					resourceManager.cleanup()
 				}
 			),
 			{ numRuns: 5 }

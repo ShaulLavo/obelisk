@@ -11,19 +11,16 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render } from 'vitest-browser-solid'
 import { page } from 'vitest/browser'
 import { TabItem } from './TabItem'
-import { LayoutContext, ResourceContext } from './SplitEditor'
+import { LayoutContext } from './SplitEditor'
 import { createLayoutManager } from '../createLayoutManager'
-import { createResourceManager } from '../createResourceManager'
 import type { Tab } from '../types'
 
 describe('TabItem Component', () => {
 	let layoutManager: ReturnType<typeof createLayoutManager>
-	let resourceManager: ReturnType<typeof createResourceManager>
 	let mockTab: Tab
 
 	beforeEach(() => {
 		layoutManager = createLayoutManager()
-		resourceManager = createResourceManager()
 
 		// Spy on layout manager methods using vi.spyOn pattern
 		vi.spyOn(layoutManager, 'setActiveTab')
@@ -52,9 +49,7 @@ describe('TabItem Component', () => {
 	) => {
 		return render(() => (
 			<LayoutContext.Provider value={layoutManager}>
-				<ResourceContext.Provider value={resourceManager}>
-					<TabItem tab={tab} paneId={paneId} isActive={isActive} />
-				</ResourceContext.Provider>
+				<TabItem tab={tab} paneId={paneId} isActive={isActive} />
 			</LayoutContext.Provider>
 		))
 	}
