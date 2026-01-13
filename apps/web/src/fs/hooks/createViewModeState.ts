@@ -4,13 +4,7 @@ import { ReactiveSet } from '@solid-primitives/set'
 import type { ParseResult } from '@repo/utils'
 import type { ViewMode } from '../types/ViewMode'
 import { getDefaultViewMode } from '../utils/viewModeDetection'
-
-/**
- * Normalize path by stripping leading slash.
- * Cache keys use normalized paths (without leading slash).
- */
-const normalizePath = (path: string): string =>
-	path.startsWith('/') ? path.slice(1) : path
+import { createFilePath } from '@repo/fs'
 
 export const createViewModeState = () => {
 	// Store only non-default view modes
@@ -27,7 +21,7 @@ export const createViewModeState = () => {
 		viewMode: ViewMode,
 		stats?: ParseResult
 	) => {
-		const p = normalizePath(path)
+		const p = createFilePath(path)
 		const defaultMode = getDefaultViewMode(p, stats)
 
 		if (viewMode === defaultMode) {
@@ -44,7 +38,7 @@ export const createViewModeState = () => {
 	const getViewMode = (path: string, stats?: ParseResult): ViewMode => {
 		// Read version to establish dependency
 		void viewModeVersion()
-		const p = normalizePath(path)
+		const p = createFilePath(path)
 		const stored = fileViewModes[p]
 		if (stored) {
 			return stored

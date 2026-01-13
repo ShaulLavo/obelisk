@@ -1,5 +1,6 @@
 import type { ParseResult } from '@repo/utils'
 import type { ViewMode } from '../types/ViewMode'
+import { createFilePath } from '@repo/fs'
 
 export type ViewModeDefinition = {
 	id: ViewMode
@@ -115,17 +116,13 @@ export class ViewModeRegistry {
 			isDefault: true, // Default for most files
 		})
 
-		// Helper to normalize paths for comparison (strip leading slash)
-		const normalizePath = (path: string): string => 
-			path.startsWith('/') ? path.slice(1) : path
-
 		// UI mode for user settings file only (not defaultSettings which is uneditable)
 		this.register({
 			id: 'ui',
 			label: 'UI',
 			icon: 'settings-gear',
 			isAvailable: (path) => {
-				const normalized = normalizePath(path)
+				const normalized = createFilePath(path)
 				return normalized === '.system/userSettings.json'
 			},
 		})

@@ -1,12 +1,6 @@
 import { createStore, reconcile } from 'solid-js/store'
 import type { BracketInfo } from '../../workers/treeSitter/types'
-
-/**
- * Normalize path by stripping leading slash.
- * Cache keys use normalized paths (without leading slash).
- */
-const normalizePath = (path: string): string =>
-	path.startsWith('/') ? path.slice(1) : path
+import { createFilePath } from '@repo/fs'
 
 export const createBracketState = () => {
 	const [fileBrackets, setBracketsStore] = createStore<
@@ -15,7 +9,7 @@ export const createBracketState = () => {
 
 	const setBrackets = (path: string, brackets?: BracketInfo[]) => {
 		if (!path) return
-		const p = normalizePath(path)
+		const p = createFilePath(path)
 		if (!brackets?.length) {
 			setBracketsStore(p, undefined)
 			return

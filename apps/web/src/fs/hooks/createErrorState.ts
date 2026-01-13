@@ -1,12 +1,6 @@
 import { createStore, reconcile } from 'solid-js/store'
 import type { TreeSitterError } from '../../workers/treeSitter/types'
-
-/**
- * Normalize path by stripping leading slash.
- * Cache keys use normalized paths (without leading slash).
- */
-const normalizePath = (path: string): string =>
-	path.startsWith('/') ? path.slice(1) : path
+import { createFilePath } from '@repo/fs'
 
 export const createErrorState = () => {
 	const [fileErrors, setErrorsStore] = createStore<
@@ -15,7 +9,7 @@ export const createErrorState = () => {
 
 	const setErrors = (path: string, errors?: TreeSitterError[]) => {
 		if (!path) return
-		const p = normalizePath(path)
+		const p = createFilePath(path)
 		if (!errors?.length) {
 			setErrorsStore(p, undefined)
 			return

@@ -14,8 +14,9 @@ import type { FsSource } from '../types'
 import type { ViewMode } from '../types/ViewMode'
 import { getValidViewMode } from '../utils/viewModeDetection'
 import { FsContext, type FsContextValue } from './FsContext'
-import { replaceDirNodeInTree, batchReplaceDirNodes } from '../utils/treeNodes'
+import { replaceDirNodeInTree } from '../utils/treeNodes'
 import { makeTreePrefetch } from '../hooks/useTreePrefetch'
+import { createReactiveTree } from '../tree/ReactiveTree'
 import { useDirectoryLoader } from '../hooks/useDirectoryLoader'
 import { useFileSelection } from '../hooks/useFileSelection'
 import { useFsRefresh } from '../hooks/useFsRefresh'
@@ -101,37 +102,26 @@ export function FsProvider(props: { children: JSX.Element }) {
 		setDirtyPath,
 	})
 
+	// Reactive tree for O(1) prefetch updates
+	const reactiveTree = createReactiveTree()
+
 	const setDirNode = (path: string, node: FsDirTreeNode) => {
 		if (!state.tree) return
 		if (!path) {
 			setTree(() => node)
+			reactiveTree.setRoot(node)
 			return
 		}
 		const nextTree = replaceDirNodeInTree(state.tree, path, node)
 		if (nextTree === state.tree) return
 		setTree(() => nextTree)
-	}
-
-	// Batch version for prefetch - applies multiple updates in one tree traversal
-	const setBatchDirNodes = (nodes: FsDirTreeNode[]) => {
-		if (!state.tree || nodes.length === 0) return
-		const replacements = new Map<string, FsDirTreeNode>()
-		for (const node of nodes) {
-			if (node.path) {
-				replacements.set(node.path, node)
-			}
-		}
-		if (replacements.size === 0) return
-		const nextTree = batchReplaceDirNodes(state.tree, replacements)
-		if (nextTree === state.tree) return
-		setTree(() => nextTree)
+		// Keep reactive tree in sync for user-initiated directory loads
+		reactiveTree.updateDirectory(path, node.children)
 	}
 
 	const { treePrefetchClient, runPrefetchTask, disposeTreePrefetchClient } =
 		makeTreePrefetch({
-			state,
-			setDirNode,
-			setBatchDirNodes,
+			reactiveTree,
 			setLastPrefetchedPath,
 			setBackgroundPrefetching,
 			setBackgroundIndexedFileCount,
@@ -139,7 +129,6 @@ export function FsProvider(props: { children: JSX.Element }) {
 			setPrefetchProcessedCount,
 			setPrefetchLastDurationMs,
 			setPrefetchAverageDurationMs,
-			registerDeferredMetadata,
 		})
 
 	const { buildEnsurePaths, ensureDirLoaded, toggleDir, reloadDirectory } =

@@ -1,5 +1,6 @@
 /* eslint-disable solid/reactivity */
 import type { FsFileTreeNode, FsTreeNode } from '@repo/fs'
+import { createFilePath } from '@repo/fs'
 import { createEffect, createMemo, createSignal } from 'solid-js'
 import { findNode } from '../runtime/tree'
 import type { FsState } from '../types'
@@ -21,9 +22,6 @@ import { createCursorPositionState } from './createCursorPositionState'
 import { createSelectionsState } from './createSelectionsState'
 import { createVisibleContentState } from './createVisibleContentState'
 import { createViewModeState } from './createViewModeState'
-
-const normalizePath = (path: string): string =>
-	path.startsWith('/') ? path.slice(1) : path
 
 export const createFsState = () => {
 	const { tree, setTree } = createTreeState()
@@ -203,37 +201,37 @@ export const createFsState = () => {
 		get selectedFileStats() {
 			const path = lastKnownFilePath()
 			if (!path) return undefined
-			return fileStats[normalizePath(path)]
+			return fileStats[createFilePath(path)]
 		},
 		get selectedFilePieceTable() {
 			const path = lastKnownFilePath()
 			if (!path) return undefined
-			return pieceTables[normalizePath(path)]
+			return pieceTables[createFilePath(path)]
 		},
 		get selectedFileHighlights() {
 			const path = lastKnownFilePath()
 			if (!path) return undefined
-			return fileHighlights[normalizePath(path)]
+			return fileHighlights[createFilePath(path)]
 		},
 		get selectedFileHighlightOffset() {
 			const path = lastKnownFilePath()
 			if (!path) return undefined
-			return highlightOffsets[normalizePath(path)]
+			return highlightOffsets[createFilePath(path)]
 		},
 		get selectedFileFolds() {
 			const path = lastKnownFilePath()
 			if (!path) return undefined
-			return fileFolds[normalizePath(path)]
+			return fileFolds[createFilePath(path)]
 		},
 		get selectedFileBrackets() {
 			const path = lastKnownFilePath()
 			if (!path) return undefined
-			return fileBrackets[normalizePath(path)]
+			return fileBrackets[createFilePath(path)]
 		},
 		get selectedFileErrors() {
 			const path = lastKnownFilePath()
 			if (!path) return undefined
-			return fileErrors[normalizePath(path)]
+			return fileErrors[createFilePath(path)]
 		},
 		get selectedNode() {
 			return selectedNode()
@@ -250,27 +248,27 @@ export const createFsState = () => {
 		get selectedFileScrollPosition() {
 			const path = lastKnownFilePath()
 			if (!path) return undefined
-			return scrollPositions[normalizePath(path)]
+			return scrollPositions[createFilePath(path)]
 		},
 		get selectedFileCursorPosition() {
 			const path = lastKnownFilePath()
 			if (!path) return undefined
-			return cursorPositions[normalizePath(path)]
+			return cursorPositions[createFilePath(path)]
 		},
 		get selectedFileSelections() {
 			const path = lastKnownFilePath()
 			if (!path) return undefined
-			return fileSelections[normalizePath(path)]
+			return fileSelections[createFilePath(path)]
 		},
 		get selectedFileVisibleContent() {
 			const path = lastKnownFilePath()
 			if (!path) return undefined
-			return visibleContents[normalizePath(path)]
+			return visibleContents[createFilePath(path)]
 		},
 		get selectedFileViewMode() {
 			const path = lastKnownFilePath()
 			if (!path) return 'editor'
-			const normalized = normalizePath(path)
+			const normalized = createFilePath(path)
 			return getViewMode(normalized, fileStats[normalized])
 		},
 	} satisfies FsState

@@ -14,6 +14,7 @@
 import type { VisibleContentSnapshot } from '@repo/code-editor'
 import type { ViewMode } from '../types/ViewMode'
 import type { ScrollPosition } from '../store/types'
+import { createFilePath } from '@repo/fs'
 
 export type CursorPosition = {
 	line: number
@@ -66,11 +67,6 @@ const hashPath = (path: string): string => {
 	return Math.abs(hash).toString(36)
 }
 
-/**
- * Normalize path (remove leading slash for consistency)
- */
-const normalizePath = (path: string): string =>
-	path.startsWith('/') ? path.slice(1) : path
 
 export type LocalStorageCache = {
 	/** Sync read - returns immediately from memory */
@@ -119,7 +115,7 @@ export const createLocalStorageCache = (
 	const hashToPath = new Map<string, string>()
 
 	const getHash = (path: string): string => {
-		const normalized = normalizePath(path)
+		const normalized = createFilePath(path)
 		let hash = pathToHash.get(normalized)
 		if (!hash) {
 			hash = hashPath(normalized)
@@ -191,20 +187,30 @@ export const createLocalStorageCache = (
 	 * Write pending changes to localStorage
 	 */
 	const flushToStorage = (): void => {
+		console.log('[LocalStorageCache] flushToStorage: flushing', pendingWrites.size, 'entries')
 		for (const path of pendingWrites) {
-			const normalized = normalizePath(path)
+			const normalized = createFilePath(path)
 			const state = memory.get(normalized)
 			const key = getStorageKey(path)
+
+			console.log('[LocalStorageCache] flushToStorage: writing', {
+				path: normalized,
+				key,
+				hasState: !!state,
+				scroll: state?.scroll,
+			})
 
 			try {
 				if (state) {
 					// Store both the state and the original path for reverse lookup
 					const toStore = { ...state, _path: normalized }
 					localStorage.setItem(key, JSON.stringify(toStore))
+					console.log('[LocalStorageCache] flushToStorage: wrote to localStorage')
 				} else {
 					localStorage.removeItem(key)
 				}
 			} catch (e) {
+				console.log('[LocalStorageCache] flushToStorage: error', e)
 				if (e instanceof Error && e.name === 'QuotaExceededError') {
 					// Evict more entries and retry
 					evictIfNeeded()
@@ -235,24 +241,35 @@ export const createLocalStorageCache = (
 	 * Load all cached data from localStorage into memory on init
 	 */
 	const loadFromStorage = (): void => {
+		console.log('[LocalStorageCache] loadFromStorage: starting...')
+		let foundCount = 0
+		let loadedCount = 0
 		try {
 			const len = localStorage.length
 			for (let i = 0; i < len; i++) {
 				const key = localStorage.key(i)
 				if (!key || !key.startsWith(prefix)) continue
+				foundCount++
 
 				try {
 					const raw = localStorage.getItem(key)
-					if (!raw) continue
+					if (!raw) {
+						console.log('[LocalStorageCache] loadFromStorage: no raw data for key', key)
+						continue
+					}
 
 					const parsed = JSON.parse(raw) as LocalStorageFileState & { _path?: string }
 					const path = parsed._path
-					if (!path) continue
+					if (!path) {
+						console.log('[LocalStorageCache] loadFromStorage: no _path in entry for key', key, 'data:', raw.slice(0, 100))
+						continue
+					}
 
 					// Remove internal _path field
 					const { _path, ...state } = parsed
 					memory.set(path, state as LocalStorageFileState)
 					accessOrder.set(path, true)
+					loadedCount++
 
 					// Track size
 					const size = raw.length * 2 // UTF-16
@@ -263,20 +280,24 @@ export const createLocalStorageCache = (
 					const hash = key.slice(prefix.length)
 					pathToHash.set(path, hash)
 					hashToPath.set(hash, path)
-				} catch {
+					console.log('[LocalStorageCache] loadFromStorage: loaded entry for path', path, 'scroll:', state.scroll)
+				} catch (e) {
+					console.log('[LocalStorageCache] loadFromStorage: error parsing entry', key, e)
 					// Skip corrupted entries
 				}
 			}
-		} catch {
+		} catch (e) {
+			console.log('[LocalStorageCache] loadFromStorage: localStorage error', e)
 			// localStorage not available
 		}
+		console.log('[LocalStorageCache] loadFromStorage: done. Found:', foundCount, 'Loaded:', loadedCount)
 	}
 
 	// Initialize from localStorage
 	loadFromStorage()
 
 	const get = (path: string): Partial<LocalStorageFileState> | null => {
-		const normalized = normalizePath(path)
+		const normalized = createFilePath(path)
 		const state = memory.get(normalized)
 		if (state) {
 			touchAccess(normalized)
@@ -285,7 +306,12 @@ export const createLocalStorageCache = (
 	}
 
 	const set = (path: string, update: Partial<LocalStorageFileState>): void => {
-		const normalized = normalizePath(path)
+		const normalized = createFilePath(path)
+		console.log('[LocalStorageCache] set():', {
+			path: normalized,
+			hasScroll: update.scroll !== undefined,
+			scroll: update.scroll,
+		})
 		const existing = memory.get(normalized)
 
 		const newState: LocalStorageFileState = {
@@ -312,7 +338,7 @@ export const createLocalStorageCache = (
 	}
 
 	const clear = (path: string): void => {
-		const normalized = normalizePath(path)
+		const normalized = createFilePath(path)
 		removeEntry(normalized)
 		pendingWrites.delete(path)
 	}

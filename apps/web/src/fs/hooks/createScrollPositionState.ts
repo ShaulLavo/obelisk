@@ -1,12 +1,6 @@
 import { createStore, reconcile } from 'solid-js/store'
 import type { ScrollPosition } from '../store/types'
-
-/**
- * Normalize path by stripping leading slash.
- * Cache keys use normalized paths (without leading slash).
- */
-const normalizePath = (path: string): string =>
-	path.startsWith('/') ? path.slice(1) : path
+import { createFilePath } from '@repo/fs'
 
 export const createScrollPositionState = () => {
 	const [scrollPositions, setScrollPositionsStore] = createStore<
@@ -15,7 +9,7 @@ export const createScrollPositionState = () => {
 
 	const setScrollPosition = (path: string, position?: ScrollPosition) => {
 		if (!path) return
-		const p = normalizePath(path)
+		const p = createFilePath(path)
 		if (!position) {
 			setScrollPositionsStore(p, undefined)
 			return

@@ -8,6 +8,7 @@
  * consistent identity across caches, stores, and registries.
  *
  * Normalized form: No leading slash (e.g., "foo/bar.ts" not "/foo/bar.ts")
+ * POSIX form: With leading slash (e.g., "/foo/bar.ts") via toPosix() function
  */
 
 declare const FilePathBrand: unique symbol
@@ -15,6 +16,11 @@ declare const FilePathBrand: unique symbol
 /**
  * Branded string type representing a normalized file path.
  * Cannot be created directly - must use createFilePath().
+ *
+ * @example
+ * const fp = createFilePath("/foo/bar.ts")
+ * fp           // => "foo/bar.ts" (normalized, no leading slash)
+ * toPosix(fp)  // => "/foo/bar.ts" (POSIX with leading slash)
  */
 export type FilePath = string & { readonly [FilePathBrand]: true }
 
@@ -34,6 +40,19 @@ export function createFilePath(raw: string): FilePath {
 }
 
 /**
+ * Convert a FilePath to POSIX format with leading slash.
+ * Use when interfacing with systems that expect POSIX-style absolute paths.
+ *
+ * @example
+ * toPosix(createFilePath("foo/bar.ts")) // => "/foo/bar.ts"
+ * toPosix(createFilePath(""))           // => "/"
+ */
+export function toPosix(fp: FilePath): string {
+	if (!fp) return '/'
+	return `/${fp}`
+}
+
+/**
  * Check if two FilePaths are equal.
  * Since FilePaths are already normalized, this is a direct string comparison.
  */
@@ -44,13 +63,13 @@ export function filePathEquals(a: FilePath, b: FilePath): boolean {
 /**
  * Convert a FilePath to a display path with leading slash.
  * Use this when showing paths to users in the UI.
+ * Alias for toPosix().
  *
  * @example
  * toDisplayPath(createFilePath("foo/bar.ts")) // => "/foo/bar.ts"
  */
 export function toDisplayPath(fp: FilePath): string {
-	if (!fp) return '/'
-	return `/${fp}`
+	return toPosix(fp)
 }
 
 /**
@@ -142,4 +161,13 @@ export function isFilePath(value: unknown): value is FilePath {
  */
 export function unsafeAsFilePath(normalized: string): FilePath {
 	return normalized as FilePath
+}
+
+/**
+ * Get the raw string value from a FilePath.
+ * Since FilePath is a branded string, this just returns it as-is.
+ * Useful for explicit type conversion.
+ */
+export function filePathToString(fp: FilePath): string {
+	return fp
 }

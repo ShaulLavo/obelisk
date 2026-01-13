@@ -1,13 +1,7 @@
 /* eslint-disable solid/reactivity */
 import { createStore, reconcile } from 'solid-js/store'
 import type { PieceTableSnapshot } from '@repo/utils'
-
-/**
- * Normalize path by stripping leading slash.
- * Cache keys use normalized paths (without leading slash).
- */
-const normalizePath = (path: string): string =>
-	path.startsWith('/') ? path.slice(1) : path
+import { createFilePath } from '@repo/fs'
 
 export const createPieceTableState = () => {
 	const [pieceTables, setPieceTablesStore] = createStore<
@@ -15,12 +9,12 @@ export const createPieceTableState = () => {
 	>({})
 
 	const evictPieceTableEntry = (path: string) => {
-		setPieceTablesStore(normalizePath(path), undefined)
+		setPieceTablesStore(createFilePath(path), undefined)
 	}
 
 	const setPieceTable = (path: string, snapshot?: PieceTableSnapshot) => {
 		if (!path) return
-		const normalized = normalizePath(path)
+		const normalized = createFilePath(path)
 		if (!snapshot) {
 			evictPieceTableEntry(normalized)
 			return

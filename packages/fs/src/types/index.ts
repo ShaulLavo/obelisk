@@ -2,6 +2,8 @@ export {
 	type FilePath,
 	createFilePath,
 	filePathEquals,
+	filePathToString,
+	toPosix,
 	toDisplayPath,
 	getParentPath,
 	getBaseName,

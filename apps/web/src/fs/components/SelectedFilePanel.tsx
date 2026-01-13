@@ -57,6 +57,7 @@ export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
 			fileCache,
 		},
 	] = useFs()
+
 	const focus = useFocusManager()
 	const [settingsState] = useSettings()
 
@@ -242,17 +243,12 @@ export const SelectedFilePanel = (props: SelectedFilePanelProps) => {
 							treeSitterWorker={treeSitterWorker() ?? undefined}
 							documentVersion={documentVersion}
 							onSave={() => void saveFile()}
-							initialScrollPosition={() => {
-								const pos = state.selectedFileScrollPosition
-								console.log('[SelectedFilePanel] initialScrollPosition accessor called', pos)
-								return pos
+							initialScrollPosition={() => state.selectedFileScrollPosition}
+							onScrollPositionChange={(pos) => {
+								console.log('[SelectedFilePanel] onScrollPositionChange called:', pos)
+								updateSelectedFileScrollPosition(pos)
 							}}
-							onScrollPositionChange={updateSelectedFileScrollPosition}
-							initialCursorPosition={() => {
-								const pos = state.selectedFileCursorPosition
-								console.log('[SelectedFilePanel] initialCursorPosition accessor called', pos)
-								return pos
-							}}
+							initialCursorPosition={() => state.selectedFileCursorPosition}
 							onCursorPositionChange={(pos) =>
 								updateSelectedFileCursorPosition({ ...pos, offset: 0 })
 							}

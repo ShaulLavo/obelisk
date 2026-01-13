@@ -1,13 +1,7 @@
 /* eslint-disable solid/reactivity */
 import { createStore } from 'solid-js/store'
 import type { ParseResult } from '@repo/utils'
-
-/**
- * Normalize path by stripping leading slash.
- * Cache keys use normalized paths (without leading slash).
- */
-const normalizePath = (path: string): string =>
-	path.startsWith('/') ? path.slice(1) : path
+import { createFilePath } from '@repo/fs'
 
 export const createFileStatsState = () => {
 	const [fileStats, setFileStatsStore] = createStore<
@@ -15,12 +9,12 @@ export const createFileStatsState = () => {
 	>({})
 
 	const evictFileStatsEntry = (path: string) => {
-		setFileStatsStore(normalizePath(path), undefined)
+		setFileStatsStore(createFilePath(path), undefined)
 	}
 
 	const setFileStats = (path: string, result?: ParseResult) => {
 		if (!path) return
-		setFileStatsStore(normalizePath(path), result)
+		setFileStatsStore(createFilePath(path), result)
 	}
 
 	const clearParseResults = () => {

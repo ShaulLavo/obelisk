@@ -62,9 +62,6 @@ export type FileCacheController = {
 	flush: () => Promise<void>
 }
 
-const normalizePath = (path: string): string =>
-	path.startsWith('/') ? path.slice(1) : path
-
 type FileCacheControllerOptions = {
 	state: Pick<
 		FsState,
@@ -121,7 +118,7 @@ export const createFileCacheControllerV2 = ({
 
 	const get = (path: string): FileCacheEntry => {
 		if (DISABLE_CACHE) return {}
-		const p = normalizePath(path)
+		const p = createFilePath(path)
 
 		// Get view state from localStorage (sync)
 		const lsState = lsCache.get(p)
@@ -144,26 +141,17 @@ export const createFileCacheControllerV2 = ({
 			isDirty: state.dirtyPaths[p] ?? lsState?.isDirty ?? undefined,
 		}
 
-		console.log('[FileCacheController] get()', {
-			path: p,
-			memoryScroll: state.scrollPositions[p],
-			lsScroll: lsState?.scroll,
-			resultScroll: result.scrollPosition,
-		})
-
 		return result
 	}
 
 	const set = (path: string, entry: FileCacheEntry) => {
-		console.log('[FileCacheController] set() called', {
-			path,
+		if (!path || DISABLE_CACHE) return
+		const p = createFilePath(path)
+		console.log('[FileCacheController] set():', {
+			path: p,
 			hasScrollPosition: entry.scrollPosition !== undefined,
-			hasCursorPosition: entry.cursorPosition !== undefined,
-			hasSelections: entry.selections !== undefined,
 			scrollPosition: entry.scrollPosition,
 		})
-		if (!path || DISABLE_CACHE) return
-		const p = normalizePath(path)
 
 		// Update memory state
 		batch(() => {
@@ -243,13 +231,13 @@ export const createFileCacheControllerV2 = ({
 
 	const clearBuffer = (path: string) => {
 		if (!path) return
-		const p = normalizePath(path)
+		const p = createFilePath(path)
 		setPieceTable(p, undefined)
 	}
 
 	const clearContent = (path: string) => {
 		if (!path) return
-		const p = normalizePath(path)
+		const p = createFilePath(path)
 		batch(() => {
 			setPieceTable(p, undefined)
 			setFileStats(p, undefined)
@@ -263,7 +251,7 @@ export const createFileCacheControllerV2 = ({
 
 	const clearPath = (path: string) => {
 		if (!path) return
-		const p = normalizePath(path)
+		const p = createFilePath(path)
 		batch(() => {
 			// Content state
 			setPieceTable(p, undefined)
@@ -337,7 +325,7 @@ export const createFileCacheControllerV2 = ({
 
 	const getAsync = async (path: string): Promise<FileCacheEntry> => {
 		if (DISABLE_CACHE) return {}
-		const p = normalizePath(path)
+		const p = createFilePath(path)
 
 		// Step 1: Get from memory + localStorage (sync) - includes view state
 		const memoryEntry = get(p)
@@ -395,7 +383,7 @@ export const createFileCacheControllerV2 = ({
 	}
 
 	const getScrollPosition = (path: string): ScrollPosition | undefined => {
-		const p = normalizePath(path)
+		const p = createFilePath(path)
 		// Check memory first, then localStorage
 		const memoryScroll = state.scrollPositions[p]
 		if (memoryScroll) return memoryScroll
@@ -404,7 +392,7 @@ export const createFileCacheControllerV2 = ({
 	}
 
 	const getLineStarts = (path: string): number[] | undefined => {
-		const p = normalizePath(path)
+		const p = createFilePath(path)
 		return state.fileStats[p]?.lineStarts
 	}
 

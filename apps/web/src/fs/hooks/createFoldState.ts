@@ -1,12 +1,6 @@
 import { createStore, reconcile } from 'solid-js/store'
 import type { FoldRange } from '../../workers/treeSitter/types'
-
-/**
- * Normalize path by stripping leading slash.
- * Cache keys use normalized paths (without leading slash).
- */
-const normalizePath = (path: string): string =>
-	path.startsWith('/') ? path.slice(1) : path
+import { createFilePath } from '@repo/fs'
 
 export const createFoldState = () => {
 	const [fileFolds, setFoldsStore] = createStore<
@@ -15,7 +9,7 @@ export const createFoldState = () => {
 
 	const setFolds = (path: string, folds?: FoldRange[]) => {
 		if (!path) return
-		const p = normalizePath(path)
+		const p = createFilePath(path)
 		if (!folds?.length) {
 			setFoldsStore(p, undefined)
 			return

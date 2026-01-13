@@ -22,15 +22,9 @@ import { parseBufferWithTreeSitter } from '../../treeSitter/workerClient'
 import { viewTransitionBatched } from '@repo/utils/viewTransition'
 import { toast } from '@repo/ui/toaster'
 import { useSettings } from '~/settings/SettingsProvider'
+import { createFilePath } from '@repo/fs'
 
 const textDecoder = new TextDecoder()
-
-/**
- * Normalize path by stripping leading slash.
- * Cache keys use normalized paths (without leading slash).
- */
-const normalizePath = (path: string): string =>
-	path.startsWith('/') ? path.slice(1) : path
 
 export const enum FileSelectionAnimation {
 	Blur = 'blur',
@@ -130,7 +124,7 @@ export const useFileSelection = ({
 		if (
 			previousPath &&
 			previousPath !== path &&
-			!state.dirtyPaths[normalizePath(previousPath)]
+			!state.dirtyPaths[createFilePath(previousPath)]
 		) {
 			fileCache.clearBuffer(previousPath)
 		}
@@ -342,9 +336,13 @@ export const useFileSelection = ({
 
 	const updateSelectedFileScrollPosition: FsContextValue[1]['updateSelectedFileScrollPosition'] =
 		(scrollPosition) => {
-			console.log('[useFileSelection] updateSelectedFileScrollPosition called', scrollPosition)
+			console.log('[useFileSelection] updateSelectedFileScrollPosition:', scrollPosition)
 			const path = state.lastKnownFilePath
-			if (!path) return
+			if (!path) {
+				console.log('[useFileSelection] no path, skipping')
+				return
+			}
+			console.log('[useFileSelection] calling fileCache.set for path:', path)
 			fileCache.set(path, { scrollPosition })
 		}
 

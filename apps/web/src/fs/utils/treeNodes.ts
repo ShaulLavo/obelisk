@@ -57,70 +57,92 @@ export const replaceDirNodeInTree = (
 }
 
 /**
+ * Build a set of all ancestor paths for a collection of paths.
+ * For path "a/b/c", adds "a" and "a/b" to the set.
+ * Used for O(1) "has descendant" checks during tree traversal.
+ */
+const buildAncestorPaths = (paths: Iterable<string>): Set<string> => {
+	const ancestors = new Set<string>()
+	for (const path of paths) {
+		const parts = path.split('/')
+		let current = ''
+		for (let i = 0; i < parts.length - 1; i++) {
+			const part = parts[i]!
+			current = current ? `${current}/${part}` : part
+			ancestors.add(current)
+		}
+	}
+	return ancestors
+}
+
+/**
  * Batch replace multiple directory nodes in a single tree traversal.
  * Much more efficient than calling replaceDirNodeInTree multiple times.
  */
 export const batchReplaceDirNodes = (
-	current: FsDirTreeNode,
+	root: FsDirTreeNode,
 	replacements: Map<string, FsDirTreeNode>
 ): FsDirTreeNode => {
-	if (replacements.size === 0) return current
+	if (replacements.size === 0) return root
 
-	// Check if current node should be replaced
-	const replacement = replacements.get(current.path)
-	if (replacement) {
-		// Remove from map since we found it
-		replacements.delete(current.path)
-		// If no more replacements, return the replacement directly
-		if (replacements.size === 0) return replacement
-		// Otherwise, continue processing children of the replacement
-		return batchReplaceDirNodes(replacement, replacements)
-	}
+	// Pre-compute ancestor paths for O(1) "has descendant" checks
+	const ancestorPaths = buildAncestorPaths(replacements.keys())
+	// Track which paths we've processed (don't mutate the input map)
+	const remaining = new Set(replacements.keys())
 
-	// Check which children might contain targets
-	let changed = false
-	const children = current.children.map((child) => {
-		if (child.kind !== 'dir') return child
-		if (replacements.size === 0) return child
+	const traverse = (current: FsDirTreeNode): FsDirTreeNode => {
+		// Check if current node should be replaced
+		if (remaining.has(current.path)) {
+			const replacement = replacements.get(current.path)!
+			remaining.delete(current.path)
+			// If no more replacements, return the replacement directly
+			if (remaining.size === 0) return replacement
+			// Otherwise, continue processing children of the replacement
+			return traverse(replacement)
+		}
 
-		// Check if this child is a target or contains a target
-		const childReplacement = replacements.get(child.path)
-		if (childReplacement) {
-			replacements.delete(child.path)
-			changed = true
-			// If the replacement has children that need processing, recurse
-			if (replacements.size > 0) {
-				return batchReplaceDirNodes(childReplacement, replacements)
+		// Early exit if nothing left to replace
+		if (remaining.size === 0) return current
+
+		// Check which children might contain targets
+		let changed = false
+		const children = current.children.map((child) => {
+			if (child.kind !== 'dir') return child
+			if (remaining.size === 0) return child
+
+			// Check if this child is a target
+			if (remaining.has(child.path)) {
+				const childReplacement = replacements.get(child.path)!
+				remaining.delete(child.path)
+				changed = true
+				// Continue processing if more replacements exist
+				if (remaining.size > 0) {
+					return traverse(childReplacement)
+				}
+				return childReplacement
 			}
-			return childReplacement
-		}
 
-		// Check if any remaining targets are under this child
-		let hasTargetBelow = false
-		for (const targetPath of replacements.keys()) {
-			if (targetPath.startsWith(`${child.path}/`)) {
-				hasTargetBelow = true
-				break
+			// O(1) check: is this path an ancestor of any remaining target?
+			if (!ancestorPaths.has(child.path)) return child
+
+			const next = traverse(child)
+			if (next !== child) {
+				changed = true
 			}
+			return next
+		})
+
+		if (!changed) {
+			return current
 		}
 
-		if (!hasTargetBelow) return child
-
-		const next = batchReplaceDirNodes(child, replacements)
-		if (next !== child) {
-			changed = true
+		return {
+			...current,
+			children,
 		}
-		return next
-	})
-
-	if (!changed) {
-		return current
 	}
 
-	return {
-		...current,
-		children,
-	}
+	return traverse(root)
 }
 
 export const countLoadedDirectories = (root?: FsDirTreeNode) => {

@@ -1,13 +1,7 @@
 import { batch } from 'solid-js'
 import { createStore, reconcile } from 'solid-js/store'
 import type { TreeSitterCapture } from '../../workers/treeSitter/types'
-
-/**
- * Normalize path by stripping leading slash.
- * Cache keys use normalized paths (without leading slash).
- */
-const normalizePath = (path: string): string =>
-	path.startsWith('/') ? path.slice(1) : path
+import { createFilePath } from '@repo/fs'
 
 export type HighlightTransform = {
 	charDelta: number
@@ -37,7 +31,7 @@ export const createHighlightState = () => {
 		transform: HighlightTransform
 	) => {
 		if (!path) return
-		const p = normalizePath(path)
+		const p = createFilePath(path)
 
 		const normalizedStart = transform.fromCharIndex
 		const normalizedOldEnd = Math.max(normalizedStart, transform.oldEndIndex)
@@ -118,7 +112,7 @@ export const createHighlightState = () => {
 
 	const setHighlights = (path: string, highlights?: TreeSitterCapture[]) => {
 		if (!path) return
-		const p = normalizePath(path)
+		const p = createFilePath(path)
 
 		const nextHighlights = highlights?.length ? highlights : undefined
 		const existingHighlights = fileHighlights[p]

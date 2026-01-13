@@ -1,16 +1,8 @@
 import type { FsDirTreeNode, FsTreeNode } from '@repo/fs'
+import { createFilePath } from '@repo/fs'
 import { trackMicro } from '@repo/perf'
 
 const TREE_TIMING_THRESHOLD = 1 // ms
-
-/**
- * Normalize a path by stripping leading slashes.
- * Tree nodes use paths without leading slashes (e.g., ".system/userSettings.json")
- * but UI code often uses paths with leading slashes ("/.system/userSettings.json").
- */
-const normalizePath = (path: string): string => {
-	return path.startsWith('/') ? path.slice(1) : path
-}
 
 // Path index for O(1) lookups
 // WeakMap keyed by root node to allow garbage collection when tree changes
@@ -77,7 +69,7 @@ export function findNode(
 ): FsTreeNode | undefined {
 	if (!root || path === undefined) return undefined
 
-	const normalizedPath = normalizePath(path)
+	const normalizedPath = createFilePath(path)
 	if (root.path === normalizedPath) return root
 
 	// Try cached index first
@@ -128,7 +120,7 @@ export function findNodeLinear(
 ): FsTreeNode | undefined {
 	if (!root || path === undefined) return undefined
 
-	const normalizedPath = normalizePath(path)
+	const normalizedPath = createFilePath(path)
 	if (root.path === normalizedPath) return root
 
 	return findNodeLinearInternal(root, normalizedPath)

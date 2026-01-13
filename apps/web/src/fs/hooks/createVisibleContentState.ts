@@ -1,12 +1,6 @@
 import { createStore, reconcile } from 'solid-js/store'
 import type { VisibleContentSnapshot } from '@repo/code-editor'
-
-/**
- * Normalize path by stripping leading slash.
- * Cache keys use normalized paths (without leading slash).
- */
-const normalizePath = (path: string): string =>
-	path.startsWith('/') ? path.slice(1) : path
+import { createFilePath } from '@repo/fs'
 
 export const createVisibleContentState = () => {
 	const [visibleContents, setVisibleContentsStore] = createStore<
@@ -18,7 +12,7 @@ export const createVisibleContentState = () => {
 		content?: VisibleContentSnapshot
 	) => {
 		if (!path) return
-		const p = normalizePath(path)
+		const p = createFilePath(path)
 		if (!content) {
 			setVisibleContentsStore(p, undefined)
 			return

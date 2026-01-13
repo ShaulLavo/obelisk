@@ -5,6 +5,8 @@
  * These files are system files that users should not modify directly.
  */
 
+import { createFilePath } from '@repo/fs'
+
 /** Paths that are uneditable (normalized without leading slash) */
 const UNEDITABLE_PATHS = new Set<string>([
 	'.system/defaultSettings.json',
@@ -16,17 +18,10 @@ const UNEDITABLE_PATTERNS: RegExp[] = [
 ]
 
 /**
- * Normalize a path for comparison (strips leading slash)
- */
-function normalizePath(path: string): string {
-	return path.startsWith('/') ? path.slice(1) : path
-}
-
-/**
  * Check if a file path is uneditable
  */
 export function isUneditablePath(path: string): boolean {
-	const normalized = normalizePath(path)
+	const normalized = createFilePath(path)
 
 	// Check exact paths
 	if (UNEDITABLE_PATHS.has(normalized)) {
@@ -54,12 +49,12 @@ export function getUneditablePaths(): string[] {
  * Add a path to the uneditable set (for runtime additions)
  */
 export function addUneditablePath(path: string): void {
-	UNEDITABLE_PATHS.add(normalizePath(path))
+	UNEDITABLE_PATHS.add(createFilePath(path))
 }
 
 /**
  * Remove a path from the uneditable set
  */
 export function removeUneditablePath(path: string): void {
-	UNEDITABLE_PATHS.delete(normalizePath(path))
+	UNEDITABLE_PATHS.delete(createFilePath(path))
 }
