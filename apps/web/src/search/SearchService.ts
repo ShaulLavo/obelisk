@@ -10,8 +10,10 @@ import type { SearchBackend, SearchResult, FileMetadata } from './types'
 
 export class SearchService implements SearchBackend {
 	async init(): Promise<void> {
-		// The generic type in initSqlite returns version info, but the interface just returns void for now.
-		await initSqlite()
+		const result = await initSqlite()
+		if (!result.opfsEnabled) {
+			console.warn('[SearchService] SQLite running in memory mode - search index will not persist')
+		}
 	}
 
 	async search(query: string): Promise<SearchResult[]> {

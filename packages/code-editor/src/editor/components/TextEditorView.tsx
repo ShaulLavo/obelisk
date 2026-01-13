@@ -385,23 +385,17 @@ export const TextEditorView = (props: EditorProps) => {
 			restoreAttemptedForPath !== path &&
 			savedScrollTop > 0
 		) {
-			// Validate: if we have lineIndex and lineHeight, check our calculation matches
-			if (initialPos.lineHeight && initialPos.lineIndex !== undefined) {
-				const calculatedScrollTop = initialPos.lineIndex * currentLineHeight
-				const diff = Math.abs(calculatedScrollTop - savedScrollTop)
-				// Allow 1px tolerance for rounding
-				if (diff > 1) {
-					// TODO: Font changed between sessions - lineHeight mismatch
-					// Consider: 1) Store font info and recalculate on mismatch
-					//           2) Fall back to lineIndex-based restore if font differs
-					//           3) Detect font change and warn user
-					console.warn(
-						`[ScrollRestore] Line height mismatch! ` +
-						`saved: ${initialPos.lineHeight}px, current: ${currentLineHeight}px. ` +
-						`Calculated: ${calculatedScrollTop}px vs saved: ${savedScrollTop}px (diff: ${diff}px). ` +
-						`Using saved pixel position.`
-					)
-				}
+			// Validate: check if line height changed (indicates font/size change)
+			if (initialPos.lineHeight && initialPos.lineHeight !== currentLineHeight) {
+				// TODO: Font or font size changed between sessions
+				// Consider: 1) Recalculate scroll from lineIndex with new lineHeight
+				//           2) Store font info to detect font family changes
+				//           3) Warn user about potential scroll position drift
+				console.warn(
+					`[ScrollRestore] Line height changed! ` +
+					`saved: ${initialPos.lineHeight}px, current: ${currentLineHeight}px. ` +
+					`Using saved pixel position (may be slightly off).`
+				)
 			}
 
 			restoreAttemptedForPath = path

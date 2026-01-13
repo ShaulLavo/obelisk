@@ -15,11 +15,6 @@ export const Editor = (props: EditorProps) => {
 		'onEditBlocked',
 	])
 
-	console.log('[Editor] splitProps result:', {
-		hasOnScrollPositionChange: !!callbacks.onScrollPositionChange,
-		callbackType: typeof callbacks.onScrollPositionChange,
-	})
-
 	return (
 		<CursorProvider
 			filePath={props.document.filePath}

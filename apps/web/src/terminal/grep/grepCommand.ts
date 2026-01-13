@@ -1,9 +1,8 @@
 import type { CommandContext } from '../commands'
 import type { GrepMatch, GrepProgress } from '@repo/fs'
-import { grep } from '@repo/fs'
+import { grep, createFilePath } from '@repo/fs'
 import { IGNORED_SEGMENTS } from '../../fs/config/constants'
 import { readFileText } from '../../fs/runtime/streaming'
-import { findNode } from '../../fs/runtime/tree'
 import { DEFAULT_SOURCE } from '../../fs/config/constants'
 
 /**
@@ -155,10 +154,9 @@ export async function loadGitignorePatterns(
 	searchPath: string
 ): Promise<string[]> {
 	const gitignorePath = searchPath ? `${searchPath}/.gitignore` : '.gitignore'
-	const tree = ctx.shell.state.tree
-	if (!tree) return []
+	if (!ctx.shell.state.tree) return []
 
-	const node = findNode(tree, gitignorePath)
+	const node = ctx.shell.state.pathIndex[createFilePath(gitignorePath)]
 	if (!node || node.kind !== 'file') {
 		return []
 	}
@@ -334,7 +332,7 @@ export async function handleGrep(
 	const cwd = ctx.shell.getCwd()
 	const searchPath = parsed.path ? normalizePath(cwd, parsed.path) : cwd
 
-	const searchNode = findNode(ctx.shell.state.tree, searchPath)
+	const searchNode = ctx.shell.state.pathIndex[createFilePath(searchPath)]
 	if (!searchNode) {
 		ctx.localEcho?.println(
 			`grep: ${searchPath || '/'}: No such file or directory`
