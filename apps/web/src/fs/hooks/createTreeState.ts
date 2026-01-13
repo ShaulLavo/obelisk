@@ -1,7 +1,7 @@
 import type { FsDirTreeNode, FsTreeNode, FilePath } from '@repo/fs'
 import { createFilePath } from '@repo/fs'
 import { batch } from 'solid-js'
-import { createStore, produce, reconcile } from 'solid-js/store'
+import { createStore, produce, reconcile, type SetStoreFunction } from 'solid-js/store'
 
 export type PathIndex = Record<FilePath, FsTreeNode>
 
@@ -29,25 +29,25 @@ const buildPathIndex = (root: FsDirTreeNode): PathIndex => {
 }
 
 const addChildrenToIndex = (
-	setPathIndex: (fn: (prev: PathIndex) => PathIndex) => void,
+	setPathIndex: SetStoreFunction<PathIndex>,
 	children: FsTreeNode[]
 ): void => {
-	const updates: PathIndex = {}
-	const stack: FsTreeNode[] = [...children]
-
-	while (stack.length) {
-		const node = stack.pop()!
-		if (node.path) {
-			updates[createFilePath(node.path)] = node
-		}
-		if (node.kind === 'dir' && node.children) {
-			for (const child of node.children) {
-				stack.push(child)
+	setPathIndex(
+		produce((index: PathIndex) => {
+			const stack: FsTreeNode[] = [...children]
+			while (stack.length) {
+				const node = stack.pop()!
+				if (node.path) {
+					index[createFilePath(node.path)] = node
+				}
+				if (node.kind === 'dir' && node.children) {
+					for (const child of node.children) {
+						stack.push(child)
+					}
+				}
 			}
-		}
-	}
-
-	setPathIndex((prev) => ({ ...prev, ...updates }))
+		})
+	)
 }
 
 const findDirInDraft = (
@@ -103,6 +103,39 @@ export const createTreeState = () => {
 				})
 			)
 			addChildrenToIndex(setPathIndex, children)
+		})
+	}
+
+	type PathIndexEntry = { path: string; node: FsTreeNode }
+
+	const updateTreeDirectories = (
+		updates: Array<{ path: string; children: FsTreeNode[]; pathIndexEntries: PathIndexEntry[] }>
+	) => {
+		if (updates.length === 0) return
+
+		batch(() => {
+			setTreeState(
+				'root',
+				produce((draft) => {
+					if (!draft) return
+					for (const { path, children } of updates) {
+						const dir = findDirInDraft(draft, path)
+						if (dir) {
+							dir.children = children
+							dir.isLoaded = true
+						}
+					}
+				})
+			)
+			setPathIndex(
+				produce((index: PathIndex) => {
+					for (const { pathIndexEntries } of updates) {
+						for (const { path, node } of pathIndexEntries) {
+							index[createFilePath(path)] = node
+						}
+					}
+				})
+			)
 		})
 	}
 
@@ -166,6 +199,7 @@ export const createTreeState = () => {
 		pathIndex,
 		setTreeRoot,
 		updateTreeDirectory,
+		updateTreeDirectories,
 		addTreeNode,
 		removeTreeNode,
 		getNode,

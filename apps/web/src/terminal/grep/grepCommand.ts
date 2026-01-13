@@ -1,7 +1,7 @@
 import type { CommandContext } from '../commands'
 import type { GrepMatch, GrepProgress } from '@repo/fs'
 import { grep, createFilePath } from '@repo/fs'
-import { IGNORED_SEGMENTS } from '../../fs/config/constants'
+import { DEFERRED_SEGMENTS } from '../../fs/config/constants'
 import { readFileText } from '../../fs/runtime/streaming'
 import { DEFAULT_SOURCE } from '../../fs/config/constants'
 
@@ -347,7 +347,7 @@ export async function handleGrep(
 			: await loadGitignorePatterns(ctx, searchPath)
 
 		const excludePatterns = [
-			...(parsed.noExclude ? [] : Array.from(IGNORED_SEGMENTS)),
+			...(parsed.noExclude ? [] : Array.from(DEFERRED_SEGMENTS)),
 			...gitignorePatterns,
 			...parsed.excludePatterns,
 		]

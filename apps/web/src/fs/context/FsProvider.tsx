@@ -29,6 +29,7 @@ export function FsProvider(props: { children: JSX.Element }) {
 		state,
 		setTreeRoot,
 		updateTreeDirectory,
+		updateTreeDirectories,
 		addTreeNode,
 		removeTreeNode,
 		getNode,
@@ -116,7 +117,7 @@ export function FsProvider(props: { children: JSX.Element }) {
 
 	const { treePrefetchClient, runPrefetchTask, disposeTreePrefetchClient } =
 		makeTreePrefetch({
-			updateTreeDirectory,
+			updateTreeDirectories,
 			setLastPrefetchedPath,
 			setBackgroundPrefetching,
 			setBackgroundIndexedFileCount,
@@ -358,10 +359,22 @@ export function FsProvider(props: { children: JSX.Element }) {
 		selectedPathSelector(path ? createFilePath(path) : undefined)
 
 	const pickNewRoot = async () => {
-		if (state.activeSource !== 'local') return
-		await doPick()
-		invalidateFs('local')
-		await refresh('local')
+		// Allow picking if:
+		// - No tree loaded yet (initial state)
+		// - Already on local source
+		// Block only if explicitly on a different source (memory/opfs)
+		const source = state.activeSource
+		if (source && source !== 'local') return
+
+		try {
+			await doPick()
+			invalidateFs('local')
+			await refresh('local')
+		} catch (error) {
+			// User cancelled or picker failed - ignore
+			if (error instanceof Error && error.name === 'AbortError') return
+			console.error('[pickNewRoot] Failed:', error)
+		}
 	}
 
 	const value: FsContextValue = [

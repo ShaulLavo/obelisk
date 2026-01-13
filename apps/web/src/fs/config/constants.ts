@@ -8,7 +8,7 @@ const isTest =
 
 export const DEFAULT_SOURCE: FsSource = isTest ? 'memory' : 'local'
 
-export const IGNORED_SEGMENTS = new Set([
+export const DEFERRED_SEGMENTS = new Set([
 	'node_modules',
 	'.git',
 	'.hg',
@@ -17,4 +17,5 @@ export const IGNORED_SEGMENTS = new Set([
 	'dist',
 	'build',
 	'.cache',
+	'target',
 ])

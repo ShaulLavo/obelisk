@@ -9,8 +9,13 @@ import type {
 } from '../prefetch/treePrefetchWorkerTypes'
 import { toast } from '@repo/ui/toaster'
 
+const BATCH_FLUSH_INTERVAL_MS = 100
+const MAX_BATCH_SIZE = 100
+
+type PathIndexEntry = { path: string; node: FsTreeNode }
+
 type MakeTreePrefetchOptions = {
-	updateTreeDirectory: (path: string, children: FsTreeNode[]) => void
+	updateTreeDirectories: (updates: Array<{ path: string; children: FsTreeNode[]; pathIndexEntries: PathIndexEntry[] }>) => void
 	setLastPrefetchedPath: (path: string | undefined) => void
 	setBackgroundPrefetching: (value: boolean) => void
 	setBackgroundIndexedFileCount: (value: number) => void
@@ -22,7 +27,7 @@ type MakeTreePrefetchOptions = {
 }
 
 export const makeTreePrefetch = ({
-	updateTreeDirectory,
+	updateTreeDirectories,
 	setLastPrefetchedPath,
 	setBackgroundPrefetching,
 	setBackgroundIndexedFileCount,
@@ -64,10 +69,44 @@ export const makeTreePrefetch = ({
 		})
 	}
 
+	// Batch prefetch results to avoid blocking main thread with thousands of individual updates
+	const pendingUpdates: PrefetchDirectoryLoadedPayload[] = []
+	let flushTimeout: ReturnType<typeof setTimeout> | null = null
+
+	const flushPendingUpdates = () => {
+		flushTimeout = null
+		if (pendingUpdates.length === 0) return
+
+		const payloads = pendingUpdates.splice(0, MAX_BATCH_SIZE)
+		// Convert to the format expected by updateTreeDirectories
+		// Worker already computed pathIndexEntries - main thread just merges
+		const updates = payloads.map((p) => ({
+			path: p.node.path,
+			children: p.node.children,
+			pathIndexEntries: p.pathIndexEntries,
+		}))
+
+		// Single batched update for all directories - much more efficient
+		updateTreeDirectories(updates)
+
+		const lastPayload = payloads[payloads.length - 1]
+		if (lastPayload) {
+			setLastPrefetchedPath(lastPayload.node.path)
+		}
+
+		// If more updates pending, schedule another flush
+		if (pendingUpdates.length > 0 && !flushTimeout) {
+			flushTimeout = setTimeout(flushPendingUpdates, BATCH_FLUSH_INTERVAL_MS)
+		}
+	}
+
 	const handlePrefetchResult = (payload: PrefetchDirectoryLoadedPayload) => {
-		// O(1) update: store lookup + incremental index update
-		updateTreeDirectory(payload.node.path, payload.node.children)
-		setLastPrefetchedPath(payload.node.path)
+		pendingUpdates.push(payload)
+
+		// Schedule flush if not already scheduled
+		if (!flushTimeout) {
+			flushTimeout = setTimeout(flushPendingUpdates, BATCH_FLUSH_INTERVAL_MS)
+		}
 	}
 
 	const handleDeferredMetadata = (_payload: PrefetchDeferredMetadataPayload) => {
@@ -87,7 +126,18 @@ export const makeTreePrefetch = ({
 			enableCaching, // Pass through caching configuration
 		}
 	)
-	const disposeTreePrefetchClient = () => treePrefetchClient.dispose()
+	const disposeTreePrefetchClient = () => {
+		// Clear pending flush timeout
+		if (flushTimeout) {
+			clearTimeout(flushTimeout)
+			flushTimeout = null
+		}
+		// Flush any remaining updates
+		if (pendingUpdates.length > 0) {
+			flushPendingUpdates()
+		}
+		return treePrefetchClient.dispose()
+	}
 
 	if (getOwner()) {
 		onCleanup(() => {

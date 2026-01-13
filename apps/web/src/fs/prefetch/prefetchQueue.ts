@@ -1,6 +1,6 @@
 import type { FsDirTreeNode } from '@repo/fs'
 import type { FsSource } from '../types'
-import { IGNORED_SEGMENTS } from '../config/constants'
+import { DEFERRED_SEGMENTS } from '../config/constants'
 import type {
 	PrefetchDirectoryLoadedPayload,
 	PrefetchErrorPayload,
@@ -101,9 +101,7 @@ export class PrefetchQueue {
 		if (this.workerCount < 1) {
 			throw new Error('PrefetchQueue requires at least one worker')
 		}
-		void searchService.init().catch(() => {
-			// Failed to initialize SQLite for indexing
-		})
+		void searchService.init().catch(() => {})
 	}
 
 	async resetForSource(source: FsSource) {
@@ -127,15 +125,15 @@ export class PrefetchQueue {
 			return
 		}
 
-		// Extract pending targets in the worker to avoid main thread work
 		const { targets, loadedPaths, totalFileCount } =
 			await this.options.extractPendingTargets(tree)
 
-		// Update tracking on main thread (lightweight)
 		for (const path of loadedPaths) {
 			this.loadedDirPaths.add(path)
 		}
-		this.indexedFileCount = totalFileCount
+		if (!this.cacheRestored) {
+			this.indexedFileCount = totalFileCount
+		}
 
 		this.emitStatus(this.running)
 		this.enqueueTargets(targets)
@@ -145,14 +143,12 @@ export class PrefetchQueue {
 		if (!node) return
 		this.dropTargetFromQueues(node.path)
 
-		// Extract pending targets in worker (avoid main thread work)
 		const { targets, loadedPaths, totalFileCount } =
 			await this.options.extractPendingTargets(node)
 
 		for (const path of loadedPaths) {
 			this.loadedDirPaths.add(path)
 		}
-		// Add to existing count (don't overwrite)
 		this.indexedFileCount += totalFileCount
 
 		this.emitStatus(this.running)
@@ -236,13 +232,14 @@ export class PrefetchQueue {
 	private shouldDeferPath(path: string | undefined) {
 		if (!path) return false
 		const segments = path.split('/').filter(Boolean)
-		return segments.some((segment) => IGNORED_SEGMENTS.has(segment))
+		return segments.some((segment) => DEFERRED_SEGMENTS.has(segment))
 	}
 
 	private shouldSkipTarget(target: PrefetchTarget) {
 		if (!target.path) return true
 		if (target.depth > MAX_PREFETCH_DEPTH) return true
 		if (this.loadedDirPaths.has(target.path)) return true
+		if (this.loadedDirFileCounts.has(target.path)) return true
 		return false
 	}
 
@@ -333,12 +330,10 @@ export class PrefetchQueue {
 			return { target: primaryTarget, priority: 'primary' }
 		}
 
-		// Primary queue is empty - check if we can move to deferred phase
 		if (!this.primaryPhaseComplete && this.activeJobs.primary === 0) {
 			this.markPrimaryPhaseComplete()
 		}
 
-		// Try deferred queue (even if activeJobs.primary > 0 to avoid getting stuck)
 		const deferredTarget = this.takeFromQueue(this.deferredQueue)
 		if (deferredTarget) {
 			if (!this.primaryPhaseComplete && this.activeJobs.primary === 0) {
@@ -424,18 +419,16 @@ export class PrefetchQueue {
 					return
 				}
 				if (!result) {
-					// Directory failed to load or timed out - skip it and continue
 					continue
 				}
 
-				// Use pre-computed data from worker (no main thread tree traversal!)
-				const { node: subtree, pendingTargets, fileCount, filesToIndex } = result
+				const { node: subtree, pendingTargets, fileCount, filesToIndex, pathIndexEntries } = result
 
 				this.sessionPrefetchCount += 1
 				this.loadedDirPaths.add(subtree.path ?? '')
+				this.loadedDirFileCounts.set(subtree.path ?? '', fileCount)
 				this.indexedFileCount += fileCount
 
-				// Queue files for search indexing
 				if (filesToIndex.length > 0) {
 					this.indexBatch.push(...filesToIndex)
 					if (this.indexBatch.length >= INDEX_BATCH_SIZE) {
@@ -443,7 +436,7 @@ export class PrefetchQueue {
 					}
 				}
 
-				const payload: PrefetchDirectoryLoadedPayload = { node: subtree }
+				const payload: PrefetchDirectoryLoadedPayload = { node: subtree, pathIndexEntries }
 				if (priority === 'primary') {
 					this.pendingResults.primary.push(payload)
 				} else {
@@ -522,12 +515,9 @@ export class PrefetchQueue {
 		const batch = [...this.indexBatch]
 		this.indexBatch = []
 
-		// SQLite runs in a separate worker, so this just sends data via comlink
 		try {
 			await searchService.indexFiles(batch)
-		} catch {
-			// Failed to batch insert files to SQLite
-		}
+		} catch {}
 	}
 
 	private emitStatus(running: boolean, milestone = false) {
@@ -579,14 +569,8 @@ export class PrefetchQueue {
 		void this.saveToCache()
 	}
 
-	private logPhaseCompletion(_kind: PrefetchPriority) {
-		// Phase completion logged
-	}
+	private logPhaseCompletion(_kind: PrefetchPriority) {}
 
-	/**
-	 * Try to restore prefetch progress from the cache.
-	 * Returns true if cache was restored successfully.
-	 */
 	async tryRestoreFromCache(rootChildren: string[]): Promise<boolean> {
 		if (this.cacheRestored) return false
 
@@ -594,7 +578,6 @@ export class PrefetchQueue {
 			const cached = await loadPrefetchCache()
 			if (!cached) return false
 
-			// Check for old cache format (had loadedDirPaths instead of loadedDirFileCounts)
 			if (!cached.loadedDirFileCounts) {
 				await clearPrefetchCache()
 				return false
@@ -603,37 +586,35 @@ export class PrefetchQueue {
 			const currentFingerprint = generateShapeFingerprint(rootChildren)
 			this.currentShapeFingerprint = currentFingerprint
 
-			// Check if the filesystem shape has changed
 			if (cached.shapeFingerprint !== currentFingerprint) {
-				// Shape changed - invalidate cache and start fresh
 				await clearPrefetchCache()
 				return false
 			}
 
-			// Restore file counts from cache - this prevents double-counting when we
-			// re-walk directories. We DON'T restore loadedDirPaths because that would
-			// skip directories without enqueuing their children (we don't cache tree data).
-			// Instead, we re-walk everything but use cached counts to compute correct deltas.
+			const dirCount = Object.keys(cached.loadedDirFileCounts).length
+			const fileCount = cached.indexedFileCount
+
+			// Sanity check: if we have many directories but very few files, cache is corrupt
+			// Typical ratio is at least 1 file per directory on average
+			if (dirCount > 100 && fileCount < dirCount) {
+				console.warn('[PrefetchQueue] Cache appears corrupt, clearing', { dirCount, fileCount })
+				await clearPrefetchCache()
+				return false
+			}
+
 			for (const [path, count] of Object.entries(cached.loadedDirFileCounts)) {
 				this.loadedDirFileCounts.set(path, count)
 			}
-			this.indexedFileCount = cached.indexedFileCount
+			this.indexedFileCount = fileCount
 			this.lastCacheSaveCount = this.loadedDirFileCounts.size
 			this.cacheRestored = true
-
-			// Emit status so UI shows the cached indexed count immediately
 			this.emitStatus(false)
-
-			// Return false to still seed the tree - we'll re-walk but won't double-count
-			return false
+			return true
 		} catch {
 			return false
 		}
 	}
 
-	/**
-	 * Save current prefetch progress to the cache.
-	 */
 	private async saveToCache(): Promise<void> {
 		if (!this.currentShapeFingerprint) return
 
@@ -645,14 +626,9 @@ export class PrefetchQueue {
 				savedAt: Date.now(),
 			})
 			this.lastCacheSaveCount = this.loadedDirFileCounts.size
-		} catch {
-			// Ignore cache save errors
-		}
+		} catch {}
 	}
 
-	/**
-	 * Maybe save the cache if enough progress has been made since last save.
-	 */
 	private maybeSaveCache(): void {
 		const progress = this.loadedDirFileCounts.size - this.lastCacheSaveCount
 		if (progress >= CACHE_SAVE_INTERVAL) {
@@ -660,17 +636,10 @@ export class PrefetchQueue {
 		}
 	}
 
-	/**
-	 * Set the shape fingerprint from the root directory's children.
-	 * Call this when seeding the tree to enable cache validation.
-	 */
 	setShapeFingerprint(rootChildren: string[]): void {
 		this.currentShapeFingerprint = generateShapeFingerprint(rootChildren)
 	}
 
-	/**
-	 * Clear the prefetch cache (useful when the user wants a fresh start).
-	 */
 	async clearCache(): Promise<void> {
 		await clearPrefetchCache()
 		this.cacheRestored = false

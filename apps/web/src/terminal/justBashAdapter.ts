@@ -3,7 +3,7 @@ import type { FsContext, FsDirTreeNode, GrepMatch } from '@repo/fs'
 import { grepStream } from '@repo/fs'
 import { VfsBashAdapter } from './VfsBashAdapter'
 import type { ShellContext } from './commands'
-import { IGNORED_SEGMENTS } from '../fs/config/constants'
+import { DEFERRED_SEGMENTS } from '../fs/config/constants'
 import { cloneIntoVfs } from '../git/gitService'
 import type { GitProgressMessage } from '../git/types'
 
@@ -450,7 +450,7 @@ export function createJustBashAdapter(
 						: [cwd || ''] // Default to CWD
 
 				try {
-					const ignores = noIgnore ? [] : Array.from(IGNORED_SEGMENTS)
+					const ignores = noIgnore ? [] : Array.from(DEFERRED_SEGMENTS)
 					// Merge manual excludes
 					ignores.push(...excludePatterns)
 

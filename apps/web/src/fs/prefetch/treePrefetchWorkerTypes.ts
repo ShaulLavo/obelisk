@@ -1,4 +1,4 @@
-import type { FsDirTreeNode } from '@repo/fs'
+import type { FsDirTreeNode, FsTreeNode } from '@repo/fs'
 import type { FsSource } from '../types'
 
 export type PrefetchTarget = {
@@ -37,6 +37,7 @@ export type PrefetchStatusPayload = {
 
 export type PrefetchDirectoryLoadedPayload = {
 	node: FsDirTreeNode
+	pathIndexEntries: PathIndexEntry[]
 }
 
 export type DeferredDirMetadata = Omit<FsDirTreeNode, 'children'> & {
@@ -58,28 +59,27 @@ export type TreePrefetchWorkerCallbacks = {
 	onError?(payload: PrefetchErrorPayload): void
 }
 
-/** File/dir metadata for search indexing */
 export type IndexableFile = {
 	path: string
 	kind: 'file' | 'dir'
 }
 
-/** Result from loading a directory, with precomputed pending targets */
+export type PathIndexEntry = {
+	path: string
+	node: FsTreeNode
+}
+
 export type DirectoryLoadResult = {
 	node: FsDirTreeNode
-	/** Child directories that need loading (isLoaded === false) */
 	pendingTargets: PrefetchTarget[]
-	/** Count of files in this directory (for indexing stats) */
 	fileCount: number
-	/** Files and dirs to index for search */
 	filesToIndex: IndexableFile[]
+	pathIndexEntries: PathIndexEntry[]
 }
 
 export type TreePrefetchWorkerApi = {
 	init(payload: TreePrefetchWorkerInitPayload): Promise<void>
-	/** Load a directory and precompute pending targets in the worker */
 	loadDirectory(target: PrefetchTarget): Promise<DirectoryLoadResult | undefined>
-	/** Seed tree and extract all pending targets in the worker */
 	extractPendingTargets(tree: FsDirTreeNode): Promise<{
 		targets: PrefetchTarget[]
 		loadedPaths: string[]

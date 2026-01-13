@@ -3,6 +3,7 @@ import {
 	walkDirectory,
 	type FsContext,
 	type FsDirTreeNode,
+	type FsTreeNode,
 } from '@repo/fs'
 import { expose } from 'comlink'
 import { normalizeDirNodeMetadata } from '../utils/treeNodes'
@@ -11,9 +12,10 @@ import type {
 	TreePrefetchWorkerApi,
 	DirectoryLoadResult,
 	IndexableFile,
+	PathIndexEntry,
 } from './treePrefetchWorkerTypes'
 
-const LOAD_TIMEOUT_MS = 30_000 // 30 second timeout for loading large directories
+const LOAD_TIMEOUT_MS = 30_000
 
 let ctx: FsContext | undefined
 let initialized = false
@@ -46,20 +48,23 @@ const withTimeout = <T>(
 	)
 }
 
-/**
- * Extract pending targets, file count, and indexable files from a directory node.
- * This preprocessing happens in the worker to avoid main thread work.
- */
 const extractFromNode = (node: FsDirTreeNode): {
 	pendingTargets: PrefetchTarget[]
 	fileCount: number
 	filesToIndex: IndexableFile[]
+	pathIndexEntries: PathIndexEntry[]
 } => {
 	const pendingTargets: PrefetchTarget[] = []
 	const filesToIndex: IndexableFile[] = []
+	const pathIndexEntries: PathIndexEntry[] = []
 	let fileCount = 0
 
-	for (const child of node.children) {
+	const stack: FsTreeNode[] = [...node.children]
+	while (stack.length) {
+		const child = stack.pop()!
+		if (child.path) {
+			pathIndexEntries.push({ path: child.path, node: child })
+		}
 		if (child.kind === 'file') {
 			fileCount++
 			filesToIndex.push({ path: child.path, kind: 'file' })
@@ -73,10 +78,15 @@ const extractFromNode = (node: FsDirTreeNode): {
 					parentPath: child.parentPath,
 				})
 			}
+			if (child.children) {
+				for (const grandchild of child.children) {
+					stack.push(grandchild)
+				}
+			}
 		}
 	}
 
-	return { pendingTargets, fileCount, filesToIndex }
+	return { pendingTargets, fileCount, filesToIndex, pathIndexEntries }
 }
 
 const loadDirectoryTarget = async (
@@ -84,7 +94,6 @@ const loadDirectoryTarget = async (
 ): Promise<DirectoryLoadResult | undefined> => {
 	const context = ensureContext()
 
-	// Add timeout to prevent hanging on slow/unresponsive directories
 	const result = await withTimeout(
 		walkDirectory(
 			context,
@@ -113,15 +122,11 @@ const loadDirectoryTarget = async (
 		target.depth
 	)
 
-	// Precompute pending targets, file count, and indexable files in the worker
-	const { pendingTargets, fileCount, filesToIndex } = extractFromNode(treeNode)
+	const { pendingTargets, fileCount, filesToIndex, pathIndexEntries } = extractFromNode(treeNode)
 
-	return { node: treeNode, pendingTargets, fileCount, filesToIndex }
+	return { node: treeNode, pendingTargets, fileCount, filesToIndex, pathIndexEntries }
 }
 
-/**
- * Extract all pending targets from a tree. Runs entirely in worker.
- */
 const extractPendingTargetsFromTree = (tree: FsDirTreeNode): {
 	targets: PrefetchTarget[]
 	loadedPaths: string[]

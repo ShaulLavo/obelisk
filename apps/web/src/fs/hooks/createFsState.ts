@@ -23,8 +23,8 @@ import { createVisibleContentState } from './createVisibleContentState'
 import { createViewModeState } from './createViewModeState'
 
 export const createFsState = () => {
-	const { tree, pathIndex, setTreeRoot, updateTreeDirectory, addTreeNode, removeTreeNode, getNode } =
-		createTreeState()
+	const treeState = createTreeState()
+	const { pathIndex, setTreeRoot, updateTreeDirectory, updateTreeDirectories, addTreeNode, removeTreeNode, getNode } = treeState
 	const { expanded, setExpanded, collapseAll } = createExpandedState()
 	const { selectedPath, setSelectedPath, activeSource, setActiveSource } =
 		createSelectionState()
@@ -128,7 +128,9 @@ export const createFsState = () => {
 	} | null>(null)
 
 	const state = {
-		tree,
+		get tree() {
+			return treeState.tree
+		},
 		pathIndex,
 		expanded,
 		fileStats,
@@ -273,6 +275,7 @@ export const createFsState = () => {
 		state,
 		setTreeRoot,
 		updateTreeDirectory,
+		updateTreeDirectories,
 		addTreeNode,
 		removeTreeNode,
 		getNode,
