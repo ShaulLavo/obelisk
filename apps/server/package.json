@@ -1,7 +1,9 @@
 {
   "name": "server",
   "version": "1.0.50",
+  "packageManager": "bun@1.2.22",
   "scripts": {
+    "start": "bun run src/index.ts",
     "test": "bun test",
     "dev": "bun run --watch src/index.ts",
     "depcheck": "depcheck",
