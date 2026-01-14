@@ -25,8 +25,9 @@ RUN bun run --cwd apps/web copy-tree-sitter-assets
 # Clean up icons cache after build to save disk space (icons source repos are large)
 RUN bun run build:submodules && rm -rf packages/icons/.cache
 
-# Build the web app
-RUN bun run --cwd apps/web build
+# Build the web app with verbose output
+ENV DEBUG=vite:*
+RUN bun run --cwd apps/web build 2>&1 || (echo "=== Build failed, dumping vite config ===" && cat apps/web/vite.config.ts && exit 1)
 
 # Stage 2: Serve with nginx
 FROM nginx:alpine

@@ -171,7 +171,12 @@ export default defineConfig(() => {
 			rollupOptions: {
 				// Exclude server code from the browser bundle - only types are imported
 				// Match both relative paths (../../server/) and absolute paths (/app/apps/server/)
-				external: (id) => id.includes('/server/src/') || id.includes('apps/server/'),
+				external: (id) => {
+					if (id.includes('/server/src/') || id.includes('apps/server/')) {
+						return true
+					}
+					return false
+				},
 			},
 		},
 		optimizeDeps: {
