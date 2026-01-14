@@ -1,5 +1,4 @@
 import { treaty } from '@elysiajs/eden'
-import type { App } from '../../server/src/index'
 import { env } from '~/env'
 
 const isBinaryResponse = (response: Response) => {
@@ -12,8 +11,9 @@ const isBinaryResponse = (response: Response) => {
 }
 
 // TODO: Investigate why bun version mismatch keeps happening - causes elysia type incompatibility
-// @ts-expect-error Elysia treaty type mismatch due to different bun versions resolving different elysia instances
-export const client = treaty<App>(env.apiOrigin, {
+// Note: App type import removed to fix Docker build - server module has Node.js dependencies
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const client = treaty<any>(env.apiOrigin, {
 	onResponse: async (response) => {
 		if (!isBinaryResponse(response)) return null
 		return response.arrayBuffer()
