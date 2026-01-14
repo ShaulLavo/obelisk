@@ -28,11 +28,42 @@ Nothing should feel magical unless it is reliable.
 
 ---
 
+## Repository Structure
+
+| Name | Role | Package |
+|------|------|---------|
+| **Anubis** | Monorepo | `anubis` (root) |
+| **Obelisk** | Client / Editor | `apps/web` |
+| **Slifer** | Server / Infrastructure | `apps/server` |
+
+---
+
 ## Product Pantheon
 
-### 🗿 Obelisk — The Editor
+### 🐺 Anubis — The Monorepo
 
-**Role:** Core code editor  
+**Role:** Repository root, orchestration, shared infrastructure
+**Archetype:** Guardian, guide, keeper of structure
+
+Anubis contains everything.
+It is the boundary and the foundation.
+
+**Principles:**
+
+- Unified workspace
+- Clear boundaries between systems
+- Shared tooling and config
+- Single source of truth for dependencies
+
+Anubis judges what belongs and what does not.
+
+> Anubis is the gatekeeper.
+
+---
+
+### 🗿 Obelisk — The Client
+
+**Role:** Core code editor (web client)
 **Archetype:** Stability, structure, permanence
 
 Obelisk is the foundation.  
@@ -88,9 +119,9 @@ Obelisk is not.
 
 ---
 
-### ⚡ Slifer — The Infrastructure
+### ⚡ Slifer — The Server
 
-**Role:** Cloud, sync, realtime systems  
+**Role:** Cloud, sync, realtime systems (backend server)
 **Archetype:** Reaction, presence, nervous system
 
 Slifer connects everything.
