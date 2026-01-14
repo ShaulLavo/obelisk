@@ -56,6 +56,8 @@ try {
 	throw new Error(z.prettifyError(error as z.ZodError))
 }
 
+const isProd = envMode === 'production'
+const PROD_WEB_ORIGIN = 'https://anubis.my'
 const serverPort = envData.VITE_SERVER_PORT
 const webPort = envData.VITE_WEB_PORT
 const webOrigin = envData.VITE_WEB_ORIGIN ?? envData.WEB_ORIGIN
@@ -68,7 +70,8 @@ const gitProxyAllowedHosts = envData.GIT_PROXY_ALLOWED_HOSTS
 export const env = {
 	serverPort,
 	webPort,
-	webOrigin: webOrigin ?? `http://localhost:${webPort}`,
+	webOrigin: webOrigin ?? (isProd ? PROD_WEB_ORIGIN : `http://localhost:${webPort}`),
 	gitProxyAllowedHosts,
 	mode: envMode,
+	isProd,
 }
