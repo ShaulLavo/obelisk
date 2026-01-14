@@ -1,17 +1,17 @@
-import type { FsDirTreeNode, FsTreeNode, FilePath } from '@repo/fs'
+import type { DirTreeNode, TreeNode, FilePath } from '@repo/fs'
 import { createFilePath } from '@repo/fs'
 import { batch } from 'solid-js'
 import { createStore, produce, reconcile, type SetStoreFunction } from 'solid-js/store'
 
-export type PathIndex = Record<FilePath, FsTreeNode>
+export type PathIndex = Record<FilePath, TreeNode>
 
 type TreeState = {
-	root: FsDirTreeNode | undefined
+	root: DirTreeNode | undefined
 }
 
-const buildPathIndex = (root: FsDirTreeNode): PathIndex => {
+const buildPathIndex = (root: DirTreeNode): PathIndex => {
 	const index: PathIndex = {}
-	const stack: FsTreeNode[] = [root]
+	const stack: TreeNode[] = [root]
 
 	while (stack.length) {
 		const node = stack.pop()!
@@ -30,11 +30,11 @@ const buildPathIndex = (root: FsDirTreeNode): PathIndex => {
 
 const addChildrenToIndex = (
 	setPathIndex: SetStoreFunction<PathIndex>,
-	children: FsTreeNode[]
+	children: TreeNode[]
 ): void => {
 	setPathIndex(
 		produce((index: PathIndex) => {
-			const stack: FsTreeNode[] = [...children]
+			const stack: TreeNode[] = [...children]
 			while (stack.length) {
 				const node = stack.pop()!
 				if (node.path) {
@@ -51,12 +51,12 @@ const addChildrenToIndex = (
 }
 
 const findDirInDraft = (
-	draft: FsDirTreeNode,
+	draft: DirTreeNode,
 	targetPath: string
-): FsDirTreeNode | undefined => {
+): DirTreeNode | undefined => {
 	if (draft.path === targetPath) return draft
 
-	const stack: FsDirTreeNode[] = [draft]
+	const stack: DirTreeNode[] = [draft]
 	while (stack.length) {
 		const dir = stack.pop()!
 		if (!dir.children) continue
@@ -78,7 +78,7 @@ export const createTreeState = () => {
 	const [treeState, setTreeState] = createStore<TreeState>({ root: undefined })
 	const [pathIndex, setPathIndex] = createStore<PathIndex>({})
 
-	const setTreeRoot = (root: FsDirTreeNode | undefined) => {
+	const setTreeRoot = (root: DirTreeNode | undefined) => {
 		batch(() => {
 			setTreeState('root', root)
 			if (root) {
@@ -89,7 +89,7 @@ export const createTreeState = () => {
 		})
 	}
 
-	const updateTreeDirectory = (path: string, children: FsTreeNode[]) => {
+	const updateTreeDirectory = (path: string, children: TreeNode[]) => {
 		batch(() => {
 			setTreeState(
 				'root',
@@ -106,10 +106,10 @@ export const createTreeState = () => {
 		})
 	}
 
-	type PathIndexEntry = { path: string; node: FsTreeNode }
+	type PathIndexEntry = { path: string; node: TreeNode }
 
 	const updateTreeDirectories = (
-		updates: Array<{ path: string; children: FsTreeNode[]; pathIndexEntries: PathIndexEntry[] }>
+		updates: Array<{ path: string; children: TreeNode[]; pathIndexEntries: PathIndexEntry[] }>
 	) => {
 		if (updates.length === 0) return
 
@@ -139,7 +139,7 @@ export const createTreeState = () => {
 		})
 	}
 
-	const addTreeNode = (parentPath: string, node: FsTreeNode) => {
+	const addTreeNode = (parentPath: string, node: TreeNode) => {
 		batch(() => {
 			setTreeState(
 				'root',
@@ -188,7 +188,7 @@ export const createTreeState = () => {
 		})
 	}
 
-	const getNode = (path: string): FsTreeNode | undefined => {
+	const getNode = (path: string): TreeNode | undefined => {
 		return pathIndex[createFilePath(path)]
 	}
 

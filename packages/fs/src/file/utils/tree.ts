@@ -1,8 +1,8 @@
 import type {
-	FsDirTreeNode,
-	FsFileTreeNode,
-	FsTreeNode,
-	FsTreeOptions,
+	DirTreeNode,
+	FileTreeNode,
+	TreeNode,
+	TreeOptions,
 } from '../types'
 import { throwIfAborted } from './abort'
 import { iterateDirectoryEntries } from './dir'
@@ -21,7 +21,7 @@ type TreeContextApi = {
 
 const DEFAULT_MAX_DEPTH = Infinity
 
-const compareNodes = (a: FsTreeNode, b: FsTreeNode) => {
+const compareNodes = (a: TreeNode, b: TreeNode) => {
 	if (a.kind !== b.kind) {
 		return a.kind === 'dir' ? -1 : 1
 	}
@@ -41,8 +41,8 @@ export type WalkDirectoryResult = {
 	name: string
 	depth: number
 	parentPath?: string
-	dirs: FsDirTreeNode[]
-	files: FsFileTreeNode[]
+	dirs: DirTreeNode[]
+	files: FileTreeNode[]
 }
 
 type WalkTarget = {
@@ -62,7 +62,7 @@ const createShallowDirNode = (
 	path: string,
 	depth: number,
 	parentPath: string | undefined
-): FsDirTreeNode => ({
+): DirTreeNode => ({
 	kind: 'dir',
 	name,
 	path,
@@ -80,7 +80,7 @@ const createFileNode = async (
 	getHandle: () => Promise<FileSystemFileHandle>,
 	options: { withHandles: boolean; withMeta: boolean },
 	signal?: AbortSignal
-): Promise<FsFileTreeNode> => {
+): Promise<FileTreeNode> => {
 	throwIfAborted(signal)
 
 	let handle: FileSystemFileHandle | undefined
@@ -129,8 +129,8 @@ export async function walkDirectory(
 	const signal = options?.signal
 
 	const handle = await ctx.getDirectoryHandleForRelative(target.path, false)
-	const dirs: FsDirTreeNode[] = []
-	const files: FsFileTreeNode[] = []
+	const dirs: DirTreeNode[] = []
+	const files: FileTreeNode[] = []
 	const depth = target.depth ?? 0
 	const parentPath = target.parentPath
 
@@ -187,8 +187,8 @@ export async function walkDirectory(
 export async function buildFsTree(
 	ctx: TreeContextApi,
 	root: { path: string; name: string },
-	options?: FsTreeOptions
-): Promise<FsDirTreeNode> {
+	options?: TreeOptions
+): Promise<DirTreeNode> {
 	const {
 		maxDepth = DEFAULT_MAX_DEPTH,
 		includeFiles = true,
@@ -200,7 +200,7 @@ export async function buildFsTree(
 	} = options ?? {}
 
 	const shouldInclude = async (
-		node: FsTreeNode,
+		node: TreeNode,
 		isRoot: boolean
 	): Promise<boolean> => {
 		if (isRoot) return true
@@ -214,7 +214,7 @@ export async function buildFsTree(
 		depth: number,
 		parentPath: string | undefined,
 		getHandle: () => Promise<FileSystemFileHandle>
-	): Promise<FsFileTreeNode | undefined> => {
+	): Promise<FileTreeNode | undefined> => {
 		throwIfAborted(signal)
 
 		let size: number | undefined
@@ -237,7 +237,7 @@ export async function buildFsTree(
 			mimeType = file.type || undefined
 		}
 
-		const node: FsFileTreeNode = {
+		const node: FileTreeNode = {
 			kind: 'file',
 			name,
 			path,
@@ -263,10 +263,10 @@ export async function buildFsTree(
 		depth: number,
 		parentPath: string | undefined,
 		isRoot: boolean
-	): Promise<FsDirTreeNode | undefined> => {
+	): Promise<DirTreeNode | undefined> => {
 		throwIfAborted(signal)
 
-		const dirNode: FsDirTreeNode = {
+		const dirNode: DirTreeNode = {
 			kind: 'dir',
 			name,
 			path,
@@ -294,7 +294,7 @@ export async function buildFsTree(
 			}
 		}
 
-		type ChildResult = FsTreeNode | undefined
+		type ChildResult = TreeNode | undefined
 		const childTasks: Array<Promise<ChildResult>> = []
 
 		for await (const [entryName, entry] of iterateDirectoryEntries(handle)) {
@@ -342,7 +342,7 @@ export async function buildFsTree(
 			const childNodes = await Promise.all(childTasks)
 
 			dirNode.children = childNodes
-				.filter((node): node is FsTreeNode => Boolean(node))
+				.filter((node): node is TreeNode => Boolean(node))
 				.sort(compareNodes)
 		}
 

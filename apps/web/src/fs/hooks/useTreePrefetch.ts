@@ -1,4 +1,4 @@
-import type { FsTreeNode } from '@repo/fs'
+import type { TreeNode } from '@repo/fs'
 import { batch, getOwner, onCleanup } from 'solid-js'
 import { createTreePrefetchClient } from '../prefetch/treePrefetchClient'
 import type {
@@ -12,10 +12,10 @@ import { toast } from '@repo/ui/toaster'
 const BATCH_FLUSH_INTERVAL_MS = 100
 const MAX_BATCH_SIZE = 100
 
-type PathIndexEntry = { path: string; node: FsTreeNode }
+type PathIndexEntry = { path: string; node: TreeNode }
 
 type MakeTreePrefetchOptions = {
-	updateTreeDirectories: (updates: Array<{ path: string; children: FsTreeNode[]; pathIndexEntries: PathIndexEntry[] }>) => void
+	updateTreeDirectories: (updates: Array<{ path: string; children: TreeNode[]; pathIndexEntries: PathIndexEntry[] }>) => void
 	setLastPrefetchedPath: (path: string | undefined) => void
 	setBackgroundPrefetching: (value: boolean) => void
 	setBackgroundIndexedFileCount: (value: number) => void

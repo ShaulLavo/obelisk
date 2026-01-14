@@ -6,8 +6,8 @@ export {
 	MemoryFileHandle,
 	pickNewLocalRoot,
 } from './getRoot'
+export type { MemHandle } from './getRoot'
 
-// FilePath branded type for normalized paths
 export {
 	type FilePath,
 	createFilePath,
@@ -24,30 +24,57 @@ export {
 	isFilePath,
 	unsafeAsFilePath,
 } from './types'
-export { createFs, createStorage, VDir, VFile } from './vfs'
+
 export {
-	createWorkerStorage,
-	createWorkerStorageNoCache,
+	HandleCache,
+	FileHandle,
+	DirHandle,
+	FileContextImpl,
+	createFileContext,
+	createStorage,
 	createStorageNoCache,
+	buildFsTree,
+	walkDirectory,
+	createWorkerStorage,
 	createSyncStore,
-} from './vfs'
-export { buildFsTree, walkDirectory } from './vfs/utils/tree'
+	createWorkerStorageNoCache,
+} from './file'
 export type {
-	FsContext,
-	FsContextOptions,
+	SyncAccessHandle,
+	SyncCapableFileHandle,
 	OpenMode,
-	VfsReadableStream,
+	FileContextOptions,
 	TreeKind,
 	FsTreeBase,
-	FsFileTreeNode,
-	FsDirTreeNode,
-	FsTreeNode,
-	FsTreeOptions,
-	VfsStorage,
-	CreateVfsStorageOptions,
-	VfsStorageSource,
-} from './vfs'
-export type { MemHandle } from './getRoot'
+	FileTreeNode,
+	DirTreeNode,
+	TreeNode,
+	TreeOptions,
+	ReadableByteStream,
+	FileContext,
+	ResolvedPath,
+	FileContextInternal,
+	Storage,
+	CreateStorageOptions,
+	StorageSource,
+	WorkerStorage,
+	WalkDirectoryOptions,
+	WalkDirectoryResult,
+} from './file'
+
+export { SyncController } from './sync/SyncController'
+export type { SyncControllerOptions } from './sync/SyncController'
+export type {
+	ConflictSource,
+	ExternalFileChangeEvent,
+	FileDeletedEvent,
+	FileConflictEvent,
+	SyncEvent,
+	SyncEventType,
+	SyncEventMap,
+	SyncEventHandler,
+} from './sync/sync-types'
+
 export {
 	FileSystemObserverPolyfill,
 	createFileSystemObserver,
@@ -60,7 +87,6 @@ export type {
 	FileSystemObserverOptions,
 } from './FileSystemObserver'
 
-// Unified observer with explicit capabilities
 export {
 	UnifiedObserver,
 	createUnifiedObserver,
@@ -81,68 +107,9 @@ export type {
 	GrepProgressCallback,
 } from './grep'
 
-export {
-	ByteContentHandle,
-	ByteContentHandleFactory,
-	WriteTokenManager,
-	FileSyncManager,
-	FileStateTracker,
-} from './sync'
+export { ByteContentHandle, ByteContentHandleFactory } from './sync'
 export type {
 	SyncState,
 	ContentHandle,
 	ContentHandleFactory,
-	WriteToken,
-	WriteTokenManagerOptions,
-	TrackOptions,
-	SyncEventType,
-	SyncEvent,
-	ExternalChangeEvent,
-	ConflictEvent,
-	ReloadedEvent,
-	DeletedEvent,
-	LocalChangesDiscardedEvent,
-	SyncedEvent,
-	SyncEventMap,
-	SyncEventHandler,
-	FileSyncManagerOptions,
-	ObserverStrategy,
 } from './sync'
-
-// === NEW FILE LAYER (Layer 1) ===
-// Stateless file handles with only directory handle caching
-export {
-	HandleCache,
-	FileHandle,
-	DirHandle,
-	FileContextImpl,
-	createFileContext,
-} from './file'
-export type {
-	OpenMode as FileOpenMode,
-	FileContextOptions,
-	TreeKind as FileTreeKind,
-	FsTreeBase as FileTreeBase,
-	FileTreeNode,
-	DirTreeNode,
-	TreeNode,
-	TreeOptions,
-	ReadableByteStream,
-	FileContext,
-	ResolvedPath,
-	FileContextInternal,
-} from './file'
-
-// === NEW SYNC LAYER (Layer 2) ===
-// Simplified sync controller without write tokens
-export { SyncController, type SyncControllerOptions } from './sync/SyncController'
-export type {
-	ConflictSource,
-	ExternalFileChangeEvent,
-	FileDeletedEvent,
-	FileConflictEvent,
-	SyncEvent as NewSyncEvent,
-	SyncEventType as NewSyncEventType,
-	SyncEventMap as NewSyncEventMap,
-	SyncEventHandler as NewSyncEventHandler,
-} from './sync/sync-types'

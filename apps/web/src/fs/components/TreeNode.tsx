@@ -1,5 +1,5 @@
 import { For, Show } from 'solid-js'
-import type { FsDirTreeNode, FsTreeNode } from '@repo/fs'
+import type { DirTreeNode, TreeNode as FsTreeNode } from '@repo/fs'
 import { createFilePath } from '@repo/fs'
 import { useFs } from '../context/FsContext'
 import { useTreeNodeHover } from '../hooks/useTreeNodeHover'
@@ -83,7 +83,7 @@ export const TreeNode = (props: TreeNodeProps) => {
 						class={`tree-node-branch-line ${childBranchBorderClass()}`}
 						style={{ opacity: 0 }}
 					/>
-					<For each={(props.node as FsDirTreeNode).children}>
+					<For each={(props.node as DirTreeNode).children}>
 						{(child) => (
 							<TreeNode node={child} hasParent onHover={handleChildHover} onFileOpen={props.onFileOpen} onFileCreate={props.onFileCreate} />
 						)}

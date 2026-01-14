@@ -1,8 +1,8 @@
-import type { VfsReadableStream } from '../types'
+import type { ReadableByteStream } from '../types'
 
 export const textEncoder = new TextEncoder()
 
-export function isReadableStream(value: unknown): value is VfsReadableStream {
+export function isReadableStream(value: unknown): value is ReadableByteStream {
 	return (
 		typeof value === 'object' &&
 		value !== null &&
@@ -27,7 +27,7 @@ export function chunkByteLength(chunk: string | BufferSource): number {
 
 export function writeToWritable(
 	writable: FileSystemWritableFileStream,
-	content: string | BufferSource | VfsReadableStream
+	content: string | BufferSource | ReadableByteStream
 ): Promise<void> {
 	if (isReadableStream(content)) {
 		return writeStreamToWritable(writable, content)
@@ -40,7 +40,7 @@ export function writeToWritable(
 
 export async function writeStreamToWritable(
 	writable: FileSystemWritableFileStream,
-	stream: VfsReadableStream
+	stream: ReadableByteStream
 ): Promise<void> {
 	const reader = stream.getReader()
 	try {
@@ -57,9 +57,7 @@ export async function writeStreamToWritable(
 	} catch (err) {
 		try {
 			await reader.cancel(err)
-		} catch {
-			// ignore cancellation errors, rethrow original
-		}
+		} catch {}
 		throw err
 	} finally {
 		reader.releaseLock()

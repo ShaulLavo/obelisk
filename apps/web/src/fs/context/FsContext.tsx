@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'solid-js'
-import type { FsDirTreeNode } from '@repo/fs'
+import type { DirTreeNode } from '@repo/fs'
 import type { PieceTableSnapshot } from '@repo/utils'
 import type { FileCacheController } from '../cache/fileCacheController'
 import type { FsState, FsSource } from '../types'
@@ -20,7 +20,7 @@ export type FsActions = {
 	createDir: (parentPath: string, name: string) => Promise<void>
 	createFile: (parentPath: string, name: string, content?: string) => Promise<void>
 	deleteNode: (path: string) => Promise<void>
-	ensureDirPathLoaded: (path: string) => Promise<FsDirTreeNode | undefined>
+	ensureDirPathLoaded: (path: string) => Promise<DirTreeNode | undefined>
 	updatePieceTableForPath: (
 		path: string,
 		updater: (current: PieceTableSnapshot | undefined) => PieceTableSnapshot | undefined

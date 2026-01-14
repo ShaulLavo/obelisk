@@ -1,4 +1,4 @@
-import type { FsDirTreeNode, FsTreeNode } from '@repo/fs'
+import type { DirTreeNode, TreeNode } from '@repo/fs'
 import type { FsSource } from '../types'
 
 export type PrefetchTarget = {
@@ -36,11 +36,11 @@ export type PrefetchStatusPayload = {
 }
 
 export type PrefetchDirectoryLoadedPayload = {
-	node: FsDirTreeNode
+	node: DirTreeNode
 	pathIndexEntries: PathIndexEntry[]
 }
 
-export type DeferredDirMetadata = Omit<FsDirTreeNode, 'children'> & {
+export type DeferredDirMetadata = Omit<DirTreeNode, 'children'> & {
 	children?: never
 }
 
@@ -66,11 +66,11 @@ export type IndexableFile = {
 
 export type PathIndexEntry = {
 	path: string
-	node: FsTreeNode
+	node: TreeNode
 }
 
 export type DirectoryLoadResult = {
-	node: FsDirTreeNode
+	node: DirTreeNode
 	pendingTargets: PrefetchTarget[]
 	fileCount: number
 	filesToIndex: IndexableFile[]
@@ -80,7 +80,7 @@ export type DirectoryLoadResult = {
 export type TreePrefetchWorkerApi = {
 	init(payload: TreePrefetchWorkerInitPayload): Promise<void>
 	loadDirectory(target: PrefetchTarget): Promise<DirectoryLoadResult | undefined>
-	extractPendingTargets(tree: FsDirTreeNode): Promise<{
+	extractPendingTargets(tree: DirTreeNode): Promise<{
 		targets: PrefetchTarget[]
 		loadedPaths: string[]
 		totalFileCount: number

@@ -1,9 +1,9 @@
 import {
-	createFs,
+	createFileContext,
 	walkDirectory,
-	type FsContext,
-	type FsDirTreeNode,
-	type FsTreeNode,
+	type FileContext,
+	type DirTreeNode,
+	type TreeNode,
 } from '@repo/fs'
 import { expose } from 'comlink'
 import { normalizeDirNodeMetadata } from '../utils/treeNodes'
@@ -17,7 +17,7 @@ import type {
 
 const LOAD_TIMEOUT_MS = 30_000
 
-let ctx: FsContext | undefined
+let ctx: FileContext | undefined
 let initialized = false
 let fallbackRootName = 'root'
 
@@ -48,7 +48,7 @@ const withTimeout = <T>(
 	)
 }
 
-const extractFromNode = (node: FsDirTreeNode): {
+const extractFromNode = (node: DirTreeNode): {
 	pendingTargets: PrefetchTarget[]
 	fileCount: number
 	filesToIndex: IndexableFile[]
@@ -59,7 +59,7 @@ const extractFromNode = (node: FsDirTreeNode): {
 	const pathIndexEntries: PathIndexEntry[] = []
 	let fileCount = 0
 
-	const stack: FsTreeNode[] = [...node.children]
+	const stack: TreeNode[] = [...node.children]
 	while (stack.length) {
 		const child = stack.pop()!
 		if (child.path) {
@@ -127,7 +127,7 @@ const loadDirectoryTarget = async (
 	return { node: treeNode, pendingTargets, fileCount, filesToIndex, pathIndexEntries }
 }
 
-const extractPendingTargetsFromTree = (tree: FsDirTreeNode): {
+const extractPendingTargetsFromTree = (tree: DirTreeNode): {
 	targets: PrefetchTarget[]
 	loadedPaths: string[]
 	totalFileCount: number
@@ -135,7 +135,7 @@ const extractPendingTargetsFromTree = (tree: FsDirTreeNode): {
 	const targets: PrefetchTarget[] = []
 	const loadedPaths: string[] = []
 	let totalFileCount = 0
-	const stack: FsDirTreeNode[] = [tree]
+	const stack: DirTreeNode[] = [tree]
 
 	while (stack.length) {
 		const dir = stack.pop()!
@@ -167,7 +167,7 @@ const extractPendingTargetsFromTree = (tree: FsDirTreeNode): {
 
 const api: TreePrefetchWorkerApi = {
 	async init(payload) {
-		ctx = createFs(payload.rootHandle)
+		ctx = createFileContext(payload.rootHandle)
 		fallbackRootName = payload.rootName || 'root'
 		initialized = true
 	},

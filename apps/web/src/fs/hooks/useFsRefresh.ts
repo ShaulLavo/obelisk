@@ -1,5 +1,5 @@
 import { batch } from 'solid-js'
-import type { FsDirTreeNode } from '@repo/fs'
+import type { DirTreeNode } from '@repo/fs'
 import type { SetStoreFunction } from 'solid-js/store'
 import {
 	ensureFs,
@@ -16,9 +16,9 @@ import { modal } from '@repo/ui/modal'
  * The .system folder always comes from OPFS regardless of active source.
  */
 const mergeSystemFolder = (
-	mainTree: FsDirTreeNode,
-	systemTree: FsDirTreeNode | undefined
-): FsDirTreeNode => {
+	mainTree: DirTreeNode,
+	systemTree: DirTreeNode | undefined
+): DirTreeNode => {
 	if (!systemTree) return mainTree
 
 	// Find .system in the OPFS tree
@@ -49,7 +49,7 @@ const mergeSystemFolder = (
 
 type UseFsRefreshOptions = {
 	state: FsState
-	setTreeRoot: (root: FsDirTreeNode | undefined) => void
+	setTreeRoot: (root: DirTreeNode | undefined) => void
 	setExpanded: SetStoreFunction<Record<string, boolean>>
 	setActiveSource: (source: FsSource) => void
 	setLoading: (value: boolean) => void

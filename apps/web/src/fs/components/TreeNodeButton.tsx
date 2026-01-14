@@ -1,10 +1,10 @@
-import type { FsTreeNode } from '@repo/fs'
+import type { TreeNode } from '@repo/fs'
 import { Button } from '@repo/ui/button'
 import { TreeNodeIcon } from './TreeNodeIcon'
 import { getNodeDisplayName } from '../utils/treeNodeUtils'
 
 type TreeNodeButtonProps = {
-	node: FsTreeNode
+	node: TreeNode
 	isDir: boolean
 	isOpen: boolean
 	isSelected: boolean

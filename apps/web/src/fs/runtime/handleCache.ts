@@ -1,4 +1,4 @@
-import type { FsDirTreeNode } from '@repo/fs'
+import type { DirTreeNode } from '@repo/fs'
 import { DEFAULT_SOURCE } from '../config/constants'
 import type { FsSource } from '../types'
 import { primeFsCache } from './fsRuntime'
@@ -15,7 +15,7 @@ const isValidDirectoryHandle = (
 }
 
 type RestoreHandleCacheParams = {
-	tree: FsDirTreeNode | undefined
+	tree: DirTreeNode | undefined
 	activeSource?: FsSource
 }
 

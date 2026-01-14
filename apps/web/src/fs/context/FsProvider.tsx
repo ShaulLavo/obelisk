@@ -1,4 +1,4 @@
-import type { FsDirTreeNode } from '@repo/fs'
+import type { DirTreeNode } from '@repo/fs'
 import { createFilePath } from '@repo/fs'
 import {
 	createEffect,
@@ -78,7 +78,7 @@ export function FsProvider(props: { children: JSX.Element }) {
 		fileCache,
 	})
 
-	const setDirNode = (path: string, node: FsDirTreeNode) => {
+	const setDirNode = (path: string, node: DirTreeNode) => {
 		if (!path) {
 			setTreeRoot(node)
 			return
@@ -159,7 +159,7 @@ export function FsProvider(props: { children: JSX.Element }) {
 
 	const ensureDirPathLoaded = async (
 		path: string
-	): Promise<FsDirTreeNode | undefined> => {
+	): Promise<DirTreeNode | undefined> => {
 		if (!state.tree) return undefined
 		if (!path) {
 			return state.tree

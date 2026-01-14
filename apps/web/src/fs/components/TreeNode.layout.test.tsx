@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createRoot } from 'solid-js'
-import type { FsDirTreeNode, FsFileTreeNode, FilePath } from '@repo/fs'
+import type { DirTreeNode, FileTreeNode, FilePath } from '@repo/fs'
 import { createFilePath } from '@repo/fs'
 import type { ParseResult } from '@repo/utils/parse'
 import { TreeNode } from './TreeNode'
@@ -55,7 +55,7 @@ describe('TreeNode Layout and Alignment Preservation', () => {
 	const createTestFileNode = (
 		name: string,
 		depth: number = 0
-	): FsFileTreeNode => ({
+	): FileTreeNode => ({
 		kind: 'file',
 		name,
 		path: `/${name}`,
@@ -67,7 +67,7 @@ describe('TreeNode Layout and Alignment Preservation', () => {
 		name: string,
 		depth: number = 0,
 		children: any[] = []
-	): FsDirTreeNode => ({
+	): DirTreeNode => ({
 		kind: 'dir',
 		name,
 		path: `/${name}`,

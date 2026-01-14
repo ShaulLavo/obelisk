@@ -71,7 +71,7 @@ export {
 // ============================================================================
 
 import { GrepCoordinator } from './GrepCoordinator'
-import type { FsContext } from '../vfs/types'
+import type { FileContext } from '../file'
 import type { GrepOptions, GrepMatch, GrepProgressCallback } from './types'
 
 /**
@@ -90,7 +90,7 @@ import type { GrepOptions, GrepMatch, GrepProgressCallback } from './types'
  * const matches = await grep(fs, 'TODO', { paths: ['src'] })
  */
 export async function grep(
-	fs: FsContext,
+	fs: FileContext,
 	pattern: string,
 	options?: Omit<GrepOptions, 'pattern'>,
 	onProgress?: GrepProgressCallback
@@ -115,7 +115,7 @@ export async function grep(
  * }
  */
 export async function* grepStream(
-	fs: FsContext,
+	fs: FileContext,
 	pattern: string,
 	options?: Omit<GrepOptions, 'pattern'>
 ) {

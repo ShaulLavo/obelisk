@@ -1,6 +1,6 @@
 import { batch, type Setter } from 'solid-js'
 import type { SetStoreFunction } from 'solid-js/store'
-import type { FsDirTreeNode, FsFileTreeNode, FsTreeNode } from '@repo/fs'
+import type { DirTreeNode, FileTreeNode, TreeNode } from '@repo/fs'
 import { createFilePath } from '@repo/fs'
 import { ensureFs, resolveSourceForPath } from './runtime/fsRuntime'
 import type { FsSource, FsState } from './types'
@@ -14,9 +14,9 @@ import { toast } from '@repo/ui/toaster'
 type FsMutationDeps = {
 	getState: () => FsState
 	getActiveSource: () => FsSource
-	addTreeNode: (parentPath: string, node: FsTreeNode) => void
+	addTreeNode: (parentPath: string, node: TreeNode) => void
 	removeTreeNode: (path: string) => void
-	getNode: (path: string) => FsTreeNode | undefined
+	getNode: (path: string) => TreeNode | undefined
 	setExpanded: SetStoreFunction<Record<string, boolean>>
 	setSelectedPath: (value: string | undefined) => void
 	setPieceTable: (path: string, snapshot: PieceTableSnapshot | null) => void
@@ -62,7 +62,7 @@ export const createFsMutations = ({
 			const parentNode = getNode(parentPath)
 			const parentDepth = parentNode?.depth ?? 0
 
-			const newNode: FsDirTreeNode = {
+			const newNode: DirTreeNode = {
 				kind: 'dir',
 				name: trimmed,
 				path: newPath,
@@ -110,7 +110,7 @@ export const createFsMutations = ({
 			const parentNode = getNode(parentPath)
 			const parentDepth = parentNode?.depth ?? 0
 
-			const newNode: FsFileTreeNode = {
+			const newNode: FileTreeNode = {
 				kind: 'file',
 				name: trimmed,
 				path: newPath,

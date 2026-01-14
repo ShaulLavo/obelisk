@@ -7,7 +7,7 @@ import type {
 	FileContent,
 	BufferEncoding,
 } from 'just-bash'
-import type { FsContext, FsTreeNode, FsDirTreeNode } from '@repo/fs'
+import type { FileContext, TreeNode, DirTreeNode } from '@repo/fs'
 import { searchService } from '../search/SearchService'
 
 /**
@@ -15,10 +15,10 @@ import { searchService } from '../search/SearchService'
  * by delegating to the VFS FsContext.
  */
 export class VfsBashAdapter implements IFileSystem {
-	#ctx: FsContext
-	#tree: FsDirTreeNode | null = null
+	#ctx: FileContext
+	#tree: DirTreeNode | null = null
 
-	constructor(ctx: FsContext, tree?: FsDirTreeNode) {
+	constructor(ctx: FileContext, tree?: DirTreeNode) {
 		this.#ctx = ctx
 		this.#tree = tree ?? null
 	}
@@ -27,7 +27,7 @@ export class VfsBashAdapter implements IFileSystem {
 	 * Update the tree reference when it changes.
 	 * Call this when the VFS tree is re-indexed.
 	 */
-	setTree(tree: FsDirTreeNode | null): void {
+	setTree(tree: DirTreeNode | null): void {
 		this.#tree = tree
 	}
 
@@ -223,7 +223,7 @@ export class VfsBashAdapter implements IFileSystem {
 		}
 
 		const paths: string[] = []
-		const walk = (node: FsTreeNode, parentPath: string) => {
+		const walk = (node: TreeNode, parentPath: string) => {
 			const nodePath = parentPath
 				? `${parentPath}/${node.name}`
 				: `/${node.name}`

@@ -1,18 +1,18 @@
 import type {
-	CreateVfsStorageOptions,
-	VfsStorage,
-	VfsStorageSource,
+	CreateStorageOptions,
+	Storage,
+	StorageSource,
 } from './storage'
-import type { FsContext } from './types'
+import type { FileContext } from './types'
 
 const DEFAULT_STORAGE_FILE = '.vfs-store.json'
 
-const isFsContext = (value: unknown): value is FsContext => {
+const isFileContext = (value: unknown): value is FileContext => {
 	return (
 		typeof value === 'object' &&
 		value !== null &&
-		typeof (value as FsContext).file === 'function' &&
-		typeof (value as FsContext).dir === 'function'
+		typeof (value as FileContext).file === 'function' &&
+		typeof (value as FileContext).dir === 'function'
 	)
 }
 
@@ -45,18 +45,13 @@ const writeData = async (
 	await writable.close()
 }
 
-/**
- * Cache-less storage: every operation reads and writes directly to disk.
- * Useful for benchmarks that want to observe raw OPFS latency without
- * in-memory maps or batched flushes.
- */
 export function createStorageNoCache(
-	source: VfsStorageSource,
-	options?: CreateVfsStorageOptions
-): VfsStorage {
+	source: StorageSource,
+	options?: CreateStorageOptions
+): Storage {
 	const filePath = options?.filePath ?? DEFAULT_STORAGE_FILE
 
-	const filePromise = isFsContext(source)
+	const filePromise = isFileContext(source)
 		? source.getFileHandleForRelative(filePath, true)
 		: source.getFileHandle(filePath, { create: true })
 
@@ -123,8 +118,6 @@ export function createStorageNoCache(
 			return undefined
 		},
 
-		async flush(): Promise<void> {
-			// No-op: writes happen immediately
-		},
+		async flush(): Promise<void> {},
 	}
 }

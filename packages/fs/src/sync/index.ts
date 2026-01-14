@@ -2,29 +2,23 @@ export type {
 	SyncState,
 	ContentHandle,
 	ContentHandleFactory,
-	WriteToken,
-	TrackOptions,
-	SyncEventType,
-	SyncEvent,
-	ExternalChangeEvent,
-	ConflictEvent,
-	ReloadedEvent,
-	DeletedEvent,
-	LocalChangesDiscardedEvent,
-	SyncedEvent,
-	SyncEventMap,
-	SyncEventHandler,
 } from './types'
 
 export { ByteContentHandle, ByteContentHandleFactory } from './content-handle'
 
-export { FileStateTracker } from './file-state-tracker'
+export { SyncController } from './SyncController'
+export type { SyncControllerOptions } from './SyncController'
 
-export { WriteTokenManager } from './write-token-manager'
-export type { WriteTokenManagerOptions } from './write-token-manager'
-
-export { FileSyncManager } from './file-sync-manager'
-export type { FileSyncManagerOptions } from './file-sync-manager'
+export type {
+	ConflictSource,
+	ExternalFileChangeEvent,
+	FileDeletedEvent,
+	FileConflictEvent,
+	SyncEvent,
+	SyncEventType,
+	SyncEventMap,
+	SyncEventHandler,
+} from './sync-types'
 
 export {
 	NativeObserverStrategy,

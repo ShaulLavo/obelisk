@@ -96,10 +96,14 @@ export default defineConfig(({ mode }) => {
 			alias: [
 				{
 					find: /^isomorphic-git$/,
-					replacement: path.resolve(
-						__dirname,
-						'./node_modules/isomorphic-git/index.js'
-					),
+					// Use require.resolve to find the package in hoisted or local node_modules
+					replacement: (() => {
+						try {
+							return require.resolve('isomorphic-git')
+						} catch {
+							return path.resolve(__dirname, './node_modules/isomorphic-git/index.js')
+						}
+					})(),
 				},
 				{
 					find: 'node:zlib',

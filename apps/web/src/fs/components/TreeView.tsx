@@ -1,12 +1,12 @@
 import { Accessor, For, Show } from 'solid-js'
-import type { FsDirTreeNode } from '@repo/fs'
+import type { DirTreeNode } from '@repo/fs'
 import { TreeNode } from './TreeNode'
 import { CreationRow } from './CreationRow'
 import { useFs } from '../context/FsContext'
 import { Button } from '@repo/ui/button'
 
 type TreeViewProps = {
-	tree: Accessor<FsDirTreeNode | undefined>
+	tree: Accessor<DirTreeNode | undefined>
 	loading: Accessor<boolean>
 	onFileOpen?: (filePath: string) => void
 	onFileCreate?: (filePath: string) => void

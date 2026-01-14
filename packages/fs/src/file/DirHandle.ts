@@ -5,11 +5,11 @@ import type {
 	TreeOptions,
 	OpenMode,
 } from './types'
-import { getParentPath, joinPaths } from '../vfs/utils/path'
-import { iterateDirectoryEntries } from '../vfs/utils/dir'
-import { throwIfAborted } from '../vfs/utils/abort'
-import { globToRegExp } from '../vfs/utils/glob'
-import { buildFsTree } from '../vfs/utils/tree'
+import { getParentPath, joinPaths } from './utils/path'
+import { iterateDirectoryEntries } from './utils/dir'
+import { throwIfAborted } from './utils/abort'
+import { globToRegExp } from './utils/glob'
+import { buildFsTree } from './utils/tree'
 import { FileHandle } from './FileHandle'
 
 export class DirHandle {

@@ -1,10 +1,10 @@
-import type { FsDirTreeNode } from '@repo/fs'
+import type { DirTreeNode } from '@repo/fs'
 
 export const normalizeDirNodeMetadata = (
-	node: FsDirTreeNode,
+	node: DirTreeNode,
 	parentPath: string | undefined,
 	depth: number
-): FsDirTreeNode => {
+): DirTreeNode => {
 	const childParentPath = node.path || undefined
 	return {
 		...node,

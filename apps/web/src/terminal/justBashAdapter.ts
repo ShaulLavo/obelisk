@@ -1,5 +1,5 @@
 import { Bash, defineCommand } from 'just-bash'
-import type { FsContext, FsDirTreeNode, GrepMatch } from '@repo/fs'
+import type { FileContext, DirTreeNode, GrepMatch } from '@repo/fs'
 import { grepStream } from '@repo/fs'
 import { VfsBashAdapter } from './VfsBashAdapter'
 import type { ShellContext } from './commands'
@@ -128,8 +128,8 @@ const gitHelpText = [
 ].join('\n')
 
 export function createJustBashAdapter(
-	fsContext?: FsContext,
-	tree?: FsDirTreeNode,
+	fsContext?: FileContext,
+	tree?: DirTreeNode,
 	shellContext?: ShellContext
 ): JustBashAdapter {
 	const vfsAdapter = fsContext ? new VfsBashAdapter(fsContext, tree) : undefined

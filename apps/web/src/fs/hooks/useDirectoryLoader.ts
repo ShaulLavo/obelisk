@@ -3,7 +3,7 @@ import type { SetStoreFunction } from 'solid-js/store'
 import { buildTree } from '../runtime/fsRuntime'
 import type { FsState } from '../types'
 import { DEFAULT_SOURCE } from '../config/constants'
-import type { FsDirTreeNode, FilePath } from '@repo/fs'
+import type { DirTreeNode, FilePath } from '@repo/fs'
 import { createFilePath } from '@repo/fs'
 import { normalizeDirNodeMetadata } from '../utils/treeNodes'
 import type { TreePrefetchClient } from '../prefetch/treePrefetchClient'
@@ -13,7 +13,7 @@ type UseDirectoryLoaderOptions = {
 	state: FsState
 	setExpanded: SetStoreFunction<Record<string, boolean>>
 	setSelectedPath: (path: string | undefined) => void
-	setDirNode: (path: string, node: FsDirTreeNode) => void
+	setDirNode: (path: string, node: DirTreeNode) => void
 	runPrefetchTask: (
 		task: Promise<void> | undefined,
 		fallbackMessage: string

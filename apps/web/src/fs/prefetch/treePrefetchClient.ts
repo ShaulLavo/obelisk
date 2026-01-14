@@ -1,4 +1,4 @@
-import type { FsDirTreeNode } from '@repo/fs'
+import type { DirTreeNode } from '@repo/fs'
 import { ComlinkPool } from '../../workers/comlinkPool'
 import { PrefetchQueue } from './prefetchQueue'
 import type {
@@ -32,8 +32,8 @@ export type TreePrefetchClientOptions = {
 
 export type TreePrefetchClient = {
 	init(payload: TreePrefetchWorkerInitPayload): Promise<void>
-	seedTree(tree: FsDirTreeNode): Promise<void>
-	ingestSubtree(node: FsDirTreeNode): Promise<void>
+	seedTree(tree: DirTreeNode): Promise<void>
+	ingestSubtree(node: DirTreeNode): Promise<void>
 	markDirLoaded(path: string): Promise<void>
 	dispose(): Promise<void>
 	tryRestoreFromCache(rootChildren: string[]): Promise<boolean>

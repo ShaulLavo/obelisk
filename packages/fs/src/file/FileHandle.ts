@@ -4,14 +4,14 @@ import type {
 	OpenMode,
 	ReadableByteStream,
 } from './types'
-import { getParentPath } from '../vfs/utils/path'
+import { getParentPath } from './utils/path'
 import {
 	bufferSourceToUint8Array,
 	chunkByteLength,
 	isReadableStream,
 	textEncoder,
 	writeToWritable,
-} from '../vfs/utils/streams'
+} from './utils/streams'
 import { DirHandle } from './DirHandle'
 
 export type SyncAccessHandle = {

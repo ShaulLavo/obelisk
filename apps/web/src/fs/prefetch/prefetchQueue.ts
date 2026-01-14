@@ -1,4 +1,4 @@
-import type { FsDirTreeNode } from '@repo/fs'
+import type { DirTreeNode } from '@repo/fs'
 import type { FsSource } from '../types'
 import { DEFERRED_SEGMENTS } from '../config/constants'
 import type {
@@ -40,7 +40,7 @@ type PrefetchQueueOptions = {
 	/** Load directory with preprocessing done in worker */
 	loadDirectory: (target: PrefetchTarget) => Promise<DirectoryLoadResult | undefined>
 	/** Extract pending targets from tree (runs in worker) */
-	extractPendingTargets: (tree: FsDirTreeNode) => Promise<{
+	extractPendingTargets: (tree: DirTreeNode) => Promise<{
 		targets: PrefetchTarget[]
 		loadedPaths: string[]
 		totalFileCount: number
@@ -120,7 +120,7 @@ export class PrefetchQueue {
 		this.clearState()
 	}
 
-	async seedTree(tree?: FsDirTreeNode) {
+	async seedTree(tree?: DirTreeNode) {
 		if (!tree) {
 			return
 		}
@@ -140,7 +140,7 @@ export class PrefetchQueue {
 		this.enqueueTargets(targets)
 	}
 
-	async enqueueSubtree(node: FsDirTreeNode) {
+	async enqueueSubtree(node: DirTreeNode) {
 		if (!node) return
 		this.dropTargetFromQueues(node.path)
 

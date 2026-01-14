@@ -1,4 +1,4 @@
-import type { FsTreeNode } from '@repo/fs'
+import type { TreeNode } from '@repo/fs'
 import { getBracketDepthBorderClass } from '@repo/code-editor'
 
 export const TREE_INDENT_PX = 8
@@ -18,5 +18,5 @@ export const createRowIndentStyle = (
 export const getChildBranchBorderClass = (depth: number): string =>
 	getBracketDepthBorderClass(Math.max(depth + 1, 1))
 
-export const getNodeDisplayName = (node: FsTreeNode): string =>
+export const getNodeDisplayName = (node: TreeNode): string =>
 	node.kind === 'dir' ? node.name || 'root' : node.name

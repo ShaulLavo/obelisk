@@ -1,4 +1,4 @@
-import type { FsTreeNode, FilePath } from '@repo/fs'
+import type { TreeNode, FilePath } from '@repo/fs'
 import { createMemo, createSignal } from 'solid-js'
 import type { FsState } from '../types'
 
@@ -46,7 +46,7 @@ export const createFsState = () => {
 
 	const fileStore = createFileStore()
 
-	const selectedNode = createMemo<FsTreeNode | undefined>(() => {
+	const selectedNode = createMemo<TreeNode | undefined>(() => {
 		const path = selectedPath()
 		return path ? getNode(path) : undefined
 	})

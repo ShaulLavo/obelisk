@@ -1,12 +1,12 @@
-import type { FsDirTreeNode, FsTreeNode, FilePath } from '@repo/fs'
+import type { DirTreeNode, TreeNode, FilePath } from '@repo/fs'
 import type { DeferredDirMetadata } from './prefetch/treePrefetchWorkerTypes'
 import type { HighlightTransform, FileState } from './store/types'
 
 export type FsSource = 'memory' | 'local' | 'opfs'
 
 export type FsState = {
-	tree?: FsDirTreeNode
-	pathIndex: Record<FilePath, FsTreeNode>
+	tree?: DirTreeNode
+	pathIndex: Record<FilePath, TreeNode>
 	expanded: Record<FilePath, boolean>
 	files: Record<FilePath, FileState>
 	highlightOffsets: Record<FilePath, HighlightTransform[] | undefined>
@@ -21,7 +21,7 @@ export type FsState = {
 	prefetchProcessedCount: number
 	prefetchLastDurationMs: number
 	prefetchAverageDurationMs: number
-	selectedNode?: FsTreeNode | undefined
+	selectedNode?: TreeNode | undefined
 	deferredMetadata: Record<FilePath, DeferredDirMetadata>
 	creationState?: {
 		type: 'file' | 'folder'

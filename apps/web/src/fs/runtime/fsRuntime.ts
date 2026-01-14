@@ -1,10 +1,10 @@
 import {
 	buildFsTree,
-	createFs,
-	FsDirTreeNode,
+	createFileContext,
+	DirTreeNode,
 	getRootDirectory,
 	DirectoryPickerUnavailableError,
-	type FsContext as VfsContext,
+	type FileContext as VfsContext,
 } from '@repo/fs'
 import { trackOperation } from '@repo/perf'
 import { modal } from '@repo/ui/modal'
@@ -76,7 +76,7 @@ export async function ensureFs(source: FsSource): Promise<VfsContext> {
 				}).finally(() => {
 					clearAwaitingPermissionModal()
 				})
-				fsCache[source] = timeSync('create-fs', () => createFs(rootHandle))
+				fsCache[source] = timeSync('create-fs', () => createFileContext(rootHandle))
 			},
 			{ metadata: { source } }
 		).catch((error) => {
@@ -94,7 +94,7 @@ export function primeFsCache(
 	source: FsSource,
 	rootHandle: FileSystemDirectoryHandle
 ) {
-	fsCache[source] = createFs(rootHandle)
+	fsCache[source] = createFileContext(rootHandle)
 	initPromises[source] = Promise.resolve()
 }
 
@@ -141,7 +141,7 @@ const createShouldDescend = (
 		return undefined
 	}
 
-	return (node: FsDirTreeNode) => {
+	return (node: DirTreeNode) => {
 		if (node.depth === 0) return true
 		if (expandedPaths?.[node.path]) return true
 		return ancestors.has(node.path)
@@ -157,7 +157,7 @@ const deriveRootName = (rootPath: string | undefined) => {
 export async function buildTree(
 	source: FsSource,
 	options?: BuildTreeOptions
-): Promise<FsDirTreeNode> {
+): Promise<DirTreeNode> {
 	const rootPath = options?.rootPath ?? ''
 	const rootName = options?.rootName ?? deriveRootName(rootPath)
 	const operationName = options?.operationName ?? 'fs:buildTree'

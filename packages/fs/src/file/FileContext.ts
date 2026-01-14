@@ -9,8 +9,8 @@ import type {
 import { HandleCache } from './HandleCache'
 import { FileHandle } from './FileHandle'
 import { DirHandle } from './DirHandle'
-import { randomId } from '../vfs/utils/random'
-import { sanitizePath, segmentsToPath, toSegments } from '../vfs/utils/path'
+import { randomId } from './utils/random'
+import { sanitizePath, segmentsToPath, toSegments } from './utils/path'
 
 const TMP_DIR_NAME = '.tmp'
 const DIR_HANDLE_CACHE_SIZE = 128
