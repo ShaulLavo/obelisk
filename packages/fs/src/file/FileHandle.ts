@@ -1,6 +1,6 @@
 import type {
-	FileContext,
-	FileContextInternal,
+	RootCtx,
+	RootCtxInternal,
 	OpenMode,
 	ReadableByteStream,
 } from './types'
@@ -37,7 +37,7 @@ export type SyncCapableFileHandle = FileSystemFileHandle & {
  * If you need cached content, use the Document layer in apps/web.
  */
 export class FileHandle {
-	#ctx: FileContextInternal
+	#ctx: RootCtxInternal
 	#mode: OpenMode
 
 	readonly kind = 'file' as const
@@ -45,8 +45,8 @@ export class FileHandle {
 	readonly name: string
 	readonly parent: DirHandle | null
 
-	constructor(ctx: FileContext, path: string, mode: OpenMode = 'r') {
-		const impl = ctx as FileContextInternal
+	constructor(ctx: RootCtx, path: string, mode: OpenMode = 'r') {
+		const impl = ctx as RootCtxInternal
 		const resolved = impl.resolveRelative(path)
 		if (!resolved.relative) {
 			throw new Error('File path cannot be empty')

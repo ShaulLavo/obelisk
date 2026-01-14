@@ -80,7 +80,6 @@ export class SyncController {
 		try {
 			await this.observerStrategy.observe(root)
 		} catch (error) {
-			console.error('Failed to start file system observer:', error)
 			this.stop()
 			throw error
 		}
@@ -138,8 +137,8 @@ export class SyncController {
 			for (const handler of handlers) {
 				try {
 					handler(eventData)
-				} catch (error) {
-					console.error(`Error in sync event handler for ${event}:`, error)
+				} catch {
+					// Silently swallow handler errors to not break other handlers
 				}
 			}
 		}

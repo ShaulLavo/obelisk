@@ -3,16 +3,16 @@ import type {
 	Storage,
 	StorageSource,
 } from './storage'
-import type { FileContext } from './types'
+import type { RootCtx } from './types'
 
 const DEFAULT_STORAGE_FILE = '.vfs-store.json'
 
-const isFileContext = (value: unknown): value is FileContext => {
+const isRootCtx = (value: unknown): value is RootCtx => {
 	return (
 		typeof value === 'object' &&
 		value !== null &&
-		typeof (value as FileContext).file === 'function' &&
-		typeof (value as FileContext).dir === 'function'
+		typeof (value as RootCtx).file === 'function' &&
+		typeof (value as RootCtx).dir === 'function'
 	)
 }
 
@@ -51,7 +51,7 @@ export function createStorageNoCache(
 ): Storage {
 	const filePath = options?.filePath ?? DEFAULT_STORAGE_FILE
 
-	const filePromise = isFileContext(source)
+	const filePromise = isRootCtx(source)
 		? source.getFileHandleForRelative(filePath, true)
 		: source.getFileHandle(filePath, { create: true })
 
@@ -60,6 +60,22 @@ export function createStorageNoCache(
 		writeData(filePromise, data)
 
 	return {
+		get ready(): boolean {
+			return true
+		},
+
+		whenReady(): Promise<void> {
+			return Promise.resolve()
+		},
+
+		getItemSync<T>(_key: string): T | null {
+			return null
+		},
+
+		keysSync(): string[] {
+			return []
+		},
+
 		async getItem<T>(key: string): Promise<T | null> {
 			const data = await getData()
 			const value = data[key]

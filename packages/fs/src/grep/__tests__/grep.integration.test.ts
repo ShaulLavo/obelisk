@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { GrepCoordinator } from '../GrepCoordinator'
 import type { GrepFileResult, GrepProgress } from '../types'
 import { getMemoryRoot } from '../../getRoot'
-import { createFs } from '../../vfs'
+import { createRootCtx } from '../../file'
 import { workerApi } from '../grepWorker'
 
 // Mock Worker class since we're in Node/Vitest environment
@@ -29,13 +29,13 @@ vi.mock('comlink', () => ({
 }))
 
 describe('Grep Integration', () => {
-	let fs: ReturnType<typeof createFs>
+	let fs: ReturnType<typeof createRootCtx>
 	let coordinator: GrepCoordinator
 
 	beforeEach(async () => {
 		// Setup Memory File System
 		const root = await getMemoryRoot()
-		fs = createFs(root)
+		fs = createRootCtx(root)
 
 		// Create files
 		await fs.write('file1.txt', 'hello world\nline 2')

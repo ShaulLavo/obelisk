@@ -1,6 +1,6 @@
 import type {
-	FileContext,
-	FileContextInternal,
+	RootCtx,
+	RootCtxInternal,
 	DirTreeNode,
 	TreeOptions,
 	OpenMode,
@@ -13,15 +13,15 @@ import { buildFsTree } from './utils/tree'
 import { FileHandle } from './FileHandle'
 
 export class DirHandle {
-	#ctx: FileContextInternal
+	#ctx: RootCtxInternal
 
 	readonly kind = 'dir' as const
 	readonly path: string
 	readonly name: string
 	readonly parent: DirHandle | null
 
-	constructor(ctx: FileContext, path: string) {
-		const impl = ctx as FileContextInternal
+	constructor(ctx: RootCtx, path: string) {
+		const impl = ctx as RootCtxInternal
 		const resolved = impl.resolveRelative(path)
 
 		this.#ctx = impl

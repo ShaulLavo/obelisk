@@ -6,27 +6,25 @@ import { SplitEditorPanel } from './SplitEditorPanel'
 import { TreeView } from './TreeView'
 import { createSignal } from 'solid-js'
 import type { LayoutManager } from '../../split-editor'
-import type { EditorFileSyncManager } from '@repo/code-editor/sync'
+import type { DocumentStore } from '../doc'
 
 import { ExplorerAccordion } from './ExplorerAccordion'
 
 export const Fs = () => {
 	const [state, actions] = useFs()
 	const [layoutManager, setLayoutManager] = createSignal<LayoutManager>()
-	const [syncManager, setSyncManager] = createSignal<EditorFileSyncManager>()
+	const [documentStore, setDocumentStore] = createSignal<DocumentStore>()
 
-	// Function to open a file as a tab
 	const openFileAsTab = (filePath: string) => {
 		const manager = layoutManager()
 		if (manager && (manager as any).openFileAsTab) {
 			;(manager as any).openFileAsTab(filePath)
-			// Sync tree selection with opened file
 			actions.setSelectedPathOnly(filePath)
 		}
 	}
 
 	return (
-		<SyncStatusProvider syncManager={syncManager()}>
+		<SyncStatusProvider documentStore={documentStore()}>
 			<Flex
 				flexDirection="col"
 				class="h-full min-h-0 overflow-hidden rounded-lg  bg-muted/60 shadow-xl"
@@ -47,7 +45,7 @@ export const Fs = () => {
 					</ExplorerAccordion>
 					<SplitEditorPanel
 						onLayoutManagerReady={setLayoutManager}
-						onSyncManagerReady={setSyncManager}
+						onDocumentStoreReady={setDocumentStore}
 					/>
 				</Resizable>
 			</Flex>

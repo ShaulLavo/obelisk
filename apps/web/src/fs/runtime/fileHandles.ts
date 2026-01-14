@@ -1,4 +1,4 @@
-import type { FsContext } from '@repo/fs'
+import type { RootCtx } from '@repo/fs'
 import { createFilePath } from '@repo/fs'
 import { fileHandleCache } from './fsRuntime'
 
@@ -6,7 +6,7 @@ export const getCachedFileHandle = (path: string) =>
 	fileHandleCache.get(createFilePath(path))
 
 export async function getOrCreateFileHandle(
-	ctx: FsContext,
+	ctx: RootCtx,
 	path: string
 ): Promise<FileSystemFileHandle> {
 	const normalizedPath = createFilePath(path)

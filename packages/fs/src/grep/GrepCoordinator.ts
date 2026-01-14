@@ -11,7 +11,7 @@
  */
 
 import { wrap, type Remote } from 'comlink'
-import type { FileContext } from '../file'
+import type { RootCtx } from '../file'
 import type {
 	GrepOptions,
 	GrepMatch,
@@ -39,11 +39,11 @@ const MAX_CONCURRENT_TASKS = 24
 const textEncoder = new TextEncoder()
 
 export class GrepCoordinator {
-	readonly #fs: FileContext
+	readonly #fs: RootCtx
 	#workerPool: { worker: Worker; proxy: Remote<GrepWorkerApi> }[] = []
 	#terminated = false
 
-	constructor(fs: FileContext) {
+	constructor(fs: RootCtx) {
 		this.#fs = fs
 	}
 

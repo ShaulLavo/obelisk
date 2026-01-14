@@ -1,6 +1,6 @@
 import localforage from 'localforage'
 import {
-	createFs,
+	createRootCtx,
 	createStorage,
 	getRootDirectory,
 	createStorageNoCache,
@@ -323,7 +323,7 @@ const vfsOpfsAdapter: StoreAdapter = {
 	valueKinds: ['text'],
 	async create() {
 		const root = await getRootDirectory('opfs', BENCH_ROOT)
-		const fs = createFs(root)
+		const fs = createRootCtx(root)
 		const store = createStorage(fs, { filePath: STORE_FILE })
 		await store.clear()
 		return store
@@ -336,7 +336,7 @@ const vfsOpfsNoCacheAdapter: StoreAdapter = {
 	valueKinds: ['text'],
 	async create() {
 		const root = await getRootDirectory('opfs', BENCH_ROOT)
-		const fs = createFs(root)
+		const fs = createRootCtx(root)
 		const store = createStorageNoCache(fs, { filePath: STORE_FILE })
 		await store.clear()
 		return store

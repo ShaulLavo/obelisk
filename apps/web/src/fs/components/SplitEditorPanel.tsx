@@ -28,17 +28,13 @@ import {
 	getErrorTitle,
 } from '../../split-editor/fileLoadingErrors'
 import { loadFile } from '../services/FileLoadingService'
-import {
-	EditorFileSyncManager,
-	EditorRegistryImpl,
-	DEFAULT_EDITOR_SYNC_CONFIG,
-	type NotificationSystem,
-} from '@repo/code-editor/sync'
-import { FileSyncManager } from '@repo/fs'
+import { EditorRegistryImpl, type NotificationSystem } from '@repo/code-editor/sync'
+import { SyncController, createFilePath as toFilePath } from '@repo/fs'
+import { createDocumentStore, type DocumentStore } from '../doc'
 
 type SplitEditorPanelProps = {
 	onLayoutManagerReady?: (layoutManager: LayoutManager) => void
-	onSyncManagerReady?: (syncManager: EditorFileSyncManager) => void
+	onDocumentStoreReady?: (documentStore: DocumentStore) => void
 }
 
 export const SplitEditorPanel = (props: SplitEditorPanelProps) => {
@@ -61,9 +57,8 @@ export const SplitEditorPanel = (props: SplitEditorPanelProps) => {
 	// Track previous content for change detection
 	const previousContent = new Map<string, string>()
 
-	// Sync managers (initialized async in onMount)
-	let fileSyncManager: FileSyncManager | null = null
-	let editorSyncManager: EditorFileSyncManager | null = null
+	let syncController: SyncController | null = null
+	let documentStore: DocumentStore | null = null
 	let unsubDirtyChange: (() => void) | null = null
 
 	// Notification system that uses toast
@@ -223,27 +218,24 @@ export const SplitEditorPanel = (props: SplitEditorPanelProps) => {
 			}
 		}
 
-		// Initialize file sync managers
 		try {
 			const source = state.activeSource ?? DEFAULT_SOURCE
 			const fsContext = await ensureFs(source)
 
-			fileSyncManager = new FileSyncManager({ fs: fsContext })
-			editorSyncManager = new EditorFileSyncManager({
-				syncManager: fileSyncManager,
-				config: DEFAULT_EDITOR_SYNC_CONFIG,
-				editorRegistry,
-				notificationSystem,
+			syncController = new SyncController()
+			await syncController.start(fsContext.root)
+
+			documentStore = createDocumentStore({
+				rootCtx: fsContext,
+				syncController,
 			})
 
-			// Register already-open files with the sync manager
 			for (const [path] of getAllOpenFileTabs()) {
 				if (path !== 'Untitled') {
 					registerFileWithSync(path)
 				}
 			}
 
-			// Subscribe to dirty state changes and propagate to adapters
 			unsubDirtyChange = layoutManager.onTabDirtyChange(
 				(paneId, tabId, isDirty) => {
 					const pane = layoutManager.state.nodes[paneId]
@@ -261,15 +253,17 @@ export const SplitEditorPanel = (props: SplitEditorPanelProps) => {
 					}
 				}
 			)
-
-			// Notify parent that sync manager is ready
-			props.onSyncManagerReady?.(editorSyncManager)
 		} catch {
 			// Ignore initialization errors
 		}
 
 		// Notify parent that layout manager is ready
 		props.onLayoutManagerReady?.(layoutManager)
+
+		// Notify parent that document store is ready
+		if (documentStore) {
+			props.onDocumentStoreReady?.(documentStore)
+		}
 	})
 
 	// Cleanup on unmount
@@ -293,9 +287,9 @@ export const SplitEditorPanel = (props: SplitEditorPanelProps) => {
 		contentWatcherCleanups.clear()
 		previousContent.clear()
 
-		// Dispose registry and sync managers
 		editorRegistry.dispose()
-		editorSyncManager?.dispose()
+		documentStore?.dispose()
+		syncController?.dispose()
 	})
 
 	/**
@@ -319,11 +313,13 @@ export const SplitEditorPanel = (props: SplitEditorPanelProps) => {
 	 * Register a file with the sync system.
 	 */
 	function registerFileWithSync(filePath: string): void {
-		if (!editorSyncManager || filePath === 'Untitled') return
+		if (!documentStore || filePath === 'Untitled') return
 
 		const normalizedPath = createFilePath(filePath)
 
-		// Create adapter if not exists
+		// Register with document store for sync tracking
+		documentStore.open(toFilePath(filePath))
+
 		if (!editorAdapters.has(filePath)) {
 			const adapter = new EditorInstanceAdapter({
 				filePath,
@@ -351,15 +347,11 @@ export const SplitEditorPanel = (props: SplitEditorPanelProps) => {
 			editorAdapters.set(filePath, adapter)
 			editorRegistry.registerEditor(filePath, adapter)
 
-			// Set up content change tracking
-			// Store initial content for change detection
 			const initialPt = state.files[normalizedPath]?.pieceTable
 			if (initialPt) {
 				previousContent.set(filePath, getCachedPieceTableContent(initialPt))
 			}
 
-			// Create effect to watch piece table changes and notify adapter
-			// Use runWithOwner to ensure proper reactive context when called from async
 			if (owner) {
 				runWithOwner(owner, () => {
 					createEffect(() => {
@@ -377,7 +369,6 @@ export const SplitEditorPanel = (props: SplitEditorPanelProps) => {
 				})
 			}
 
-			// Store cleanup function for this file's tracking
 			contentWatcherCleanups.set(filePath, () => {
 				previousContent.delete(filePath)
 			})

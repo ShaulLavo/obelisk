@@ -37,7 +37,7 @@ import {
 	readFileBuffer,
 } from '../runtime/streaming'
 import type { FsSource } from '../types'
-import type { FileCacheController } from '../cache/fileCacheController'
+import type { DocumentCache } from '../cache/documentCache'
 
 const textDecoder = new TextDecoder()
 
@@ -80,7 +80,7 @@ export interface LoadFileOptions {
 	/** File path */
 	path: string
 	/** File cache controller */
-	fileCache: FileCacheController
+	fileCache: DocumentCache
 	/** Skip cache lookup (force reload from disk) */
 	forceReload?: boolean
 	/** Callback when syntax highlighting completes (async) */
@@ -215,7 +215,7 @@ export async function loadFile(options: LoadFileOptions): Promise<FileLoadResult
 export async function loadSyntax(
 	path: string,
 	content: string,
-	fileCache: FileCacheController,
+	fileCache: DocumentCache,
 	onSyntaxReady: (syntax: SyntaxResult) => void
 ): Promise<void> {
 	// Check cache first

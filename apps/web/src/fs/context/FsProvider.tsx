@@ -21,7 +21,7 @@ import { LocalDirectoryFallbackModal } from '../components/LocalDirectoryFallbac
 import { getRootHandle, invalidateFs } from '../runtime/fsRuntime'
 import { useFileSystemObserver } from '../hooks/useFileSystemObserver'
 import { pickNewLocalRoot as doPick } from '@repo/fs'
-import { createFileCacheController } from '../cache'
+import { createDocumentCache } from '../cache'
 
 export function FsProvider(props: { children: JSX.Element }) {
 	const {
@@ -61,7 +61,7 @@ export function FsProvider(props: { children: JSX.Element }) {
 		setSyntax,
 	} = createFsState()
 
-	const fileCache = createFileCacheController()
+	const fileCache = createDocumentCache()
 
 	const {
 		selectPath: selectPathInternal,
@@ -256,7 +256,7 @@ export function FsProvider(props: { children: JSX.Element }) {
 			await refresh('local')
 		} catch (error) {
 			if (error instanceof Error && error.name === 'AbortError') return
-			console.error('[pickNewRoot] Failed:', error)
+			// Error handled - user cancelled or permission denied
 		}
 	}
 

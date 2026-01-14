@@ -1,7 +1,7 @@
 export { HandleCache } from './HandleCache'
 export { FileHandle, type SyncAccessHandle, type SyncCapableFileHandle } from './FileHandle'
 export { DirHandle } from './DirHandle'
-export { FileContextImpl, createFileContext } from './FileContext'
+export { RootCtxImpl, createRootCtx } from './RootCtx'
 export { createStorage, type Storage, type CreateStorageOptions, type StorageSource } from './storage'
 export { createStorageNoCache } from './storageNoCache'
 export { buildFsTree, walkDirectory, type WalkDirectoryOptions, type WalkDirectoryResult } from './utils/tree'
@@ -9,7 +9,7 @@ export { createWorkerStorage, createSyncStore, type WorkerStorage } from './util
 export { createWorkerStorageNoCache } from './utils/workerStorageNoCache'
 export type {
 	OpenMode,
-	FileContextOptions,
+	RootCtxOptions,
 	TreeKind,
 	FsTreeBase,
 	FileTreeNode,
@@ -17,7 +17,7 @@ export type {
 	TreeNode,
 	TreeOptions,
 	ReadableByteStream,
-	FileContext,
+	RootCtx,
 	ResolvedPath,
-	FileContextInternal,
+	RootCtxInternal,
 } from './types'

@@ -2,20 +2,20 @@
  * Browser Grep
  *
  * High-performance, streaming, byte-level grep for the browser.
- * Built on VFS for directory traversal and caching.
+ * Built on RootCtx for directory traversal and caching.
  *
  * Features:
  * - Literal pattern matching (no regex)
  * - Streaming byte-level search (no full file decode)
  * - Chunk overlap for boundary matching
  * - Worker pool for parallel processing
- * - VFS directory cache integration
+ * - Directory handle cache integration
  *
  * @example
- * import { grep, createFs, getRootDirectory } from '@repo/fs'
+ * import { grep, createRootCtx, getRootDirectory } from '@repo/fs'
  *
  * const root = await getRootDirectory('user')
- * const fs = createFs(root)
+ * const fs = createRootCtx(root)
  *
  * // Simple search
  * const matches = await grep(fs, 'TODO')
@@ -71,7 +71,7 @@ export {
 // ============================================================================
 
 import { GrepCoordinator } from './GrepCoordinator'
-import type { FileContext } from '../file'
+import type { RootCtx } from '../file'
 import type { GrepOptions, GrepMatch, GrepProgressCallback } from './types'
 
 /**
@@ -80,7 +80,7 @@ import type { GrepOptions, GrepMatch, GrepProgressCallback } from './types'
  * For repeated searches in the same session, create a GrepCoordinator
  * directly to reuse the worker pool.
  *
- * @param fs - VFS context
+ * @param fs - RootCtx instance
  * @param pattern - Literal string to search for
  * @param options - Search options (paths, filters, limits)
  * @param onProgress - Optional progress callback
@@ -90,7 +90,7 @@ import type { GrepOptions, GrepMatch, GrepProgressCallback } from './types'
  * const matches = await grep(fs, 'TODO', { paths: ['src'] })
  */
 export async function grep(
-	fs: FileContext,
+	fs: RootCtx,
 	pattern: string,
 	options?: Omit<GrepOptions, 'pattern'>,
 	onProgress?: GrepProgressCallback
@@ -115,7 +115,7 @@ export async function grep(
  * }
  */
 export async function* grepStream(
-	fs: FileContext,
+	fs: RootCtx,
 	pattern: string,
 	options?: Omit<GrepOptions, 'pattern'>
 ) {

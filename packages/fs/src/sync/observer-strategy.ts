@@ -39,8 +39,8 @@ export class NativeObserverStrategy implements ObserverStrategy {
 				for (const handler of this.changeHandlers) {
 					try {
 						handler(records)
-					} catch (error) {
-						console.error('Error in observer change handler:', error)
+					} catch {
+						// Silently swallow handler errors to not break other handlers
 					}
 				}
 			})
@@ -94,8 +94,8 @@ export class PollingObserverStrategy implements ObserverStrategy {
 				for (const handler of this.changeHandlers) {
 					try {
 						handler(records)
-					} catch (error) {
-						console.error('Error in polling observer change handler:', error)
+					} catch {
+						// Silently swallow handler errors to not break other handlers
 					}
 				}
 			}, this.pollInterval)

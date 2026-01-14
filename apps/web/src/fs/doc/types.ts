@@ -73,6 +73,19 @@ export interface Document {
 	readonly conflicts: Accessor<ConflictInfo[]>
 
 	/**
+	 * Where content is coming from.
+	 * - 'memory': content loaded and in memory
+	 * - 'unloaded': not yet loaded from disk
+	 */
+	readonly contentSource: Accessor<'memory' | 'unloaded'>
+
+	/**
+	 * Whether disk content differs from what we last loaded.
+	 * True = external changes detected since last load/save.
+	 */
+	readonly isStale: Accessor<boolean>
+
+	/**
 	 * Update local content. Marks document as dirty if different from base.
 	 */
 	setContent(content: string): void
@@ -128,9 +141,9 @@ export interface ConflictInfo {
  */
 export interface DocumentStoreOptions {
 	/**
-	 * FileContext from @repo/fs for I/O operations.
+	 * RootCtx from @repo/fs for I/O operations.
 	 */
-	fileContext: {
+	rootCtx: {
 		file(path: string, mode?: string): {
 			text(): Promise<string>
 			write(content: string): Promise<void>

@@ -1,5 +1,5 @@
 import { expose } from 'comlink'
-import { createFs, getRootDirectory, type FsContext } from '@repo/fs'
+import { createRootCtx, getRootDirectory, type RootCtx } from '@repo/fs'
 import type {
 	VfsPathScenario,
 	VfsPathResult,
@@ -252,7 +252,7 @@ const average = (arr: number[]): number =>
 // ============================================================================
 
 type BenchContext = {
-	fs: FsContext
+	fs: RootCtx
 	rootHandle: FileSystemDirectoryHandle
 }
 
@@ -620,7 +620,7 @@ const benchmarkApi = {
 				total: scenarios.length,
 			})
 
-			const fs = createFs(rootHandle)
+			const fs = createRootCtx(rootHandle)
 			const ctx: BenchContext = { fs, rootHandle }
 			const start = performance.now()
 
@@ -674,7 +674,7 @@ const benchmarkApi = {
 		}
 
 		const rootHandle = await getRootDirectory('opfs', BENCH_ROOT)
-		const fs = createFs(rootHandle)
+		const fs = createRootCtx(rootHandle)
 		const ctx: BenchContext = { fs, rootHandle }
 		const start = performance.now()
 

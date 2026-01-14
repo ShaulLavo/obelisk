@@ -8,7 +8,7 @@ import type { FsContextValue, SelectPathOptions } from '../context/FsContext'
 import { loadFile } from '../services/FileLoadingService'
 import { toast } from '@repo/ui/toaster'
 import { createFilePath } from '@repo/fs'
-import type { FileCacheController } from '../cache'
+import type { DocumentCache } from '../cache'
 import type { SyntaxData } from '../store/types'
 
 type UseFileSelectionOptions = {
@@ -19,7 +19,7 @@ type UseFileSelectionOptions = {
 	setSavedContent: (path: string, content: string) => void
 	setSyntax: (path: string, syntax: SyntaxData | null) => void
 	updateDirtyFromPieceTable: (path: string, pieceTable: PieceTableSnapshot | undefined) => void
-	fileCache: FileCacheController
+	fileCache: DocumentCache
 }
 
 export const useFileSelection = ({

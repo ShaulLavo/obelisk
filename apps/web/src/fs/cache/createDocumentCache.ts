@@ -1,9 +1,9 @@
 import type { FilePath } from '@repo/fs'
-import type { FileCacheController, FileCacheEntry } from './fileCacheController'
+import type { DocumentCache, DocumentCacheEntry } from './documentCache'
 
-const DB_NAME = 'file-cache'
+const DB_NAME = 'document-cache'
 const DB_VERSION = 1
-const STORE_NAME = 'files'
+const STORE_NAME = 'documents'
 
 let dbPromise: Promise<IDBDatabase> | null = null
 
@@ -27,8 +27,8 @@ function openDB(): Promise<IDBDatabase> {
 	return dbPromise
 }
 
-export function createFileCacheController(): FileCacheController {
-	const memoryCache = new Map<FilePath, FileCacheEntry>()
+export function createDocumentCache(): DocumentCache {
+	const memoryCache = new Map<FilePath, DocumentCacheEntry>()
 	const pendingWrites = new Set<FilePath>()
 	let flushTimeout: ReturnType<typeof setTimeout> | null = null
 
@@ -40,20 +40,20 @@ export function createFileCacheController(): FileCacheController {
 		}, 500)
 	}
 
-	const set = (path: string, entry: FileCacheEntry): void => {
+	const set = (path: string, entry: DocumentCacheEntry): void => {
 		const existing = memoryCache.get(path as FilePath) ?? {}
 		memoryCache.set(path as FilePath, { ...existing, ...entry })
 		pendingWrites.add(path as FilePath)
 		scheduleFlush()
 	}
 
-	const getAsync = async (path: string): Promise<FileCacheEntry> => {
+	const getAsync = async (path: string): Promise<DocumentCacheEntry> => {
 		const cached = memoryCache.get(path as FilePath)
 		if (cached) return cached
 
 		try {
 			const db = await openDB()
-			const entry = await new Promise<FileCacheEntry | null>(
+			const entry = await new Promise<DocumentCacheEntry | null>(
 				(resolve, reject) => {
 					const tx = db.transaction(STORE_NAME, 'readonly')
 					const store = tx.objectStore(STORE_NAME)
@@ -68,7 +68,7 @@ export function createFileCacheController(): FileCacheController {
 						}
 						const entry = { ...result }
 						delete entry.path
-						resolve(entry as FileCacheEntry)
+						resolve(entry as DocumentCacheEntry)
 					}
 				}
 			)

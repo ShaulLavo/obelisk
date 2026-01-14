@@ -9,7 +9,7 @@ import { createDocument } from './Document'
  * Integrates with SyncController to handle external file changes.
  */
 export function createDocumentStore(options: DocumentStoreOptions): DocumentStore {
-	const { fileContext, syncController } = options
+	const { rootCtx, syncController } = options
 
 	const documentsMap = new Map<FilePath, Document>()
 	const [documentsSignal, setDocumentsSignal] = createSignal(
@@ -40,7 +40,7 @@ export function createDocumentStore(options: DocumentStoreOptions): DocumentStor
 
 		const doc = createDocument({
 			path,
-			fileContext,
+			rootCtx,
 		})
 
 		documentsMap.set(path, doc)
@@ -56,12 +56,12 @@ export function createDocumentStore(options: DocumentStoreOptions): DocumentStor
 					if (event.path !== path) return
 
 					try {
-						const file = fileContext.file(path, 'r')
+						const file = rootCtx.file(path, 'r')
 						const content = await file.text()
 						const mtime = await file.lastModified()
 						doc.notifyExternalChange(content, mtime)
-					} catch (error) {
-						console.error(`Failed to read external change for ${path}:`, error)
+					} catch {
+						// Failed to read - file may have been deleted or permission revoked
 					}
 				}
 			)
@@ -70,9 +70,7 @@ export function createDocumentStore(options: DocumentStoreOptions): DocumentStor
 				'deleted',
 				(event: { path: string }) => {
 					if (event.path !== path) return
-					// File was deleted externally
-					// Could emit an event or update UI state here
-					console.warn(`File deleted externally: ${path}`)
+					// TODO: File was deleted externally - emit an event or update UI state
 				}
 			)
 

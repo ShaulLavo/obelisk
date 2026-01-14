@@ -3,7 +3,7 @@ import type { FileHandle } from './FileHandle'
 
 export type OpenMode = 'r' | 'rw' | 'rw-unsafe'
 
-export interface FileContextOptions {
+export interface RootCtxOptions {
 	basePath?: string
 	normalizePaths?: boolean
 }
@@ -49,7 +49,7 @@ export type ReadableByteStream = ReadableStream<
 	BufferSource | Uint8Array<ArrayBufferLike>
 >
 
-export interface FileContext {
+export interface RootCtx {
 	readonly root: FileSystemDirectoryHandle
 	file(path: string, mode?: OpenMode): FileHandle
 	dir(path?: string): DirHandle
@@ -91,7 +91,7 @@ export type ResolvedPath = {
 	absoluteSegments: string[]
 }
 
-export interface FileContextInternal extends FileContext {
+export interface RootCtxInternal extends RootCtx {
 	resolveRelative(path: string): ResolvedPath
 	ensureParentDirectories(relativePath: string): Promise<void>
 	pathExistsAsFile(relativePath: string): Promise<boolean>

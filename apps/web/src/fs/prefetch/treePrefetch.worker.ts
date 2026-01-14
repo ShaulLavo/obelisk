@@ -1,7 +1,7 @@
 import {
-	createFileContext,
+	createRootCtx,
 	walkDirectory,
-	type FileContext,
+	type RootCtx,
 	type DirTreeNode,
 	type TreeNode,
 } from '@repo/fs'
@@ -17,7 +17,7 @@ import type {
 
 const LOAD_TIMEOUT_MS = 30_000
 
-let ctx: FileContext | undefined
+let ctx: RootCtx | undefined
 let initialized = false
 let fallbackRootName = 'root'
 
@@ -167,7 +167,7 @@ const extractPendingTargetsFromTree = (tree: DirTreeNode): {
 
 const api: TreePrefetchWorkerApi = {
 	async init(payload) {
-		ctx = createFileContext(payload.rootHandle)
+		ctx = createRootCtx(payload.rootHandle)
 		fallbackRootName = payload.rootName || 'root'
 		initialized = true
 	},

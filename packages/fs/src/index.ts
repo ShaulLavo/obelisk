@@ -29,8 +29,8 @@ export {
 	HandleCache,
 	FileHandle,
 	DirHandle,
-	FileContextImpl,
-	createFileContext,
+	RootCtxImpl,
+	createRootCtx,
 	createStorage,
 	createStorageNoCache,
 	buildFsTree,
@@ -43,7 +43,7 @@ export type {
 	SyncAccessHandle,
 	SyncCapableFileHandle,
 	OpenMode,
-	FileContextOptions,
+	RootCtxOptions,
 	TreeKind,
 	FsTreeBase,
 	FileTreeNode,
@@ -51,9 +51,9 @@ export type {
 	TreeNode,
 	TreeOptions,
 	ReadableByteStream,
-	FileContext,
+	RootCtx,
 	ResolvedPath,
-	FileContextInternal,
+	RootCtxInternal,
 	Storage,
 	CreateStorageOptions,
 	StorageSource,
@@ -86,17 +86,6 @@ export type {
 	FileSystemObserverCallback,
 	FileSystemObserverOptions,
 } from './FileSystemObserver'
-
-export {
-	UnifiedObserver,
-	createUnifiedObserver,
-} from './observer'
-export type {
-	ObserverCapabilities,
-	UnifiedChangeRecord,
-	UnifiedObserverCallback,
-	UnifiedObserverOptions,
-} from './observer'
 
 export { grep, grepStream, GrepCoordinator } from './grep'
 export type {

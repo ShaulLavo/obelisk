@@ -1,10 +1,10 @@
 import {
 	buildFsTree,
-	createFileContext,
+	createRootCtx,
 	DirTreeNode,
 	getRootDirectory,
 	DirectoryPickerUnavailableError,
-	type FileContext as VfsContext,
+	type RootCtx,
 } from '@repo/fs'
 import { trackOperation } from '@repo/perf'
 import { modal } from '@repo/ui/modal'
@@ -12,7 +12,7 @@ import { OPFS_ROOT_NAME } from '../config/constants'
 import type { FsSource } from '../types'
 import { requestLocalDirectoryFallback } from '../fallback/localDirectoryFallbackCoordinator'
 
-const fsCache: Partial<Record<FsSource, VfsContext>> = {}
+const fsCache: Partial<Record<FsSource, RootCtx>> = {}
 const initPromises: Partial<Record<FsSource, Promise<void>>> = {}
 
 export class LocalDirectoryFallbackSwitchError extends Error {
@@ -46,7 +46,7 @@ export function invalidateFs(source: FsSource) {
 	delete initPromises[source]
 }
 
-export async function ensureFs(source: FsSource): Promise<VfsContext> {
+export async function ensureFs(source: FsSource): Promise<RootCtx> {
 	if (fsCache[source]) return fsCache[source]!
 
 	if (!initPromises[source]) {
@@ -76,7 +76,7 @@ export async function ensureFs(source: FsSource): Promise<VfsContext> {
 				}).finally(() => {
 					clearAwaitingPermissionModal()
 				})
-				fsCache[source] = timeSync('create-fs', () => createFileContext(rootHandle))
+				fsCache[source] = timeSync('create-fs', () => createRootCtx(rootHandle))
 			},
 			{ metadata: { source } }
 		).catch((error) => {
@@ -94,7 +94,7 @@ export function primeFsCache(
 	source: FsSource,
 	rootHandle: FileSystemDirectoryHandle
 ) {
-	fsCache[source] = createFileContext(rootHandle)
+	fsCache[source] = createRootCtx(rootHandle)
 	initPromises[source] = Promise.resolve()
 }
 

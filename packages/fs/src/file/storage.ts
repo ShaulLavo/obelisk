@@ -1,29 +1,33 @@
-import type { FileContext } from './types'
+import type { RootCtx } from './types'
 
 const DEFAULT_STORAGE_FILE = '.vfs-store.json'
 const FLUSH_DELAY_MS = 50
 
-function isFileContext(value: unknown): value is FileContext {
+function isRootCtx(value: unknown): value is RootCtx {
 	return (
 		typeof value === 'object' &&
 		value !== null &&
-		typeof (value as FileContext).file === 'function' &&
-		typeof (value as FileContext).dir === 'function'
+		typeof (value as RootCtx).file === 'function' &&
+		typeof (value as RootCtx).dir === 'function'
 	)
 }
 
 export interface Storage {
 	getItem<T>(key: string): Promise<T | null>
+	getItemSync<T>(key: string): T | null
 	setItem<T>(key: string, value: T): Promise<T>
 	removeItem(key: string): Promise<void>
 	clear(): Promise<void>
 	length(): Promise<number>
 	key(index: number): Promise<string | null>
 	keys(): Promise<string[]>
+	keysSync(): string[]
 	iterate<T, U>(
 		iteratee: (value: T, key: string, iterationNumber: number) => U | Promise<U>
 	): Promise<U | undefined>
 	flush(): Promise<void>
+	readonly ready: boolean
+	whenReady(): Promise<void>
 }
 
 export interface CreateStorageOptions {
@@ -35,12 +39,13 @@ type StorageData = Record<string, unknown>
 
 class StorageImpl implements Storage {
 	#fileHandle: Promise<FileSystemFileHandle>
-	#data: StorageData | null = null
+	#data: StorageData = {}
+	#ready = false
 	#dirty = false
 	#flushTimer: ReturnType<typeof setTimeout> | null = null
 	#flushDelay: number
 	#flushPromise: Promise<void> | null = null
-	#initPromise: Promise<void> | null = null
+	#readyPromise: Promise<void>
 
 	constructor(
 		fileHandlePromise: Promise<FileSystemFileHandle>,
@@ -48,31 +53,34 @@ class StorageImpl implements Storage {
 	) {
 		this.#fileHandle = fileHandlePromise
 		this.#flushDelay = flushDelay
+		this.#readyPromise = this.#hydrate()
 	}
 
-	async #init(): Promise<void> {
-		if (this.#data !== null) return
-		if (this.#initPromise) return this.#initPromise
+	get ready(): boolean {
+		return this.#ready
+	}
 
-		this.#initPromise = (async () => {
-			const handle = await this.#fileHandle
-			try {
-				const file = await handle.getFile()
-				const text = await file.text()
-				this.#data = text ? (JSON.parse(text) as StorageData) : {}
-			} catch (error) {
-				if (
-					error instanceof SyntaxError ||
-					(error instanceof DOMException && error.name === 'NotFoundError')
-				) {
-					this.#data = {}
-				} else {
-					throw error
-				}
+	whenReady(): Promise<void> {
+		return this.#readyPromise
+	}
+
+	async #hydrate(): Promise<void> {
+		const handle = await this.#fileHandle
+		try {
+			const file = await handle.getFile()
+			const text = await file.text()
+			this.#data = text ? (JSON.parse(text) as StorageData) : {}
+		} catch (error) {
+			if (
+				error instanceof SyntaxError ||
+				(error instanceof DOMException && error.name === 'NotFoundError')
+			) {
+				this.#data = {}
+			} else {
+				throw error
 			}
-		})()
-
-		await this.#initPromise
+		}
+		this.#ready = true
 	}
 
 	#scheduleFlush(): void {
@@ -98,7 +106,7 @@ class StorageImpl implements Storage {
 	}
 
 	async #doFlush(): Promise<void> {
-		if (!this.#dirty || this.#data === null) {
+		if (!this.#dirty) {
 			this.#flushPromise = null
 			return
 		}
@@ -140,57 +148,81 @@ class StorageImpl implements Storage {
 		}
 	}
 
-	async getItem<T>(key: string): Promise<T | null> {
-		await this.#init()
-		const value = this.#data![key]
+	getItemSync<T>(key: string): T | null {
+		const value = this.#data[key]
 		return value === undefined ? null : (value as T)
 	}
 
+	async getItem<T>(key: string): Promise<T | null> {
+		if (!this.#ready) {
+			await this.#readyPromise
+		}
+		return this.getItemSync(key)
+	}
+
 	async setItem<T>(key: string, value: T): Promise<T> {
-		await this.#init()
-		this.#data![key] = value
+		if (!this.#ready) {
+			await this.#readyPromise
+		}
+		this.#data[key] = value
 		this.#dirty = true
 		this.#scheduleFlush()
 		return value
 	}
 
 	async removeItem(key: string): Promise<void> {
-		await this.#init()
-		if (!(key in this.#data!)) return
-		delete this.#data![key]
+		if (!this.#ready) {
+			await this.#readyPromise
+		}
+		if (!(key in this.#data)) return
+		delete this.#data[key]
 		this.#dirty = true
 		this.#scheduleFlush()
 	}
 
 	async clear(): Promise<void> {
-		await this.#init()
+		if (!this.#ready) {
+			await this.#readyPromise
+		}
 		this.#data = {}
 		this.#dirty = true
 		this.#scheduleFlush()
 	}
 
 	async length(): Promise<number> {
-		await this.#init()
-		return Object.keys(this.#data!).length
+		if (!this.#ready) {
+			await this.#readyPromise
+		}
+		return Object.keys(this.#data).length
 	}
 
 	async key(index: number): Promise<string | null> {
-		await this.#init()
-		const keys = Object.keys(this.#data!)
+		if (!this.#ready) {
+			await this.#readyPromise
+		}
+		const keys = Object.keys(this.#data)
 		return index < keys.length ? keys[index]! : null
 	}
 
+	keysSync(): string[] {
+		return Object.keys(this.#data)
+	}
+
 	async keys(): Promise<string[]> {
-		await this.#init()
-		return Object.keys(this.#data!)
+		if (!this.#ready) {
+			await this.#readyPromise
+		}
+		return this.keysSync()
 	}
 
 	async iterate<T, U>(
 		iteratee: (value: T, key: string, iterationNumber: number) => U | Promise<U>
 	): Promise<U | undefined> {
-		await this.#init()
+		if (!this.#ready) {
+			await this.#readyPromise
+		}
 		let i = 1
-		for (const [key, value] of Object.entries(this.#data!)) {
+		for (const [key, value] of Object.entries(this.#data)) {
 			const result = await iteratee(value as T, key, i++)
 			if (result !== undefined) {
 				return result
@@ -200,7 +232,7 @@ class StorageImpl implements Storage {
 	}
 }
 
-export type StorageSource = FileContext | FileSystemDirectoryHandle
+export type StorageSource = RootCtx | FileSystemDirectoryHandle
 
 export function createStorage(
 	source: StorageSource,
@@ -211,7 +243,7 @@ export function createStorage(
 
 	let filePromise: Promise<FileSystemFileHandle>
 
-	if (isFileContext(source)) {
+	if (isRootCtx(source)) {
 		filePromise = source.getFileHandleForRelative(filePath, true)
 	} else {
 		filePromise = source.getFileHandle(filePath, { create: true })

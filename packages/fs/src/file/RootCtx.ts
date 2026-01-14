@@ -1,10 +1,10 @@
 import type {
-	FileContext,
-	FileContextOptions,
+	RootCtx,
+	RootCtxOptions,
 	TreeNode,
 	ReadableByteStream,
 	ResolvedPath,
-	FileContextInternal,
+	RootCtxInternal,
 } from './types'
 import { HandleCache } from './HandleCache'
 import { FileHandle } from './FileHandle'
@@ -26,7 +26,7 @@ type PermissionCapableDirectoryHandle = FileSystemDirectoryHandle & {
 	) => Promise<PermissionState>
 }
 
-export class FileContextImpl implements FileContextInternal {
+export class RootCtxImpl implements RootCtxInternal {
 	readonly root: FileSystemDirectoryHandle
 	readonly #baseSegments: string[]
 	readonly #normalizePaths: boolean
@@ -36,7 +36,7 @@ export class FileContextImpl implements FileContextInternal {
 		Promise<FileSystemDirectoryHandle>
 	>()
 
-	constructor(root: FileSystemDirectoryHandle, options?: FileContextOptions) {
+	constructor(root: FileSystemDirectoryHandle, options?: RootCtxOptions) {
 		this.root = root
 		this.#normalizePaths = options?.normalizePaths ?? true
 		this.#baseSegments = options?.basePath
@@ -324,9 +324,9 @@ export class FileContextImpl implements FileContextInternal {
 	}
 }
 
-export function createFileContext(
+export function createRootCtx(
 	root: FileSystemDirectoryHandle,
-	options?: FileContextOptions
-): FileContext {
-	return new FileContextImpl(root, options)
+	options?: RootCtxOptions
+): RootCtx {
+	return new RootCtxImpl(root, options)
 }

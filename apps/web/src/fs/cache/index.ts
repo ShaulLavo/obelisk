@@ -1,3 +1,3 @@
-export { type FileCacheController, type FileCacheEntry } from './fileCacheController'
+export { type DocumentCache, type DocumentCacheEntry } from './documentCache'
 
-export { createFileCacheController } from './createFileCacheController'
+export { createDocumentCache } from './createDocumentCache'

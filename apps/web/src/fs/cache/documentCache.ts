@@ -6,7 +6,7 @@ import type {
 	FoldRange,
 } from '../../workers/treeSitter/types'
 
-export type FileCacheEntry = {
+export type DocumentCacheEntry = {
 	pieceTable?: PieceTableSnapshot
 	stats?: ParseResult
 	previewBytes?: Uint8Array
@@ -17,7 +17,7 @@ export type FileCacheEntry = {
 	lineStarts?: number[]
 }
 
-export type FileCacheController = {
-	getAsync: (path: string) => Promise<FileCacheEntry>
-	set: (path: string, entry: FileCacheEntry) => void
+export type DocumentCache = {
+	getAsync: (path: string) => Promise<DocumentCacheEntry>
+	set: (path: string, entry: DocumentCacheEntry) => void
 }

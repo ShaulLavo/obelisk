@@ -1,7 +1,7 @@
 import { createContext, useContext } from 'solid-js'
 import type { DirTreeNode } from '@repo/fs'
 import type { PieceTableSnapshot } from '@repo/utils'
-import type { FileCacheController } from '../cache/fileCacheController'
+import type { DocumentCache } from '../cache/documentCache'
 import type { FsState, FsSource } from '../types'
 import type { FileLoadingError } from '../../split-editor/fileLoadingErrors'
 import type { FileLoadingState, SyntaxData } from '../store/types'
@@ -25,7 +25,7 @@ export type FsActions = {
 		path: string,
 		updater: (current: PieceTableSnapshot | undefined) => PieceTableSnapshot | undefined
 	) => void
-	fileCache: FileCacheController
+	fileCache: DocumentCache
 	saveFile: (path: string) => Promise<void>
 	setDirty: (path: string, isDirty: boolean) => void
 	setSavedContent: (path: string, content: string) => void

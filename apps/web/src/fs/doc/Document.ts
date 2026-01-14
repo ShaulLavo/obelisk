@@ -4,7 +4,7 @@ import type { Document, ConflictInfo, ConflictSource } from './types'
 
 export interface CreateDocumentOptions {
 	path: FilePath
-	fileContext: {
+	rootCtx: {
 		file(path: string, mode?: string): {
 			text(): Promise<string>
 			write(content: string): Promise<void>
@@ -26,7 +26,7 @@ export interface CreateDocumentOptions {
  * syncState is derived reactively from these three.
  */
 export function createDocument(options: CreateDocumentOptions): Document {
-	const { path, fileContext, initialContent = '', initialMtime = null } = options
+	const { path, rootCtx, initialContent = '', initialMtime = null } = options
 
 	// Core content signals
 	const [content, setContentSignal] = createSignal(initialContent)
@@ -39,6 +39,9 @@ export function createDocument(options: CreateDocumentOptions): Document {
 	)
 	const [diskMtime, setDiskMtime] = createSignal<number | null>(initialMtime)
 	const [conflicts, setConflicts] = createSignal<ConflictInfo[]>([])
+	const [contentSource, setContentSource] = createSignal<'memory' | 'unloaded'>(
+		initialContent ? 'memory' : 'unloaded'
+	)
 
 	// Derived: isDirty
 	const isDirty = createMemo(() => {
@@ -48,6 +51,11 @@ export function createDocument(options: CreateDocumentOptions): Document {
 	// Derived: hasExternalChanges
 	const hasExternalChanges = createMemo(() => {
 		return baseContent() !== diskContent()
+	})
+
+	// Derived: isStale (disk changed since last load)
+	const isStale = createMemo(() => {
+		return hasExternalChanges()
 	})
 
 	// Derived: syncState
@@ -73,7 +81,7 @@ export function createDocument(options: CreateDocumentOptions): Document {
 	}
 
 	const load = async (): Promise<void> => {
-		const file = fileContext.file(path, 'r')
+		const file = rootCtx.file(path, 'r')
 		const text = await file.text()
 		const mtime = await file.lastModified()
 
@@ -84,12 +92,13 @@ export function createDocument(options: CreateDocumentOptions): Document {
 			setLastSyncedAt(Date.now())
 			setDiskMtime(mtime)
 			setConflicts([])
+			setContentSource('memory')
 		})
 	}
 
 	const save = async (): Promise<void> => {
 		const currentContent = content()
-		const file = fileContext.file(path, 'rw')
+		const file = rootCtx.file(path, 'rw')
 		await file.write(currentContent)
 		const mtime = await file.lastModified()
 
@@ -142,7 +151,7 @@ export function createDocument(options: CreateDocumentOptions): Document {
 	}
 
 	const resolveMerge = async (mergedContent: string): Promise<void> => {
-		const file = fileContext.file(path, 'rw')
+		const file = rootCtx.file(path, 'rw')
 		await file.write(mergedContent)
 		const mtime = await file.lastModified()
 
@@ -167,6 +176,8 @@ export function createDocument(options: CreateDocumentOptions): Document {
 		lastSyncedAt,
 		diskMtime,
 		conflicts,
+		contentSource,
+		isStale,
 		setContent,
 		load,
 		save,
