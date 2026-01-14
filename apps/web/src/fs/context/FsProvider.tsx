@@ -73,6 +73,7 @@ export function FsProvider(props: { children: JSX.Element }) {
 		setPieceTable,
 		setDirty,
 		setSavedContent,
+		setSyntax,
 		updateDirtyFromPieceTable,
 		fileCache,
 	})

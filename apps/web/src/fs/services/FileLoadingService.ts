@@ -114,10 +114,8 @@ export async function loadFile(options: LoadFileOptions): Promise<FileLoadResult
 	// If we have cached piece table, use it
 	if (cachedEntry.pieceTable && !forceReload) {
 		const { pieceTable, stats } = cachedEntry
-		// Derive content from piece table
 		const content = pieceTable ? getPieceTableText(pieceTable) : ''
 
-		// Hydrate cached syntax if available
 		if (cachedEntry.highlights && onSyntaxReady) {
 			onSyntaxReady({
 				highlights: cachedEntry.highlights,
@@ -125,6 +123,23 @@ export async function loadFile(options: LoadFileOptions): Promise<FileLoadResult
 				brackets: cachedEntry.brackets ?? [],
 				errors: cachedEntry.errors ?? [],
 			})
+		} else if (onSyntaxReady && !isBinary) {
+			// No cached highlights - parse in background
+			const encoder = new TextEncoder()
+			parseBufferWithTreeSitter(path, encoder.encode(content).buffer)
+				.then((result) => {
+					if (result) {
+						const syntax: SyntaxResult = {
+							highlights: result.captures,
+							folds: result.folds,
+							brackets: result.brackets,
+							errors: result.errors,
+						}
+						fileCache.set(path, syntax)
+						onSyntaxReady(syntax)
+					}
+				})
+				.catch(() => {})
 		}
 
 		return {
@@ -157,9 +172,8 @@ export async function loadFile(options: LoadFileOptions): Promise<FileLoadResult
 		}
 
 		// Parse with tree-sitter asynchronously
-		const parsePromise = parseBufferWithTreeSitter(path, buffer)
-		if (parsePromise && onSyntaxReady) {
-			parsePromise
+		if (onSyntaxReady) {
+			parseBufferWithTreeSitter(path, buffer)
 				.then((result) => {
 					if (result) {
 						const syntax: SyntaxResult = {
@@ -168,14 +182,7 @@ export async function loadFile(options: LoadFileOptions): Promise<FileLoadResult
 							brackets: result.brackets,
 							errors: result.errors,
 						}
-						// Cache the results
-						fileCache.set(path, {
-							highlights: syntax.highlights,
-							folds: syntax.folds,
-							brackets: syntax.brackets,
-							errors: syntax.errors,
-						})
-						// Notify caller
+						fileCache.set(path, syntax)
 						onSyntaxReady(syntax)
 					}
 				})

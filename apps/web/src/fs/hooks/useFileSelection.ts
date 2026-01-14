@@ -9,6 +9,7 @@ import { loadFile } from '../services/FileLoadingService'
 import { toast } from '@repo/ui/toaster'
 import { createFilePath } from '@repo/fs'
 import type { FileCacheController } from '../cache'
+import type { SyntaxData } from '../store/types'
 
 type UseFileSelectionOptions = {
 	state: FsState
@@ -16,6 +17,7 @@ type UseFileSelectionOptions = {
 	setPieceTable: (path: string, snapshot: PieceTableSnapshot | null) => void
 	setDirty: (path: string, isDirty: boolean) => void
 	setSavedContent: (path: string, content: string) => void
+	setSyntax: (path: string, syntax: SyntaxData | null) => void
 	updateDirtyFromPieceTable: (path: string, pieceTable: PieceTableSnapshot | undefined) => void
 	fileCache: FileCacheController
 }
@@ -26,6 +28,7 @@ export const useFileSelection = ({
 	setPieceTable,
 	setDirty,
 	setSavedContent,
+	setSyntax,
 	updateDirtyFromPieceTable,
 	fileCache,
 }: UseFileSelectionOptions) => {
@@ -69,6 +72,9 @@ export const useFileSelection = ({
 						path,
 						fileCache,
 						forceReload: options?.forceReload,
+						onSyntaxReady: (syntax) => {
+							setSyntax(path, syntax)
+						},
 					})
 
 					perfMetadata.fileSize = result.fileSize
