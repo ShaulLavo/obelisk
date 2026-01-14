@@ -4,7 +4,7 @@ import type { PieceTableSnapshot } from '@repo/utils'
 import type { FileCacheController } from '../cache/fileCacheController'
 import type { FsState, FsSource } from '../types'
 import type { FileLoadingError } from '../../split-editor/fileLoadingErrors'
-import type { FileLoadingState } from '../store/types'
+import type { FileLoadingState, SyntaxData } from '../store/types'
 
 export type SelectPathOptions = {
 	forceReload?: boolean
@@ -38,6 +38,7 @@ export type FsActions = {
 	setLineStarts: (path: string, lineStarts: number[]) => void
 	preloadFileContent: (path: string, content: string) => void
 	clearFileState: (path: string) => void
+	setSyntax: (path: string, syntax: SyntaxData | null) => void
 }
 
 export type FsContextValue = [FsState, FsActions]

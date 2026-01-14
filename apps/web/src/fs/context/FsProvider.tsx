@@ -58,6 +58,7 @@ export function FsProvider(props: { children: JSX.Element }) {
 		clearFileState,
 		clearAllFileState,
 		clearSyntax,
+		setSyntax,
 	} = createFsState()
 
 	const fileCache = createFileCacheController()
@@ -285,6 +286,7 @@ export function FsProvider(props: { children: JSX.Element }) {
 			setLineStarts: (path: string, lineStarts: number[]) => setLineStarts(path, lineStarts),
 			preloadFileContent,
 			clearFileState,
+			setSyntax,
 		},
 	]
 

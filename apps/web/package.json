@@ -81,7 +81,7 @@
     "ansis": "^4.2.0",
     "buffer": "^6.0.3",
     "comlink": "^4.4.2",
-    "ghostty-web": "workspace:*",
+    "ghostty-web": "^0.4.0",
     "gsap": "^3.13.0",
     "isomorphic-git": "^1.36.1",
     "just-bash": "workspace:*",

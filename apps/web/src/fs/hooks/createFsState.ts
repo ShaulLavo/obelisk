@@ -134,6 +134,7 @@ export const createFsState = () => {
 		setCreationState,
 		setFileStats: fileStore.setStats,
 		setPieceTable: fileStore.setPieceTable,
+		setSyntax: fileStore.setSyntax,
 		setHighlights: fileStore.setHighlights,
 		applyHighlightOffset: fileStore.applyHighlightOffset,
 		setFolds: fileStore.setFolds,

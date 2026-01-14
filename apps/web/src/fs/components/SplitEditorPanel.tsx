@@ -8,7 +8,7 @@
  * Requirements: 5.3, 5.4, 5.5 - Error handling, file type detection, large files
  */
 
-import { onMount, onCleanup, createEffect, type JSX } from 'solid-js'
+import { onMount, onCleanup, createEffect, getOwner, runWithOwner, type JSX, type Owner } from 'solid-js'
 import { toast } from '@repo/ui/toaster'
 import { getCachedPieceTableContent } from '@repo/utils'
 import { createFilePath } from '@repo/fs'
@@ -45,6 +45,9 @@ export const SplitEditorPanel = (props: SplitEditorPanelProps) => {
 	const [state, actions] = useFs()
 	const { fileCache } = actions
 	const layoutManager = useLayoutManager()
+
+	// Capture reactive owner for creating effects in async callbacks
+	const owner = getOwner()
 
 	// Editor registry for tracking open editors
 	const editorRegistry = new EditorRegistryImpl()
@@ -153,11 +156,14 @@ export const SplitEditorPanel = (props: SplitEditorPanelProps) => {
 				}
 
 				try {
-					// loadFile writes piece table + highlights to FsState via fileCache
+					// loadFile parses with tree-sitter and calls onSyntaxReady
 					const result = await loadFile({
 						source,
 						path: filePath,
 						fileCache,
+						onSyntaxReady: (syntax) => {
+							actions.setSyntax(filePath, syntax)
+						},
 					})
 
 					// Build line starts for editor performance
@@ -353,18 +359,23 @@ export const SplitEditorPanel = (props: SplitEditorPanelProps) => {
 			}
 
 			// Create effect to watch piece table changes and notify adapter
-			createEffect(() => {
-				const pt = state.files[normalizedPath]?.pieceTable
-				if (!pt) return
+			// Use runWithOwner to ensure proper reactive context when called from async
+			if (owner) {
+				runWithOwner(owner, () => {
+					createEffect(() => {
+						const pt = state.files[normalizedPath]?.pieceTable
+						if (!pt) return
 
-				const content = getCachedPieceTableContent(pt)
-				const prev = previousContent.get(filePath)
+						const content = getCachedPieceTableContent(pt)
+						const prev = previousContent.get(filePath)
 
-				if (prev !== undefined && content !== prev) {
-					adapter.notifyContentChange(content)
-				}
-				previousContent.set(filePath, content)
-			})
+						if (prev !== undefined && content !== prev) {
+							adapter.notifyContentChange(content)
+						}
+						previousContent.set(filePath, content)
+					})
+				})
+			}
 
 			// Store cleanup function for this file's tracking
 			contentWatcherCleanups.set(filePath, () => {
@@ -405,11 +416,14 @@ export const SplitEditorPanel = (props: SplitEditorPanelProps) => {
 		layoutManager.openTab(focusedPaneId, content)
 
 		try {
-			// loadFile writes piece table + highlights to FsState via fileCache
+			// loadFile parses with tree-sitter and calls onSyntaxReady
 			const result = await loadFile({
 				source,
 				path: filePath,
 				fileCache,
+				onSyntaxReady: (syntax) => {
+					actions.setSyntax(filePath, syntax)
+				},
 			})
 
 			// Check file size limit

@@ -1,7 +1,7 @@
 import { batch } from 'solid-js'
 import { createStore, reconcile } from 'solid-js/store'
 import { createFilePath, type FilePath } from '@repo/fs'
-import { type ParseResult, type PieceTableSnapshot, getCachedPieceTableContent } from '@repo/utils'
+import { type ParseResult, type PieceTableSnapshot, getCachedPieceTableContent, createPieceTableSnapshot } from '@repo/utils'
 import type {
 	TreeSitterCapture,
 	BracketInfo,
@@ -253,10 +253,13 @@ export const createFileStore = () => {
 	const preloadFileContent = (path: string, content: string) => {
 		const p = createFilePath(path)
 		ensureFile(p)
+		const pieceTable = createPieceTableSnapshot(content)
 		batch(() => {
+			setFiles(p, 'pieceTable', pieceTable)
 			setFiles(p, 'loadingState', { status: 'loaded' })
 			setFiles(p, 'lineStarts', buildLineStartsFromText(content))
 		})
+		savedContents[p] = content
 	}
 
 	const setPreviewBytes = (path: string, bytes: Uint8Array | null) => {
