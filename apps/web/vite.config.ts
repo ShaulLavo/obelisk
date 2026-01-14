@@ -168,6 +168,10 @@ export default defineConfig(() => {
 			modulePreload: {
 				polyfill: false,
 			},
+			rollupOptions: {
+				// Exclude server code from the browser bundle - only types are imported
+				external: [/\.\.\/\.\.\/server\/.*/],
+			},
 		},
 		optimizeDeps: {
 			include: [
