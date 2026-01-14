@@ -2,6 +2,9 @@
 # Stage 1: Build
 FROM oven/bun:1.2.22 AS builder
 
+# Install pnpm (needed for just-bash submodule build)
+RUN npm install -g pnpm
+
 WORKDIR /app
 
 # Copy root package files
