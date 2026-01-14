@@ -53,7 +53,7 @@ async function runBuild() {
     if (error?.loc) {
       console.error('Location:', JSON.stringify(error.loc))
     }
-    console.error('\nFull error object:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2))
+    // Only print stack, skip full error object to avoid log overflow
     console.error('\nStack trace:', error?.stack)
     console.error('==========================================\n')
     originalExit(1)
