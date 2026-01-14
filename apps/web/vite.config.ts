@@ -88,8 +88,9 @@ export default defineConfig(({ mode }) => {
 				: []),
 			tailwindcss(),
 			solidPlugin(),
-			serviceWorkerPlugin(),
-			serviceWorkerDevPlugin(),
+			// Disable service worker plugins temporarily for debugging Docker build
+			// serviceWorkerPlugin(),
+			// serviceWorkerDevPlugin(),
 		],
 		resolve: {
 			alias: [
