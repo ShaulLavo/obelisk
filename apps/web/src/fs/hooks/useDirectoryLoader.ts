@@ -41,9 +41,10 @@ export const useDirectoryLoader = ({
 		if (selectedNode?.kind === 'file') {
 			paths.add(selectedNode.path)
 		}
-		const lastFilePath = state.lastKnownFilePath
-		if (lastFilePath) {
-			paths.add(lastFilePath)
+		// Also add selectedPath if it looks like a file path (for paths not yet in tree)
+		const selectedPath = state.selectedPath
+		if (selectedPath && selectedPath.includes('.') && !selectedPath.endsWith('/')) {
+			paths.add(selectedPath)
 		}
 		return Array.from(paths)
 	}

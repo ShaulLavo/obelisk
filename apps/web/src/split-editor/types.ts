@@ -1,35 +1,15 @@
-/**
- * Split Editor Layout Types
- *
- * Defines the binary tree structure for recursive split layouts.
- * Each node is either a SplitContainer (with two children) or an EditorPane (leaf).
- * Each EditorPane can hold multiple tabs (VS Code editor group model).
- */
-
 import type { ViewMode } from '../fs/types/ViewMode'
+import type { SelectionRange } from '@repo/code-editor'
 
-/** Unique identifier for nodes in the layout tree */
 export type NodeId = string
-
-/** Unique identifier for tabs */
 export type TabId = string
-
-/** Direction of a split */
 export type SplitDirection = 'horizontal' | 'vertical'
 
-/** Position in the editor */
 export interface Position {
 	line: number
 	column: number
 }
 
-/** Text selection range (using character offsets for Editor compatibility) */
-export interface Selection {
-	anchor: number
-	focus: number
-}
-
-/** View settings per pane (shared across all tabs in the pane) */
 export interface ViewSettings {
 	showLineNumbers: boolean
 	showMinimap: boolean
@@ -37,7 +17,6 @@ export interface ViewSettings {
 	fontSize: number
 }
 
-/** Diff data for diff tabs */
 export interface DiffData {
 	originalPath: string
 	modifiedPath: string
@@ -45,7 +24,6 @@ export interface DiffData {
 	modifiedContent?: string
 }
 
-/** Content displayed in a tab */
 export interface TabContent {
 	type: 'file' | 'diff' | 'empty' | 'custom'
 	filePath?: string
@@ -53,20 +31,15 @@ export interface TabContent {
 	customComponent?: string
 }
 
-/** Per-tab state (independent per tab) */
 export interface TabState {
-	/** Raw pixel scroll position (primary, always accurate) */
 	scrollTop: number
 	scrollLeft: number
-	/** Line index for validation (scrollLineIndex * scrollLineHeight should ≈ scrollTop) */
 	scrollLineIndex: number
-	/** Measured line height at save time (for validation) */
 	scrollLineHeight: number
-	selections: Selection[]
+	selections: SelectionRange[]
 	cursorPosition: Position
 }
 
-/** A single tab within a pane */
 export interface Tab {
 	id: TabId
 	content: TabContent
@@ -75,13 +48,11 @@ export interface Tab {
 	viewMode: ViewMode
 }
 
-/** Base node in the layout tree */
 interface BaseNode {
 	id: NodeId
 	parentId: NodeId | null
 }
 
-/** A split container with two children */
 export interface SplitContainer extends BaseNode {
 	type: 'container'
 	direction: SplitDirection
@@ -89,7 +60,6 @@ export interface SplitContainer extends BaseNode {
 	children: [NodeId, NodeId]
 }
 
-/** An editor pane (leaf node) - contains multiple tabs */
 export interface EditorPane extends BaseNode {
 	type: 'pane'
 	tabs: Tab[]
@@ -97,20 +67,15 @@ export interface EditorPane extends BaseNode {
 	viewSettings: ViewSettings
 }
 
-/** Union type for all nodes */
 export type SplitNode = SplitContainer | EditorPane
-
-/** Scroll sync mode */
 export type ScrollSyncMode = 'line' | 'percentage'
 
-/** Scroll sync group - links specific tabs */
 export interface ScrollSyncGroup {
 	id: string
 	tabIds: TabId[]
 	mode: ScrollSyncMode
 }
 
-/** Complete layout state */
 export interface LayoutState {
 	rootId: NodeId
 	nodes: Record<NodeId, SplitNode>
@@ -118,11 +83,6 @@ export interface LayoutState {
 	scrollSyncGroups: ScrollSyncGroup[]
 }
 
-// ============================================================================
-// Serialization Types (for persistence)
-// ============================================================================
-
-/** Serialized tab for persistence */
 export interface SerializedTab {
 	id: TabId
 	content: TabContent
@@ -131,22 +91,18 @@ export interface SerializedTab {
 	viewMode: ViewMode
 }
 
-/** Serialized node for persistence */
 export interface SerializedNode {
 	id: NodeId
 	parentId: NodeId | null
 	type: 'container' | 'pane'
-	// Container fields
 	direction?: SplitDirection
 	sizes?: [number, number]
 	children?: [NodeId, NodeId]
-	// Pane fields
 	tabs?: SerializedTab[]
 	activeTabId?: TabId | null
 	viewSettings?: ViewSettings
 }
 
-/** Serialized layout for persistence */
 export interface SerializedLayout {
 	version: 1
 	rootId: NodeId
@@ -155,10 +111,6 @@ export interface SerializedLayout {
 	scrollSyncGroups: ScrollSyncGroup[]
 }
 
-// ============================================================================
-// Type Guards
-// ============================================================================
-
 export function isContainer(node: SplitNode): node is SplitContainer {
 	return node.type === 'container'
 }
@@ -166,10 +118,6 @@ export function isContainer(node: SplitNode): node is SplitContainer {
 export function isPane(node: SplitNode): node is EditorPane {
 	return node.type === 'pane'
 }
-
-// ============================================================================
-// Factory Functions
-// ============================================================================
 
 export function createDefaultViewSettings(): ViewSettings {
 	return {

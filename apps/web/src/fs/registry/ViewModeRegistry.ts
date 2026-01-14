@@ -116,14 +116,17 @@ export class ViewModeRegistry {
 			isDefault: true, // Default for most files
 		})
 
-		// UI mode for user settings file only (not defaultSettings which is uneditable)
+		// UI mode for settings files (userSettings.json and settings.json)
 		this.register({
 			id: 'ui',
 			label: 'UI',
 			icon: 'settings-gear',
 			isAvailable: (path) => {
 				const normalized = createFilePath(path)
-				return normalized === '.system/userSettings.json'
+				return (
+					normalized === '.system/userSettings.json' ||
+					normalized === '.system/settings.json'
+				)
 			},
 		})
 

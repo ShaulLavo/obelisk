@@ -1,9 +1,3 @@
-export {
-	createFileCacheControllerV2,
-	type FileCacheController,
-	type FileCacheEntry,
-	type CacheStats,
-	DISABLE_CACHE,
-} from './fileCacheController'
+export { type FileCacheController, type FileCacheEntry } from './fileCacheController'
 
-// Import types directly from store/types, not from here
+export { createFileCacheController } from './createFileCacheController'

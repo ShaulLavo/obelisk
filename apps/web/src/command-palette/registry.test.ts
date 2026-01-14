@@ -184,7 +184,6 @@ describe('CommandPaletteRegistry', () => {
 		const mockDeps = {
 			fs: {
 				selectPath: async () => {},
-				setViewMode: () => {},
 				pickNewRoot: async () => {},
 				collapseAll: () => {},
 				saveFile: async () => {},

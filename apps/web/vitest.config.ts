@@ -1,3 +1,4 @@
+import path from 'node:path'
 import { defineConfig } from 'vitest/config'
 import { playwright } from '@vitest/browser-playwright'
 import solidPlugin from 'vite-plugin-solid'
@@ -7,6 +8,9 @@ export default defineConfig({
 	resolve: {
 		// Use vdev condition to resolve vitest-browser-solid to source files
 		conditions: ['vdev'],
+		alias: {
+			'~': path.resolve(__dirname, './src'),
+		},
 	},
 	optimizeDeps: {
 		// Don't pre-bundle vitest-browser-solid - let vite-plugin-solid handle it

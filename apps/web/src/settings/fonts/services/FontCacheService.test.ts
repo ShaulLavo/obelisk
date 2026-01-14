@@ -17,10 +17,8 @@ describe('FontCacheService Cache Management', () => {
 							.string({ minLength: 1, maxLength: 20 })
 							.filter((name) => /^[a-zA-Z0-9-_]+$/.test(name)),
 						size: fc.integer({ min: 1024, max: 10 * 1024 * 1024 }), // 1KB to 10MB
-						lastAccessed: fc.date({
-							min: new Date('2020-01-01'),
-							max: new Date(),
-						}),
+						// Use integer timestamps to avoid date edge cases
+						lastAccessed: fc.integer({ min: 1577836800000, max: Date.now() }).map(ts => new Date(ts)),
 					}),
 					{ minLength: 1, maxLength: 20 }
 				),
@@ -124,10 +122,8 @@ describe('FontCacheService Cache Management', () => {
 							.string({ minLength: 1, maxLength: 10 })
 							.filter((name) => /^[a-zA-Z0-9-_]+$/.test(name)),
 						size: fc.integer({ min: 1000, max: 5000 }),
-						lastAccessed: fc.date({
-							min: new Date('2020-01-01'),
-							max: new Date(),
-						}),
+						// Use integer timestamps to avoid date edge cases
+						lastAccessed: fc.integer({ min: 1577836800000, max: Date.now() }).map(ts => new Date(ts)),
 					}),
 					{ minLength: 3, maxLength: 10 }
 				),

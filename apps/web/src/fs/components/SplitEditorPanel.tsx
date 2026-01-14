@@ -8,7 +8,7 @@
  * Requirements: 5.3, 5.4, 5.5 - Error handling, file type detection, large files
  */
 
-import { onMount, onCleanup, createEffect, type Accessor, type JSX } from 'solid-js'
+import { onMount, onCleanup, createEffect, type JSX } from 'solid-js'
 import { toast } from '@repo/ui/toaster'
 import { getCachedPieceTableContent } from '@repo/utils'
 import { createFilePath } from '@repo/fs'
@@ -87,7 +87,7 @@ export const SplitEditorPanel = (props: SplitEditorPanelProps) => {
 		// Check if any other tabs still have this file open
 		const remainingTab = layoutManager.findTabByFilePath(filePath)
 		if (!remainingTab) {
-			actions.clearFileLoadingState(filePath)
+			actions.clearFileState(filePath)
 
 			// Clean up sync integration
 			const adapter = editorAdapters.get(filePath)
@@ -107,7 +107,7 @@ export const SplitEditorPanel = (props: SplitEditorPanelProps) => {
 	})
 
 	// Sync active tab to FsState when user switches tabs
-	// This keeps selectedPath and lastKnownFilePath in sync with layoutManager
+	// This keeps selectedPath in sync with layoutManager
 	createEffect(() => {
 		const focusedPaneId = layoutManager.state.focusedPaneId
 		if (!focusedPaneId) return
@@ -322,7 +322,7 @@ export const SplitEditorPanel = (props: SplitEditorPanelProps) => {
 			const adapter = new EditorInstanceAdapter({
 				filePath,
 				getContent: () => {
-					const pt = state.pieceTables[normalizedPath]
+					const pt = state.files[normalizedPath]?.pieceTable
 					if (!pt) return ''
 					return getCachedPieceTableContent(pt)
 				},
@@ -347,14 +347,14 @@ export const SplitEditorPanel = (props: SplitEditorPanelProps) => {
 
 			// Set up content change tracking
 			// Store initial content for change detection
-			const initialPt = state.pieceTables[normalizedPath]
+			const initialPt = state.files[normalizedPath]?.pieceTable
 			if (initialPt) {
 				previousContent.set(filePath, getCachedPieceTableContent(initialPt))
 			}
 
 			// Create effect to watch piece table changes and notify adapter
 			createEffect(() => {
-				const pt = state.pieceTables[normalizedPath]
+				const pt = state.files[normalizedPath]?.pieceTable
 				if (!pt) return
 
 				const content = getCachedPieceTableContent(pt)
@@ -398,7 +398,7 @@ export const SplitEditorPanel = (props: SplitEditorPanelProps) => {
 
 		// Pre-create the resource to track loading state
 		actions.preloadFileContent(filePath, '')
-		actions.setFileLoadingStatus(filePath, 'loading')
+		actions.setLoadingState(filePath, { status: 'loading' })
 
 		// Create the tab first (shows loading indicator)
 		const content = createFileContent(filePath)
@@ -415,7 +415,7 @@ export const SplitEditorPanel = (props: SplitEditorPanelProps) => {
 			// Check file size limit
 			if (result.fileSize > MAX_FILE_SIZE) {
 				const error = createFileTooLargeError(filePath, result.fileSize)
-				actions.setFileLoadingError(filePath, error)
+				actions.setLoadingError(filePath, error)
 				toast.error(`${getErrorTitle(error.type)}: ${error.message}`)
 				return
 			}
@@ -426,7 +426,7 @@ export const SplitEditorPanel = (props: SplitEditorPanelProps) => {
 
 			// Load content into resource manager (for lineStarts, loading state)
 			actions.preloadFileContent(filePath, result.content)
-			actions.setFileLoadingStatus(filePath, 'loaded')
+			actions.setLoadingState(filePath, { status: 'loaded' })
 
 			// Set saved content baseline for dirty tracking
 			actions.setSavedContent(filePath, result.content)
@@ -436,7 +436,7 @@ export const SplitEditorPanel = (props: SplitEditorPanelProps) => {
 		} catch (error) {
 			// Classify the error and set it
 			const fileError = classifyError(filePath, error)
-			actions.setFileLoadingError(filePath, fileError)
+			actions.setLoadingError(filePath, fileError)
 
 			// Show toast notification
 			toast.error(`${getErrorTitle(fileError.type)}: ${fileError.message}`)

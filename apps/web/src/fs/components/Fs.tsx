@@ -20,7 +20,7 @@ export const Fs = () => {
 		const manager = layoutManager()
 		if (manager && (manager as any).openFileAsTab) {
 			;(manager as any).openFileAsTab(filePath)
-			// Sync tree selection with opened file (updates lastKnownFilePath via effect)
+			// Sync tree selection with opened file
 			actions.setSelectedPathOnly(filePath)
 		}
 	}

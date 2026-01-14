@@ -1,10 +1,3 @@
-/**
- * EditorInstanceAdapter
- *
- * Adapts FsState and LayoutManager to implement the EditorInstance interface
- * required by EditorFileSyncManager for file sync integration.
- */
-
 import type {
 	EditorInstance,
 	CursorPosition,
@@ -16,22 +9,14 @@ import type { Tab } from './types'
 
 export interface EditorInstanceAdapterOptions {
 	filePath: string
-	/** Get current content from FsState piece table */
 	getContent: () => string
-	/** Set content (replaces piece table) - used for external reload */
 	setContent: (content: string) => void
 	layoutManager: LayoutManager
-	/** Function to find the tab for this file */
 	findTab: () => { paneId: string; tab: Tab } | null
-	/** Function to get the tab's dirty state */
 	getTabDirty: () => boolean
-	/** Function to set the tab's dirty state */
 	setTabDirty: (dirty: boolean) => void
 }
 
-/**
- * Adapts the web app's FsState/layout system to the EditorInstance interface.
- */
 export class EditorInstanceAdapter implements EditorInstance {
 	private readonly filePath: string
 	private readonly _getContent: () => string

@@ -107,6 +107,9 @@ describe('FileTab Component', () => {
 	it('tracks tabs via LayoutManager', async () => {
 		const filePath = '/test/multiple.ts'
 
+		// Save the original pane ID before splitting (rootId changes after split)
+		const originalPaneId = layoutManager.state.rootId
+
 		const { unmount } = render(() => (
 			<SplitEditor
 				layoutManager={layoutManager}
@@ -117,8 +120,8 @@ describe('FileTab Component', () => {
 		))
 
 		// Open same file in multiple tabs
-		const tab1Id = layoutManager.openTab(layoutManager.state.rootId, createFileContent(filePath))
-		const newPaneId = layoutManager.splitPane(layoutManager.state.rootId, 'horizontal')
+		const tab1Id = layoutManager.openTab(originalPaneId, createFileContent(filePath))
+		const newPaneId = layoutManager.splitPane(originalPaneId, 'horizontal')
 		const tab2Id = layoutManager.openTab(newPaneId, createFileContent(filePath))
 
 		await new Promise(resolve => setTimeout(resolve, 100))
@@ -126,8 +129,8 @@ describe('FileTab Component', () => {
 		// Verify both tabs are tracked via layoutManager
 		expect(layoutManager.getTabCountForFile(filePath)).toBe(2)
 
-		// Close one tab
-		layoutManager.closeTab(layoutManager.state.rootId, tab1Id)
+		// Close one tab - use originalPaneId, not rootId (rootId is now the container)
+		layoutManager.closeTab(originalPaneId, tab1Id)
 		await new Promise(resolve => setTimeout(resolve, 100))
 
 		// Verify one tab still tracked

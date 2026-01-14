@@ -2,15 +2,9 @@
  * ActiveFileContext
  *
  * Single source of truth for "active file" across the system.
- * Eliminates the fragmentation of active file tracking.
+ * The active file is derived from the layoutManager's focused pane's active tab.
  *
- * Previously, "active file" was tracked in 4+ places:
- * - activeFileState.activePath (cache)
- * - FsState.selectedPath (tree selection)
- * - FsState.lastKnownFilePath (derived)
- * - layoutManager.focusedPaneId + activeTab (editor focus)
- *
- * Now there's ONE source: this context, backed by layoutManager.
+ * Use useActiveFilePath() to get the currently active file path.
  */
 
 import {
@@ -21,7 +15,7 @@ import {
 	type Accessor,
 } from 'solid-js'
 import { createFilePath, type FilePath } from '@repo/fs'
-import type { LayoutManager, EditorPane, Tab } from '../../split-editor'
+import { isPane, type LayoutManager, type Tab } from '../../split-editor'
 
 /**
  * Node and Tab IDs from layout manager.
@@ -116,18 +110,6 @@ export function useIsActiveFile(path: FilePath): Accessor<boolean> {
 interface ActiveFileProviderProps {
 	layoutManager: LayoutManager
 	children: JSX.Element
-}
-
-/**
- * Type guard to check if a node is an EditorPane.
- */
-function isPane(node: unknown): node is EditorPane {
-	return (
-		typeof node === 'object' &&
-		node !== null &&
-		'type' in node &&
-		(node as { type: string }).type === 'pane'
-	)
 }
 
 /**

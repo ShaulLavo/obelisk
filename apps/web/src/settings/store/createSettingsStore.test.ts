@@ -107,25 +107,28 @@ describe('createSettingsStore', () => {
 	it('property: saved settings override defaults', async () => {
 		await fc.assert(
 			fc.asyncProperty(
+				// Use settings with values guaranteed to be different from defaults
 				fc.constantFrom(
-					'editor.font.size',
-					'editor.font.family',
-					'editor.cursor.style',
-					'editor.behavior.tabSize',
-					'editor.behavior.wordWrap',
-					'appearance.theme.mode',
-					'appearance.layout.sidebarWidth',
-					'appearance.layout.showLineNumbers',
-					'appearance.layout.compactMode'
+					// editor.font.size: default 14, use 20
+					{ key: 'editor.font.size', value: 20 },
+					// editor.font.family: default "'JetBrains Mono Variable', monospace", use different value
+					{ key: 'editor.font.family', value: 'Fira Code' },
+					// editor.cursor.style: default 'line', use 'block'
+					{ key: 'editor.cursor.style', value: 'block' },
+					// editor.behavior.tabSize: default 4, use 2
+					{ key: 'editor.behavior.tabSize', value: 2 },
+					// editor.behavior.wordWrap: default false, use true
+					{ key: 'editor.behavior.wordWrap', value: true },
+					// appearance.theme.mode: default 'dark', use 'light'
+					{ key: 'appearance.theme.mode', value: 'light' },
+					// appearance.layout.sidebarWidth: default 240, use 300
+					{ key: 'appearance.layout.sidebarWidth', value: 300 },
+					// appearance.layout.showLineNumbers: default true, use false
+					{ key: 'appearance.layout.showLineNumbers', value: false },
+					// appearance.layout.compactMode: default false, use true
+					{ key: 'appearance.layout.compactMode', value: true }
 				),
-				fc.oneof(
-					fc.integer({ min: 10, max: 20 }),
-					fc.constant('JetBrains Mono'),
-					fc.boolean(),
-					fc.constant('line'),
-					fc.constant('dark')
-				),
-				async (settingKey, settingValue) => {
+				async ({ key: settingKey, value: settingValue }) => {
 					return new Promise<void>((resolve) => {
 						createRoot((dispose) => {
 							const [state, actions] = createSettingsStore('memory')

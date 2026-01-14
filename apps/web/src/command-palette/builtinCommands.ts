@@ -1,6 +1,5 @@
 import type { CommandDescriptor, CommandPaletteRegistry } from './types'
 import type { SelectPathOptions } from '../fs/context/FsContext'
-import type { ViewMode } from '../fs/types/ViewMode'
 import type { FocusArea } from '../focus/focusManager'
 import { TbSunMoon } from '@repo/icons/tb/TbSunMoon'
 import { VsFolderOpened } from '@repo/icons/vs/VsFolderOpened'
@@ -18,7 +17,6 @@ type ThemeMode = 'light' | 'dark' | 'system'
 export type BuiltinCommandDeps = {
 	fs: {
 		selectPath: (path: string, options?: SelectPathOptions) => Promise<void>
-		setViewMode: (path: string, viewMode: ViewMode) => void
 		pickNewRoot: () => Promise<void>
 		collapseAll: () => void
 		saveFile: () => Promise<void>
@@ -187,9 +185,7 @@ function registerSettingsCommands(
 		shortcut: '⌘,',
 		icon: TbSettings,
 		handler: () => {
-			void fs.selectPath(USER_SETTINGS_FILE_PATH).then(() => {
-				fs.setViewMode(USER_SETTINGS_FILE_PATH, 'editor')
-			})
+			void fs.selectPath(USER_SETTINGS_FILE_PATH)
 		},
 	}
 
@@ -199,9 +195,7 @@ function registerSettingsCommands(
 		category: 'View',
 		icon: TbLayout,
 		handler: () => {
-			void fs.selectPath(USER_SETTINGS_FILE_PATH).then(() => {
-				fs.setViewMode(USER_SETTINGS_FILE_PATH, 'ui')
-			})
+			void fs.selectPath(USER_SETTINGS_FILE_PATH)
 		},
 	}
 
@@ -211,9 +205,7 @@ function registerSettingsCommands(
 		category: 'View',
 		icon: TbFileCode,
 		handler: () => {
-			void fs.selectPath(USER_SETTINGS_FILE_PATH).then(() => {
-				fs.setViewMode(USER_SETTINGS_FILE_PATH, 'editor')
-			})
+			void fs.selectPath(USER_SETTINGS_FILE_PATH)
 		},
 	}
 

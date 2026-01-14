@@ -53,9 +53,8 @@ type UseFsRefreshOptions = {
 	setExpanded: SetStoreFunction<Record<string, boolean>>
 	setActiveSource: (source: FsSource) => void
 	setLoading: (value: boolean) => void
-	clearParseResults: () => void
-	clearPieceTables: () => void
-	clearFileCache: () => void
+	clearAllFileState: () => void
+	clearSyntax: () => void
 	clearDeferredMetadata: () => void
 	setBackgroundPrefetching: (value: boolean) => void
 	setBackgroundIndexedFileCount: (value: number) => void
@@ -79,9 +78,8 @@ export const useFsRefresh = ({
 	setExpanded,
 	setActiveSource,
 	setLoading,
-	clearParseResults,
-	clearPieceTables,
-	clearFileCache,
+	clearAllFileState,
+	clearSyntax,
 	clearDeferredMetadata,
 	setBackgroundPrefetching,
 	setBackgroundIndexedFileCount,
@@ -125,7 +123,7 @@ export const useFsRefresh = ({
 	}
 
 	const getRestorableFilePath = () => {
-		// lastKnownFilePath is only set when a file is selected (see FsProvider createEffect)
+		// File path is persisted to localStorage when a file is selected (see FsProvider createEffect)
 		// so we can trust it's a file path even if it's not in the tree yet
 		const lastFilePath =
 			localStorage.getItem('fs-last-known-file-path') ?? undefined
@@ -153,9 +151,8 @@ export const useFsRefresh = ({
 		for (;;) {
 			batch(() => {
 				setLoading(true)
-				clearParseResults()
-				clearPieceTables()
-				clearFileCache()
+				clearAllFileState()
+				clearSyntax()
 				clearDeferredMetadata()
 			})
 			const ensurePaths = buildEnsurePaths()

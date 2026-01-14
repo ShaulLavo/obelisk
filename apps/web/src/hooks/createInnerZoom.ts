@@ -1,8 +1,8 @@
 import { makeEventListener } from '@solid-primitives/event-listener'
 import { makePersisted } from '@solid-primitives/storage'
 import { createSignal, createMemo, onMount, Accessor } from 'solid-js'
-//TODO DO we want to createa a global font size store and let all modules scale hwo they want?
-// sound pretty good to me idk
+
+// TODO: Create a global font size store and let all modules scale how they want
 const baseFontSize = () => 12
 interface InnerZoomOptions {
 	ref: HTMLElement | Accessor<HTMLElement>

@@ -15,6 +15,7 @@ import { registerCommandPaletteShortcuts } from './shortcuts'
 import { registerSettingsShortcuts } from '../settings/shortcuts/settingsShortcuts'
 import { useKeymap } from '../keymap/KeymapContext'
 import { useFs } from '../fs/context/FsContext'
+import { useActiveFilePath } from '../fs/context/ActiveFileContext'
 import { useFocusManager } from '../focus/focusManager'
 import { useTheme } from '@repo/theme'
 import type { CommandPaletteRegistry } from './types'
@@ -48,6 +49,7 @@ export const CommandPaletteProvider: ParentComponent = (props) => {
 	const [state, actions, results] = useCommandPalette()
 	const keymapController = useKeymap()
 	const [, fsActions] = useFs()
+	const activeFilePath = useActiveFilePath()
 	const focusManager = useFocusManager()
 	const { mode, setMode } = useTheme()
 
@@ -55,10 +57,15 @@ export const CommandPaletteProvider: ParentComponent = (props) => {
 		const deps: BuiltinCommandDeps = {
 			fs: {
 				selectPath: fsActions.selectPath,
-				setViewMode: fsActions.setViewMode,
 				pickNewRoot: fsActions.pickNewRoot,
 				collapseAll: fsActions.collapseAll,
-				saveFile: fsActions.saveFile,
+				saveFile: () => {
+					const path = activeFilePath()
+					if (path) {
+						return fsActions.saveFile(path)
+					}
+					return Promise.resolve()
+				},
 			},
 			theme: {
 				mode,

@@ -110,6 +110,27 @@ export default defineConfig(() => {
 						'../../packages/theme/src/index.ts'
 					),
 				},
+				{
+					find: /^@repo\/ui\/(.+)$/,
+					replacement: path.resolve(
+						__dirname,
+						'../../packages/ui/src/$1.tsx'
+					),
+				},
+				{
+					find: /^@repo\/icons\/([a-z]+)\/(.+)$/,
+					replacement: path.resolve(
+						__dirname,
+						'../../packages/icons/dist/$1/$2.js'
+					),
+				},
+				{
+					find: /^@repo\/icons\/([a-z]+)$/,
+					replacement: path.resolve(
+						__dirname,
+						'../../packages/icons/dist/$1/index.js'
+					),
+				},
 			],
 			dedupe: ['@solidjs/router', 'solid-js'],
 		},

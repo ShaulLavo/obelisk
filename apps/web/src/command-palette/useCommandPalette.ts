@@ -9,7 +9,8 @@ import {
 import { searchService } from '../search/SearchService'
 import { getCommandPaletteRegistry } from './registry'
 import { useFs } from '../fs/context/FsContext'
-// import { useFocusManager } from '../focus/focusManager' // TODO: Will be used in later tasks
+// PARKED: Focus manager integration
+// import { useFocusManager } from '../focus/focusManager'
 import type { SearchResult } from '../search/types'
 import type { CommandDescriptor } from './types'
 import type { IconProps } from '@repo/icons'
@@ -102,7 +103,8 @@ export function useCommandPalette(): [
 	const [query, setQuerySignal] = createSignal('')
 	const [selectedIndex, setSelectedIndex] = createSignal(0)
 
-	// const focusManager = useFocusManager() // TODO: Will be used in later tasks
+	// PARKED: Focus manager integration
+	// const focusManager = useFocusManager()
 	let previousActiveElement: HTMLElement | null = null
 
 	const mode = createMemo(() => detectModeFromQuery(query()))

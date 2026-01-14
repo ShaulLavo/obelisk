@@ -22,7 +22,7 @@ import type {
 } from '@repo/code-editor'
 import { toast } from '@repo/ui/toaster'
 import { createFilePath } from '@repo/fs'
-import { getCachedPieceTableContent } from '@repo/utils'
+import { getCachedPieceTableContent, type PieceTableSnapshot } from '@repo/utils'
 import { useLayoutManager } from './SplitEditor'
 import { useFs } from '~/fs/context/FsContext'
 import { useFocusManager } from '~/focus/focusManager'
@@ -67,14 +67,17 @@ export function FileTab(props: FileTabProps) {
 	// Normalized path for FsState lookups
 	const normalizedPath = createMemo(() => createFilePath(props.filePath))
 
+	// Get file state from unified store
+	const fileState = () => state.files[normalizedPath()]
+
 	// Get piece table from FsState (single source of truth)
-	const pieceTable = () => state.pieceTables[normalizedPath()]
+	const pieceTable = () => fileState()?.pieceTable
 
 	// Get highlights from FsState (accessors for Editor props)
-	const highlights = () => state.fileHighlights[normalizedPath()]
-	const folds = () => state.fileFolds[normalizedPath()]
-	const brackets = () => state.fileBrackets[normalizedPath()]
-	const errors = () => state.fileErrors[normalizedPath()]
+	const highlights = () => fileState()?.syntax?.highlights
+	const folds = () => fileState()?.syntax?.folds
+	const brackets = () => fileState()?.syntax?.brackets
+	const errors = () => fileState()?.syntax?.errors
 
 	// Get content from piece table
 	const content = createMemo(() => {
@@ -85,15 +88,17 @@ export function FileTab(props: FileTabProps) {
 
 	// Create document interface for the Editor using FsState
 	const document = createMemo(() => {
-		const pt = pieceTable()
 		const contentValue = content()
+		type PT = PieceTableSnapshot | undefined
 
 		return {
 			filePath: () => props.filePath,
 			content: () => contentValue,
-			pieceTable: () => pt,
-			updatePieceTable: (updater: (current: typeof pt) => typeof pt | undefined) => {
-				actions.updatePieceTableForPath(props.filePath, updater)
+			pieceTable: () => pieceTable() ?? undefined,
+			updatePieceTable: (updater: (current: PT) => PT) => {
+				actions.updatePieceTableForPath(props.filePath, (current) => {
+					return updater(current ?? undefined)
+				})
 			},
 			isEditable: () => true,
 			applyIncrementalEdit: undefined,
@@ -169,7 +174,7 @@ export function FileTab(props: FileTabProps) {
 	const cachedLineStarts = createMemo(() => {
 		// Access content to establish reactive dependency
 		content()
-		return state.fileLineStarts[normalizedPath()]
+		return fileState()?.lineStarts ?? undefined
 	})
 
 	// TODO: Add externalLoadVersion counter to FsState that increments on file reload
@@ -214,17 +219,20 @@ export function FileTab(props: FileTabProps) {
 	const viewMode = () => props.tab.viewMode ?? 'editor'
 
 	// Reactive accessors for loading state from FsState
-	const status = () => state.fileLoadingStatus[normalizedPath()] ?? 'idle'
-	const loadingError = () => state.fileLoadingErrors[normalizedPath()] ?? null
-	const fileStats = () => state.fileStats[normalizedPath()]
+	const loadingState = () => fileState()?.loadingState
+	const status = () => loadingState()?.status ?? 'idle'
+	const loadingError = () => {
+		const ls = loadingState()
+		return ls?.status === 'error' ? ls.error : null
+	}
+	const fileStats = () => fileState()?.stats
 	const isBinary = () => fileStats()?.contentKind === 'binary'
 	// Note: File size isn't stored in ParseResult - BinaryFileIndicator handles undefined gracefully
 
 	// Handle retry for errors
 	const handleRetry = () => {
-		// Reset error and set to loading
-		actions.setFileLoadingError(props.filePath, null)
-		actions.setFileLoadingStatus(props.filePath, 'loading')
+		// Reset to loading state
+		actions.setLoadingState(props.filePath, { status: 'loading' })
 		// The parent component (SplitEditorPanel) should detect this and reload
 	}
 

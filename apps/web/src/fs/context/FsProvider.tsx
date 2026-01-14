@@ -12,18 +12,17 @@ import { createFsMutations } from '../fsMutations'
 import { restoreHandleCache } from '../runtime/handleCache'
 import { createFsState } from '../hooks/createFsState'
 import type { FsSource } from '../types'
-import type { ViewMode } from '../types/ViewMode'
-import { getValidViewMode } from '../utils/viewModeDetection'
 import { FsContext, type FsContextValue } from './FsContext'
 import { makeTreePrefetch } from '../hooks/useTreePrefetch'
 import { useDirectoryLoader } from '../hooks/useDirectoryLoader'
 import { useFileSelection } from '../hooks/useFileSelection'
 import { useFsRefresh } from '../hooks/useFsRefresh'
-import { createFileCacheControllerV2 } from '../cache/fileCacheController'
 import { LocalDirectoryFallbackModal } from '../components/LocalDirectoryFallbackModal'
 import { getRootHandle, invalidateFs } from '../runtime/fsRuntime'
 import { useFileSystemObserver } from '../hooks/useFileSystemObserver'
 import { pickNewLocalRoot as doPick } from '@repo/fs'
+import { createFileCacheController } from '../cache'
+
 export function FsProvider(props: { children: JSX.Element }) {
 	const {
 		state,
@@ -36,21 +35,10 @@ export function FsProvider(props: { children: JSX.Element }) {
 		setExpanded,
 		setSelectedPath,
 		setActiveSource,
-		setSelectedFileSize,
-		setSelectedFilePreviewBytes,
-		setSelectedFileContent,
-		setSelectedFileLoading,
 		setLoading,
 		setSaving,
-		setFileStats,
-		clearParseResults,
 		setPieceTable,
-		clearPieceTables,
-		setHighlights,
-		setFolds,
-		setBrackets,
-		setErrors,
-		setDirtyPath,
+		setDirty,
 		setSavedContent,
 		updateDirtyFromPieceTable,
 		setBackgroundPrefetching,
@@ -60,64 +48,39 @@ export function FsProvider(props: { children: JSX.Element }) {
 		setPrefetchProcessedCount,
 		setPrefetchLastDurationMs,
 		setPrefetchAverageDurationMs,
-		registerDeferredMetadata,
 		clearDeferredMetadata,
-		setScrollPosition,
-		setCursorPosition,
-		setSelections,
-		setVisibleContent,
-		setViewMode,
 		collapseAll,
 		setCreationState,
-		setFileLoadingStatus,
-		setFileLoadingError,
-		setFileLineStarts,
+		setLoadingState,
+		setLoadingError,
+		setLineStarts,
 		preloadFileContent,
-		clearFileLoadingState,
+		clearFileState,
+		clearAllFileState,
+		clearSyntax,
 	} = createFsState()
 
-	// Wrapper for setViewMode that includes stats and error handling
-	const setViewModeWithStats = (path: string, viewMode: ViewMode) => {
-		const stats = state.fileStats[path]
-		// Validate the requested view mode and fallback if unavailable
-		const validViewMode = getValidViewMode(viewMode, path, stats)
-		setViewMode(path, validViewMode, stats)
-	}
+	const fileCache = createFileCacheController()
 
-	// Wrapper for cache controller - handles undefined to clear
-	const setViewModeForCache = (path: string, viewMode?: ViewMode) => {
-		if (viewMode === undefined) {
-			// Clear view mode by setting to default
-			const stats = state.fileStats[path]
-			setViewMode(path, 'editor', stats)
-		} else {
-			setViewModeWithStats(path, viewMode)
-		}
-	}
-
-	const fileCache = createFileCacheControllerV2({
+	const {
+		selectPath: selectPathInternal,
+		updatePieceTableForPath,
+		setPieceTableContent,
+	} = useFileSelection({
 		state,
+		setSelectedPath,
 		setPieceTable,
-		setFileStats,
-		setHighlights,
-		setFolds,
-		setBrackets,
-		setErrors,
-		setScrollPosition,
-		setCursorPosition,
-		setSelections,
-		setVisibleContent,
-		setViewMode: setViewModeForCache,
-		setDirtyPath,
+		setDirty,
+		setSavedContent,
+		updateDirtyFromPieceTable,
+		fileCache,
 	})
 
 	const setDirNode = (path: string, node: FsDirTreeNode) => {
 		if (!path) {
-			// Setting root - use setTreeRoot for full index rebuild
 			setTreeRoot(node)
 			return
 		}
-		// Update directory children - uses incremental index update
 		updateTreeDirectory(path, node.children)
 	}
 
@@ -133,54 +96,22 @@ export function FsProvider(props: { children: JSX.Element }) {
 			setPrefetchAverageDurationMs,
 		})
 
-	const { buildEnsurePaths, ensureDirLoaded, toggleDir } =
-		useDirectoryLoader({
-			state,
-			setExpanded,
-			setSelectedPath,
-			setDirNode,
-			runPrefetchTask,
-			treePrefetchClient,
-		})
-
-	const {
-		selectPath: selectPathInternal,
-		updatePieceTableForPath,
-		updateHighlightsForPath,
-		updateFoldsForPath,
-		updateBracketsForPath,
-		updateErrorsForPath,
-		setPieceTableContent,
-	} = useFileSelection({
+	const { buildEnsurePaths, ensureDirLoaded, toggleDir } = useDirectoryLoader({
 		state,
+		setExpanded,
 		setSelectedPath,
-		setSelectedFileSize,
-		setSelectedFilePreviewBytes,
-		setSelectedFileContent,
-		setSelectedFileLoading,
-		setDirtyPath,
-		setSavedContent,
-		updateDirtyFromPieceTable,
-		fileCache,
+		setDirNode,
+		runPrefetchTask,
+		treePrefetchClient,
 	})
 
 	const selectPath = async (
 		path: string,
-		options?: Parameters<typeof selectPathInternal>[1]
+		options?: { forceReload?: boolean }
 	) => {
-		// Use selectedPath to track previous file for cache flushing
-		const previousPath = state.selectedPath
-		if (previousPath && previousPath !== path) {
-			await fileCache.flush()
-			fileCache.setActiveFile(null)
-		}
-
-		// If the file isn't in the tree yet, load all parent directories first
-		// This ensures the file appears in the sidebar after opening from command palette or restore
 		if (path) {
 			const node = getNode(path)
 			if (!node) {
-				// File not in tree - load parent directories
 				const parentPath = path.split('/').slice(0, -1).join('/')
 				if (parentPath) {
 					await ensureDirPathLoaded(parentPath)
@@ -189,10 +120,6 @@ export function FsProvider(props: { children: JSX.Element }) {
 		}
 
 		await selectPathInternal(path, options)
-		const node = getNode(path)
-		if (node?.kind === 'file') {
-			fileCache.setActiveFile(path)
-		}
 	}
 
 	const { refresh } = useFsRefresh({
@@ -201,9 +128,8 @@ export function FsProvider(props: { children: JSX.Element }) {
 		setExpanded,
 		setActiveSource,
 		setLoading,
-		clearParseResults,
-		clearPieceTables,
-		clearFileCache: fileCache.clearMemory,
+		clearAllFileState,
+		clearSyntax,
 		setBackgroundPrefetching,
 		setBackgroundIndexedFileCount,
 		setLastPrefetchedPath,
@@ -221,10 +147,9 @@ export function FsProvider(props: { children: JSX.Element }) {
 		getNode,
 		setExpanded,
 		setSelectedPath,
-		setSelectedFileSize,
 		setPieceTable,
 		setSaving,
-		setDirtyPath,
+		setDirty,
 		setSavedContent,
 		getState: () => state,
 		getActiveSource: () => state.activeSource,
@@ -279,42 +204,15 @@ export function FsProvider(props: { children: JSX.Element }) {
 		void refresh(state.activeSource ?? DEFAULT_SOURCE).then(() => {
 			void startObserving()
 		})
-
-		// Flush cache before page unload to persist view state (scroll, cursor, selection)
-		// Note: lsCache.flush() is synchronous and runs first, so view state will be saved
-		const handleFlush = () => {
-			void fileCache.flush()
-		}
-
-		// Multiple events to catch all cases:
-		// - beforeunload: standard page unload
-		// - pagehide: more reliable in some browsers
-		// - visibilitychange: mobile/tab switching
-		window.addEventListener('beforeunload', handleFlush)
-		window.addEventListener('pagehide', handleFlush)
-		document.addEventListener('visibilitychange', () => {
-			if (document.visibilityState === 'hidden') {
-				handleFlush()
-			}
-		})
-
-		onCleanup(() => {
-			window.removeEventListener('beforeunload', handleFlush)
-			window.removeEventListener('pagehide', handleFlush)
-		})
 	})
 
-	// Listen for settings file changes from the UI
-	// When settings UI saves, invalidate the editor cache so it reloads fresh content
-	// Using onMount since this is a one-time event listener setup, not reactive
 	onMount(() => {
 		const handleSettingsFileChanged = async (event: Event) => {
 			if (!(event instanceof CustomEvent)) return
 			const { path } = event.detail
 			const normalizedPath = createFilePath(path)
-			fileCache.clearContent(normalizedPath)
+			clearFileState(normalizedPath)
 
-			// Reload the file if it's currently selected
 			if (state.selectedPath === normalizedPath) {
 				await selectPath(normalizedPath, { forceReload: true })
 			}
@@ -347,10 +245,6 @@ export function FsProvider(props: { children: JSX.Element }) {
 		selectedPathSelector(path ? createFilePath(path) : undefined)
 
 	const pickNewRoot = async () => {
-		// Allow picking if:
-		// - No tree loaded yet (initial state)
-		// - Already on local source
-		// Block only if explicitly on a different source (memory/opfs)
 		const source = state.activeSource
 		if (source && source !== 'local') return
 
@@ -359,7 +253,6 @@ export function FsProvider(props: { children: JSX.Element }) {
 			invalidateFs('local')
 			await refresh('local')
 		} catch (error) {
-			// User cancelled or picker failed - ignore
 			if (error instanceof Error && error.name === 'AbortError') return
 			console.error('[pickNewRoot] Failed:', error)
 		}
@@ -379,24 +272,19 @@ export function FsProvider(props: { children: JSX.Element }) {
 			deleteNode,
 			ensureDirPathLoaded,
 			updatePieceTableForPath,
-			updateHighlightsForPath,
-			updateFoldsForPath,
-			updateBracketsForPath,
-			updateErrorsForPath,
-			setViewMode: setViewModeWithStats,
 			fileCache,
 			saveFile,
-			setDirtyPath,
+			setDirty,
 			setSavedContent,
 			setPieceTableContent,
 			pickNewRoot,
 			collapseAll,
 			setCreationState,
-			setFileLoadingStatus,
-			setFileLoadingError,
-			setFileLineStarts,
+			setLoadingState,
+			setLoadingError,
+			setLineStarts: (path: string, lineStarts: number[]) => setLineStarts(path, lineStarts),
 			preloadFileContent,
-			clearFileLoadingState,
+			clearFileState,
 		},
 	]
 
