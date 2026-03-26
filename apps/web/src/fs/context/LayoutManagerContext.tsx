@@ -7,7 +7,7 @@
  * This enables a single source of truth for "active file" via ActiveFileProvider.
  */
 
-import { createContext, useContext, type JSX, onCleanup } from 'solid-js'
+import { createContext, useContext, type JSX } from 'solid-js'
 import { createPersistedLayoutManager, type PersistedLayoutManager } from '../../split-editor/createPersistedLayoutManager'
 import { ActiveFileProvider } from './ActiveFileContext'
 

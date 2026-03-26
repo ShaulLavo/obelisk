@@ -1,5 +1,5 @@
 import { createContext, useContext, type ParentProps, createMemo, createEffect } from 'solid-js'
-import { createStore, produce } from 'solid-js/store'
+import { createStore } from 'solid-js/store'
 import {
 	type SyncStatusInfo,
 	type ConflictInfo as EditorConflictInfo,
