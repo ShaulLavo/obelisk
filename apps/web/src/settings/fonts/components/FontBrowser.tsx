@@ -77,7 +77,6 @@ export const FontBrowser = () => {
 				maxRetries={3}
 				retryDelay={2000}
 				onError={(error) => {
-					console.error('[FontBrowser] Error loading fonts:', error)
 				}}
 			>
 				<Suspense fallback={<FontBrowserSkeleton />}>

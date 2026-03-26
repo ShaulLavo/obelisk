@@ -36,21 +36,9 @@ export async function initializeServiceWorker(
 	} = options
 
 	try {
-		console.log(
-			'[ServiceWorkerInit] Initializing service worker for font caching'
-		)
-
 		// Initialize service worker manager
 		await serviceWorkerManager.init()
 		const serviceWorkerActive = serviceWorkerManager.isSupported()
-
-		if (serviceWorkerActive) {
-			console.log('[ServiceWorkerInit] Service worker initialized successfully')
-		} else {
-			console.warn(
-				'[ServiceWorkerInit] Service worker not supported or failed to initialize'
-			)
-		}
 
 		// Start monitoring if enabled
 		let monitoringActive = false
@@ -58,9 +46,7 @@ export async function initializeServiceWorker(
 			try {
 				cacheMonitoringService.startMonitoring()
 				monitoringActive = true
-				console.log('[ServiceWorkerInit] Cache monitoring started')
 			} catch (error) {
-				console.warn('[ServiceWorkerInit] Failed to start monitoring:', error)
 			}
 		}
 
@@ -79,12 +65,7 @@ export async function initializeServiceWorker(
 					autoCleanupThreshold: 80, // 80% utilization
 				})
 
-				console.log('[ServiceWorkerInit] Automated maintenance started')
 			} catch (error) {
-				console.warn(
-					'[ServiceWorkerInit] Failed to start automated maintenance:',
-					error
-				)
 			}
 		}
 
@@ -133,8 +114,6 @@ export function getServiceWorkerStatus(): {
  */
 export async function cleanupServiceWorker(): Promise<void> {
 	try {
-		console.log('[ServiceWorkerInit] Cleaning up service worker resources')
-
 		// Stop monitoring
 		cacheMonitoringService.stopMonitoring()
 
@@ -146,7 +125,6 @@ export async function cleanupServiceWorker(): Promise<void> {
 		// Optionally unregister service worker (uncomment if needed)
 		// await serviceWorkerManager.unregister()
 
-		console.log('[ServiceWorkerInit] Service worker cleanup completed')
 	} catch (error) {
 		console.error(
 			'[ServiceWorkerInit] Failed to cleanup service worker:',
@@ -161,12 +139,10 @@ export async function cleanupServiceWorker(): Promise<void> {
 export async function updateServiceWorker(): Promise<boolean> {
 	try {
 		if (!serviceWorkerManager.isSupported()) {
-			console.warn('[ServiceWorkerInit] Service worker not supported')
 			return false
 		}
 
 		await serviceWorkerManager.forceUpdate()
-		console.log('[ServiceWorkerInit] Service worker update completed')
 		return true
 	} catch (error) {
 		console.error('[ServiceWorkerInit] Failed to update service worker:', error)

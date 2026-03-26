@@ -56,7 +56,6 @@ export const FontCard = (props: FontCardProps) => {
 		<FontDownloadErrorBoundary
 			fontName={props.name}
 			onError={(error) => {
-				console.error(`[FontCard] Download error for ${props.name}:`, error)
 			}}
 		>
 			<Card class="hover:bg-card/80 transition-colors">

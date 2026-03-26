@@ -24,10 +24,7 @@ export class FontDownloadService {
 		downloadUrl: string,
 		onProgress?: DownloadProgressCallback
 	): Promise<void> {
-		console.log('[FontDownloadService] Starting download for font:', name)
-
 		if (this.activeDownloads.has(name)) {
-			console.log('[FontDownloadService] Font already downloading:', name)
 			return
 		}
 
@@ -54,7 +51,6 @@ export class FontDownloadService {
 
 			const installedFonts = await fontCacheService.getInstalledFonts()
 			if (installedFonts.has(name)) {
-				console.log('[FontDownloadService] Font already installed:', name)
 				this.updateProgress(name, { fontName: name, status: 'completed' })
 				return
 			}
@@ -67,8 +63,6 @@ export class FontDownloadService {
 			})
 
 			// Download font data using server RPC with retry logic
-			console.log('[FontDownloadService] Calling server RPC for font:', name)
-
 			const downloadResult = await RetryService.retryFontDownload(async () => {
 				const response = await client.fonts({ name }).get({
 					fetch: { signal: abortController.signal },
@@ -130,7 +124,6 @@ export class FontDownloadService {
 			}
 
 			// Cache the font data with retry logic
-			console.log('[FontDownloadService] Caching font data for:', name)
 			const cacheResult = await RetryService.retryCacheOperation(
 				() => fontCacheService.downloadFont(name, downloadUrl),
 				`font caching for ${name}`
@@ -147,10 +140,6 @@ export class FontDownloadService {
 				progress: 100,
 			})
 
-			console.log(
-				'[FontDownloadService] Font download and caching completed:',
-				name
-			)
 		} catch (error) {
 			console.error('[FontDownloadService] Font download failed:', name, error)
 
@@ -174,21 +163,11 @@ export class FontDownloadService {
 	 * Install a font using FontFace API after it's been downloaded and cached
 	 */
 	async installFont(name: string): Promise<void> {
-		console.log(
-			'[FontDownloadService] Installing font using FontFace API:',
-			name
-		)
-
 		try {
 			// Use retry logic for font installation
 			const installResult = await RetryService.withRetry(
 				async () => {
-					await fontInstallationService.installFont(name, (status) => {
-						console.log(
-							'[FontDownloadService] Installation status:',
-							JSON.stringify(status, null, 2)
-						)
-					})
+					await fontInstallationService.installFont(name, () => {})
 				},
 				{
 					maxRetries: 2,
@@ -209,12 +188,7 @@ export class FontDownloadService {
 							message.includes('failed to load') || message.includes('network')
 						)
 					},
-					onRetry: (attempt, error) => {
-						console.log(
-							`[FontDownloadService] Retrying font installation for ${name} (attempt ${attempt}):`,
-							error.message
-						)
-					},
+					onRetry: () => {},
 				}
 			)
 
@@ -225,7 +199,6 @@ export class FontDownloadService {
 				)
 			}
 
-			console.log('[FontDownloadService] Font successfully installed:', name)
 		} catch (error) {
 			console.error(
 				'[FontDownloadService] Font installation failed:',
@@ -244,27 +217,17 @@ export class FontDownloadService {
 		downloadUrl: string,
 		onProgress?: DownloadProgressCallback
 	): Promise<void> {
-		console.log(
-			'[FontDownloadService] Starting download and install for:',
-			name
-		)
-
 		// Download the font first
 		await this.downloadFont(name, downloadUrl, onProgress)
 
 		// Then install it using FontFace API
 		await this.installFont(name)
 
-		console.log(
-			'[FontDownloadService] Font download and installation completed:',
-			name
-		)
 	}
 
 	cancelDownload(name: string): void {
 		const controller = this.activeDownloads.get(name)
 		if (controller) {
-			console.log('[FontDownloadService] Cancelling download for:', name)
 			controller.abort()
 			this.activeDownloads.delete(name)
 			this.progressCallbacks.delete(name)

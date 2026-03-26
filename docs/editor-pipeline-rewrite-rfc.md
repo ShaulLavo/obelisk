@@ -101,22 +101,23 @@ The desired end state is a code editor with:
 4. [Goals](#goals)
 5. [Non-Goals](#non-goals)
 6. [Supported Platforms and Browser Baseline](#supported-platforms-and-browser-baseline)
-7. [Success Criteria](#success-criteria)
-8. [Core Runtime Model](#core-runtime-model)
-9. [Target Architecture](#target-architecture)
-10. [Subsystem Design](#subsystem-design)
-11. [File Layout Proposal](#file-layout-proposal)
-12. [Migration Plan](#migration-plan)
-13. [Benchmarks and Acceptance Criteria](#benchmarks-and-acceptance-criteria)
-14. [Testing Strategy](#testing-strategy)
-15. [Observability](#observability)
-16. [Rollout and Deletion Plan](#rollout-and-deletion-plan)
-17. [Risks and Mitigations](#risks-and-mitigations)
-18. [Rejected Alternatives](#rejected-alternatives)
-19. [Open Decisions](#open-decisions)
-20. [Appendix A: Current Hot Files](#appendix-a-current-hot-files)
-21. [Appendix B: Proposed Interfaces](#appendix-b-proposed-interfaces)
-22. [Appendix C: Sequence Diagrams](#appendix-c-sequence-diagrams)
+7. [Accessibility](#accessibility)
+8. [Success Criteria](#success-criteria)
+9. [Core Runtime Model](#core-runtime-model)
+10. [Target Architecture](#target-architecture)
+11. [Subsystem Design](#subsystem-design)
+12. [File Layout Proposal](#file-layout-proposal)
+13. [Migration Plan](#migration-plan)
+14. [Benchmarks and Acceptance Criteria](#benchmarks-and-acceptance-criteria)
+15. [Testing Strategy](#testing-strategy)
+16. [Observability](#observability)
+17. [Rollout and Deletion Plan](#rollout-and-deletion-plan)
+18. [Risks and Mitigations](#risks-and-mitigations)
+19. [Decision Rationale](#decision-rationale)
+20. [Open Decisions](#open-decisions)
+21. [Appendix A: Current Hot Files](#appendix-a-current-hot-files)
+22. [Appendix B: Proposed Interfaces](#appendix-b-proposed-interfaces)
+23. [Appendix C: Sequence Diagrams](#appendix-c-sequence-diagrams)
 
 ---
 
@@ -390,21 +391,15 @@ The rewrite should delete more code than it adds in the long run.
 - Improve long-term maintainability
 - Improve ease of adding new editor features later
 
-### Cultural Goal
-
-The editor should become a system that a new maintainer can explain on a whiteboard in five minutes.
-
 ---
 
 ## Non-Goals
 
-- Full canvas-based text rendering in v1
-- `contenteditable` migration
-- General-purpose 2D virtualization as the first implementation target
-- Perfect syntax highlighting during every intermediate edit state
-- Internal API compatibility with the current editor runtime
-- Preserving temporary migration shims beyond the rewrite landing window
-- Rebuilding tree-sitter integration from scratch
+- Canvas text rendering in v1. The rewrite already changes ownership, input, and rendering boundaries; adding canvas would increase scope without solving the main problem first.
+- `contenteditable`. It gives up too much control over selection, composition, and editor semantics for this rewrite.
+- Perfect syntax highlighting during every intermediate edit state. The design is intentionally text-first and allows decoration lag.
+- Internal API compatibility with the current editor runtime. The point of the rewrite is to reduce the migration-era surface, not preserve it.
+- Rebuilding tree-sitter integration from scratch. The worker pipeline is reused and simplified at the boundary instead.
 
 ---
 
@@ -429,6 +424,48 @@ Feature policy:
 - ordinary typing, navigation, selection, clipboard, and IME must work on all required targets
 - browser-specific event quirks are handled in the input adapter layer, not leaked into core semantics
 - if a browser lacks a preferred API, the fallback path must be explicitly documented and tested
+
+### Browser/API Compatibility Matrix
+
+The rewrite depends on a small set of browser APIs that need explicit fallback policy.
+
+| API | Preferred use | Required targets | Fallback | Notes |
+| --- | --- | --- | --- | --- |
+| `beforeinput` | primary text insertion/deletion semantics | Chromium, Safari/WebKit, Tauri shells | degrade to `input` + mirrored-buffer diff when event detail is insufficient | do not route printable text through `keydown` as the primary path |
+| composition events | IME lifecycle | Chromium, Safari/WebKit, Tauri shells | none; composition support is mandatory on required targets | browser-specific ordering stays in input adapter code |
+| Clipboard API | read/write clipboard text | Chromium, Safari/WebKit, Tauri shells | browser command fallback where direct async clipboard access is unavailable | never persist clipboard contents |
+| `ResizeObserver` | viewport resize detection | all required targets | window resize + measured polling as last resort | must stay off the hot path |
+| `requestIdleCallback` | width-scan and non-urgent background work | opportunistic | short `setTimeout` slices | correctness must not depend on idle support |
+
+Rules:
+
+- if a target lacks a preferred API, the fallback must preserve correctness first and performance second
+- missing fallback coverage on a required target blocks rollout
+- browser compatibility belongs in the RFC because the input strategy depends on it
+
+---
+
+## Accessibility
+
+This rewrite must preserve editor accessibility parity for the supported desktop baseline.
+
+Accessibility requirements for v1:
+
+- the hidden input surface remains focusable and browser-addressable for IME, accessibility tooling, and keyboard interaction
+- editor focus semantics remain explicit: the host focuses the editor session, and the session focuses the hidden input surface
+- keyboard-only navigation, selection extension, clipboard operations, and save shortcuts must continue to work without pointer interaction
+- screen-reader behavior must remain at least as good as the current editor on required targets; regressions in basic focus or text input behavior block rollout
+- selection and cursor overlays are visual affordances only; semantic input state still comes from the hidden input surface and the core selection model
+
+Non-goals for v1 accessibility work:
+
+- perfect screen-reader narration for every visual decoration layer
+- mobile accessibility parity
+
+Validation policy:
+
+- accessibility checks are part of manual browser validation, not an implied side effect of unit coverage
+- any hidden-textarea or focus-management change must be revalidated on Chromium, Safari/WebKit, and shipped Tauri shells
 
 ---
 
@@ -604,6 +641,25 @@ Solid must not own:
 - selection rectangle geometry
 - syntax segment computation for visible rows
 - per-keystroke scheduler behavior
+
+### Authority Boundaries
+
+The rewrite needs explicit authority boundaries so bugs have obvious owners.
+
+| Concern | Authoritative owner | Notes |
+| --- | --- | --- |
+| document text, piece table, line starts, line IDs, history | `EditorCore` | the runtime source of truth |
+| selections, cursor, preferred column, composition session | `EditorCore` | semantic state lives in core, not in the textarea |
+| viewport state (`scrollTop`, `scrollLeft`, viewport size) | `EditorCore` | `EditorView` measures DOM state and reports it through `updateViewport` |
+| row pooling, DOM nodes, pixel geometry, hit testing | `EditorView` | mechanical complexity lives here, but not document semantics |
+| mirrored input buffer DOM value/selection | `InputController` | browser interop surface only; derived from core state |
+| syntax, diagnostics, bracket metadata storage | `DecorationStore` behind `EditorCore.applyDecorations` | worker never writes decorations directly into the view |
+| fold open/closed interactive state | `EditorCore` | user intent is core state |
+| fold projection into visible rows | `DisplayModel` | v1 scope is fold projection only |
+| scroll anchoring decision | `EditorCore` emits hint, `FrameScheduler` applies it, `EditorView` performs DOM scroll write | one owner per step |
+| persistence timing and save triggers | host adapter | editor exposes state, host decides when to persist |
+
+If ownership is ambiguous, the design is not finished.
 
 ---
 
@@ -928,6 +984,25 @@ Preferred implementation strategy:
 
 This is non-negotiable because text corruption bugs are much worse than transient rendering bugs.
 
+### Chosen v1 Transaction Model
+
+v1 uses a staged draft with copy-on-write for modified structures.
+
+Rules:
+
+- live core state is never mutated in place during handler execution
+- `dispatch` creates a `CoreDraft` seeded from the current committed state
+- modified structures are copied on write into the draft only when touched
+- handlers mutate draft-local structures only
+- commit is an atomic swap of the draft root references into the live core state
+- rollback means dropping the draft and keeping the last committed state
+
+Implications:
+
+- this is not a full persistent-data-structure rewrite
+- this is not a mutation-in-place model with ad hoc cleanup on failure
+- piece-table snapshots and other already-immutable structures can be reused directly inside the staged commit model
+
 ### Viewport Fast Path
 
 Scroll and resize traffic should not pay the full document-transaction cost.
@@ -1070,6 +1145,34 @@ Line IDs solve several problems cleanly:
   - editor tries to preserve cursor/selection/scroll position using offset mapping hints
   - if no mapping hint exists, preserve by nearest valid offset and viewport anchor best-effort
 
+### Authoritative Runtime Source of Truth
+
+The runtime must collapse the current dual-source host model into one authoritative document model.
+
+Rules:
+
+- inside the runtime, `EditorCore` owns the authoritative piece-table-backed document model
+- host `content` and host `pieceTable` are migration-era input formats only
+- the Solid wrapper normalizes host inputs into one `EditorDocumentInput` before creating or replacing the document in the session
+- once a document is loaded into the session, per-keystroke edits do not flow back through host `content` or host `pieceTable` props to stay correct
+- external host-driven rewrites must use explicit `replace-document` or `replace-content` semantics rather than silently changing two host inputs independently
+
+Migration rule:
+
+- during coexistence, if both host `content` and host `pieceTable` are supplied, they must describe the same document bytes; mismatches are treated as adapter bugs
+
+### Line-ID Consequences
+
+Line IDs remain the right rendering identity, but they are not general persistence keys.
+
+Rules:
+
+- scroll, cursor, and selection persistence remain offset/position based, not line-ID based
+- stale decoration reuse is safe because retired line IDs are never reused
+- user fold-open state can follow surviving line IDs within the same document incarnation
+- `replace-document` invalidates line-ID-keyed metadata by design
+- undo/redo may recreate logically similar lines with fresh IDs; future metadata that needs semantic resurrection must use a different identity strategy than line ID alone
+
 ### DisplayModel Boundary
 
 The runtime needs a small display-model boundary even in v1.
@@ -1082,9 +1185,16 @@ v1 `DisplayModel` responsibilities:
 - display-to-document line mapping
 - document-to-display line mapping
 - fold projection
-- future extension point for soft wrap or long-line slicing without changing the view contract
+
+Not in the v1 `DisplayModel` contract:
+
+- soft wrap
+- long-line slicing
+- any projection that changes horizontal text geometry
 
 The view should read row projection from `DisplayModel`, not reimplement fold-aware mapping itself.
+
+Long-line rendering remains a view concern in v1. If a later rewrite wants a broader `DisplayModel`, that should be a new RFC rather than an implicit expansion of this one.
 
 ### Line Revision Policy
 
@@ -1137,6 +1247,33 @@ v1 invariants:
 - multi-cursor editing is deferred until after the runtime rewrite stabilizes
 
 If multi-cursor editing is added later, text-edit transactions must apply ranges in reverse-offset order and commit atomically.
+
+### Selection State Machine
+
+The selection model should be explicit enough to reason about legal transitions.
+
+States:
+
+- `collapsed`
+- `range`
+- `dragging`
+
+Legal transitions:
+
+- `collapsed -> range` via shift-navigation, pointer drag, or explicit selection transaction
+- `range -> collapsed` via directional movement without extend, insert-text, replace-range, or explicit collapse
+- `collapsed -> dragging` via pointer down + drag
+- `range -> dragging` via pointer down on selection edge or new drag gesture
+- `dragging -> collapsed` or `dragging -> range` on pointer up depending on final anchor/focus
+
+Illegal transitions:
+
+- selection state changes driven directly by decoration updates
+- hidden textarea selection becoming the authoritative selection state
+
+Invariant:
+
+- selection state is committed through core transactions only
 
 ### Coordinate Model
 
@@ -1278,6 +1415,59 @@ Undo policy:
 
 - undo during an active composition should either cancel the composition session or be ignored until composition end
 - once composition ends, the entire composition resolves as one undo step
+
+### Composition State Machine
+
+Composition behavior must be legal-state driven, not a pile of event-conditionals.
+
+States:
+
+- `idle`
+- `composing`
+- `committing`
+- `cancelled`
+
+Legal transitions:
+
+- `idle -> composing` on `compositionstart`
+- `composing -> composing` on provisional updates from `beforeinput`, `input`, or `compositionupdate`
+- `composing -> committing` on `compositionend`
+- `composing -> cancelled` on explicit cancellation or unrecoverable browser reset
+- `committing -> idle` after the final composed text is recorded as one history entry
+- `cancelled -> idle` after provisional state is cleared
+
+Illegal transitions:
+
+- applying a normal text transaction as if composition were inactive while `composition` state is live
+- leaving provisional composition ranges behind after `compositionend`
+- accepting stale mirrored-buffer text after document identity changes
+
+External-event rule:
+
+- `replace-document` cancels active composition immediately
+- `replace-content` during active composition either cancels composition or is rejected by policy; v1 should prefer cancellation over attempting to merge two concurrent authorities
+
+### Document Replacement State Machine
+
+Document replacement also needs explicit legal states.
+
+States:
+
+- `steady`
+- `replacing-content`
+- `replacing-document`
+
+Legal transitions:
+
+- `steady -> replacing-content -> steady`
+- `steady -> replacing-document -> steady`
+
+Rules:
+
+- `replace-content` preserves `documentKey` and increments `docVersion`
+- `replace-document` increments `documentIncarnation`, resets transient editor state, and invalidates line-ID-keyed metadata
+- worker snapshots for the previous identity are discarded after either replacement path
+- active composition is cancelled before either replacement path commits
 
 ### Hidden Textarea Synchronization
 
@@ -1695,7 +1885,11 @@ These measured values belong to the display/layout runtime, not to `EditorCore`.
 
 Decoration application is not an undoable transaction.
 
-It should happen through a dedicated explicit API such as `DecorationStore.apply(snapshot)` or `EditorCore.applyDecorations(snapshot)`.
+Canonical write path:
+
+- external callers, including `WorkerBridge`, call `EditorCore.applyDecorations(snapshot)`
+- `EditorCore.applyDecorations` validates identity and `docVersion`, then delegates storage/update work to `DecorationStore`
+- `DecorationStore` is an internal collaborator, not a second public mutation entrypoint
 
 ### Why Decorations Must Be Versioned
 
@@ -1892,6 +2086,18 @@ The host decides when to save it.
 - restore happens once per document activation, not continuously inside render orchestration
 - editor view does not contain restore-specific effects
 
+### Migration of Existing Persisted State
+
+The rewrite must define what happens to existing host-managed state instead of leaving migration to guesswork.
+
+Rules:
+
+- persisted scroll, cursor, and selections continue to use host-level document identity and position-based data
+- cached visible-content snapshots are opt-in and may be deleted if benchmarking does not justify them
+- cached line starts are migration scaffolding only and must not become a required public contract
+- host-side `contentVersion` style counters are replaced by explicit document identity plus `replace-content` or `replace-document` calls
+- persisted data must never be keyed by transient `sessionId`
+
 ---
 
 ## 14. Solid Integration Contract
@@ -1908,22 +2114,15 @@ The new Solid wrapper should be tiny.
 - call imperative setters on the session
 - destroy the session on cleanup
 
-### Allowed Solid Effects
+### Wrapper Responsibilities
 
-Allowed:
+The Solid wrapper should react only to slow-changing host inputs:
 
 - file identity change
 - document replacement from external source
 - font or theme change
 - editable mode change
-- worker/decoration source change
-
-Not allowed:
-
-- per-line derived state
-- visible row rendering
-- selection rect computation
-- text-run generation for every keystroke
+- worker or decoration source change
 
 ### Recommended Naming
 
@@ -2052,6 +2251,32 @@ Default disposition:
 - delete `stats` unless there is a concrete public use case
 
 The new host surface should prefer a small `EditorSessionInput` or equivalent config object over a wide migration-era prop bag.
+
+### Host API Inventory and Migration Map
+
+The current host surface is too wide to migrate safely by intuition.
+
+| Current input | Disposition in rewrite |
+| --- | --- |
+| `document.filePath` | keep as part of `documentKey` input |
+| `document.content` | migration-era bootstrap only; normalize into `EditorDocumentInput` |
+| `document.pieceTable` | migration-era bootstrap only; normalize into `EditorDocumentInput` |
+| `document.updatePieceTable` | delete from the steady-state public API |
+| `document.isEditable` | keep as explicit session setter/input |
+| `document.applyIncrementalEdit` | delete; worker bridge handles incremental worker traffic internally |
+| `highlights`, `errors`, `brackets`, `folds` | replace with worker/decorations source input, not direct hot-path props |
+| `highlightOffset` | delete |
+| `treeSitterWorker` | keep only if the session still needs an injected worker bridge |
+| `documentVersion`, `contentVersion` | replace with explicit `DocumentIdentity` plus replacement APIs |
+| `initialScrollPosition`, `initialCursorPosition`, `initialSelections` | keep as restore inputs, possibly collapsed into one persisted-view-state object |
+| `onScrollPositionChange`, `onCursorPositionChange`, `onSelectionsChange` | keep as debounced host callbacks or fold into one `onViewStateChange` callback |
+| `initialVisibleContent`, `onCaptureVisibleContent`, `precomputedLineStarts` | delete unless benchmarks prove a real win |
+| `registerEditorArea`, `activeScopes` | keep only if shell focus integration still requires them |
+| `stats`, `previewBytes`, unrelated shell props | remove from the core editor surface |
+
+Coexistence rule:
+
+- every current consumer must be mapped deliberately to either keep, collapse, adapter-only, or delete before the legacy runtime is removed
 
 ---
 
@@ -2415,11 +2640,6 @@ Critical manual passes should include:
 - selection drag edge cases
 - fold interactions
 
-### What Not to Do
-
-- do not use the browser automation path as a substitute for manual IME validation
-- do not measure success only by unit tests; the whole point is runtime feel and paint behavior
-
 ---
 
 ## Observability
@@ -2486,6 +2706,30 @@ Temporary side-by-side scaffolding is allowed only to land the rewrite safely.
 - optimistic highlight offset machinery
 - temporary adapters between old and new runtime
 
+### Rollback and Kill Switch
+
+The rewrite needs an explicit rollback path while both runtimes coexist.
+
+Required policy:
+
+- gate the new runtime behind an internal feature flag such as `editor_runtime_v2`
+- the runtime switch lives in the host wrapper layer (`createSolidEditorHost` or equivalent), not scattered through rendering internals
+- during coexistence, both runtimes must accept the same minimal host-level document identity and restore inputs
+- legacy runtime remains available as the rollback target until Phase 8 completes
+
+Rollback triggers:
+
+- any confirmed document corruption bug
+- IME correctness failure on a required target
+- repeated flush or dispatch exceptions in the new runtime
+- severe latency regression beyond agreed rollout thresholds
+
+Rollback action:
+
+- disable `editor_runtime_v2`
+- keep persisted host state keyed by `documentKey` compatible across both runtimes during coexistence
+- stop rollout before deleting legacy files or adapters
+
 ---
 
 ## Risks and Mitigations
@@ -2530,31 +2774,13 @@ Mitigation:
 
 ---
 
-## Rejected Alternatives
+## Decision Rationale
 
-### 1. Keep the Current Solid Architecture and Tune It
+The main architecture choices in this RFC are intentional, not accidental:
 
-Rejected because the complexity is architectural, not just tuning-related.
-
-Caching more aggressively inside the current model would optimize the wrong boundary.
-
-### 2. Full Canvas Text Renderer in v1
-
-Rejected because it is a bigger leap in rendering complexity and accessibility cost than necessary.
-
-The main problem is ownership and reactivity, not that the DOM is fundamentally incapable here.
-
-### 3. `contenteditable`
-
-Rejected because it gives up too much control and creates a different class of correctness problems.
-
-### 4. Keep Optimistic Highlight Offsets
-
-Rejected because they are complexity debt created by trying to keep async syntax coupled to immediate text edits.
-
-### 5. Keep General 2D Virtualization as the Primary Model
-
-Rejected because it over-optimizes rare long-line cases and leaks complexity into the entire runtime.
+- Keep DOM text rendering in v1 and move complexity out of Solid first. That captures most of the simplicity/performance win without taking on a canvas renderer at the same time.
+- Keep text input browser-native and make decorations eventually consistent. That removes the need for optimistic highlight offsets and similar defensive machinery.
+- Start with vertical virtualization and isolate long-line handling. That keeps the common case simple while leaving room for specialized long-line logic.
 
 ---
 

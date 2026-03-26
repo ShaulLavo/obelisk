@@ -85,16 +85,10 @@ export class CacheMonitoringService {
 			return // Already monitoring
 		}
 
-		console.log('[CacheMonitoringService] Starting cache monitoring')
-
 		this.monitoringInterval = window.setInterval(async () => {
 			try {
 				await this.collectMetrics()
 			} catch (error) {
-				console.error(
-					'[CacheMonitoringService] Error collecting metrics:',
-					error
-				)
 			}
 		}, CacheMonitoringService.MONITORING_INTERVAL)
 
@@ -102,10 +96,6 @@ export class CacheMonitoringService {
 			try {
 				await this.performHealthCheck()
 			} catch (error) {
-				console.error(
-					'[CacheMonitoringService] Error performing health check:',
-					error
-				)
 			}
 		}, CacheMonitoringService.HEALTH_CHECK_INTERVAL)
 	}
@@ -124,7 +114,6 @@ export class CacheMonitoringService {
 			this.healthCheckInterval = null
 		}
 
-		console.log('[CacheMonitoringService] Stopped cache monitoring')
 	}
 
 	/**
@@ -141,7 +130,6 @@ export class CacheMonitoringService {
 					swStats = await serviceWorkerManager.getCacheStats()
 				}
 			} catch (error) {
-				console.warn('[CacheMonitoringService] Failed to get SW stats:', error)
 			}
 
 			const manifest = await cacheManifestService.generateManifest()
@@ -212,8 +200,6 @@ export class CacheMonitoringService {
 			dryRun = false,
 		} = options
 
-		console.log('[CacheMonitoringService] Starting cache cleanup', { options })
-
 		try {
 			const { fontMetadataService } = await import('./FontMetadataService')
 			const { fontCacheService } = await import('./FontCacheService')
@@ -247,11 +233,9 @@ export class CacheMonitoringService {
 						}
 
 						removedFonts.push(fontName)
-						console.log(`[CacheMonitoringService] Removed font: ${fontName}`)
 					} catch (error) {
 						const errorMsg = `Failed to remove font ${fontName}: ${error instanceof Error ? error.message : String(error)}`
 						errors.push(errorMsg)
-						console.error('[CacheMonitoringService]', errorMsg)
 					}
 				}
 			}
@@ -348,14 +332,7 @@ export class CacheMonitoringService {
 				lastCheck: new Date(),
 			}
 
-			if (status !== 'healthy') {
-				console.warn(
-					'[CacheMonitoringService] Health check issues detected:',
-					healthCheck
-				)
-			}
-
-			return healthCheck
+				return healthCheck
 		} catch (error) {
 			console.error('[CacheMonitoringService] Health check failed:', error)
 
@@ -457,7 +434,6 @@ export class CacheMonitoringService {
 	// Private helper methods
 
 	private async collectMetrics(): Promise<void> {
-		console.log('[CacheMonitoringService] Collecting metrics...')
 	}
 
 	private calculateCacheHitRate(): number {

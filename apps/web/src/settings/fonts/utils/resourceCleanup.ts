@@ -1,11 +1,4 @@
-/**
- * Resource Cleanup Utilities
- *
- * Comprehensive resource management and cleanup for font operations.
- * Ensures proper cleanup of caches, IndexedDB, document fonts, and memory.
- */
-
-import { createSignal, onCleanup } from 'solid-js'
+import { createSignal } from 'solid-js'
 
 export interface CleanupResult {
 	success: boolean
@@ -95,7 +88,7 @@ export class FontResourceCleanup {
 			// IndexedDB size estimation (approximate)
 			stats.indexedDBSize = await this.estimateIndexedDBSize()
 		} catch (error) {
-			console.warn('Failed to get resource stats:', error)
+			// Resource stats unavailable
 		}
 
 		return stats
@@ -135,9 +128,6 @@ export class FontResourceCleanup {
 			const fontResult = await this.cleanupDocumentFonts()
 			result.itemsRemoved += fontResult.itemsRemoved
 			result.errors.push(...fontResult.errors)
-
-			// 4. Force garbage collection if available
-			await this.forceGarbageCollection()
 
 			result.success = result.errors.length === 0
 			this.setCleanupStatus(result.success ? 'complete' : 'error')
@@ -235,7 +225,6 @@ export class FontResourceCleanup {
 							const deleted = await cache.delete(request)
 							if (deleted) {
 								result.itemsRemoved++
-								console.log(`🗑️ Cleaned up old font cache: ${request.url}`)
 							}
 						}
 					}
@@ -341,10 +330,7 @@ export class FontResourceCleanup {
 				}
 
 				// Also delete the entire cache
-				const cacheDeleted = await caches.delete('nerdfonts-v1')
-				if (cacheDeleted) {
-					console.log('✅ Font cache deleted successfully')
-				}
+				await caches.delete('nerdfonts-v1')
 			}
 		} catch (error) {
 			result.errors.push(`Cache cleanup failed: ${error}`)
@@ -368,12 +354,10 @@ export class FontResourceCleanup {
 			const deleteRequest = indexedDB.deleteDatabase('nerdfonts-metadata')
 			await new Promise<void>((resolve, reject) => {
 				deleteRequest.onsuccess = () => {
-					console.log('✅ Font metadata database deleted successfully')
 					resolve()
 				}
 				deleteRequest.onerror = () => reject(deleteRequest.error)
 				deleteRequest.onblocked = () => {
-					console.warn('⚠️ Database deletion blocked, will retry')
 					setTimeout(() => resolve(), 1000)
 				}
 			})
@@ -415,7 +399,6 @@ export class FontResourceCleanup {
 				// Clear all fonts if needed
 				if (fontsToRemove.length > 0) {
 					document.fonts.clear()
-					console.log('✅ Document fonts cleared')
 				}
 			}
 		} catch (error) {
@@ -423,22 +406,6 @@ export class FontResourceCleanup {
 		}
 
 		return result
-	}
-
-	private async forceGarbageCollection(): Promise<void> {
-		try {
-			// Force garbage collection if available
-			if ('gc' in window && typeof (window as unknown as { gc?: () => void }).gc === 'function') {
-				;(window as unknown as { gc: () => void }).gc()
-				console.log('🗑️ Forced garbage collection')
-			}
-
-			// Alternative: create memory pressure to trigger GC
-			const memoryPressure = new Array(1000000).fill(0)
-			memoryPressure.length = 0
-		} catch (error) {
-			console.warn('Failed to force garbage collection:', error)
-		}
 	}
 
 	private async removeFromIndexedDB(fontName: string): Promise<boolean> {
@@ -455,7 +422,6 @@ export class FontResourceCleanup {
 
 			return true
 		} catch (error) {
-			console.error(`Failed to remove ${fontName} from IndexedDB:`, error)
 			return false
 		}
 	}
@@ -474,7 +440,6 @@ export class FontResourceCleanup {
 			}
 			return false
 		} catch (error) {
-			console.error(`Failed to remove ${fontName} from document fonts:`, error)
 			return false
 		}
 	}
@@ -487,7 +452,6 @@ export class FontResourceCleanup {
 			}
 			return 0
 		} catch (e) {
-			console.warn('Failed to estimate IndexedDB size:', e)
 			return 0
 		}
 	}
@@ -504,7 +468,6 @@ export class FontResourceCleanup {
 				request.onerror = () => reject(request.error)
 			})
 		} catch (e) {
-			console.warn('Failed to read IndexedDB entries:', e)
 			return []
 		}
 	}
@@ -521,7 +484,6 @@ export class FontResourceCleanup {
 				return now - lastAccessed > maxAge
 			})
 		} catch (e) {
-			console.warn('Failed to filter old IndexedDB entries:', e)
 			return []
 		}
 	}
@@ -535,92 +497,3 @@ export class FontResourceCleanup {
 	}
 }
 
-/**
- * Hook for using font resource cleanup
- */
-export function useFontResourceCleanup() {
-	const cleanup = FontResourceCleanup.getInstance()
-
-	// Cleanup on component unmount
-	onCleanup(async () => {
-		// Optional: Clean up old resources on unmount
-		if (import.meta.env.DEV) {
-			console.log('🧹 Component unmounted, checking for old resources...')
-			const result = await cleanup.cleanupOldResources()
-			if (result.itemsRemoved > 0) {
-				console.log(`🗑️ Cleaned up ${result.itemsRemoved} old resources`)
-			}
-		}
-	})
-
-	return {
-		getResourceStats: () => cleanup.getResourceStats(),
-		cleanupAllResources: () => cleanup.cleanupAllResources(),
-		cleanupFont: (fontName: string) => cleanup.cleanupFont(fontName),
-		cleanupOldResources: (maxAge?: number) =>
-			cleanup.cleanupOldResources(maxAge),
-		verifyCleanup: () => cleanup.verifyCleanup(),
-		getCleanupStatus: () => cleanup.getCleanupStatus(),
-	}
-}
-
-/**
- * Automatic cleanup scheduler
- */
-export class AutoCleanupScheduler {
-	private static instance: AutoCleanupScheduler
-	private intervalId?: number
-	private isRunning = false
-
-	static getInstance(): AutoCleanupScheduler {
-		if (!AutoCleanupScheduler.instance) {
-			AutoCleanupScheduler.instance = new AutoCleanupScheduler()
-		}
-		return AutoCleanupScheduler.instance
-	}
-
-	/**
-	 * Start automatic cleanup every interval
-	 */
-	start(intervalMs: number = 24 * 60 * 60 * 1000): void {
-		// Default: 24 hours
-		if (this.isRunning) return
-
-		this.isRunning = true
-		this.intervalId = window.setInterval(async () => {
-			console.log('🔄 Running scheduled font cleanup...')
-
-			const cleanup = FontResourceCleanup.getInstance()
-			const result = await cleanup.cleanupOldResources()
-
-			if (result.itemsRemoved > 0) {
-				console.log(
-					`✅ Scheduled cleanup removed ${result.itemsRemoved} old resources`
-				)
-			}
-		}, intervalMs)
-
-		console.log(
-			`⏰ Automatic font cleanup scheduled every ${intervalMs / 1000 / 60} minutes`
-		)
-	}
-
-	/**
-	 * Stop automatic cleanup
-	 */
-	stop(): void {
-		if (this.intervalId) {
-			clearInterval(this.intervalId)
-			this.intervalId = undefined
-		}
-		this.isRunning = false
-		console.log('⏹️ Automatic font cleanup stopped')
-	}
-
-	/**
-	 * Check if scheduler is running
-	 */
-	isSchedulerRunning(): boolean {
-		return this.isRunning
-	}
-}

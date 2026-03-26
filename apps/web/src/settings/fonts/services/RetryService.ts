@@ -79,7 +79,6 @@ export class RetryService {
 
 				// Check if we should retry this error
 				if (!config.retryCondition?.(lastError)) {
-					console.log('[RetryService] Error is not retryable, stopping')
 					break
 				}
 
@@ -90,7 +89,6 @@ export class RetryService {
 						config.maxDelay
 					)
 
-					console.log(`[RetryService] Waiting ${delay}ms before retry...`)
 
 					// Call onRetry callback if provided
 					config.onRetry?.(attempt + 1, lastError)

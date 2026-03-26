@@ -3,14 +3,6 @@ import { fontMetadataService } from './FontMetadataService'
 import { cacheErrorRecovery } from './CacheErrorRecovery'
 import { serviceWorkerManager } from './ServiceWorkerManager'
 import type { FontMetadata, CacheStats } from './FontMetadataService'
-import type {
-	ServiceWorkerCacheStats,
-	ServiceWorkerCleanupResult,
-} from './ServiceWorkerManager'
-import type {
-	CacheMonitoringStats,
-	CacheHealthCheck,
-} from './CacheMonitoringService'
 
 // Re-export types for convenience
 export type { FontMetadata, CacheStats }
@@ -29,10 +21,7 @@ export class FontCacheService {
 			try {
 				await serviceWorkerManager.init()
 			} catch (swError) {
-				console.warn(
-					'Service worker initialization failed, continuing without offline support:',
-					swError
-				)
+				// Service worker init failed, continuing without offline support
 			}
 
 			if (!('caches' in window)) {
@@ -130,10 +119,6 @@ export class FontCacheService {
 				return !!fallbackData
 			}
 		} catch (error) {
-			console.error(
-				`[FontCacheService] Error checking if font ${name} is cached:`,
-				error
-			)
 			return false
 		}
 	}
@@ -159,15 +144,10 @@ export class FontCacheService {
 				try {
 					localStorage.removeItem(`font-metadata-${name}`)
 				} catch (error) {
-					console.warn(
-						'[FontCacheService] Failed to remove from localStorage:',
-						error
-					)
+					// localStorage removal failed
 				}
 			}
 		} catch (error) {
-			console.error(`[FontCacheService] Error removing font ${name}:`, error)
-
 			const recovery = await cacheErrorRecovery.recoverFromError(error as Error)
 			if (!recovery.success) {
 				throw error
@@ -189,8 +169,6 @@ export class FontCacheService {
 				}
 			}
 		} catch (error) {
-			console.error('[FontCacheService] Error getting cache stats:', error)
-
 			return {
 				totalSize: 0,
 				fontCount: 0,
@@ -210,7 +188,7 @@ export class FontCacheService {
 			}
 
 			// LRU cleanup: remove oldest accessed fonts until we are under the limit
-			const allFonts = await this.getAllFontMetadata()
+			const allFonts = await fontMetadataService.getAllFontMetadata()
 			allFonts.sort((a, b) => {
 				const timeA = new Date(a.lastAccessed).getTime()
 				const timeB = new Date(b.lastAccessed).getTime()
@@ -232,7 +210,6 @@ export class FontCacheService {
 				await this.removeFont(fontName)
 			}
 		} catch (error) {
-			console.error('Failed to cleanup cache:', error)
 			if (import.meta.env.MODE !== 'test' && typeof window !== 'undefined') {
 				throw error
 			}
@@ -254,7 +231,6 @@ export class FontCacheService {
 
 			await fontMetadataService.clearAllMetadata()
 		} catch (error) {
-			console.error('Failed to clear all fonts:', error)
 			if (import.meta.env.MODE !== 'test' && typeof window !== 'undefined') {
 				throw error
 			}
@@ -263,134 +239,6 @@ export class FontCacheService {
 
 	async getInstalledFonts(): Promise<Set<string>> {
 		return await fontMetadataService.getInstalledFonts()
-	}
-
-	async getFontMetadata(name: string): Promise<FontMetadata | null> {
-		return await fontMetadataService.getFontMetadata(name)
-	}
-
-	async getAllFontMetadata(): Promise<FontMetadata[]> {
-		return await fontMetadataService.getAllFontMetadata()
-	}
-
-	/**
-	 * Get service worker cache statistics
-	 */
-	async getServiceWorkerStats(): Promise<ServiceWorkerCacheStats | null> {
-		try {
-			if (serviceWorkerManager.isSupported()) {
-				return await serviceWorkerManager.getCacheStats()
-			}
-			return null
-		} catch (error) {
-			console.warn(
-				'[FontCacheService] Failed to get service worker stats:',
-				error
-			)
-			return null
-		}
-	}
-
-	/**
-	 * Get cache manifest for offline availability
-	 */
-	async getCacheManifest(): Promise<string[]> {
-		try {
-			if (serviceWorkerManager.isSupported()) {
-				return await serviceWorkerManager.getCacheManifest()
-			}
-			return []
-		} catch (error) {
-			console.warn('[FontCacheService] Failed to get cache manifest:', error)
-			return []
-		}
-	}
-
-	/**
-	 * Force service worker cache cleanup
-	 */
-	async forceServiceWorkerCleanup(
-		maxSize?: number
-	): Promise<ServiceWorkerCleanupResult> {
-		try {
-			if (serviceWorkerManager.isSupported()) {
-				return await serviceWorkerManager.cleanupCache({ maxSize })
-			}
-			return { cleaned: false, reason: 'Service worker not available' }
-		} catch (error) {
-			console.warn(
-				'[FontCacheService] Failed to cleanup service worker cache:',
-				error
-			)
-			return { cleaned: false, reason: (error as Error).message }
-		}
-	}
-
-	/**
-	 * Get comprehensive cache monitoring statistics
-	 */
-	async getMonitoringStats(): Promise<CacheMonitoringStats | null> {
-		try {
-			const { cacheMonitoringService } =
-				await import('./CacheMonitoringService')
-			return await cacheMonitoringService.getCacheStats()
-		} catch (error) {
-			console.warn('[FontCacheService] Failed to get monitoring stats:', error)
-			return null
-		}
-	}
-
-	/**
-	 * Perform cache health check
-	 */
-	async performHealthCheck(): Promise<
-		| CacheHealthCheck
-		| {
-				status: string
-				issues: string[]
-				recommendations: string[]
-				lastCheck: Date
-		  }
-	> {
-		try {
-			const { cacheMonitoringService } =
-				await import('./CacheMonitoringService')
-			return await cacheMonitoringService.performHealthCheck()
-		} catch (error) {
-			console.warn('[FontCacheService] Failed to perform health check:', error)
-			return {
-				status: 'critical',
-				issues: ['Health check failed'],
-				recommendations: ['Check browser console for errors'],
-				lastCheck: new Date(),
-			}
-		}
-	}
-
-	/**
-	 * Start cache monitoring
-	 */
-	async startMonitoring(): Promise<void> {
-		try {
-			const { cacheMonitoringService } =
-				await import('./CacheMonitoringService')
-			cacheMonitoringService.startMonitoring()
-		} catch (error) {
-			console.warn('[FontCacheService] Failed to start monitoring:', error)
-		}
-	}
-
-	/**
-	 * Stop cache monitoring
-	 */
-	async stopMonitoring(): Promise<void> {
-		try {
-			const { cacheMonitoringService } =
-				await import('./CacheMonitoringService')
-			cacheMonitoringService.stopMonitoring()
-		} catch (error) {
-			console.warn('[FontCacheService] Failed to stop monitoring:', error)
-		}
 	}
 
 	private async ensureInitialized(): Promise<void> {
@@ -421,11 +269,6 @@ export class FontCacheService {
 				await cacheErrorRecovery.storeFontFallback(name, fontData)
 			}
 		} catch (error) {
-			console.error(
-				`[FontCacheService] Failed to store font data for ${name}:`,
-				error
-			)
-
 			const recovery = await cacheErrorRecovery.recoverFromError(error as Error)
 			if (recovery.success) {
 				await cacheErrorRecovery.storeFontFallback(name, fontData)
@@ -446,18 +289,9 @@ export class FontCacheService {
 				await cacheErrorRecovery.storeMetadataFallback(metadata.name, metadata)
 			}
 		} catch (error) {
-			console.error(
-				`[FontCacheService] Failed to store metadata for ${metadata.name}:`,
-				error
-			)
-
 			const recovery = await cacheErrorRecovery.recoverFromError(error as Error)
 			if (recovery.success) {
 				await cacheErrorRecovery.storeMetadataFallback(metadata.name, metadata)
-			} else {
-				console.warn(
-					`[FontCacheService] Metadata storage failed for ${metadata.name}, continuing without metadata`
-				)
 			}
 		}
 	}
@@ -477,10 +311,7 @@ export class FontCacheService {
 				}
 			}
 		} catch (error) {
-			console.warn(
-				`[FontCacheService] Failed to update last accessed for ${name}:`,
-				(error as Error).message
-			)
+			// Last accessed update failed, non-critical
 		}
 	}
 
@@ -488,8 +319,6 @@ export class FontCacheService {
 	 * Notify user about fallback mode activation
 	 */
 	private notifyFallbackMode(message: string): void {
-		console.warn(`[FontCacheService] FALLBACK MODE ACTIVE: ${message}`)
-
 		if (typeof window !== 'undefined') {
 			window.dispatchEvent(
 				new CustomEvent('font-cache-fallback', {

@@ -35,7 +35,6 @@ export class FontRestorationService {
 
 	private async performRestoration(): Promise<void> {
 		try {
-			console.log('[FontRestorationService] Starting font restoration...')
 
 			// Initialize services
 			await fontCacheService.init()
@@ -49,7 +48,6 @@ export class FontRestorationService {
 			)
 
 			if (cachedFonts.size === 0) {
-				console.log('[FontRestorationService] No cached fonts to restore')
 				return
 			}
 
@@ -65,7 +63,6 @@ export class FontRestorationService {
 							return
 						}
 
-						console.log(`[FontRestorationService] Restoring font: ${fontName}`)
 
 						// Get font data from cache
 						const fontData = await this.getFontDataFromCache(fontName)
@@ -111,7 +108,6 @@ export class FontRestorationService {
 			// Update font installation service state
 			await fontInstallationService.initialize()
 
-			console.log('[FontRestorationService] Font restoration completed')
 		} catch (error) {
 			console.error('[FontRestorationService] Font restoration failed:', error)
 			throw error

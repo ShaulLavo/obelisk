@@ -88,7 +88,6 @@
     "just-bash": "workspace:*",
     "localforage": "^1.10.0",
     "nanoid": "^5.1.6",
-    "safe-regex": "^2.1.1",
     "shell-quote": "^1.8.2",
     "solid-js": "^1.9.5",
     "sqlite-wasm": "workspace:*",
@@ -98,7 +97,6 @@
     "tree-sitter-json": "^0.24.8",
     "tree-sitter-markdown": "^0.7.1",
     "tree-sitter-typescript": "^0.23.2",
-    "wasm-git": "^0.0.13",
     "web-tree-sitter": "^0.25.10",
     "zod": "^4.3.5"
   }

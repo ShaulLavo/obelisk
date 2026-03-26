@@ -46,7 +46,6 @@ export function useFontPreview(fontName: () => string) {
 
 			setFontFamily(previewFamilyName)
 		} catch (err) {
-			console.warn(`[useFontPreview] Failed for ${fontName()}:`, err)
 		} finally {
 			setIsLoading(false)
 		}

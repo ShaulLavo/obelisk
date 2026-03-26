@@ -55,10 +55,6 @@ export class FontMetadataService {
 		try {
 			await this.store.setItem(metadata.name, metadata)
 		} catch (error) {
-			console.error(
-				`Failed to store metadata for font ${metadata.name}:`,
-				error
-			)
 			throw error
 		}
 	}
@@ -70,7 +66,6 @@ export class FontMetadataService {
 			const metadata = await this.store.getItem<FontMetadata>(name)
 			return metadata || null
 		} catch (error) {
-			console.error(`Failed to get metadata for font ${name}:`, error)
 			return null
 		}
 	}
@@ -94,7 +89,6 @@ export class FontMetadataService {
 
 			return metadata
 		} catch (error) {
-			console.error('Failed to get all font metadata:', error)
 			return []
 		}
 	}
@@ -105,7 +99,6 @@ export class FontMetadataService {
 		try {
 			await this.store.removeItem(name)
 		} catch (error) {
-			console.error(`Failed to remove metadata for font ${name}:`, error)
 			throw error
 		}
 	}
@@ -120,7 +113,6 @@ export class FontMetadataService {
 				await this.storeFontMetadata(metadata)
 			}
 		} catch (error) {
-			console.error(`Failed to update last accessed for font ${name}:`, error)
 		}
 	}
 
@@ -129,7 +121,6 @@ export class FontMetadataService {
 			const metadata = await this.getAllFontMetadata()
 			return new Set(metadata.map((m) => m.name))
 		} catch (error) {
-			console.error('Failed to get installed fonts:', error)
 			return new Set()
 		}
 	}
@@ -153,8 +144,6 @@ export class FontMetadataService {
 				lastCleanup,
 			}
 		} catch (error) {
-			console.error('Failed to get cache stats:', error)
-			// Return default stats in case of error
 			return {
 				totalSize: 0,
 				fontCount: 0,
@@ -169,7 +158,6 @@ export class FontMetadataService {
 		try {
 			await this.store.setItem('last-cleanup', { date })
 		} catch (error) {
-			console.error('Failed to set last cleanup date:', error)
 		}
 	}
 
@@ -227,7 +215,6 @@ export class FontMetadataService {
 				cacheData
 			)
 		} catch (error) {
-			console.error('Failed to cache available fonts:', error)
 		}
 	}
 
@@ -254,7 +241,6 @@ export class FontMetadataService {
 
 			return cacheData.fonts
 		} catch (error) {
-			console.error('Failed to get cached available fonts:', error)
 			return null
 		}
 	}
@@ -265,7 +251,6 @@ export class FontMetadataService {
 		try {
 			await this.store.clear()
 		} catch (error) {
-			console.error('Failed to clear font metadata:', error)
 			throw error
 		}
 	}

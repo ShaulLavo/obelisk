@@ -357,11 +357,9 @@ export class FontLoadingOptimizer {
 				});
 				if (response.ok) {
 					await cache.put(cacheKey, response);
-					console.log(`Preloaded font: ${fontName}`);
 				}
 			}
 		} catch (error) {
-			console.warn(`Failed to preload font ${fontName}:`, error);
 		}
 	}
 }
@@ -429,7 +427,6 @@ export const PerformanceDebugger = {
 	 */
 	logMetrics(): void {
 		const monitor = FontPerformanceMonitor.getInstance();
-		console.log(monitor.getPerformanceReport());
 	},
 
 	/**

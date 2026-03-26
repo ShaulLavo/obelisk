@@ -64,7 +64,6 @@ export class CacheErrorRecoveryService {
 			return 'permission_denied'
 		}
 
-		console.warn('[CacheErrorRecovery] Unrecognized error, defaulting to cache_corruption:', error.message)
 		return 'cache_corruption'
 	}
 
@@ -171,14 +170,12 @@ export class CacheErrorRecoveryService {
 				try {
 					await caches.delete('nerdfonts-v1')
 				} catch (error) {
-					console.warn('[CacheErrorRecovery] Failed to clear Cache API:', error)
 				}
 			}
 
 			try {
 				await fontMetadataService.clearAllMetadata()
 			} catch (error) {
-				console.warn('[CacheErrorRecovery] Failed to clear IndexedDB:', error)
 			}
 
 			try {

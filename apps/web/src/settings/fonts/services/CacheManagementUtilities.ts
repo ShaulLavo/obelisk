@@ -64,11 +64,6 @@ export class CacheManagementUtilities {
 			return
 		}
 
-		console.log(
-			'[CacheManagementUtilities] Starting automated maintenance',
-			schedule
-		)
-
 		this.maintenanceInterval = window.setInterval(async () => {
 			if (this.isMaintenanceRunning) {
 				return // Skip if maintenance is already running
@@ -101,7 +96,6 @@ export class CacheManagementUtilities {
 		}
 
 		cacheMonitoringService.stopMonitoring()
-		console.log('[CacheManagementUtilities] Stopped automated maintenance')
 	}
 
 	/**

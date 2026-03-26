@@ -47,7 +47,6 @@ export class CacheManifestService {
 					swStats = await serviceWorkerManager.getCacheStats()
 				}
 			} catch (error) {
-				console.warn('[CacheManifestService] Failed to get SW stats:', error)
 			}
 
 			// Build manifest entries

@@ -35,7 +35,6 @@ export class ServiceWorkerManager {
 	 */
 	async init(): Promise<void> {
 		if (!('serviceWorker' in navigator)) {
-			console.warn('[ServiceWorkerManager] Service Worker not supported')
 			return
 		}
 

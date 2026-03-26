@@ -103,7 +103,6 @@ export const FontErrorBoundary = (props: FontErrorBoundaryProps) => {
 		const currentRetryCount = retryCount()
 
 		if (currentRetryCount >= maxRetries) {
-			console.log('[FontErrorBoundary] Max retries reached, not retrying')
 			return
 		}
 

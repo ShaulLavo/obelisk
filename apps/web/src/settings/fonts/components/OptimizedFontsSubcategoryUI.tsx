@@ -164,7 +164,6 @@ const OptimizedFontsContent = () => {
 	onCleanup(async () => {
 		// Optional: Clean up resources if needed
 		if (import.meta.env.DEV) {
-			console.log('🧹 Cleaning up font resources...')
 		}
 	})
 

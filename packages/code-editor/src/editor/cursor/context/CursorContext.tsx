@@ -348,7 +348,6 @@ export function CursorProvider(props: CursorProviderProps) {
 			newLineStarts[i] = prevLineStarts[i]! - 1
 		}
 
-		const t0 = performance.now()
 		batch(() => {
 			setDocumentLength((prev) => prev - 1)
 			setLineStarts(newLineStarts)
