@@ -65,11 +65,3 @@ export function isBinaryChunk(
 
 	return false
 }
-
-/**
- * Trim whitespace from decoded line content.
- * Handles common whitespace: space, tab, CR, LF.
- */
-export function trimLine(line: string): string {
-	return line.trim()
-}

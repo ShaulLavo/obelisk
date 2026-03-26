@@ -258,22 +258,8 @@ export class GrepCoordinator {
 					const worker = this.#workerPool[0]!.proxy
 					const result = await worker.grepFile(task)
 
-					if (!result.error) {
-						if (options.filesWithMatches) {
-							if (result.matchCount && result.matchCount > 0) {
-								yield { ...result, matches: [] }
-							}
-						} else if (options.filesWithoutMatch) {
-							if (!result.matchCount || result.matchCount === 0) {
-								yield { ...result, matches: [] }
-							}
-						} else if (
-							result.matches.length > 0 ||
-							(options.count && result.matchCount)
-						) {
-							yield result
-						}
-					}
+					const filtered = this.#filterResult(result, options)
+					if (filtered) yield filtered
 					continue
 				}
 			} catch {
@@ -305,22 +291,8 @@ export class GrepCoordinator {
 							const worker = this.#workerPool[0]!.proxy
 							const result = await worker.grepFile(task)
 
-							if (!result.error) {
-								if (options.filesWithMatches) {
-									if (result.matchCount && result.matchCount > 0) {
-										yield { ...result, matches: [] } // Empty matches, just path matters
-									}
-								} else if (options.filesWithoutMatch) {
-									if (!result.matchCount || result.matchCount === 0) {
-										yield { ...result, matches: [] }
-									}
-								} else if (
-									result.matches.length > 0 ||
-									(options.count && result.matchCount)
-								) {
-									yield result
-								}
-							}
+							const filtered = this.#filterResult(result, options)
+							if (filtered) yield filtered
 						} catch {
 							// Skip files we can't access
 						}
@@ -328,6 +300,32 @@ export class GrepCoordinator {
 				}
 			} catch {}
 		}
+	}
+
+	/**
+	 * Filter a grep result based on output mode (filesWithMatches, filesWithoutMatch, normal).
+	 * Returns the result to yield, or null if it should be skipped.
+	 */
+	#filterResult(
+		result: GrepFileResult,
+		options: GrepOptions
+	): GrepFileResult | null {
+		if (result.error) return null
+
+		if (options.filesWithMatches) {
+			return result.matchCount && result.matchCount > 0
+				? { ...result, matches: [] }
+				: null
+		}
+		if (options.filesWithoutMatch) {
+			return !result.matchCount || result.matchCount === 0
+				? { ...result, matches: [] }
+				: null
+		}
+		if (result.matches.length > 0 || (options.count && result.matchCount)) {
+			return result
+		}
+		return null
 	}
 
 	#resolveOptions(options: GrepOptions): GrepFileTask['options'] {

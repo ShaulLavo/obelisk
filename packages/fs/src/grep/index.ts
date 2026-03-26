@@ -57,7 +57,7 @@ export {
 	findByteForward,
 } from './byteSearch'
 
-export { extractLine, isBinaryChunk, trimLine } from './lineExtractor'
+export { extractLine, isBinaryChunk } from './lineExtractor'
 
 export {
 	streamChunksWithOverlap,

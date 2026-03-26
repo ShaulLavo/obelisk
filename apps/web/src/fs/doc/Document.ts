@@ -53,10 +53,8 @@ export function createDocument(options: CreateDocumentOptions): Document {
 		return baseContent() !== diskContent()
 	})
 
-	// Derived: isStale (disk changed since last load)
-	const isStale = createMemo(() => {
-		return hasExternalChanges()
-	})
+	// isStale is an alias for hasExternalChanges (disk changed since last load)
+	const isStale = hasExternalChanges
 
 	// Derived: syncState
 	const syncState: Accessor<SyncState> = createMemo(() => {
@@ -111,9 +109,7 @@ export function createDocument(options: CreateDocumentOptions): Document {
 		})
 	}
 
-	const reload = async (): Promise<void> => {
-		await load()
-	}
+	const reload = load
 
 	const notifyExternalChange = (newContent: string, mtime: number): void => {
 		batch(() => {
@@ -133,9 +129,7 @@ export function createDocument(options: CreateDocumentOptions): Document {
 		})
 	}
 
-	const resolveKeepLocal = async (): Promise<void> => {
-		await save()
-	}
+	const resolveKeepLocal = save
 
 	const resolveAcceptDisk = async (): Promise<void> => {
 		const disk = diskContent()

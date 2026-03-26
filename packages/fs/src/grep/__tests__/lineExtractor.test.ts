@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { extractLine, isBinaryChunk, trimLine } from '../lineExtractor'
+import { extractLine, isBinaryChunk } from '../lineExtractor'
 
 const encode = (s: string) => new TextEncoder().encode(s)
 
@@ -97,27 +97,5 @@ describe('isBinaryChunk', () => {
 
 		expect(isBinaryChunk(chunk, 40)).toBe(false) // Sample misses null
 		expect(isBinaryChunk(chunk, 60)).toBe(true) // Sample finds null
-	})
-})
-
-describe('trimLine', () => {
-	it('trims leading whitespace', () => {
-		expect(trimLine('  hello')).toBe('hello')
-	})
-
-	it('trims trailing whitespace', () => {
-		expect(trimLine('hello  ')).toBe('hello')
-	})
-
-	it('trims tabs', () => {
-		expect(trimLine('\thello\t')).toBe('hello')
-	})
-
-	it('trims mixed whitespace', () => {
-		expect(trimLine('  \t hello \t  ')).toBe('hello')
-	})
-
-	it('handles empty string', () => {
-		expect(trimLine('')).toBe('')
 	})
 })
