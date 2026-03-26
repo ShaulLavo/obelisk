@@ -293,7 +293,6 @@ export class FontLoadingOptimizer {
 					monitor.completeFontDownload(fontName);
 					resolve();
 				} catch (error) {
-					console.error(`Font download failed for ${fontName}:`, error);
 					reject(error);
 				} finally {
 					this.activeDownloads--;

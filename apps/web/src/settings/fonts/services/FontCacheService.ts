@@ -31,7 +31,6 @@ export class FontCacheService {
 			this.cache = await caches.open(FontCacheService.CACHE_NAME)
 			this.initialized = true
 		} catch (error) {
-			console.error('Failed to initialize FontCacheService:', error)
 
 			const recovery = await cacheErrorRecovery.recoverFromError(error as Error)
 
@@ -42,7 +41,6 @@ export class FontCacheService {
 					this.notifyFallbackMode(recovery.message)
 				}
 			} else {
-				console.error('[FontCacheService] Recovery failed, throwing error')
 				throw error
 			}
 		}
@@ -94,7 +92,6 @@ export class FontCacheService {
 
 			return fontData
 		} catch (error) {
-			console.error(`[FontCacheService] Error downloading font ${name}:`, error)
 
 			const recovery = await cacheErrorRecovery.recoverFromError(error as Error)
 

@@ -184,7 +184,7 @@ export const createFontStore = (): FontStore => {
 								await fontCacheService.storeFont(name, bytes.buffer)
 								await fontInstallationService.installFont(name)
 							} catch (e) {
-								console.error(`Failed to install ${name}`, e)
+								// Error handled by caller
 							}
 						})()
 					)
@@ -197,7 +197,7 @@ export const createFontStore = (): FontStore => {
 				refetchCacheStats()
 			})
 		} catch (error) {
-			console.error('[FontStore] Batch download failed:', error)
+			// Error handled by caller
 		} finally {
 			setState('downloadQueue', (queue) => {
 				const newQueue = new Set(queue)

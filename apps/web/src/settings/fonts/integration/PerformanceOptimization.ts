@@ -140,7 +140,6 @@ export class FontPerformanceOptimizer {
 				this.performanceMonitor.completeFontDownload(fontName, false)
 			}
 		} catch (error) {
-			console.error(`Optimized font download failed for ${fontName}:`, error)
 			throw error
 		}
 	}
@@ -163,10 +162,6 @@ export class FontPerformanceOptimizer {
 				this.performanceMonitor.completeFontInstallation(fontName, size)
 			}
 		} catch (error) {
-			console.error(
-				`Optimized font installation failed for ${fontName}:`,
-				error
-			)
 			throw error
 		}
 	}

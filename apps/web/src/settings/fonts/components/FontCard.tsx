@@ -41,8 +41,7 @@ export const FontCard = (props: FontCardProps) => {
 		try {
 			await actions.downloadFont(props.name)
 		} catch (error) {
-			console.error('[FontCard] Failed to download font:', props.name, error)
-			// Error handling is done in the store, just log here
+			// Error handling is done in the store
 		}
 	}
 

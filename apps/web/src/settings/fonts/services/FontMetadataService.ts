@@ -39,7 +39,6 @@ export class FontMetadataService {
 			await this.store.ready()
 			this.initialized = true
 		} catch (error) {
-			console.error('Failed to initialize FontMetadataService:', error)
 			// In test environment, we can still mark as initialized to allow testing
 			if (process.env.NODE_ENV === 'test' || typeof window === 'undefined') {
 				this.initialized = true

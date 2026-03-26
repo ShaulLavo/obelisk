@@ -229,10 +229,6 @@ export const FontErrorBoundary = (props: FontErrorBoundaryProps) => {
 				// Call onError callback if provided
 				props.onError?.(errorInfo)
 
-				console.error(
-					'[FontErrorBoundary] Caught error:',
-					JSON.stringify(errorInfo, null, 2)
-				)
 
 				const fallbackComponent =
 					props.fallback?.(errorInfo, handleRetry) ??
@@ -260,10 +256,6 @@ export const FontDownloadErrorBoundary = (
 			maxRetries={3}
 			retryDelay={2000}
 			onError={(error) => {
-				console.error(
-					`[FontDownloadErrorBoundary] Font download error for ${props.fontName}:`,
-					error
-				)
 				props.onError?.(error)
 			}}
 		/>
@@ -282,7 +274,6 @@ export const FontCacheErrorBoundary = (
 			maxRetries={2}
 			retryDelay={1000}
 			onError={(error) => {
-				console.error('[FontCacheErrorBoundary] Font cache error:', error)
 				props.onError?.(error)
 			}}
 		/>

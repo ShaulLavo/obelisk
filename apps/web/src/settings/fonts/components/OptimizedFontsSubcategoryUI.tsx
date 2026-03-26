@@ -137,7 +137,6 @@ const OptimizedFontsContent = () => {
 					await registry.downloadFont(font.id)
 				})
 			} catch (error) {
-				console.error('[OptimizedFontsSubcategoryUI] Download failed:', error)
 			}
 		})
 	}
@@ -148,7 +147,6 @@ const OptimizedFontsContent = () => {
 			try {
 				await registry.removeFont(font.id)
 			} catch (error) {
-				console.error('[OptimizedFontsSubcategoryUI] Remove failed:', error)
 			}
 		})
 	}

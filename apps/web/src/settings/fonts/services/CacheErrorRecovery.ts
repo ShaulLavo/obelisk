@@ -120,7 +120,6 @@ export class CacheErrorRecoveryService {
 					}
 			}
 		} catch (recoveryError) {
-			console.error('[CacheErrorRecovery] Recovery failed:', recoveryError)
 
 			// Last resort: disable caching entirely
 			return await this.disableCaching()
@@ -159,7 +158,6 @@ export class CacheErrorRecoveryService {
 				fallbackActive: true,
 			}
 		} catch (error) {
-			console.error('[CacheErrorRecovery] localStorage not available:', error)
 			return await this.enableMemoryFallback()
 		}
 	}
@@ -196,7 +194,6 @@ export class CacheErrorRecoveryService {
 				fallbackActive: false,
 			}
 		} catch (error) {
-			console.error('[CacheErrorRecovery] Failed to clear cache:', error)
 			return await this.enableMemoryFallback()
 		}
 	}
@@ -233,7 +230,6 @@ export class CacheErrorRecoveryService {
 				fallbackActive: false,
 			}
 		} catch (error) {
-			console.error('[CacheErrorRecovery] Failed to reduce cache size:', error)
 			return await this.clearAndRebuildCache()
 		}
 	}

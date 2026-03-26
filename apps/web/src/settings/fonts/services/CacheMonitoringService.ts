@@ -178,11 +178,6 @@ export class CacheMonitoringService {
 				},
 			}
 		} catch (error) {
-			console.error(
-				'[CacheMonitoringService] Failed to get cache stats:',
-				error
-			)
-
 			return this.getDefaultStats()
 		}
 	}
@@ -252,8 +247,6 @@ export class CacheMonitoringService {
 				newStats: finalStats,
 			}
 		} catch (error) {
-			console.error('[CacheMonitoringService] Cache cleanup failed:', error)
-
 			return {
 				success: false,
 				removedFonts: [],
@@ -334,8 +327,6 @@ export class CacheMonitoringService {
 
 				return healthCheck
 		} catch (error) {
-			console.error('[CacheMonitoringService] Health check failed:', error)
-
 			return {
 				status: 'critical',
 				issues: [`Health check failed: ${error instanceof Error ? error.message : String(error)}`],
@@ -423,10 +414,6 @@ export class CacheMonitoringService {
 				leastUsedFonts,
 			}
 		} catch (error) {
-			console.error(
-				'[CacheMonitoringService] Failed to generate utilization report:',
-				error
-			)
 			throw error
 		}
 	}

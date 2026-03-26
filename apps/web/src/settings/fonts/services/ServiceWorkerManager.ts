@@ -71,10 +71,6 @@ export class ServiceWorkerManager {
 				}
 			})
 		} catch (error) {
-			console.error(
-				'[ServiceWorkerManager] Failed to register service worker:',
-				error
-			)
 			throw error
 		}
 	}
@@ -139,10 +135,6 @@ export class ServiceWorkerManager {
 				.filter((request) => this.isFontRequest(new URL(request.url)))
 				.map((request) => request.url)
 		} catch (error) {
-			console.error(
-				'[ServiceWorkerManager] Failed to get cache manifest:',
-				error
-			)
 			return []
 		}
 	}
@@ -289,10 +281,6 @@ export class ServiceWorkerManager {
 		try {
 			await this.registration.update()
 		} catch (error) {
-			console.error(
-				'[ServiceWorkerManager] Failed to update service worker:',
-				error
-			)
 			throw error
 		}
 	}
@@ -310,10 +298,6 @@ export class ServiceWorkerManager {
 			this.registration = null
 			this.isRegistered = false
 		} catch (error) {
-			console.error(
-				'[ServiceWorkerManager] Failed to unregister service worker:',
-				error
-			)
 			throw error
 		}
 	}

@@ -77,11 +77,6 @@ export class CacheManifestService {
 				interceptPatterns: CacheManifestService.FONT_URL_PATTERNS,
 			}
 		} catch (error) {
-			console.error(
-				'[CacheManifestService] Failed to generate manifest:',
-				error
-			)
-
 			// Return empty manifest on error
 			return {
 				version: CacheManifestService.MANIFEST_VERSION,
@@ -155,7 +150,6 @@ export class CacheManifestService {
 
 			return true
 		} catch (error) {
-			console.error('[CacheManifestService] Manifest validation error:', error)
 			return false
 		}
 	}
@@ -178,11 +172,9 @@ export class CacheManifestService {
 			if (this.validateManifest(manifest)) {
 				return manifest
 			} else {
-				console.error('[CacheManifestService] Invalid manifest structure')
 				return null
 			}
 		} catch (error) {
-			console.error('[CacheManifestService] Failed to import manifest:', error)
 			return null
 		}
 	}
@@ -213,8 +205,6 @@ export class CacheManifestService {
 				totalCacheSize: manifest.totalSize,
 			}
 		} catch (error) {
-			console.error('[CacheManifestService] Failed to get cache status:', error)
-
 			return {
 				isServiceWorkerActive: false,
 				cacheApiSupported: 'caches' in window,

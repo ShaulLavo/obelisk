@@ -141,7 +141,7 @@ export class FontDownloadService {
 			})
 
 		} catch (error) {
-			console.error('[FontDownloadService] Font download failed:', name, error)
+			// Error propagated to caller
 
 			const errorMessage =
 				error instanceof Error ? error.message : 'Unknown error'
@@ -200,11 +200,7 @@ export class FontDownloadService {
 			}
 
 		} catch (error) {
-			console.error(
-				'[FontDownloadService] Font installation failed:',
-				name,
-				error
-			)
+			// Error propagated to caller
 			throw error
 		}
 	}

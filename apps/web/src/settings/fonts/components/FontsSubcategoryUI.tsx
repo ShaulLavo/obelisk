@@ -80,7 +80,6 @@ const FontsContent = () => {
 			try {
 				await registry.downloadFont(font.id)
 			} catch (error) {
-				console.error('[FontsSubcategoryUI] Download failed:', error)
 			}
 		})
 	}
@@ -91,7 +90,6 @@ const FontsContent = () => {
 			try {
 				await registry.removeFont(font.id)
 			} catch (error) {
-				console.error('[FontsSubcategoryUI] Remove failed:', error)
 			}
 		})
 	}

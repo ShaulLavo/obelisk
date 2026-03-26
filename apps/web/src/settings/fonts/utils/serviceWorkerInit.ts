@@ -75,10 +75,6 @@ export async function initializeServiceWorker(
 			monitoringActive,
 		}
 	} catch (error: any) {
-		console.error(
-			'[ServiceWorkerInit] Failed to initialize service worker:',
-			error
-		)
 
 		return {
 			success: false,
@@ -126,10 +122,6 @@ export async function cleanupServiceWorker(): Promise<void> {
 		// await serviceWorkerManager.unregister()
 
 	} catch (error) {
-		console.error(
-			'[ServiceWorkerInit] Failed to cleanup service worker:',
-			error
-		)
 	}
 }
 
@@ -145,7 +137,6 @@ export async function updateServiceWorker(): Promise<boolean> {
 		await serviceWorkerManager.forceUpdate()
 		return true
 	} catch (error) {
-		console.error('[ServiceWorkerInit] Failed to update service worker:', error)
 		return false
 	}
 }
@@ -161,7 +152,6 @@ export async function getServiceWorkerCacheStats(): Promise<any> {
 
 		return await serviceWorkerManager.getCacheStats()
 	} catch (error) {
-		console.error('[ServiceWorkerInit] Failed to get cache stats:', error)
 		return null
 	}
 }

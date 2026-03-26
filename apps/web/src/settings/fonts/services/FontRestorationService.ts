@@ -72,19 +72,12 @@ export class FontRestorationService {
 						document.fonts.add(fontFace)
 
 								} catch (error) {
-						console.error(
-							`[FontRestorationService] Failed to restore font ${fontName}:`,
-							error
-						)
 
 						// Remove from cache if restoration fails (font data might be corrupted)
 						try {
 							await fontCacheService.removeFont(fontName)
 										} catch (removeError) {
-							console.error(
-								`[FontRestorationService] Failed to remove corrupted font ${fontName}:`,
-								removeError
-							)
+							// Error handled silently
 						}
 					}
 				}
@@ -96,7 +89,6 @@ export class FontRestorationService {
 			await fontInstallationService.initialize()
 
 		} catch (error) {
-			console.error('[FontRestorationService] Font restoration failed:', error)
 			throw error
 		}
 	}

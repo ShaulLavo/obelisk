@@ -296,8 +296,7 @@ export class FontResourceCleanup {
 				verification.documentFontsClean = true
 			}
 		} catch (error) {
-			console.error('Failed to verify cleanup:', error)
-		}
+			}
 
 		return verification
 	}
