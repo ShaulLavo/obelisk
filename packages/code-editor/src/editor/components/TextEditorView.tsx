@@ -359,10 +359,6 @@ export const TextEditorView = (props: EditorProps) => {
 
 	let restoreAttemptedForPath: string | undefined
 	let saveTimeoutId: ReturnType<typeof setTimeout> | undefined
-	// Track when we last restored scroll to ignore spurious scroll events
-	let lastScrollRestoreTime = 0
-	const SCROLL_RESTORE_DEBOUNCE_MS = 500
-
 	createEffect(() => {
 		const element = scrollElement()
 		const path = props.document.filePath()
@@ -399,7 +395,6 @@ export const TextEditorView = (props: EditorProps) => {
 			}
 
 			restoreAttemptedForPath = path
-			lastScrollRestoreTime = Date.now()
 			element.scrollTo({ top: savedScrollTop, left: initialPos.scrollLeft ?? 0 })
 		}
 	})

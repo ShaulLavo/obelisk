@@ -223,7 +223,6 @@ describe('Typing Performance Benchmarks', () => {
 			const input = editor.getInputElement()
 			expect(input).toBeTruthy()
 
-			const start = performance.now()
 			const latencies = await typeFast(input!, 'abcdefghijklmnopqrstuvwxyz')
 
 			expect(latencies.length).toBe(26)
