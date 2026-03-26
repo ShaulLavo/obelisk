@@ -82,7 +82,7 @@ export const createFontStore = (): FontStore => {
 				await fontInstallationService.initialize()
 
 				const cachedFonts = await fontCacheService.getInstalledFonts()
-				const installedInDocument = fontInstallationService.getInstalledFonts()
+				const installedInDocument = fontInstallationService.syncInstalledFonts()
 
 				const installedFonts = new Set<string>()
 				for (const fontName of cachedFonts) {

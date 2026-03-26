@@ -4,7 +4,6 @@ export type {
 	AutocompleteCallback,
 	AutocompleteHandler,
 	CharPromptConfig,
-	ILocalEchoController,
 	LocalEchoOptions,
 	PromptConfig,
 	TerminalPosition,

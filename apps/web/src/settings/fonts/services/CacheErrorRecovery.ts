@@ -182,16 +182,19 @@ export class CacheErrorRecoveryService {
 
 	private async clearAndRebuildCache(): Promise<CacheRecoveryResult> {
 		try {
+			// Best-effort cleanup — each step is independent, failures don't block others
 			if ('caches' in window) {
 				try {
 					await caches.delete('nerdfonts-v1')
-				} catch (error) {
+				} catch {
+					// Cache API may be unavailable or restricted
 				}
 			}
 
 			try {
 				await fontMetadataService.clearAllMetadata()
-			} catch (error) {
+			} catch {
+				// Metadata store may already be corrupted
 			}
 
 			try {
@@ -201,7 +204,8 @@ export class CacheErrorRecoveryService {
 						localStorage.removeItem(key)
 					}
 				}
-			} catch (error) {
+			} catch {
+				// localStorage may be full or restricted
 			}
 
 			return {
@@ -237,8 +241,9 @@ export class CacheErrorRecoveryService {
 					}
 
 					await fontMetadataService.removeFontMetadata(metadata.name)
-				} catch (error) {
-					}
+				} catch {
+					// Individual font removal failure doesn't block remaining cleanup
+				}
 			}
 
 			return {

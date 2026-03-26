@@ -68,10 +68,8 @@ export interface CacheHealthCheck {
 }
 
 export class CacheMonitoringService {
-	private static readonly MONITORING_INTERVAL = 60000 // 1 minute
 	private static readonly HEALTH_CHECK_INTERVAL = 300000 // 5 minutes
 
-	private monitoringInterval: number | null = null
 	private healthCheckInterval: number | null = null
 	private performanceMetrics = new Map<string, number[]>()
 	private errorCount = 0
@@ -81,16 +79,9 @@ export class CacheMonitoringService {
 	 * Start cache monitoring
 	 */
 	startMonitoring(): void {
-		if (this.monitoringInterval) {
+		if (this.healthCheckInterval) {
 			return // Already monitoring
 		}
-
-		this.monitoringInterval = window.setInterval(async () => {
-			try {
-				await this.collectMetrics()
-			} catch (error) {
-			}
-		}, CacheMonitoringService.MONITORING_INTERVAL)
 
 		this.healthCheckInterval = window.setInterval(async () => {
 			try {
@@ -104,16 +95,10 @@ export class CacheMonitoringService {
 	 * Stop cache monitoring
 	 */
 	stopMonitoring(): void {
-		if (this.monitoringInterval) {
-			clearInterval(this.monitoringInterval)
-			this.monitoringInterval = null
-		}
-
 		if (this.healthCheckInterval) {
 			clearInterval(this.healthCheckInterval)
 			this.healthCheckInterval = null
 		}
-
 	}
 
 	/**
@@ -374,54 +359,47 @@ export class CacheMonitoringService {
 		oldestFonts: Array<{ name: string; age: number }>
 		leastUsedFonts: Array<{ name: string; lastAccessed: Date }>
 	}> {
-		try {
-			const { fontMetadataService } = await import('./FontMetadataService')
-			const stats = await this.getCacheStats()
-			const allMetadata = await fontMetadataService.getAllFontMetadata()
+		const { fontMetadataService } = await import('./FontMetadataService')
+		const stats = await this.getCacheStats()
+		const allMetadata = await fontMetadataService.getAllFontMetadata()
 
-			const totalCapacity = 100 * 1024 * 1024 // 100MB
-			const usedSpace = stats.combined.totalSize
-			const utilizationPercentage = (usedSpace / totalCapacity) * 100
+		const totalCapacity = 100 * 1024 * 1024 // 100MB
+		const usedSpace = stats.combined.totalSize
+		const utilizationPercentage = (usedSpace / totalCapacity) * 100
 
-			const topFontsBySize = allMetadata
-				.sort((a, b) => b.size - a.size)
-				.slice(0, 10)
-				.map((font) => ({ name: font.name, size: font.size }))
+		const topFontsBySize = allMetadata
+			.sort((a, b) => b.size - a.size)
+			.slice(0, 10)
+			.map((font) => ({ name: font.name, size: font.size }))
 
-			const now = new Date()
-			const oldestFonts = allMetadata
-				.sort((a, b) => a.installedAt.getTime() - b.installedAt.getTime())
-				.slice(0, 10)
-				.map((font) => ({
-					name: font.name,
-					age: now.getTime() - font.installedAt.getTime(),
-				}))
+		const now = new Date()
+		const oldestFonts = allMetadata
+			.sort((a, b) => a.installedAt.getTime() - b.installedAt.getTime())
+			.slice(0, 10)
+			.map((font) => ({
+				name: font.name,
+				age: now.getTime() - font.installedAt.getTime(),
+			}))
 
-			const leastUsedFonts = allMetadata
-				.sort((a, b) => a.lastAccessed.getTime() - b.lastAccessed.getTime())
-				.slice(0, 10)
-				.map((font) => ({
-					name: font.name,
-					lastAccessed: font.lastAccessed,
-				}))
+		const leastUsedFonts = allMetadata
+			.sort((a, b) => a.lastAccessed.getTime() - b.lastAccessed.getTime())
+			.slice(0, 10)
+			.map((font) => ({
+				name: font.name,
+				lastAccessed: font.lastAccessed,
+			}))
 
-			return {
-				totalCapacity,
-				usedSpace,
-				utilizationPercentage,
-				topFontsBySize,
-				oldestFonts,
-				leastUsedFonts,
-			}
-		} catch (error) {
-			throw error
+		return {
+			totalCapacity,
+			usedSpace,
+			utilizationPercentage,
+			topFontsBySize,
+			oldestFonts,
+			leastUsedFonts,
 		}
 	}
 
 	// Private helper methods
-
-	private async collectMetrics(): Promise<void> {
-	}
 
 	private calculateCacheHitRate(): number {
 		const cacheHits = this.performanceMetrics.get('cache-hit')?.length || 0

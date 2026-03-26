@@ -135,7 +135,10 @@ export async function loadFile(options: LoadFileOptions): Promise<FileLoadResult
 						onSyntaxReady(syntax)
 					}
 				})
-				.catch(() => {})
+				.catch((e) => {
+					// Expected for unsupported languages — tree-sitter may not have a parser
+					console.debug('tree-sitter parse skipped (cached path):', path, e)
+				})
 		}
 
 		return {
@@ -176,7 +179,10 @@ export async function loadFile(options: LoadFileOptions): Promise<FileLoadResult
 						onSyntaxReady(syntax)
 					}
 				})
-				.catch(() => {})
+				.catch((e) => {
+					// Expected for unsupported languages — tree-sitter may not have a parser
+					console.debug('tree-sitter parse skipped:', path, e)
+				})
 		}
 	}
 
@@ -234,6 +240,9 @@ export async function loadSyntax(
 					onSyntaxReady(syntax)
 				}
 			})
-			.catch(() => {})
+			.catch((e) => {
+				// Expected for unsupported languages — tree-sitter may not have a parser
+				console.debug('tree-sitter parse skipped (loadSyntax):', path, e)
+			})
 	}
 }

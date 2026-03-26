@@ -115,7 +115,7 @@ export class PrefetchQueue {
 			try {
 				await draining
 			} catch {
-				// no-op
+				// Drain may reject if workers were interrupted — safe to ignore on reset
 			}
 		}
 		this.stopRequested = false
@@ -177,7 +177,7 @@ export class PrefetchQueue {
 			try {
 				await draining
 			} catch {
-				// no-op
+				// Drain may reject if workers were interrupted — safe to ignore on dispose
 			}
 		}
 		await this.flushIndexBatch()
@@ -528,8 +528,9 @@ export class PrefetchQueue {
 
 		try {
 			await searchService.indexFiles(batch)
-		} catch {
+		} catch (e) {
 			// Search indexing is best-effort — don't block prefetch
+			console.debug('prefetch: search index flush failed', e)
 		}
 	}
 
@@ -636,7 +637,9 @@ export class PrefetchQueue {
 			this.cacheRestored = true
 			this.emitStatus(false)
 			return true
-		} catch {
+		} catch (e) {
+			// Cache restore is best-effort — fall back to full prefetch
+			console.debug('prefetch: cache restore failed', e)
 			return false
 		}
 	}
@@ -652,8 +655,9 @@ export class PrefetchQueue {
 				savedAt: Date.now(),
 			})
 			this.lastCacheSaveCount = this.loadedDirFileCounts.size
-		} catch {
+		} catch (e) {
 			// Cache persistence is best-effort — don't block prefetch
+			console.debug('prefetch: cache save failed', e)
 		}
 	}
 

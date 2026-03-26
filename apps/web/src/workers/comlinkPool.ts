@@ -129,7 +129,9 @@ export class ComlinkPool<T extends object> {
 					(handle.proxy as unknown as Record<symbol, () => void>)[
 						releaseProxy
 					]?.()
-				).catch(() => {})
+				).catch(() => {
+					// Proxy may already be released — safe to ignore during teardown
+				})
 				handle.worker.terminate()
 			})
 		)

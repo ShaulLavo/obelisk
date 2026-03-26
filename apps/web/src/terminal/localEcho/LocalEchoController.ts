@@ -15,7 +15,6 @@ import type {
 	AutocompleteHandler,
 	CharPromptConfig,
 	Disposable,
-	ILocalEchoController,
 	LocalEchoOptions,
 	OutputMode,
 	PromptConfig,
@@ -141,7 +140,7 @@ const sanitizeAnsiOutput = (value: string): string => {
  * - Tab completion with autocomplete handlers
  * - Command history navigation
  */
-export class LocalEchoController implements ILocalEchoController {
+export class LocalEchoController {
 	private term: TerminalLike | null = null
 	private history: HistoryController
 	private maxAutocompleteEntries: number

@@ -21,14 +21,18 @@ export class FontMetadataService {
 	private static readonly AVAILABLE_FONTS_KEY = 'available-fonts'
 	private static readonly CACHE_EXPIRY_HOURS = 24
 
-	private store: LocalForage
+	private _store: LocalForage | null = null
 	private initialized = false
 
-	constructor() {
-		this.store = localforage.createInstance({
-			name: FontMetadataService.DB_NAME,
-			storeName: FontMetadataService.STORE_NAME,
-		})
+	/** Lazily create the localforage instance on first access */
+	private get store(): LocalForage {
+		if (!this._store) {
+			this._store = localforage.createInstance({
+				name: FontMetadataService.DB_NAME,
+				storeName: FontMetadataService.STORE_NAME,
+			})
+		}
+		return this._store
 	}
 
 	async init(): Promise<void> {
@@ -50,12 +54,7 @@ export class FontMetadataService {
 
 	async storeFontMetadata(metadata: FontMetadata): Promise<void> {
 		await this.ensureInitialized()
-
-		try {
-			await this.store.setItem(metadata.name, metadata)
-		} catch (error) {
-			throw error
-		}
+		await this.store.setItem(metadata.name, metadata)
 	}
 
 	async getFontMetadata(name: string): Promise<FontMetadata | null> {
@@ -94,12 +93,7 @@ export class FontMetadataService {
 
 	async removeFontMetadata(name: string): Promise<void> {
 		await this.ensureInitialized()
-
-		try {
-			await this.store.removeItem(name)
-		} catch (error) {
-			throw error
-		}
+		await this.store.removeItem(name)
 	}
 
 	async updateLastAccessed(name: string): Promise<void> {
@@ -246,12 +240,7 @@ export class FontMetadataService {
 
 	async clearAllMetadata(): Promise<void> {
 		await this.ensureInitialized()
-
-		try {
-			await this.store.clear()
-		} catch (error) {
-			throw error
-		}
+		await this.store.clear()
 	}
 
 	private async ensureInitialized(): Promise<void> {

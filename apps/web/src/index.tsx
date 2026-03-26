@@ -10,7 +10,12 @@ import '@repo/code-editor/styles.css'
 
 import App from './App'
 
-installPerfLoggerDevtools()
+// Defer devtools installation to avoid blocking initial render
+if (typeof requestIdleCallback === 'function') {
+	requestIdleCallback(() => installPerfLoggerDevtools())
+} else {
+	setTimeout(() => installPerfLoggerDevtools(), 0)
+}
 
 const root = document.getElementById('root')
 

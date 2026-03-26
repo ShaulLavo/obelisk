@@ -26,7 +26,10 @@ const TanStackDevtools = lazy(() =>
 
 export const storageManager = createLocalStorageManager('ui-theme')
 
-export const Providers: ParentComponent = (props) => {
+/**
+ * Theme and settings providers - lightweight, needed immediately.
+ */
+const CoreProviders: ParentComponent = (props) => {
 	return (
 		<>
 			<ColorModeScript storageType={storageManager.type} />
@@ -37,43 +40,7 @@ export const Providers: ParentComponent = (props) => {
 						<KeymapProvider>
 							<FocusProvider>
 								<FontZoomProvider>
-									<FsProvider>
-									<LayoutManagerProvider>
-										<FontRegistryProvider>
-											<CommandPaletteProvider>
-												<ThemedToaster />
-												<Modal />
-												<CommandPalette />
-												{props.children}
-
-												{/* TanStack Devtools - hidden to prevent layout jumps */}
-												<Show when={null}>
-													<Suspense>
-														<TanStackDevtools
-															config={{
-																position: 'bottom-right',
-																hideUntilHover: false,
-																openHotkey: ['Control', 'Shift', 'D'],
-																defaultOpen: true,
-															}}
-															eventBusConfig={{
-																debug: false,
-																connectToServerBus: true,
-															}}
-															plugins={[
-																{
-																	name: 'Performance',
-																	render: () => <PerfPanel />,
-																	defaultOpen: true,
-																},
-															]}
-														/>
-													</Suspense>
-												</Show>
-											</CommandPaletteProvider>
-										</FontRegistryProvider>
-									</LayoutManagerProvider>
-									</FsProvider>
+									{props.children}
 								</FontZoomProvider>
 							</FocusProvider>
 						</KeymapProvider>
@@ -81,5 +48,71 @@ export const Providers: ParentComponent = (props) => {
 				</ThemeProvider>
 			</ColorModeProvider>
 		</>
+	)
+}
+
+/**
+ * Filesystem and font providers - heavier, depend on core providers.
+ */
+const WorkspaceProviders: ParentComponent = (props) => {
+	return (
+		<FsProvider>
+			<LayoutManagerProvider>
+				<FontRegistryProvider>
+					{props.children}
+				</FontRegistryProvider>
+			</LayoutManagerProvider>
+		</FsProvider>
+	)
+}
+
+/**
+ * Command palette and UI overlay providers - depend on workspace context.
+ */
+const OverlayProviders: ParentComponent = (props) => {
+	return (
+		<CommandPaletteProvider>
+			<ThemedToaster />
+			<Modal />
+			<CommandPalette />
+			{props.children}
+
+			{/* TanStack Devtools - hidden to prevent layout jumps */}
+			<Show when={null}>
+				<Suspense>
+					<TanStackDevtools
+						config={{
+							position: 'bottom-right',
+							hideUntilHover: false,
+							openHotkey: ['Control', 'Shift', 'D'],
+							defaultOpen: true,
+						}}
+						eventBusConfig={{
+							debug: false,
+							connectToServerBus: true,
+						}}
+						plugins={[
+							{
+								name: 'Performance',
+								render: () => <PerfPanel />,
+								defaultOpen: true,
+							},
+						]}
+					/>
+				</Suspense>
+			</Show>
+		</CommandPaletteProvider>
+	)
+}
+
+export const Providers: ParentComponent = (props) => {
+	return (
+		<CoreProviders>
+			<WorkspaceProviders>
+				<OverlayProviders>
+					{props.children}
+				</OverlayProviders>
+			</WorkspaceProviders>
+		</CoreProviders>
 	)
 }

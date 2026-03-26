@@ -119,15 +119,7 @@ export class CacheManagementUtilities {
 				errors.push(`Failed to remove duplicates: ${error instanceof Error ? error.message : String(error)}`)
 			}
 
-			// 2. Defragment cache storage
-			try {
-				await this.defragmentCache()
-				optimizations.push('Defragmented cache storage')
-			} catch (error) {
-				errors.push(`Failed to defragment cache: ${error instanceof Error ? error.message : String(error)}`)
-			}
-
-			// 3. Update service worker cache
+			// 2. Update service worker cache
 			try {
 				if (serviceWorkerManager.isSupported()) {
 					await serviceWorkerManager.forceUpdate()
@@ -137,15 +129,7 @@ export class CacheManagementUtilities {
 				errors.push(`Failed to update service worker: ${error instanceof Error ? error.message : String(error)}`)
 			}
 
-			// 4. Optimize cache headers and metadata
-			try {
-				await this.optimizeCacheMetadata()
-				optimizations.push('Optimized cache metadata')
-			} catch (error) {
-				errors.push(`Failed to optimize metadata: ${error instanceof Error ? error.message : String(error)}`)
-			}
-
-			// Generate recommendations
+			// 3. Generate recommendations
 			const finalStats = await cacheMonitoringService.getCacheStats()
 
 			if (finalStats.combined.totalSize > 50 * 1024 * 1024) {
@@ -367,14 +351,6 @@ export class CacheManagementUtilities {
 
 	private removeDuplicateEntries(): { spaceSaved: number } {
 		return { spaceSaved: 0 }
-	}
-
-	private defragmentCache(): void {
-		// Placeholder for cache defragmentation
-	}
-
-	private optimizeCacheMetadata(): void {
-		// Placeholder for cache metadata optimization
 	}
 
 	private async getCacheManifest(): Promise<unknown> {

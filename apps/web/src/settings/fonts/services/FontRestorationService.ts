@@ -52,7 +52,7 @@ export class FontRestorationService {
 				async (fontName) => {
 					try {
 						// Check if font is already installed in document.fonts
-						if (fontInstallationService.isFontInstalled(fontName)) {
+						if (fontInstallationService.syncAndCheckFontInstalled(fontName)) {
 											return
 						}
 

@@ -107,7 +107,11 @@ export class FontInstallationService {
 		this.installedFonts.delete(name)
 	}
 
-	isFontInstalled(name: string): boolean {
+	/**
+	 * Syncs internal state with `document.fonts` for the given font name,
+	 * then returns whether the font is currently installed.
+	 */
+	syncAndCheckFontInstalled(name: string): boolean {
 		const internalState = this.installedFonts.has(name)
 		const inDocumentFonts = document.fonts.check(`1em "${name}"`)
 
@@ -120,7 +124,12 @@ export class FontInstallationService {
 		return inDocumentFonts
 	}
 
-	getInstalledFonts(): Set<string> {
+	/**
+	 * Rebuilds the internal installed-fonts set from `document.fonts`.
+	 * This replaces all previously tracked state with a fresh snapshot,
+	 * so callers should be aware this is a sync operation, not a pure getter.
+	 */
+	syncInstalledFonts(): Set<string> {
 		const documentFonts = Array.from(document.fonts)
 			.map((font) => font.family.replace(/"/g, ''))
 			.filter(
@@ -144,7 +153,7 @@ export class FontInstallationService {
 
 	async initialize(): Promise<void> {
 		await document.fonts.ready
-		this.getInstalledFonts()
+		this.syncInstalledFonts()
 	}
 
 	private async getFontDataFromCache(name: string): Promise<ArrayBuffer> {

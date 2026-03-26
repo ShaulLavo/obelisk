@@ -78,7 +78,8 @@ export const createFsMutations = ({
 				setSelectedPath(newPath)
 			})
 		} catch (error) {
-				toast.error('Failed to create directory')
+			console.warn('createDir failed:', newPath, error)
+			toast.error('Failed to create directory')
 		}
 	}
 
@@ -123,7 +124,8 @@ export const createFsMutations = ({
 				setSelectedPath(newPath)
 			})
 		} catch (error) {
-				toast.error('Failed to create file')
+			console.warn('createFile failed:', newPath, error)
+			toast.error('Failed to create file')
 		}
 	}
 
@@ -148,7 +150,8 @@ export const createFsMutations = ({
 				}
 			})
 		} catch (error) {
-				toast.error('Failed to delete entry')
+			console.warn('deleteNode failed:', path, error)
+			toast.error('Failed to delete entry')
 		}
 	}
 

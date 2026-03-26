@@ -52,7 +52,9 @@ export const disposeTreeSitterWorker = async () => {
 	if (!workerHandle) return
 	try {
 		await workerHandle.proxy.dispose()
-	} catch {}
+	} catch {
+		// Worker may already be terminated — safe to ignore during cleanup
+	}
 	;(workerHandle.proxy as unknown as Record<symbol, () => void>)[
 		releaseProxy
 	]?.()
