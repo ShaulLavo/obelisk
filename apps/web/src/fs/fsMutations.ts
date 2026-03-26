@@ -200,12 +200,14 @@ export const createFsMutations = ({
 					window.dispatchEvent(
 						new CustomEvent('settings-file-saved', { detail: parsed })
 					)
-				} catch {
+				} catch (e) {
+					console.warn('Failed to parse saved settings JSON', e)
 				}
 			}
 
 			toast.success('File saved')
-		} catch {
+		} catch (e) {
+			console.warn('saveFile failed:', path, e)
 			toast.error('Failed to save file')
 		} finally {
 			setSaving(false)

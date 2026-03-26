@@ -101,7 +101,9 @@ export class PrefetchQueue {
 		if (this.workerCount < 1) {
 			throw new Error('PrefetchQueue requires at least one worker')
 		}
-		void searchService.init().catch(() => {})
+		void searchService.init().catch((e) => {
+			console.warn('searchService: init failed', e)
+		})
 	}
 
 	async resetForSource(source: FsSource) {

@@ -75,7 +75,8 @@ export async function loadPrefetchCache(): Promise<PrefetchCacheState | null> {
 				resolve(request.result ?? null)
 			}
 		})
-	} catch {
+	} catch (e) {
+		console.warn('prefetchCache: failed to load', e)
 		return null
 	}
 }
@@ -93,8 +94,8 @@ export async function savePrefetchCache(
 			request.onerror = () => reject(request.error)
 			request.onsuccess = () => resolve()
 		})
-	} catch {
-		// Ignore persistence errors
+	} catch (e) {
+		console.warn('prefetchCache: failed to save', e)
 	}
 }
 
@@ -109,7 +110,7 @@ export async function clearPrefetchCache(): Promise<void> {
 			request.onerror = () => reject(request.error)
 			request.onsuccess = () => resolve()
 		})
-	} catch {
-		// Ignore persistence errors
+	} catch (e) {
+		console.warn('prefetchCache: failed to clear', e)
 	}
 }

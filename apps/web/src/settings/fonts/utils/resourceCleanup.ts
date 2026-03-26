@@ -486,7 +486,8 @@ export class FontResourceCleanup {
 				return estimate.usage || 0
 			}
 			return 0
-		} catch (error) {
+		} catch (e) {
+			console.warn('Failed to estimate IndexedDB size:', e)
 			return 0
 		}
 	}
@@ -502,7 +503,8 @@ export class FontResourceCleanup {
 				request.onsuccess = () => resolve(request.result || [])
 				request.onerror = () => reject(request.error)
 			})
-		} catch (error) {
+		} catch (e) {
+			console.warn('Failed to read IndexedDB entries:', e)
 			return []
 		}
 	}
@@ -518,7 +520,8 @@ export class FontResourceCleanup {
 					: 0
 				return now - lastAccessed > maxAge
 			})
-		} catch (error) {
+		} catch (e) {
+			console.warn('Failed to filter old IndexedDB entries:', e)
 			return []
 		}
 	}

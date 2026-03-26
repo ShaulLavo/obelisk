@@ -64,7 +64,8 @@ export class CacheErrorRecoveryService {
 			return 'permission_denied'
 		}
 
-		return 'cache_corruption' // Default fallback
+		console.warn('[CacheErrorRecovery] Unrecognized error, defaulting to cache_corruption:', error.message)
+		return 'cache_corruption'
 	}
 
 	getRecoveryStrategy(errorType: CacheErrorType): CacheRecoveryStrategy {

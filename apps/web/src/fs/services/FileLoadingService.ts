@@ -186,7 +186,9 @@ export async function loadFile(options: LoadFileOptions): Promise<FileLoadResult
 						onSyntaxReady(syntax)
 					}
 				})
-				.catch(() => {})
+				.catch((e) => {
+					console.warn('tree-sitter parse failed:', path, e)
+				})
 		}
 	}
 
@@ -256,6 +258,8 @@ export async function loadSyntax(
 					onSyntaxReady(syntax)
 				}
 			})
-			.catch(() => {})
+			.catch((e) => {
+				console.warn('tree-sitter parse failed:', path, e)
+			})
 	}
 }
