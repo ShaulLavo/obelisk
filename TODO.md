@@ -72,7 +72,7 @@
 
 # Logging, Perf, Infrastructure
 
-- [x] Logger/perf scaffolding (`@repo/logger`, `@repo/perf`)
+- [x] Perf scaffolding (`@repo/perf`)
 
 # Testing
 

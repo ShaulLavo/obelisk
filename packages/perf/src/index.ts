@@ -29,6 +29,7 @@ export {
 	logSummary,
 	logRecentOperations,
 	setLogLevel,
+	installPerfLoggerDevtools,
 } from './perfLogger'
 
 // Global cross-component tracing

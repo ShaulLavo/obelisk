@@ -5,7 +5,7 @@ import {
 	onCleanup,
 	type ParentComponent,
 } from 'solid-js'
-import { createCommandPaletteRegistry } from './registry'
+import { getCommandPaletteRegistry } from './registry'
 import { useCommandPalette } from './useCommandPalette'
 import {
 	registerBuiltinCommands,
@@ -45,7 +45,7 @@ export function useCommandPaletteContext(): CommandPaletteContextValue {
 }
 
 export const CommandPaletteProvider: ParentComponent = (props) => {
-	const registry = createCommandPaletteRegistry()
+	const registry = getCommandPaletteRegistry()
 	const [state, actions, results] = useCommandPalette()
 	const keymapController = useKeymap()
 	const [, fsActions] = useFs()

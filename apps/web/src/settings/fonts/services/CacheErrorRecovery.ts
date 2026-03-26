@@ -42,6 +42,24 @@ export class CacheErrorRecoveryService {
 	}
 
 	categorizeError(error: Error): CacheErrorType {
+		// Check DOMException.name first for reliable classification
+		if (error instanceof DOMException) {
+			switch (error.name) {
+				case 'QuotaExceededError':
+					return 'storage_quota_exceeded'
+				case 'NotFoundError':
+				case 'InvalidStateError':
+					return 'cache_corruption'
+				case 'NotAllowedError':
+				case 'SecurityError':
+					return 'permission_denied'
+				case 'AbortError':
+				case 'UnknownError':
+					return 'indexeddb_unavailable'
+			}
+		}
+
+		// Fall back to message-string matching
 		const message = error.message.toLowerCase()
 
 		if (message.includes('cache') && message.includes('not supported')) {

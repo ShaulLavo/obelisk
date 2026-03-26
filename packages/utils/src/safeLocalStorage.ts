@@ -47,7 +47,6 @@ export function safeRemoveItem(key: string): void {
  * Creates a memory-safe storage adapter that:
  * - Returns undefined if window is not defined (SSR safety)
  * - Wraps all localStorage operations in try-catch blocks
- * - Handles the special "memory" value by removing the key instead of persisting it
  */
 export function createMemorySafeStorage() {
 	if (typeof window === 'undefined') {
@@ -59,19 +58,6 @@ export function createMemorySafeStorage() {
 			return safeGetItem(key)
 		},
 		setItem: (key: string, value: string): void => {
-			let parsed: unknown = value
-			try {
-				parsed = JSON.parse(value)
-			} catch {
-				// Ignore parse failures - treat as literal string value
-			}
-
-			// Special case: if the parsed value is "memory", remove the key
-			if (parsed === 'memory') {
-				safeRemoveItem(key)
-				return
-			}
-
 			safeSetItem(key, value)
 		},
 		removeItem: (key: string): void => {

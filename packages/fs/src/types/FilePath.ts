@@ -147,11 +147,11 @@ export function isRootPath(fp: FilePath): boolean {
 }
 
 /**
- * Type guard to check if a string is a valid FilePath.
- * Note: This only checks the type, not if the file exists.
+ * Type guard to check if a value is a valid FilePath (normalized, no leading slash).
+ * Note: This only checks the format, not if the file exists.
  */
 export function isFilePath(value: unknown): value is FilePath {
-	return typeof value === 'string'
+	return typeof value === 'string' && !value.startsWith('/')
 }
 
 /**

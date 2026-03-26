@@ -154,6 +154,13 @@ class FontPerformanceMonitor {
 		return report;
 	}
 
+	/**
+	 * Get all individual font loading metrics
+	 */
+	getAllFontMetrics(): FontLoadingMetrics[] {
+		return Array.from(this.metrics.values());
+	}
+
 	private updateAggregateMetrics(): void {
 		const fontMetrics = Array.from(this.metrics.values());
 		const completedMetrics = fontMetrics.filter(
@@ -437,7 +444,7 @@ export const PerformanceDebugger = {
 			{
 				timestamp: new Date().toISOString(),
 				metrics: monitor.getMetrics(),
-				individualMetrics: Array.from((monitor as any).metrics.values()),
+				individualMetrics: monitor.getAllFontMetrics(),
 			},
 			null,
 			2

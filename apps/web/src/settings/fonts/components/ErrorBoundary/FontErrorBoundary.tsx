@@ -1,4 +1,4 @@
-import { ErrorBoundary, createSignal, Show, onCleanup } from 'solid-js'
+import { ErrorBoundary, createSignal, Show, onCleanup, type JSX } from 'solid-js'
 import { VsWarning, VsRefresh, VsError } from '@repo/icons/vs'
 
 export type FontErrorType =
@@ -18,8 +18,8 @@ export type FontErrorInfo = {
 }
 
 export type FontErrorBoundaryProps = {
-	children: any
-	fallback?: (error: FontErrorInfo, retry: () => void) => any
+	children: JSX.Element
+	fallback?: (error: FontErrorInfo, retry: () => void) => JSX.Element
 	onError?: (error: FontErrorInfo) => void
 	maxRetries?: number
 	retryDelay?: number

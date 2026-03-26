@@ -733,4 +733,7 @@ export function createLayoutManager(options: LayoutManagerOptions = {}) {
 	}
 }
 
-export type LayoutManager = ReturnType<typeof createLayoutManager>
+export type LayoutManager = ReturnType<typeof createLayoutManager> & {
+	/** Opens a file as a new tab. Injected at runtime by SplitEditorPanel. */
+	openFileAsTab?: (filePath: string) => void
+}

@@ -54,18 +54,9 @@ class CommandPaletteRegistryImpl implements CommandPaletteRegistry {
 // Singleton instance
 let registryInstance: CommandPaletteRegistry | null = null
 
-export function createCommandPaletteRegistry(): CommandPaletteRegistry {
-	if (!registryInstance) {
-		registryInstance = new CommandPaletteRegistryImpl()
-	}
-	return registryInstance
-}
-
 export function getCommandPaletteRegistry(): CommandPaletteRegistry {
 	if (!registryInstance) {
-		throw new Error(
-			'CommandPaletteRegistry not initialized. Call createCommandPaletteRegistry() first.'
-		)
+		registryInstance = new CommandPaletteRegistryImpl()
 	}
 	return registryInstance
 }

@@ -3,11 +3,23 @@ import type { InArgs } from 'sqlite-wasm/client'
 import type { SqliteWorkerApi, FileMetadata } from './sqlite'
 export type { FileMetadata }
 
-const worker = new Worker(new URL('./sqlite.ts', import.meta.url), {
-	type: 'module',
-})
+let sqliteApiInstance: Remote<SqliteWorkerApi> | null = null
 
-export const sqliteApi: Remote<SqliteWorkerApi> = wrap<SqliteWorkerApi>(worker)
+const getWorker = (): Remote<SqliteWorkerApi> => {
+	if (!sqliteApiInstance) {
+		const worker = new Worker(new URL('./sqlite.ts', import.meta.url), {
+			type: 'module',
+		})
+		sqliteApiInstance = wrap<SqliteWorkerApi>(worker)
+	}
+	return sqliteApiInstance
+}
+
+export const sqliteApi: Remote<SqliteWorkerApi> = new Proxy({} as Remote<SqliteWorkerApi>, {
+	get(_target, prop, receiver) {
+		return Reflect.get(getWorker(), prop, receiver)
+	},
+})
 
 export const initSqlite = () => sqliteApi.init()
 

@@ -107,14 +107,11 @@ export class FontDownloadService {
 
 			// Handle the response data
 			// let fontData: ArrayBuffer
-			if (
-				typeof response.data === 'object' &&
-				response.data !== null &&
-				(response.data as any) instanceof Response
-			) {
-				await (response.data as any).arrayBuffer()
-			} else if ((response.data as any) instanceof ArrayBuffer) {
-				// fontData = response.data as any
+			const responseData: unknown = response.data
+			if (responseData instanceof Response) {
+				await responseData.arrayBuffer()
+			} else if (responseData instanceof ArrayBuffer) {
+				// fontData = responseData
 			} else {
 				throw new Error(`Unexpected response data type for font: ${name}`)
 			}

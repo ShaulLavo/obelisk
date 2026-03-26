@@ -215,11 +215,13 @@ declare global {
 	}
 }
 
-// Expose for dev console usage
-if (typeof window !== 'undefined') {
-	window.perfLogger = {
-		logSummary,
-		logRecentOperations,
-		setLogLevel,
+// Expose for dev console usage — deferred to avoid side effects at import time
+export const installPerfLoggerDevtools = (): void => {
+	if (typeof window !== 'undefined') {
+		window.perfLogger = {
+			logSummary,
+			logRecentOperations,
+			setLogLevel,
+		}
 	}
 }

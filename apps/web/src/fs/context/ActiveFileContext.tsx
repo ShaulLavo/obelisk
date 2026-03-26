@@ -236,9 +236,8 @@ export function ActiveFileProvider(props: ActiveFileProviderProps): JSX.Element 
 		if (!targetPaneId) return
 
 		// Use layoutManager's openFileAsTab if available
-		const manager = layoutManager as unknown as { openFileAsTab?: (path: string) => void }
-		if (manager.openFileAsTab) {
-			manager.openFileAsTab(path)
+		if (layoutManager.openFileAsTab) {
+			layoutManager.openFileAsTab(path)
 		}
 	}
 

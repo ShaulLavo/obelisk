@@ -78,7 +78,7 @@ export function createDocumentCache(): DocumentCache {
 				return entry
 			}
 		} catch {
-			// Ignore DB errors
+			// IndexedDB unavailable — fall through to empty result
 		}
 
 		return {}
@@ -107,7 +107,7 @@ export function createDocumentCache(): DocumentCache {
 				tx.onerror = () => reject(tx.error)
 			})
 		} catch {
-			// Ignore persistence errors
+			// IndexedDB write failed — data remains in memory cache
 		}
 	}
 

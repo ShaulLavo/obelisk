@@ -1,5 +1,6 @@
 /* @refresh reload */
 import { render } from 'solid-js/web'
+import { installPerfLoggerDevtools } from '@repo/perf'
 // Only import devtools in development
 if (import.meta.env.DEV) {
 	import('solid-devtools')
@@ -8,6 +9,8 @@ import './styles.css'
 import '@repo/code-editor/styles.css'
 
 import App from './App'
+
+installPerfLoggerDevtools()
 
 const root = document.getElementById('root')
 

@@ -7,11 +7,23 @@ import type {
 	GitWorkerConfig,
 } from '../git/types'
 
-const worker = new Worker(new URL('./git.worker.ts', import.meta.url), {
-	type: 'module',
-})
+let gitApiInstance: Remote<GitWorkerApi> | null = null
 
-export const gitApi: Remote<GitWorkerApi> = wrap<GitWorkerApi>(worker)
+const getWorker = (): Remote<GitWorkerApi> => {
+	if (!gitApiInstance) {
+		const worker = new Worker(new URL('./git.worker.ts', import.meta.url), {
+			type: 'module',
+		})
+		gitApiInstance = wrap<GitWorkerApi>(worker)
+	}
+	return gitApiInstance
+}
+
+export const gitApi: Remote<GitWorkerApi> = new Proxy({} as Remote<GitWorkerApi>, {
+	get(_target, prop, receiver) {
+		return Reflect.get(getWorker(), prop, receiver)
+	},
+})
 
 export const initGitWorker = (config?: GitWorkerConfig) => gitApi.init(config)
 

@@ -528,7 +528,9 @@ export class PrefetchQueue {
 
 		try {
 			await searchService.indexFiles(batch)
-		} catch {}
+		} catch {
+			// Search indexing is best-effort — don't block prefetch
+		}
 	}
 
 	private emitStatus(running: boolean, milestone = false) {
@@ -650,7 +652,9 @@ export class PrefetchQueue {
 				savedAt: Date.now(),
 			})
 			this.lastCacheSaveCount = this.loadedDirFileCounts.size
-		} catch {}
+		} catch {
+			// Cache persistence is best-effort — don't block prefetch
+		}
 	}
 
 	private maybeSaveCache(): void {

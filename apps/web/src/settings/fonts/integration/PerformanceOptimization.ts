@@ -16,6 +16,7 @@ import {
 	createMemoryMonitor,
 	PerformanceDebugger,
 } from '../utils/performanceMonitoring'
+import type { FontRegistryActions } from '../../../fonts/types'
 
 export interface OptimizationConfig {
 	enableLazyLoading: boolean
@@ -288,7 +289,7 @@ export function useFontPerformanceOptimization(
  * Performance-optimized font registry wrapper
  */
 export function createOptimizedFontRegistry(
-	originalRegistry: any,
+	originalRegistry: FontRegistryActions,
 	config?: Partial<OptimizationConfig>
 ) {
 	const optimization = useFontPerformanceOptimization(config)

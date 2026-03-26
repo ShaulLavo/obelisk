@@ -41,6 +41,13 @@ import type { DocumentCache } from '../cache/documentCache'
 
 const textDecoder = new TextDecoder()
 
+const toSyntaxResult = (result: { captures: TreeSitterCapture[]; folds: FoldRange[]; brackets: BracketInfo[]; errors: TreeSitterError[] }): SyntaxResult => ({
+	highlights: result.captures,
+	folds: result.folds,
+	brackets: result.brackets,
+	errors: result.errors,
+})
+
 /**
  * Result of loading a file's content.
  */
@@ -129,12 +136,7 @@ export async function loadFile(options: LoadFileOptions): Promise<FileLoadResult
 			parseBufferWithTreeSitter(path, encoder.encode(content).buffer)
 				.then((result) => {
 					if (result) {
-						const syntax: SyntaxResult = {
-							highlights: result.captures,
-							folds: result.folds,
-							brackets: result.brackets,
-							errors: result.errors,
-						}
+						const syntax = toSyntaxResult(result)
 						fileCache.set(path, syntax)
 						onSyntaxReady(syntax)
 					}
@@ -176,19 +178,12 @@ export async function loadFile(options: LoadFileOptions): Promise<FileLoadResult
 			parseBufferWithTreeSitter(path, buffer)
 				.then((result) => {
 					if (result) {
-						const syntax: SyntaxResult = {
-							highlights: result.captures,
-							folds: result.folds,
-							brackets: result.brackets,
-							errors: result.errors,
-						}
+						const syntax = toSyntaxResult(result)
 						fileCache.set(path, syntax)
 						onSyntaxReady(syntax)
 					}
 				})
-				.catch((e) => {
-					console.warn('tree-sitter parse failed:', path, e)
-				})
+				.catch(() => {})
 		}
 	}
 
@@ -241,25 +236,11 @@ export async function loadSyntax(
 		parsePromise
 			.then((result) => {
 				if (result) {
-					const syntax: SyntaxResult = {
-						highlights: result.captures,
-						folds: result.folds,
-						brackets: result.brackets,
-						errors: result.errors,
-					}
-					// Cache the results
-					fileCache.set(path, {
-						highlights: syntax.highlights,
-						folds: syntax.folds,
-						brackets: syntax.brackets,
-						errors: syntax.errors,
-					})
-					// Notify caller
+					const syntax = toSyntaxResult(result)
+					fileCache.set(path, syntax)
 					onSyntaxReady(syntax)
 				}
 			})
-			.catch((e) => {
-				console.warn('tree-sitter parse failed:', path, e)
-			})
+			.catch(() => {})
 	}
 }
