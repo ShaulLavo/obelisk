@@ -193,53 +193,27 @@ export function useCommandPalette(): [
 			const currentResults = results()
 			const currentIndex = selectedIndex()
 
-			console.log(`[useCommandPalette] activateSelected called`, {
-				resultsCount: currentResults.length,
-				currentIndex,
-			})
-
 			if (
 				currentResults.length === 0 ||
 				currentIndex >= currentResults.length
 			) {
-				console.log(
-					`[useCommandPalette] activateSelected: no results or invalid index`
-				)
 				return
 			}
 
 			const selectedResult = currentResults[currentIndex]
 			if (!selectedResult) {
-				console.log(
-					`[useCommandPalette] activateSelected: selectedResult is undefined`
-				)
 				return
 			}
 
-			console.log(`[useCommandPalette] activateSelected: selected result`, {
-				kind: selectedResult.kind,
-				id: selectedResult.id,
-				label: selectedResult.label,
-				description: selectedResult.description,
-			})
-
 			if (selectedResult.kind === 'file') {
 				const filePath = selectedResult.description
-				console.log(`[useCommandPalette] activateSelected: opening file`, {
-					filePath,
-				})
 				if (filePath) {
 					void fsActions
 						.selectPath(filePath)
 						.then(() => {
-							console.log(
-								`[useCommandPalette] activateSelected: selectPath completed successfully`,
-								{ filePath }
-							)
 							actions.close()
 						})
 						.catch((error) => {
-							console.error('[useCommandPalette] Failed to open file:', error)
 							const errorMsg =
 								error instanceof Error ? error.message : String(error)
 							if (
@@ -247,16 +221,11 @@ export function useCommandPalette(): [
 								errorMsg.includes('ENOENT') ||
 								errorMsg.includes('NotFoundError')
 							) {
-								console.log(
-									'[useCommandPalette] Removing stale search entry:',
-									filePath
-								)
 								void searchService.removeFile(filePath)
 							}
 							actions.close()
 						})
 				} else {
-					console.error('[useCommandPalette] File path not found in result')
 					actions.close()
 				}
 			} else if (selectedResult.kind === 'command') {

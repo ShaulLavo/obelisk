@@ -383,7 +383,7 @@ export const createFontRegistry = (): FontRegistry => {
 				)
 			})
 
-			console.log(`[FontRegistry] Downloaded and installed ${id}`)
+			// Font downloaded and installed successfully
 		} catch (error) {
 			batch(() => {
 				setStore(
@@ -433,7 +433,7 @@ export const createFontRegistry = (): FontRegistry => {
 			})
 		)
 
-		console.log(`[FontRegistry] Removed ${id}`)
+		// Font removed successfully
 	}
 
 	const refetch = () => {
