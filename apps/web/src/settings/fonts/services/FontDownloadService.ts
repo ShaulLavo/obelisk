@@ -28,7 +28,6 @@ export class FontDownloadService {
 			return
 		}
 
-		// Set up abort controller for cancellation
 		const abortController = new AbortController()
 		this.activeDownloads.set(name, abortController)
 
@@ -55,7 +54,6 @@ export class FontDownloadService {
 				return
 			}
 
-			// Update progress: starting download
 			this.updateProgress(name, {
 				fontName: name,
 				status: 'downloading',
@@ -105,7 +103,6 @@ export class FontDownloadService {
 				progress: 50,
 			})
 
-			// Handle the response data
 			// let fontData: ArrayBuffer
 			const responseData: unknown = response.data
 			if (responseData instanceof Response) {
@@ -138,8 +135,6 @@ export class FontDownloadService {
 			})
 
 		} catch (error) {
-			// Error propagated to caller
-
 			const errorMessage =
 				error instanceof Error ? error.message : 'Unknown error'
 			this.updateProgress(name, {
@@ -160,45 +155,38 @@ export class FontDownloadService {
 	 * Install a font using FontFace API after it's been downloaded and cached
 	 */
 	async installFont(name: string): Promise<void> {
-		try {
-			// Use retry logic for font installation
-			const installResult = await RetryService.withRetry(
-				async () => {
-					await fontInstallationService.installFont(name, () => {})
+		const installResult = await RetryService.withRetry(
+			async () => {
+				await fontInstallationService.installFont(name, () => {})
+			},
+			{
+				maxRetries: 2,
+				baseDelay: 1000,
+				maxDelay: 5000,
+				backoffFactor: 2,
+				retryCondition: (error: Error) => {
+					const message = error.message.toLowerCase()
+					// Don't retry on font format or browser support issues
+					if (
+						message.includes('unsupported') ||
+						message.includes('invalid font')
+					) {
+						return false
+					}
+					// Retry on temporary failures
+					return (
+						message.includes('failed to load') || message.includes('network')
+					)
 				},
-				{
-					maxRetries: 2,
-					baseDelay: 1000,
-					maxDelay: 5000,
-					backoffFactor: 2,
-					retryCondition: (error: Error) => {
-						const message = error.message.toLowerCase()
-						// Don't retry on font format or browser support issues
-						if (
-							message.includes('unsupported') ||
-							message.includes('invalid font')
-						) {
-							return false
-						}
-						// Retry on temporary failures
-						return (
-							message.includes('failed to load') || message.includes('network')
-						)
-					},
-					onRetry: () => {},
-				}
-			)
-
-			if (!installResult.success) {
-				throw (
-					installResult.error ||
-					new Error('Font installation failed after retries')
-				)
+				onRetry: () => {},
 			}
+		)
 
-		} catch (error) {
-			// Error propagated to caller
-			throw error
+		if (!installResult.success) {
+			throw (
+				installResult.error ||
+				new Error('Font installation failed after retries')
+			)
 		}
 	}
 

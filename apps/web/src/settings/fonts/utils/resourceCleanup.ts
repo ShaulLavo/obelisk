@@ -16,6 +16,48 @@ export interface ResourceStats {
 }
 
 /**
+ * Removes old entries from the nerdfonts-v1 Cache API cache based on age.
+ * Checks `last-modified` and `date` response headers to determine entry age.
+ * Returns the number of entries removed.
+ */
+export async function removeOldCacheEntries(
+	maxAge: number = 7 * 24 * 60 * 60 * 1000
+): Promise<number> {
+	let itemsRemoved = 0
+
+	if (typeof window === 'undefined' || !('caches' in window)) {
+		return itemsRemoved
+	}
+
+	const cache = await caches.open('nerdfonts-v1')
+	const keys = await cache.keys()
+	const now = Date.now()
+
+	for (const request of keys) {
+		const response = await cache.match(request)
+		if (response) {
+			const lastModified = response.headers.get('last-modified')
+			const date = response.headers.get('date')
+
+			const timestamp = lastModified
+				? new Date(lastModified).getTime()
+				: date
+					? new Date(date).getTime()
+					: now
+
+			if (now - timestamp > maxAge) {
+				const deleted = await cache.delete(request)
+				if (deleted) {
+					itemsRemoved++
+				}
+			}
+		}
+	}
+
+	return itemsRemoved
+}
+
+/**
  * Comprehensive resource cleanup manager
  */
 export class FontResourceCleanup {
@@ -202,34 +244,8 @@ export class FontResourceCleanup {
 		}
 
 		try {
-			const now = Date.now()
-
 			// Clean old cache entries
-			if ('caches' in window) {
-				const cache = await caches.open('nerdfonts-v1')
-				const keys = await cache.keys()
-
-				for (const request of keys) {
-					const response = await cache.match(request)
-					if (response) {
-						const lastModified = response.headers.get('last-modified')
-						const date = response.headers.get('date')
-
-						const timestamp = lastModified
-							? new Date(lastModified).getTime()
-							: date
-								? new Date(date).getTime()
-								: now
-
-						if (now - timestamp > maxAge) {
-							const deleted = await cache.delete(request)
-							if (deleted) {
-								result.itemsRemoved++
-							}
-						}
-					}
-				}
-			}
+			result.itemsRemoved += await removeOldCacheEntries(maxAge)
 
 			// Clean old IndexedDB entries
 			const oldDbEntries = await this.getOldIndexedDBEntries(maxAge)

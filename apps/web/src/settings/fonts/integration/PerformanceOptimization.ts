@@ -16,6 +16,7 @@ import {
 	createMemoryMonitor,
 	PerformanceDebugger,
 } from '../utils/performanceMonitoring'
+import { removeOldCacheEntries } from '../utils/resourceCleanup'
 import type { FontRegistryActions } from '../../../fonts/types'
 
 export interface OptimizationConfig {
@@ -134,14 +135,10 @@ export class FontPerformanceOptimizer {
 			this.performanceMonitor.startFontDownload(fontName)
 		}
 
-		try {
-			await FontLoadingOptimizer.queueFontDownload(fontName, downloadFn)
+		await FontLoadingOptimizer.queueFontDownload(fontName, downloadFn)
 
-			if (this.config.enablePerformanceMonitoring) {
-				this.performanceMonitor.completeFontDownload(fontName, false)
-			}
-		} catch (error) {
-			throw error
+		if (this.config.enablePerformanceMonitoring) {
+			this.performanceMonitor.completeFontDownload(fontName, false)
 		}
 	}
 
@@ -156,14 +153,10 @@ export class FontPerformanceOptimizer {
 			this.performanceMonitor.startFontInstallation(fontName)
 		}
 
-		try {
-			const size = await installFn()
+		const size = await installFn()
 
-			if (this.config.enablePerformanceMonitoring) {
-				this.performanceMonitor.completeFontInstallation(fontName, size)
-			}
-		} catch (error) {
-			throw error
+		if (this.config.enablePerformanceMonitoring) {
+			this.performanceMonitor.completeFontInstallation(fontName, size)
 		}
 	}
 
@@ -181,27 +174,7 @@ export class FontPerformanceOptimizer {
 	 */
 	private async triggerMemoryCleanup(): Promise<void> {
 		try {
-			// Clear unused font caches
-			const cache = await caches.open('nerdfonts-v1')
-			const keys = await cache.keys()
-
-			// Remove fonts that haven't been accessed recently
-			const now = Date.now()
-			const maxAge = 7 * 24 * 60 * 60 * 1000 // 7 days
-
-			for (const request of keys) {
-				const response = await cache.match(request)
-				if (response) {
-					const lastModified = response.headers.get('last-modified')
-					if (lastModified) {
-						const age = now - new Date(lastModified).getTime()
-						if (age > maxAge) {
-							await cache.delete(request)
-	
-						}
-					}
-				}
-			}
+			await removeOldCacheEntries(7 * 24 * 60 * 60 * 1000)
 
 			// Force garbage collection if available
 			if ('gc' in window && typeof (window as any).gc === 'function') {

@@ -176,11 +176,18 @@ export async function getBatchFonts(
 
 	return results.reduce(
 		(acc, result) => {
-			if (result.status === 'fulfilled' && result.value.data) {
+			if (result.status === 'fulfilled') {
 				acc[result.value.name] = result.value.data
+			} else {
+				// For rejected promises, we can't recover the font name from the error,
+				// so failed fonts simply won't appear in the result object.
 			}
 			return acc
 		},
-		{} as { [fontName: string]: ArrayBuffer | null }
+		// Pre-populate with null for every requested font so callers
+		// always see an entry, even for fonts that failed to load.
+		Object.fromEntries(fontNames.map((name) => [name, null])) as {
+			[fontName: string]: ArrayBuffer | null
+		}
 	)
 }

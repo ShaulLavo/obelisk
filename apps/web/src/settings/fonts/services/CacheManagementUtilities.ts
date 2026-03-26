@@ -12,6 +12,7 @@ import type {
 	CacheCleanupResult,
 } from './CacheMonitoringService'
 import type { FontMetadata } from './FontMetadataService'
+import { removeOldCacheEntries } from '../utils/resourceCleanup'
 
 type CacheBackupData = {
 	version: string
@@ -112,7 +113,6 @@ export class CacheManagementUtilities {
 			const { cacheMonitoringService } = await import('./CacheMonitoringService')
 			const { serviceWorkerManager } = await import('./ServiceWorkerManager')
 
-			// Get current stats
 			const initialStats = await cacheMonitoringService.getCacheStats()
 
 			// 1. Remove duplicate entries between Cache API and Service Worker
@@ -185,7 +185,6 @@ export class CacheManagementUtilities {
 			const backupId = `font-cache-backup-${Date.now()}`
 			const timestamp = new Date()
 
-			// Create backup data structure
 			const backupData = {
 				version: '1.0',
 				timestamp: timestamp.toISOString(),
@@ -235,7 +234,6 @@ export class CacheManagementUtilities {
 			// Restore each font
 			for (const fontMetadata of backupData.fonts) {
 				try {
-					// Check if font is already cached
 					const isCached = await fontCacheService.isFontCached(
 						fontMetadata.name
 					)
@@ -337,7 +335,10 @@ export class CacheManagementUtilities {
 		try {
 			const { cacheMonitoringService } = await import('./CacheMonitoringService')
 
-			// Check if cleanup is needed
+			// First pass: remove old cache entries by response header age
+			await removeOldCacheEntries(schedule.maxFontAge)
+
+			// Second pass: metadata-based cleanup if cache is still over threshold
 			const stats = await cacheMonitoringService.getCacheStats()
 			const utilizationPercentage =
 				(stats.combined.totalSize / schedule.maxCacheSize) * 100

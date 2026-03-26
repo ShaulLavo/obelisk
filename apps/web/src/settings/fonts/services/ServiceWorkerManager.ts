@@ -42,35 +42,31 @@ export class ServiceWorkerManager {
 			return
 		}
 
-		try {
-			this.registration = await navigator.serviceWorker.register('/sw.js', {
-				scope: '/',
-			})
+		this.registration = await navigator.serviceWorker.register('/sw.js', {
+			scope: '/',
+		})
 
-			this.isRegistered = true
+		this.isRegistered = true
 
-			navigator.serviceWorker.addEventListener(
-				'message',
-				this.handleServiceWorkerMessage.bind(this)
-			)
+		navigator.serviceWorker.addEventListener(
+			'message',
+			this.handleServiceWorkerMessage.bind(this)
+		)
 
-			this.registration.addEventListener('updatefound', () => {
-				const newWorker = this.registration!.installing
+		this.registration.addEventListener('updatefound', () => {
+			const newWorker = this.registration!.installing
 
-				if (newWorker) {
-					newWorker.addEventListener('statechange', () => {
-						if (
-							newWorker.state === 'installed' &&
-							navigator.serviceWorker.controller
-						) {
-							this.notifyServiceWorkerUpdate()
-						}
-					})
-				}
-			})
-		} catch (error) {
-			throw error
-		}
+			if (newWorker) {
+				newWorker.addEventListener('statechange', () => {
+					if (
+						newWorker.state === 'installed' &&
+						navigator.serviceWorker.controller
+					) {
+						this.notifyServiceWorkerUpdate()
+					}
+				})
+			}
+		})
 	}
 
 	/**
@@ -276,11 +272,7 @@ export class ServiceWorkerManager {
 			throw new Error('Service worker not registered')
 		}
 
-		try {
-			await this.registration.update()
-		} catch (error) {
-			throw error
-		}
+		await this.registration.update()
 	}
 
 	/**
@@ -291,13 +283,9 @@ export class ServiceWorkerManager {
 			return
 		}
 
-		try {
-			await this.registration.unregister()
-			this.registration = null
-			this.isRegistered = false
-		} catch (error) {
-			throw error
-		}
+		await this.registration.unregister()
+		this.registration = null
+		this.isRegistered = false
 	}
 }
 

@@ -14,6 +14,61 @@ export type RetryResult<T> = {
 	attempts: number
 }
 
+/** Preset configs for common retry scenarios */
+export const RETRY_PRESETS = {
+	fontDownload: {
+		maxRetries: 3,
+		baseDelay: 2000,
+		maxDelay: 15000,
+		backoffFactor: 2,
+		retryCondition: (error: Error) => {
+			const message = error.message.toLowerCase()
+			if (message.includes('not found') || message.includes('invalid font')) {
+				return false
+			}
+			return (
+				message.includes('fetch') ||
+				message.includes('network') ||
+				message.includes('timeout') ||
+				message.includes('server') ||
+				message.includes('connection')
+			)
+		},
+	},
+	cacheOperation: {
+		maxRetries: 2,
+		baseDelay: 1000,
+		maxDelay: 5000,
+		backoffFactor: 2,
+		retryCondition: (error: Error) => {
+			const message = error.message.toLowerCase()
+			return (
+				(message.includes('cache') ||
+					message.includes('storage') ||
+					message.includes('indexeddb')) &&
+				!message.includes('quota')
+			)
+		},
+	},
+	serverCall: {
+		maxRetries: 3,
+		baseDelay: 1000,
+		maxDelay: 10000,
+		backoffFactor: 2,
+		retryCondition: (error: Error) => {
+			const message = error.message.toLowerCase()
+			return (
+				(message.includes('fetch') ||
+					message.includes('network') ||
+					message.includes('timeout') ||
+					message.includes('server') ||
+					message.includes('5')) &&
+				!message.includes('4')
+			)
+		},
+	},
+} as const satisfies Record<string, Partial<RetryOptions>>
+
 /**
  * Service for handling retry logic with exponential backoff
  * Used for font download and cache operations
@@ -96,85 +151,33 @@ export class RetryService {
 	}
 
 	/**
-	 * Specialized retry for font download operations
+	 * Retry with the font download preset
 	 */
 	static async retryFontDownload<T>(
 		operation: () => Promise<T>,
-		fontName: string
+		_fontName: string
 	): Promise<RetryResult<T>> {
-		return RetryService.withRetry(operation, {
-			maxRetries: 3,
-			baseDelay: 2000,
-			maxDelay: 15000,
-			backoffFactor: 2,
-			retryCondition: (error: Error) => {
-				const message = error.message.toLowerCase()
-				// Don't retry if font is not found or invalid
-				if (message.includes('not found') || message.includes('invalid font')) {
-					return false
-				}
-				// Retry on network/server errors
-				return (
-					message.includes('fetch') ||
-					message.includes('network') ||
-					message.includes('timeout') ||
-					message.includes('server') ||
-					message.includes('connection')
-				)
-			},
-		})
+		return RetryService.withRetry(operation, RETRY_PRESETS.fontDownload)
 	}
 
 	/**
-	 * Specialized retry for cache operations
+	 * Retry with the cache operation preset
 	 */
 	static async retryCacheOperation<T>(
 		operation: () => Promise<T>,
-		operationName: string
+		_operationName: string
 	): Promise<RetryResult<T>> {
-		return RetryService.withRetry(operation, {
-			maxRetries: 2,
-			baseDelay: 1000,
-			maxDelay: 5000,
-			backoffFactor: 2,
-			retryCondition: (error: Error) => {
-				const message = error.message.toLowerCase()
-				// Retry on storage/cache errors but not on quota exceeded
-				return (
-					(message.includes('cache') ||
-						message.includes('storage') ||
-						message.includes('indexeddb')) &&
-					!message.includes('quota')
-				)
-			},
-		})
+		return RetryService.withRetry(operation, RETRY_PRESETS.cacheOperation)
 	}
 
 	/**
-	 * Specialized retry for server API calls
+	 * Retry with the server call preset
 	 */
 	static async retryServerCall<T>(
 		operation: () => Promise<T>,
-		endpoint: string
+		_endpoint: string
 	): Promise<RetryResult<T>> {
-		return RetryService.withRetry(operation, {
-			maxRetries: 3,
-			baseDelay: 1000,
-			maxDelay: 10000,
-			backoffFactor: 2,
-			retryCondition: (error: Error) => {
-				const message = error.message.toLowerCase()
-				// Retry on network/server errors but not on client errors (4xx)
-				return (
-					(message.includes('fetch') ||
-						message.includes('network') ||
-						message.includes('timeout') ||
-						message.includes('server') ||
-						message.includes('5')) && // 5xx server errors
-					!message.includes('4')
-				) // Don't retry 4xx client errors
-			},
-		})
+		return RetryService.withRetry(operation, RETRY_PRESETS.serverCall)
 	}
 
 	/**
@@ -194,54 +197,4 @@ export class RetryService {
 			throw result.error || new Error('Operation failed after retries')
 		}
 	}
-}
-
-/**
- * Utility function to check if an error is retryable
- */
-export const isRetryableError = (error: Error): boolean => {
-	const message = error.message.toLowerCase()
-
-	// Network and server errors are retryable
-	const networkErrors = [
-		'fetch',
-		'network',
-		'timeout',
-		'connection',
-		'server',
-		'cache',
-		'storage',
-		'indexeddb',
-	]
-
-	// Client errors and specific conditions are not retryable
-	const nonRetryableErrors = [
-		'not found',
-		'invalid',
-		'unauthorized',
-		'forbidden',
-		'quota',
-		'permission',
-		'unsupported',
-	]
-
-	// Check for non-retryable errors first
-	if (nonRetryableErrors.some((keyword) => message.includes(keyword))) {
-		return false
-	}
-
-	// Check for retryable errors
-	return networkErrors.some((keyword) => message.includes(keyword))
-}
-
-/**
- * Utility function to get appropriate retry delay based on attempt number
- */
-export const getRetryDelay = (
-	attempt: number,
-	baseDelay = 1000,
-	maxDelay = 30000
-): number => {
-	const delay = baseDelay * Math.pow(2, attempt)
-	return Math.min(delay, maxDelay)
 }

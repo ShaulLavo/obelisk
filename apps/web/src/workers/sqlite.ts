@@ -11,7 +11,7 @@ import {
 } from 'sqlite-wasm/client'
 import wasmUrl from 'sqlite-wasm/sqlite3.wasm?url'
 import proxyUrl from 'sqlite-wasm/sqlite3-opfs-async-proxy.js?url'
-import * as searchImpl from './search-impl'
+import * as searchImpl from './searchImpl'
 import type { FileMetadata, SearchResult } from '../search/types'
 
 let sqlite3: Sqlite3Static | null = null
