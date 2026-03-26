@@ -46,8 +46,8 @@ export const Providers: ParentComponent = (props) => {
 												<CommandPalette />
 												{props.children}
 
-												{/* TanStack Devtools - only in dev mode */}
-												<Show when={import.meta.env.DEV}>
+												{/* TanStack Devtools - hidden to prevent layout jumps */}
+												<Show when={null!}>
 													<Suspense>
 														<TanStackDevtools
 															config={{

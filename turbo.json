@@ -1,6 +1,6 @@
 {
   "$schema": "https://turborepo.com/schema.json",
-  "ui": "tui",
+  "ui": "stream",
   "globalEnv": [
     "VITE_SERVER_PORT",
     "VITE_WEB_PORT",

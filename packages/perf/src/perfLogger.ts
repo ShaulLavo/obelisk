@@ -1,6 +1,15 @@
 import type { PerfBreakdownEntry, PerfRecord, PerfSummary } from './perfStore'
 import { getSummary, getRecentForOperation } from './perfStore'
-import { formatBytes } from '@repo/utils'
+const formatBytes = (bytes: number): string => {
+	if (!Number.isFinite(bytes) || bytes < 0) return '0 Bytes'
+	if (bytes === 0) return '0 Bytes'
+	const units = ['Bytes', 'KB', 'MB', 'GB', 'TB'] as const
+	const maxIndex = units.length - 1
+	const index = Math.min(Math.max(Math.floor(Math.log(bytes) / Math.log(1024)), 0), maxIndex)
+	const value = bytes / 1024 ** index
+	const rounded = Math.round(value * 10) / 10
+	return `${Number.isInteger(rounded) ? rounded.toString() : rounded.toFixed(1)} ${units[index]}`
+}
 type LogLevel = 'debug' | 'info' | 'warn' | 'silent'
 
 let currentLogLevel: LogLevel = 'silent'

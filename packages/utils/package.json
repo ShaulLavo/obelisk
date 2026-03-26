@@ -17,7 +17,6 @@
     "./highlightShift": "./src/highlightShift.ts"
   },
   "dependencies": {
-    "@repo/perf": "*",
     "clsx": "^2.1.1",
     "tailwind-merge": "^3.3.1",
     "solid-js": "^1.9.5"

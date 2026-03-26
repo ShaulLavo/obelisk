@@ -236,6 +236,13 @@ export const useFsRefresh = ({
 					source = error.nextSource
 					continue
 				}
+				// User cancelled the directory picker — not an error
+				if (
+					error instanceof DOMException &&
+					error.name === 'AbortError'
+				) {
+					return
+				}
 				batch(() => {
 					setBackgroundPrefetching(false)
 					setBackgroundIndexedFileCount(0)

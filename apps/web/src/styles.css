@@ -17,6 +17,13 @@
 	--color-popover: var(--editor-background);
 	--color-popover-foreground: var(--editor-foreground);
 
+	--color-primary: hsl(var(--primary));
+	--color-primary-foreground: hsl(var(--primary-foreground));
+	--color-secondary: hsl(var(--secondary));
+	--color-secondary-foreground: hsl(var(--secondary-foreground));
+	--color-destructive: hsl(var(--destructive));
+	--color-destructive-foreground: hsl(var(--destructive-foreground));
+
 	--font-mono: var(--editor-font-family, 'JetBrains Mono Variable', monospace);
 	--font-serif: 'Geist Variable', sans-serif;
 	--font-sans: var(--ui-font-family, 'Google Sans Flex', sans-serif);

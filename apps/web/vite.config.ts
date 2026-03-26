@@ -183,9 +183,7 @@ export default defineConfig(({ mode }) => {
 		optimizeDeps: {
 			include: [
 				'web-tree-sitter',
-				'js-base64',
 				'@tree-sitter-grammars/tree-sitter-markdown',
-				'minimatch',
 			],
 			// Exclude packages used in workers - Vite's pre-bundling breaks worker imports
 			// See: https://github.com/vitejs/vite/issues/20859
