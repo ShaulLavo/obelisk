@@ -18,9 +18,6 @@ export interface Timestamped<T> {
 	readonly validUntil?: number
 }
 
-/**
- * Create a timestamped value with current time.
- */
 export function timestamp<T>(value: T, validUntil?: number): Timestamped<T> {
 	return {
 		value,
@@ -29,60 +26,28 @@ export function timestamp<T>(value: T, validUntil?: number): Timestamped<T> {
 	}
 }
 
-/**
- * Policy for determining if data is fresh enough.
- */
 export interface FreshnessPolicy {
-	/** Maximum acceptable staleness in milliseconds */
 	readonly maxAge: number
-	/** Whether to trigger background refetch when stale */
 	readonly preferFresh: boolean
 }
 
-/**
- * Default freshness policies for different data types.
- */
 export const FRESHNESS_POLICIES = {
-	/** Disk content - should be as fresh as observer allows */
 	diskContent: { maxAge: 500, preferFresh: true } as FreshnessPolicy,
-
-	/** Syntax highlights - expensive to compute, ok if slightly stale */
 	highlights: { maxAge: 60_000, preferFresh: false } as FreshnessPolicy,
-
-	/** Scroll position - user preference, never stale */
 	scrollPosition: { maxAge: Infinity, preferFresh: false } as FreshnessPolicy,
-
-	/** Visible content snapshot - view state, never stale */
 	visibleContent: { maxAge: Infinity, preferFresh: false } as FreshnessPolicy,
-
-	/** File stats/metadata - should be reasonably fresh */
 	stats: { maxAge: 5_000, preferFresh: true } as FreshnessPolicy,
-
-	/** Fold ranges - derived from tree-sitter, ok if stale */
 	folds: { maxAge: 60_000, preferFresh: false } as FreshnessPolicy,
-
-	/** Bracket info - derived from tree-sitter, ok if stale */
 	brackets: { maxAge: 60_000, preferFresh: false } as FreshnessPolicy,
-
-	/** Tree-sitter errors - should update reasonably quickly */
 	errors: { maxAge: 5_000, preferFresh: true } as FreshnessPolicy,
 } as const
 
-/**
- * Result of a freshness check.
- */
 export interface FreshnessCheckResult {
-	/** Whether the data is still fresh according to the policy */
 	readonly isFresh: boolean
-	/** Age of the data in milliseconds */
 	readonly ageMs: number
-	/** Whether a background refresh should be triggered */
 	readonly shouldRefresh: boolean
 }
 
-/**
- * Check if a timestamped value is fresh according to a policy.
- */
 export function checkFreshness<T>(
 	data: Timestamped<T> | null | undefined,
 	policy: FreshnessPolicy
@@ -113,9 +78,6 @@ export function checkFreshness<T>(
 	return { isFresh, ageMs, shouldRefresh }
 }
 
-/**
- * Check if data is stale (convenience function).
- */
 export function isStale<T>(
 	data: Timestamped<T> | null | undefined,
 	policy: FreshnessPolicy
@@ -123,25 +85,15 @@ export function isStale<T>(
 	return !checkFreshness(data, policy).isFresh
 }
 
-/**
- * Get the age of timestamped data in milliseconds.
- */
 export function getAge<T>(data: Timestamped<T>): number {
 	return Date.now() - data.fetchedAt
 }
 
-/**
- * Check if data has expired (explicit expiry).
- */
 export function hasExpired<T>(data: Timestamped<T>): boolean {
 	if (data.validUntil === undefined) return false
 	return Date.now() > data.validUntil
 }
 
-/**
- * Update the value while keeping the same timestamp.
- * Use this when transforming data without refetching.
- */
 export function updateValue<T, U>(
 	data: Timestamped<T>,
 	transform: (value: T) => U
@@ -153,10 +105,6 @@ export function updateValue<T, U>(
 	}
 }
 
-/**
- * Refresh a timestamped value with new content.
- * Updates the fetchedAt timestamp.
- */
 export function refresh<T>(
 	data: Timestamped<T>,
 	newValue: T,
@@ -169,10 +117,6 @@ export function refresh<T>(
 	}
 }
 
-/**
- * Extract the raw value from timestamped data.
- * Returns undefined if data is null/undefined.
- */
 export function unwrap<T>(data: Timestamped<T> | null | undefined): T | undefined {
 	return data?.value
 }

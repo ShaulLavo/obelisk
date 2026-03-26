@@ -30,30 +30,16 @@ import {
 	isInFlight,
 } from './FileOperation'
 
-/**
- * Callback for operation lifecycle events.
- */
 export type OperationCallback = (operation: FileOperation) => void
 
-/**
- * Options for OperationTracker.
- */
 export interface OperationTrackerOptions {
-	/** Maximum number of completed operations to retain (default: 100) */
 	maxHistory?: number
-	/** Callback when operation starts */
 	onStart?: OperationCallback
-	/** Callback when operation completes successfully */
 	onComplete?: OperationCallback
-	/** Callback when operation fails */
 	onFail?: OperationCallback
-	/** Callback when operation is cancelled */
 	onCancel?: OperationCallback
 }
 
-/**
- * Tracks file operations and provides derived state.
- */
 export class OperationTracker {
 	private operations = new Map<string, MutableFileOperation>()
 	private completedHistory: FileOperation[] = []
@@ -70,10 +56,6 @@ export class OperationTracker {
 		}
 	}
 
-	/**
-	 * Start a new operation.
-	 * Returns the operation object which can be used to complete/fail it.
-	 */
 	start(
 		type: FileOperationType,
 		path: FilePath,
@@ -86,9 +68,6 @@ export class OperationTracker {
 		return op
 	}
 
-	/**
-	 * Mark an operation as completed successfully.
-	 */
 	complete(operationId: string): void {
 		const op = this.operations.get(operationId)
 		if (!op) return
@@ -98,9 +77,6 @@ export class OperationTracker {
 		this.callbacks.onComplete?.(op)
 	}
 
-	/**
-	 * Mark an operation as failed.
-	 */
 	fail(operationId: string, error: Error): void {
 		const op = this.operations.get(operationId)
 		if (!op) return
@@ -110,9 +86,6 @@ export class OperationTracker {
 		this.callbacks.onFail?.(op)
 	}
 
-	/**
-	 * Cancel an operation.
-	 */
 	cancel(operationId: string): void {
 		const op = this.operations.get(operationId)
 		if (!op) return
@@ -122,9 +95,6 @@ export class OperationTracker {
 		this.callbacks.onCancel?.(op)
 	}
 
-	/**
-	 * Cancel all operations for a path.
-	 */
 	cancelAllForPath(path: FilePath): void {
 		for (const [id, op] of this.operations) {
 			if (op.path === path && isInFlight(op)) {
@@ -133,37 +103,22 @@ export class OperationTracker {
 		}
 	}
 
-	/**
-	 * Check if any load operation is in flight for a path.
-	 */
 	isLoading(path: FilePath): boolean {
 		return this.hasActiveOperation(path, 'load')
 	}
 
-	/**
-	 * Check if any save operation is in flight for a path.
-	 */
 	isSaving(path: FilePath): boolean {
 		return this.hasActiveOperation(path, 'save')
 	}
 
-	/**
-	 * Check if any parse operation is in flight for a path.
-	 */
 	isParsing(path: FilePath): boolean {
 		return this.hasActiveOperation(path, 'parse')
 	}
 
-	/**
-	 * Check if any sync operation is in flight for a path.
-	 */
 	isSyncing(path: FilePath): boolean {
 		return this.hasActiveOperation(path, 'sync')
 	}
 
-	/**
-	 * Check if any operation of a given type is in flight for a path.
-	 */
 	hasActiveOperation(path: FilePath, type?: FileOperationType): boolean {
 		for (const op of this.operations.values()) {
 			if (op.path === path && isInFlight(op)) {
@@ -175,16 +130,10 @@ export class OperationTracker {
 		return false
 	}
 
-	/**
-	 * Check if any operation is in flight for a path.
-	 */
 	hasAnyActiveOperation(path: FilePath): boolean {
 		return this.hasActiveOperation(path)
 	}
 
-	/**
-	 * Get all active operations for a path.
-	 */
 	getActiveOperations(path: FilePath): FileOperation[] {
 		const result: FileOperation[] = []
 		for (const op of this.operations.values()) {
@@ -195,9 +144,6 @@ export class OperationTracker {
 		return result
 	}
 
-	/**
-	 * Get all active operations of a specific type for a path.
-	 */
 	getActiveOperationsOfType(
 		path: FilePath,
 		type: FileOperationType
@@ -205,16 +151,10 @@ export class OperationTracker {
 		return this.getActiveOperations(path).filter((op) => op.type === type)
 	}
 
-	/**
-	 * Get an operation by ID.
-	 */
 	getOperation(operationId: string): FileOperation | undefined {
 		return this.operations.get(operationId)
 	}
 
-	/**
-	 * Get all active operations across all paths.
-	 */
 	getAllActiveOperations(): FileOperation[] {
 		const result: FileOperation[] = []
 		for (const op of this.operations.values()) {
@@ -225,24 +165,15 @@ export class OperationTracker {
 		return result
 	}
 
-	/**
-	 * Get completed operation history (most recent first).
-	 */
 	getHistory(limit?: number): FileOperation[] {
 		const count = limit ?? this.completedHistory.length
 		return this.completedHistory.slice(-count).reverse()
 	}
 
-	/**
-	 * Clear completed operation history.
-	 */
 	clearHistory(): void {
 		this.completedHistory = []
 	}
 
-	/**
-	 * Get count of active operations.
-	 */
 	getActiveCount(): number {
 		let count = 0
 		for (const op of this.operations.values()) {
@@ -251,9 +182,6 @@ export class OperationTracker {
 		return count
 	}
 
-	/**
-	 * Wait for all operations on a path to complete.
-	 */
 	async waitForPath(path: FilePath): Promise<void> {
 		const activeOps = this.getActiveOperations(path)
 		if (activeOps.length === 0) return
@@ -282,9 +210,6 @@ export class OperationTracker {
 	}
 }
 
-/**
- * Create a new OperationTracker instance.
- */
 export function createOperationTracker(
 	options?: OperationTrackerOptions
 ): OperationTracker {

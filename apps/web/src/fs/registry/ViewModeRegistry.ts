@@ -17,25 +17,14 @@ export type ViewModeDefinition = {
 	}
 }
 
-/**
- * Registry for managing available view modes for different file types
- * Provides extensibility infrastructure for adding new view modes
- */
 export class ViewModeRegistry {
 	private modes = new Map<ViewMode, ViewModeDefinition>()
 	private initialized = false
 
-	/**
-	 * Register a new view mode
-	 * Requirements: 7.1, 7.3 - Clear interface for registering new view modes
-	 */
 	register(mode: ViewModeDefinition): void {
 		this.modes.set(mode.id, mode)
 	}
 
-	/**
-	 * Get all available view modes for a given file
-	 */
 	getAvailableModes(path: string, stats?: ParseResult): ViewModeDefinition[] {
 		const availableModes: ViewModeDefinition[] = []
 
@@ -48,9 +37,6 @@ export class ViewModeRegistry {
 		return availableModes
 	}
 
-	/**
-	 * Get the default view mode for a given file
-	 */
 	getDefaultMode(path: string, stats?: ParseResult): ViewMode {
 		const availableModes = this.getAvailableModes(path, stats)
 
@@ -64,9 +50,6 @@ export class ViewModeRegistry {
 		return 'editor'
 	}
 
-	/**
-	 * Check if a specific view mode is available for a file
-	 */
 	isViewModeAvailable(
 		viewMode: ViewMode,
 		path: string,
@@ -76,25 +59,14 @@ export class ViewModeRegistry {
 		return mode ? mode.isAvailable(path, stats) : false
 	}
 
-	/**
-	 * Get a specific view mode definition
-	 */
 	getViewMode(viewMode: ViewMode): ViewModeDefinition | undefined {
 		return this.modes.get(viewMode)
 	}
 
-	/**
-	 * Get all registered view modes
-	 * Requirements: 7.3 - Allow inspection of registered modes
-	 */
 	getAllModes(): ViewModeDefinition[] {
 		return Array.from(this.modes.values())
 	}
 
-	/**
-	 * Initialize the registry with built-in modes
-	 * Requirements: 7.1 - Registry initialization with built-in modes
-	 */
 	initialize(): void {
 		if (this.initialized) return
 		
@@ -102,10 +74,6 @@ export class ViewModeRegistry {
 		this.initialized = true
 	}
 
-	/**
-	 * Register all built-in view modes
-	 * Requirements: 7.4, 7.5 - Consistent behavior patterns across all view modes
-	 */
 	private registerBuiltInModes(): void {
 		// Editor mode - always available, default for most files
 		this.register({
@@ -139,22 +107,15 @@ export class ViewModeRegistry {
 				// Use existing binary detection logic
 				return Boolean(stats?.contentKind === 'binary')
 			},
-			// Binary files default to editor mode (Requirement 4.4)
 			isDefault: false,
 		})
 	}
 
-	/**
-	 * Reset the registry (useful for testing)
-	 */
 	reset(): void {
 		this.modes.clear()
 		this.initialized = false
 	}
 }
 
-// Create and configure the global registry instance
 export const viewModeRegistry = new ViewModeRegistry()
-
-// Initialize the registry with built-in modes
 viewModeRegistry.initialize()
