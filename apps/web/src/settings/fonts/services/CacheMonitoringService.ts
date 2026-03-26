@@ -5,8 +5,9 @@
  * for both Cache API and service worker caches.
  */
 
-import { serviceWorkerManager } from './ServiceWorkerManager'
-import { cacheManifestService } from './CacheManifestService'
+// NOTE: serviceWorkerManager and cacheManifestService are loaded via dynamic
+// import() to avoid tight static coupling between infrastructure singletons.
+// This keeps each service independently tree-shakeable and testable.
 import type { FontMetadata } from './FontMetadataService'
 
 export interface CacheMonitoringStats {
@@ -87,6 +88,8 @@ export class CacheMonitoringService {
 			try {
 				await this.performHealthCheck()
 			} catch (error) {
+				// Health checks are periodic and non-critical; swallow to avoid crashing the interval
+				console.debug('[CacheMonitoringService] Health check failed:', error)
 			}
 		}, CacheMonitoringService.HEALTH_CHECK_INTERVAL)
 	}
@@ -107,6 +110,9 @@ export class CacheMonitoringService {
 	async getCacheStats(): Promise<CacheMonitoringStats> {
 		try {
 			const { fontCacheService } = await import('./FontCacheService')
+			const { serviceWorkerManager } = await import('./ServiceWorkerManager')
+			const { cacheManifestService } = await import('./CacheManifestService')
+
 			const cacheApiStats = await fontCacheService.getCacheStats()
 
 			let swStats = null
@@ -115,6 +121,7 @@ export class CacheMonitoringService {
 					swStats = await serviceWorkerManager.getCacheStats()
 				}
 			} catch (error) {
+				// SW stats are optional; fall back to null if unavailable
 			}
 
 			const manifest = await cacheManifestService.generateManifest()
@@ -183,6 +190,7 @@ export class CacheMonitoringService {
 		try {
 			const { fontMetadataService } = await import('./FontMetadataService')
 			const { fontCacheService } = await import('./FontCacheService')
+			const { serviceWorkerManager } = await import('./ServiceWorkerManager')
 
 			const initialStats = await this.getCacheStats()
 			const allMetadata = await fontMetadataService.getAllFontMetadata()

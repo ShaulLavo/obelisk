@@ -301,6 +301,7 @@ export class CacheErrorRecoveryService {
 				localStorage.setItem(`font-metadata-${name}`, JSON.stringify(metadata))
 				return
 			} catch (error) {
+				// localStorage may be full or unavailable; fall through to memory storage
 			}
 		}
 
@@ -321,6 +322,7 @@ export class CacheErrorRecoveryService {
 					return JSON.parse(stored)
 				}
 			} catch (error) {
+				// localStorage read failed; fall through to memory storage
 			}
 		}
 

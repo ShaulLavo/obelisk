@@ -80,6 +80,8 @@ const FontsContent = () => {
 			try {
 				await registry.downloadFont(font.id)
 			} catch (error) {
+				// Download errors are surfaced via the font store's reactive state
+				console.debug('[FontsSubcategoryUI] Font download failed:', error)
 			}
 		})
 	}
@@ -90,6 +92,8 @@ const FontsContent = () => {
 			try {
 				await registry.removeFont(font.id)
 			} catch (error) {
+				// Removal errors are surfaced via the font store's reactive state
+				console.debug('[FontsSubcategoryUI] Font removal failed:', error)
 			}
 		})
 	}

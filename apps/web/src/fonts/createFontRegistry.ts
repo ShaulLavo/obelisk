@@ -1,5 +1,12 @@
 /**
- * Font Registry - Single Source of Truth for All Fonts
+ * Font Registry - Single Source of Truth for Active Font State
+ *
+ * Ownership boundary:
+ * - This module owns which fonts are "active", the CSS variable state,
+ *   and the reactive font list exposed to the UI.
+ * - It does NOT own caching, downloading, or installation — those are
+ *   delegated to `settings/fonts/services/` via dynamic imports to keep
+ *   the dependency one-directional (registry -> services, never the reverse).
  *
  * Resource-based font management using Solid's createResource for:
  * - Automatic Suspense integration

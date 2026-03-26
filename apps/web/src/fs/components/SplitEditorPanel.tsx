@@ -26,7 +26,7 @@ import {
 	createFileTooLargeError,
 	MAX_FILE_SIZE,
 	getErrorTitle,
-} from '../../split-editor/fileLoadingErrors'
+} from '../fileLoadingErrors'
 import { loadFile } from '../services/FileLoadingService'
 import { EditorRegistryImpl, type NotificationSystem } from '@repo/code-editor/sync'
 import { SyncController, createFilePath as toFilePath } from '@repo/fs'

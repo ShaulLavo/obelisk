@@ -244,38 +244,22 @@ export const FontErrorBoundary = (props: FontErrorBoundaryProps) => {
 
 /**
  * Specialized error boundary for font download operations
+ * Pre-configured with download-appropriate retry settings (3 retries, 2s base delay)
  */
 export const FontDownloadErrorBoundary = (
 	props: Omit<FontErrorBoundaryProps, 'maxRetries' | 'retryDelay'> & {
 		fontName: string
 	}
 ) => {
-	return (
-		<FontErrorBoundary
-			{...props}
-			maxRetries={3}
-			retryDelay={2000}
-			onError={(error) => {
-				props.onError?.(error)
-			}}
-		/>
-	)
+	return <FontErrorBoundary {...props} maxRetries={3} retryDelay={2000} />
 }
 
 /**
  * Specialized error boundary for font cache operations
+ * Pre-configured with cache-appropriate retry settings (2 retries, 1s base delay)
  */
 export const FontCacheErrorBoundary = (
 	props: Omit<FontErrorBoundaryProps, 'maxRetries' | 'retryDelay'>
 ) => {
-	return (
-		<FontErrorBoundary
-			{...props}
-			maxRetries={2}
-			retryDelay={1000}
-			onError={(error) => {
-				props.onError?.(error)
-			}}
-		/>
-	)
+	return <FontErrorBoundary {...props} maxRetries={2} retryDelay={1000} />
 }

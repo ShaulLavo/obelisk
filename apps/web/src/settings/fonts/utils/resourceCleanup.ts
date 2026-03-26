@@ -296,7 +296,8 @@ export class FontResourceCleanup {
 				verification.documentFontsClean = true
 			}
 		} catch (error) {
-			}
+			// Verification is best-effort; return partial results on failure
+		}
 
 		return verification
 	}

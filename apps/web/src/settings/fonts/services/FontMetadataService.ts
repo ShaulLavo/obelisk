@@ -106,6 +106,7 @@ export class FontMetadataService {
 				await this.storeFontMetadata(metadata)
 			}
 		} catch (error) {
+			// Last-accessed update is non-critical; swallow to avoid disrupting font usage
 		}
 	}
 
@@ -151,6 +152,7 @@ export class FontMetadataService {
 		try {
 			await this.store.setItem('last-cleanup', { date })
 		} catch (error) {
+			// Persisting last-cleanup timestamp is non-critical
 		}
 	}
 
@@ -208,6 +210,7 @@ export class FontMetadataService {
 				cacheData
 			)
 		} catch (error) {
+			// Caching available fonts is an optimization; failure is non-critical
 		}
 	}
 

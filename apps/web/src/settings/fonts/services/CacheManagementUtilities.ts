@@ -5,8 +5,8 @@
  * cache optimization, and maintenance operations.
  */
 
-import { cacheMonitoringService } from './CacheMonitoringService'
-import { serviceWorkerManager } from './ServiceWorkerManager'
+// NOTE: cacheMonitoringService and serviceWorkerManager are loaded via dynamic
+// import() to avoid tight static coupling between infrastructure singletons.
 import type {
 	CacheCleanupOptions,
 	CacheCleanupResult,
@@ -80,7 +80,9 @@ export class CacheManagementUtilities {
 		}, schedule.cleanupInterval)
 
 		// Start monitoring
-		cacheMonitoringService.startMonitoring()
+		void import('./CacheMonitoringService').then(({ cacheMonitoringService }) =>
+			cacheMonitoringService.startMonitoring()
+		)
 	}
 
 	/**
@@ -92,7 +94,9 @@ export class CacheManagementUtilities {
 			this.maintenanceInterval = null
 		}
 
-		cacheMonitoringService.stopMonitoring()
+		void import('./CacheMonitoringService').then(({ cacheMonitoringService }) =>
+			cacheMonitoringService.stopMonitoring()
+		)
 	}
 
 	/**
@@ -105,6 +109,9 @@ export class CacheManagementUtilities {
 		let spaceSaved = 0
 
 		try {
+			const { cacheMonitoringService } = await import('./CacheMonitoringService')
+			const { serviceWorkerManager } = await import('./ServiceWorkerManager')
+
 			// Get current stats
 			const initialStats = await cacheMonitoringService.getCacheStats()
 
@@ -268,6 +275,7 @@ export class CacheManagementUtilities {
 	 */
 	async getCacheRecommendations(): Promise<string[]> {
 		try {
+			const { cacheMonitoringService } = await import('./CacheMonitoringService')
 			const stats = await cacheMonitoringService.getCacheStats()
 			const healthCheck = await cacheMonitoringService.performHealthCheck()
 			const utilization =
@@ -327,6 +335,8 @@ export class CacheManagementUtilities {
 		schedule: CacheMaintenanceSchedule
 	): Promise<void> {
 		try {
+			const { cacheMonitoringService } = await import('./CacheMonitoringService')
+
 			// Check if cleanup is needed
 			const stats = await cacheMonitoringService.getCacheStats()
 			const utilizationPercentage =

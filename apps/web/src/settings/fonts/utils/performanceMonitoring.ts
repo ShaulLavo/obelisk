@@ -366,6 +366,7 @@ export class FontLoadingOptimizer {
 				}
 			}
 		} catch (error) {
+			// Cache warming is best-effort; failure does not affect functionality
 		}
 	}
 }

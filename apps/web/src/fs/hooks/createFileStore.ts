@@ -8,7 +8,7 @@ import type {
 	TreeSitterError,
 	FoldRange,
 } from '../../workers/treeSitter/types'
-import type { FileLoadingError } from '../../split-editor/fileLoadingErrors'
+import type { FileLoadingError } from '../fileLoadingErrors'
 import {
 	type FileState,
 	type FileLoadingState,

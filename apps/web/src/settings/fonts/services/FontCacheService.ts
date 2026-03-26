@@ -1,3 +1,14 @@
+/**
+ * Font Cache Service
+ *
+ * Owns the Cache API storage for font binary data. This is a core service
+ * consumed by the font registry (src/fonts/) via dynamic import.
+ *
+ * Direct singleton imports: fontMetadataService, cacheErrorRecovery, serviceWorkerManager.
+ * These are acceptable here because FontCacheService is the primary orchestrator
+ * for cache operations and needs synchronous access to error recovery state
+ * (e.g., isFallbackMode checks on every cache read).
+ */
 import { client } from '~/client'
 import { fontMetadataService } from './FontMetadataService'
 import { cacheErrorRecovery } from './CacheErrorRecovery'

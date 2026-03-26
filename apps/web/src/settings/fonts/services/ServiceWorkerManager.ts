@@ -215,7 +215,7 @@ export class ServiceWorkerManager {
 			const { fontMetadataService } = await import('./FontMetadataService')
 			await fontMetadataService.updateLastAccessed(fontName)
 		} catch (error) {
-
+			// Last-accessed update is best-effort; non-critical
 		}
 	}
 
@@ -240,7 +240,7 @@ export class ServiceWorkerManager {
 
 			await fontMetadataService.storeFontMetadata(fontMetadata)
 		} catch (error) {
-
+			// Metadata storage from SW is best-effort; non-critical
 		}
 	}
 

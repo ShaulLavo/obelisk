@@ -47,6 +47,7 @@ export class CacheManifestService {
 					swStats = await serviceWorkerManager.getCacheStats()
 				}
 			} catch (error) {
+				// SW stats are optional; fall back to null if unavailable
 			}
 
 			// Build manifest entries

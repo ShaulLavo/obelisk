@@ -3,7 +3,7 @@ import type { DirTreeNode } from '@repo/fs'
 import type { PieceTableSnapshot } from '@repo/utils'
 import type { DocumentCache } from '../cache/documentCache'
 import type { FsState, FsSource } from '../types'
-import type { FileLoadingError } from '../../split-editor/fileLoadingErrors'
+import type { FileLoadingError } from '../fileLoadingErrors'
 import type { FileLoadingState, SyntaxData } from '../store/types'
 
 export type SelectPathOptions = {

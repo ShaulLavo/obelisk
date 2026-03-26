@@ -11,13 +11,13 @@ import { Show, createSignal } from 'solid-js'
 import type {
 	FileLoadingError,
 	FileLoadingErrorType,
-} from '../fileLoadingErrors'
+} from '../../fs/fileLoadingErrors'
 import {
 	getErrorTitle,
 	shouldRetry,
 	calculateRetryDelay,
 	MAX_RETRY_ATTEMPTS,
-} from '../fileLoadingErrors'
+} from '../../fs/fileLoadingErrors'
 
 export interface FileLoadingErrorDisplayProps {
 	error: FileLoadingError

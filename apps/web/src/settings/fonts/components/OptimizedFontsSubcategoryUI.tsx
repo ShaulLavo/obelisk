@@ -137,6 +137,8 @@ const OptimizedFontsContent = () => {
 					await registry.downloadFont(font.id)
 				})
 			} catch (error) {
+				// Download errors are surfaced via the font store's reactive state
+				console.debug('[OptimizedFontsSubcategoryUI] Font download failed:', error)
 			}
 		})
 	}
@@ -147,6 +149,8 @@ const OptimizedFontsContent = () => {
 			try {
 				await registry.removeFont(font.id)
 			} catch (error) {
+				// Removal errors are surfaced via the font store's reactive state
+				console.debug('[OptimizedFontsSubcategoryUI] Font removal failed:', error)
 			}
 		})
 	}

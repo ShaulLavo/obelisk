@@ -46,6 +46,8 @@ export function useFontPreview(fontName: () => string) {
 
 			setFontFamily(previewFamilyName)
 		} catch (err) {
+			// Font preview loading is best-effort; failure leaves the preview blank
+			console.debug('[useFontPreview] Failed to load font preview:', err)
 		} finally {
 			setIsLoading(false)
 		}
