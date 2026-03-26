@@ -8,7 +8,7 @@
  * Requirements: 5.3, 5.4, 5.5 - Error handling, file type detection, large files
  */
 
-import { onMount, onCleanup, createEffect, getOwner, runWithOwner, type JSX, type Owner } from 'solid-js'
+import { onMount, onCleanup, createEffect, getOwner, runWithOwner, type JSX } from 'solid-js'
 import { toast } from '@repo/ui/toaster'
 import { getCachedPieceTableContent } from '@repo/utils'
 import { createFilePath } from '@repo/fs'

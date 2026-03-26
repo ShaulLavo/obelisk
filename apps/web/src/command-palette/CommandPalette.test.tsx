@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import * as fc from 'fast-check'
-import { render } from '@solidjs/testing-library'
 import type { PaletteResult } from './useCommandPalette'
 
 // Helper function to extract text content from rendered result
