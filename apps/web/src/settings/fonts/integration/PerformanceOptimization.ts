@@ -92,8 +92,6 @@ export class FontPerformanceOptimizer {
 
 	private setupPerformanceMonitoring(): void {
 		// Monitor font loading performance
-		console.log('🚀 Font performance monitoring enabled')
-
 		// Log performance metrics every 30 seconds in debug mode
 		if (this.config.debugMode) {
 			this.debugInterval = PerformanceDebugger.startContinuousMonitoring(30000)
@@ -101,24 +99,17 @@ export class FontPerformanceOptimizer {
 	}
 
 	private setupMemoryMonitoring(): void {
-		console.log('📊 Memory monitoring enabled')
-
 		// Monitor memory usage and warn if it gets too high
 		createEffect(() => {
 			const memoryUsage = this.memoryMonitor.memoryUsagePercentage()
 
 			if (memoryUsage > 80) {
-				console.warn(
-					`⚠️ High memory usage detected: ${memoryUsage.toFixed(1)}%`
-				)
 				this.triggerMemoryCleanup()
 			}
 		})
 	}
 
 	private enableDebugMode(): void {
-		console.log('🐛 Font performance debug mode enabled')
-
 		// Add global debug functions
 		;(window as any).fontDebug = {
 			getMetrics: () => this.performanceMonitor.getMetrics(),
@@ -129,7 +120,6 @@ export class FontPerformanceOptimizer {
 			triggerCleanup: () => this.triggerMemoryCleanup(),
 		}
 
-		console.log('Debug functions available at window.fontDebug')
 	}
 
 	/**
@@ -187,7 +177,6 @@ export class FontPerformanceOptimizer {
 	preloadPopularFonts(fontNames: string[]): void {
 		if (!this.config.preloadPopularFonts) return
 
-		console.log('🔄 Preloading popular fonts:', fontNames)
 		FontLoadingOptimizer.preloadPopularFonts(fontNames)
 	}
 
@@ -195,8 +184,6 @@ export class FontPerformanceOptimizer {
 	 * Trigger memory cleanup when usage is high
 	 */
 	private async triggerMemoryCleanup(): Promise<void> {
-		console.log('🧹 Triggering memory cleanup...')
-
 		try {
 			// Clear unused font caches
 			const cache = await caches.open('nerdfonts-v1')
@@ -214,7 +201,7 @@ export class FontPerformanceOptimizer {
 						const age = now - new Date(lastModified).getTime()
 						if (age > maxAge) {
 							await cache.delete(request)
-							console.log(`🗑️ Cleaned up old font cache: ${request.url}`)
+	
 						}
 					}
 				}
@@ -225,9 +212,8 @@ export class FontPerformanceOptimizer {
 				;(window as any).gc()
 			}
 
-			console.log('✅ Memory cleanup completed')
 		} catch (error) {
-			console.error('❌ Memory cleanup failed:', error)
+			// Memory cleanup failed
 		}
 	}
 
@@ -256,7 +242,6 @@ export class FontPerformanceOptimizer {
 	 */
 	updateConfig(newConfig: Partial<OptimizationConfig>): void {
 		this.config = { ...this.config, ...newConfig }
-		console.log('⚙️ Font optimization config updated:', this.config)
 	}
 
 	/**
@@ -272,7 +257,6 @@ export class FontPerformanceOptimizer {
 			delete (window as any).fontDebug
 		}
 
-		console.log('🧹 Font performance optimizer cleaned up')
 	}
 }
 
@@ -340,8 +324,6 @@ export const ResourceCleanup = {
 	 * Clean up font-related resources
 	 */
 	async cleanupFontResources(): Promise<void> {
-		console.log('🧹 Starting font resource cleanup...')
-
 		try {
 			// Clear font caches
 			const cache = await caches.open('nerdfonts-v1')
@@ -363,9 +345,8 @@ export const ResourceCleanup = {
 				document.fonts.clear()
 			}
 
-			console.log('✅ Font resource cleanup completed')
 		} catch (error) {
-			console.error('❌ Font resource cleanup failed:', error)
+			// Font resource cleanup failed
 		}
 	},
 
@@ -379,7 +360,6 @@ export const ResourceCleanup = {
 
 			return keys.length === 0
 		} catch (error) {
-			console.error('Failed to verify cleanup:', error)
 			return false
 		}
 	},

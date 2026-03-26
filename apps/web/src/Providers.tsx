@@ -47,7 +47,7 @@ export const Providers: ParentComponent = (props) => {
 												{props.children}
 
 												{/* TanStack Devtools - hidden to prevent layout jumps */}
-												<Show when={null!}>
+												<Show when={null}>
 													<Suspense>
 														<TanStackDevtools
 															config={{

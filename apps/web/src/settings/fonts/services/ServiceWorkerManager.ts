@@ -225,10 +225,7 @@ export class ServiceWorkerManager {
 			const { fontMetadataService } = await import('./FontMetadataService')
 			await fontMetadataService.updateLastAccessed(fontName)
 		} catch (error) {
-			console.warn(
-				'[ServiceWorkerManager] Failed to update font access time:',
-				error
-			)
+
 		}
 	}
 
@@ -253,10 +250,7 @@ export class ServiceWorkerManager {
 
 			await fontMetadataService.storeFontMetadata(fontMetadata)
 		} catch (error) {
-			console.warn(
-				'[ServiceWorkerManager] Failed to store font metadata:',
-				error
-			)
+
 		}
 	}
 

@@ -42,10 +42,6 @@ export class FontRestorationService {
 
 			// Get all cached fonts
 			const cachedFonts = await fontCacheService.getInstalledFonts()
-			console.log(
-				'[FontRestorationService] Found cached fonts:',
-				Array.from(cachedFonts)
-			)
 
 			if (cachedFonts.size === 0) {
 				return
@@ -57,10 +53,7 @@ export class FontRestorationService {
 					try {
 						// Check if font is already installed in document.fonts
 						if (fontInstallationService.isFontInstalled(fontName)) {
-							console.log(
-								`[FontRestorationService] Font ${fontName} already installed, skipping`
-							)
-							return
+											return
 						}
 
 
@@ -78,10 +71,7 @@ export class FontRestorationService {
 						await fontFace.load()
 						document.fonts.add(fontFace)
 
-						console.log(
-							`[FontRestorationService] Successfully restored font: ${fontName}`
-						)
-					} catch (error) {
+								} catch (error) {
 						console.error(
 							`[FontRestorationService] Failed to restore font ${fontName}:`,
 							error
@@ -90,10 +80,7 @@ export class FontRestorationService {
 						// Remove from cache if restoration fails (font data might be corrupted)
 						try {
 							await fontCacheService.removeFont(fontName)
-							console.log(
-								`[FontRestorationService] Removed corrupted font ${fontName} from cache`
-							)
-						} catch (removeError) {
+										} catch (removeError) {
 							console.error(
 								`[FontRestorationService] Failed to remove corrupted font ${fontName}:`,
 								removeError

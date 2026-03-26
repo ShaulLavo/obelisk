@@ -111,9 +111,6 @@ export const FontErrorBoundary = (props: FontErrorBoundaryProps) => {
 		// Exponential backoff: baseDelay * 2^retryCount
 		const delay = baseRetryDelay * Math.pow(2, currentRetryCount)
 
-		console.log(
-			`[FontErrorBoundary] Retrying in ${delay}ms (attempt ${currentRetryCount + 1}/${maxRetries})`
-		)
 
 		await new Promise((resolve) => setTimeout(resolve, delay))
 

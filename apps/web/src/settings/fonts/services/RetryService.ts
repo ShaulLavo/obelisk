@@ -53,16 +53,8 @@ export class RetryService {
 			attempts = attempt + 1
 
 			try {
-				console.log(
-					`[RetryService] Attempt ${attempts}/${config.maxRetries + 1}`
-				)
 				const result = await operation()
 
-				if (attempt > 0) {
-					console.log(
-						`[RetryService] Operation succeeded after ${attempts} attempts`
-					)
-				}
 
 				return {
 					success: true,
@@ -72,10 +64,6 @@ export class RetryService {
 			} catch (error) {
 				lastError = error instanceof Error ? error : new Error(String(error))
 
-				console.warn(
-					`[RetryService] Attempt ${attempts} failed:`,
-					lastError.message
-				)
 
 				// Check if we should retry this error
 				if (!config.retryCondition?.(lastError)) {
@@ -137,12 +125,6 @@ export class RetryService {
 					message.includes('connection')
 				)
 			},
-			onRetry: (attempt, error) => {
-				console.log(
-					`[RetryService] Retrying font download for ${fontName} (attempt ${attempt}):`,
-					error.message
-				)
-			},
 		})
 	}
 
@@ -166,12 +148,6 @@ export class RetryService {
 						message.includes('storage') ||
 						message.includes('indexeddb')) &&
 					!message.includes('quota')
-				)
-			},
-			onRetry: (attempt, error) => {
-				console.log(
-					`[RetryService] Retrying cache operation ${operationName} (attempt ${attempt}):`,
-					error.message
 				)
 			},
 		})
@@ -200,12 +176,6 @@ export class RetryService {
 						message.includes('5')) && // 5xx server errors
 					!message.includes('4')
 				) // Don't retry 4xx client errors
-			},
-			onRetry: (attempt, error) => {
-				console.log(
-					`[RetryService] Retrying server call to ${endpoint} (attempt ${attempt}):`,
-					error.message
-				)
 			},
 		})
 	}

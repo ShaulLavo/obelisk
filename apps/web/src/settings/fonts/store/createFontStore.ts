@@ -97,10 +97,6 @@ export const createFontStore = (): FontStore => {
 			if (result.success) {
 				return result.result!
 			} else {
-				console.warn(
-					'[FontStore] Failed to get installed fonts:',
-					result.error?.message
-				)
 				return new Set<string>()
 			}
 		}
@@ -116,10 +112,6 @@ export const createFontStore = (): FontStore => {
 			if (result.success) {
 				return result.result!
 			} else {
-				console.warn(
-					'[FontStore] Failed to get cache stats:',
-					result.error?.message
-				)
 				return { totalSize: 0, fontCount: 0 }
 			}
 		}

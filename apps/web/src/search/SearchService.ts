@@ -16,15 +16,15 @@ export class SearchService implements SearchBackend {
 		}
 	}
 
-	async search(query: string): Promise<SearchResult[]> {
+	search(query: string): Promise<SearchResult[]> {
 		return searchFiles(query)
 	}
 
-	async indexFiles(files: FileMetadata[]): Promise<void> {
+	indexFiles(files: FileMetadata[]): Promise<void> {
 		return batchInsertFiles(files)
 	}
 
-	async reset(): Promise<void> {
+	reset(): Promise<void> {
 		return resetSqlite()
 	}
 
@@ -32,7 +32,7 @@ export class SearchService implements SearchBackend {
 	 * Remove a file or directory from the search index.
 	 * Call this when a file/directory is deleted.
 	 */
-	async removeFile(
+	removeFile(
 		path: string,
 		options?: { recursive?: boolean }
 	): Promise<number> {
@@ -43,7 +43,7 @@ export class SearchService implements SearchBackend {
 	 * Rename/move a file or directory in the search index.
 	 * Call this when a file/directory is renamed or moved.
 	 */
-	async renameFile(
+	renameFile(
 		oldPath: string,
 		newPath: string,
 		options?: { recursive?: boolean }

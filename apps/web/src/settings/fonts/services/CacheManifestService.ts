@@ -105,10 +105,6 @@ export class CacheManifestService {
 
 			return !!cachedResponse
 		} catch (error) {
-			console.warn(
-				`[CacheManifestService] Failed to check offline availability for ${fontName}:`,
-				error
-			)
 			return false
 		}
 	}

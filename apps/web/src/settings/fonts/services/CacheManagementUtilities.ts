@@ -73,10 +73,7 @@ export class CacheManagementUtilities {
 				this.isMaintenanceRunning = true
 				await this.performAutomatedMaintenance(schedule)
 			} catch (error) {
-				console.error(
-					'[CacheManagementUtilities] Automated maintenance failed:',
-					error
-				)
+				// Maintenance cycle failed
 			} finally {
 				this.isMaintenanceRunning = false
 			}
@@ -102,8 +99,6 @@ export class CacheManagementUtilities {
 	 * Optimize cache for better performance
 	 */
 	async optimizeCache(): Promise<CacheOptimizationResult> {
-		console.log('[CacheManagementUtilities] Starting cache optimization')
-
 		const optimizations: string[] = []
 		const errors: string[] = []
 		const recommendations: string[] = []
@@ -178,11 +173,6 @@ export class CacheManagementUtilities {
 				recommendations,
 			}
 		} catch (error) {
-			console.error(
-				'[CacheManagementUtilities] Cache optimization failed:',
-				error
-			)
-
 			return {
 				success: false,
 				optimizations,
@@ -198,8 +188,6 @@ export class CacheManagementUtilities {
 	 */
 	async createCacheBackup(): Promise<CacheBackupResult> {
 		try {
-			console.log('[CacheManagementUtilities] Creating cache backup')
-
 			const { fontMetadataService } = await import('./FontMetadataService')
 			const allMetadata = await fontMetadataService.getAllFontMetadata()
 
@@ -219,8 +207,6 @@ export class CacheManagementUtilities {
 
 			const totalSize = allMetadata.reduce((sum, font) => sum + font.size, 0)
 
-			console.log(`[CacheManagementUtilities] Backup created: ${backupId}`)
-
 			return {
 				success: true,
 				backupSize: totalSize,
@@ -229,11 +215,6 @@ export class CacheManagementUtilities {
 				timestamp,
 			}
 		} catch (error) {
-			console.error(
-				'[CacheManagementUtilities] Failed to create backup:',
-				error
-			)
-
 			return {
 				success: false,
 				backupSize: 0,
@@ -249,10 +230,6 @@ export class CacheManagementUtilities {
 	 */
 	async restoreCacheFromBackup(backupId: string): Promise<CacheRestoreResult> {
 		try {
-			console.log(
-				`[CacheManagementUtilities] Restoring cache from backup: ${backupId}`
-			)
-
 			// Load backup data
 			const backupData = await this.loadBackup(backupId)
 			if (!backupData) {
@@ -272,10 +249,6 @@ export class CacheManagementUtilities {
 						fontMetadata.name
 					)
 					if (!isCached) {
-						// Font needs to be re-downloaded
-						console.log(
-							`[CacheManagementUtilities] Re-downloading font: ${fontMetadata.name}`
-						)
 						// Note: This would require the original download URL
 						// For now, we'll just restore the metadata
 						await this.restoreFontMetadata(fontMetadata)
@@ -290,10 +263,6 @@ export class CacheManagementUtilities {
 				}
 			}
 
-			console.log(
-				`[CacheManagementUtilities] Restored ${restoredFonts.length} fonts from backup`
-			)
-
 			return {
 				success: errors.length === 0,
 				restoredFonts,
@@ -301,11 +270,6 @@ export class CacheManagementUtilities {
 				totalSize,
 			}
 		} catch (error) {
-			console.error(
-				'[CacheManagementUtilities] Failed to restore from backup:',
-				error
-			)
-
 			return {
 				success: false,
 				restoredFonts: [],
@@ -369,11 +333,7 @@ export class CacheManagementUtilities {
 
 			return [...new Set(recommendations)] // Remove duplicates
 		} catch (error) {
-			console.error(
-				'[CacheManagementUtilities] Failed to get recommendations:',
-				error
-			)
-			return ['Unable to generate recommendations - check console for errors']
+			return ['Unable to generate recommendations']
 		}
 	}
 
@@ -382,8 +342,6 @@ export class CacheManagementUtilities {
 	private async performAutomatedMaintenance(
 		schedule: CacheMaintenanceSchedule
 	): Promise<void> {
-		console.log('[CacheManagementUtilities] Performing automated maintenance')
-
 		try {
 			// Check if cleanup is needed
 			const stats = await cacheMonitoringService.getCacheStats()
@@ -391,10 +349,6 @@ export class CacheManagementUtilities {
 				(stats.combined.totalSize / schedule.maxCacheSize) * 100
 
 			if (utilizationPercentage > schedule.autoCleanupThreshold) {
-				console.log(
-					`[CacheManagementUtilities] Cache utilization (${utilizationPercentage.toFixed(1)}%) exceeds threshold, starting cleanup`
-				)
-
 				const cleanupOptions: CacheCleanupOptions = {
 					maxSize: schedule.maxCacheSize,
 					maxAge: schedule.maxFontAge,
@@ -405,36 +359,24 @@ export class CacheManagementUtilities {
 			}
 
 			// Perform health check
-			const healthCheck = await cacheMonitoringService.performHealthCheck()
-			if (healthCheck.status === 'critical') {
-				console.warn(
-					'[CacheManagementUtilities] Critical health issues detected:',
-					healthCheck.issues
-				)
-			}
+			await cacheMonitoringService.performHealthCheck()
 		} catch (error) {
-			console.error(
-				'[CacheManagementUtilities] Automated maintenance error:',
-				error
-			)
+			// Automated maintenance failed
 		}
 	}
 
 	private async removeDuplicateEntries(): Promise<{ spaceSaved: number }> {
 		// This would implement logic to remove duplicate entries
 		// between Cache API and Service Worker cache
-		console.log('[CacheManagementUtilities] Removing duplicate cache entries')
 		return { spaceSaved: 0 } // Placeholder
 	}
 
 	private async defragmentCache(): Promise<void> {
 		// This would implement cache defragmentation
-		console.log('[CacheManagementUtilities] Defragmenting cache storage')
 	}
 
 	private async optimizeCacheMetadata(): Promise<void> {
 		// This would optimize cache metadata storage
-		console.log('[CacheManagementUtilities] Optimizing cache metadata')
 	}
 
 	private async getCacheManifest(): Promise<unknown> {

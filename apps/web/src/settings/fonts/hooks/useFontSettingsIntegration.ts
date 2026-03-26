@@ -88,10 +88,6 @@ export const useFontSettingsIntegration = () => {
 
 	// Set the editor font family
 	const setEditorFontFamily = (fontValue: string) => {
-		console.log(
-			'[FontSettingsIntegration] Setting editor font family:',
-			fontValue
-		)
 		settingsActions.setSetting('editor.font.family', fontValue)
 	}
 
@@ -103,10 +99,6 @@ export const useFontSettingsIntegration = () => {
 		// If installed fonts are loaded and current font is not available,
 		// we could optionally reset to default, but for now just log
 		if (installed && !isCurrentFontAvailable()) {
-			console.warn(
-				'[FontSettingsIntegration] Current font not available:',
-				current
-			)
 		}
 	})
 

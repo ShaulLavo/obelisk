@@ -186,10 +186,6 @@ export class CacheErrorRecoveryService {
 					}
 				}
 			} catch (error) {
-				console.warn(
-					'[CacheErrorRecovery] Failed to clear localStorage:',
-					error
-				)
 			}
 
 			return {
@@ -227,11 +223,7 @@ export class CacheErrorRecoveryService {
 
 					await fontMetadataService.removeFontMetadata(metadata.name)
 				} catch (error) {
-					console.warn(
-						`[CacheErrorRecovery] Failed to remove font ${metadata.name}:`,
-						error
-					)
-				}
+					}
 			}
 
 			return {
@@ -290,10 +282,6 @@ export class CacheErrorRecoveryService {
 				localStorage.setItem(`font-metadata-${name}`, JSON.stringify(metadata))
 				return
 			} catch (error) {
-				console.warn(
-					'[CacheErrorRecovery] localStorage failed, using memory:',
-					error
-				)
 			}
 		}
 
@@ -314,10 +302,6 @@ export class CacheErrorRecoveryService {
 					return JSON.parse(stored)
 				}
 			} catch (error) {
-				console.warn(
-					'[CacheErrorRecovery] Failed to read from localStorage:',
-					error
-				)
 			}
 		}
 
