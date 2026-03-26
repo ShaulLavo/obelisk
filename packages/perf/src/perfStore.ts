@@ -83,12 +83,12 @@ export const configureMaxEntries = (max: number): void => {
 	trimIfNeeded()
 }
 
-export const record = async (
+export const record = (
 	name: string,
 	duration: number,
 	breakdown: PerfBreakdownEntry[],
 	metadata?: Record<string, unknown>
-): Promise<PerfRecord> => {
+): PerfRecord => {
 	const newRecord: PerfRecord = {
 		id: generateId(),
 		name,
@@ -113,12 +113,12 @@ export const record = async (
 	return newRecord
 }
 
-export const getHistory = async (filter?: PerfFilter) => {
+export const getHistory = (filter?: PerfFilter): ReadonlyArray<PerfRecord> => {
 	const filtered = filterRecords(filter)
-	return [...filtered] as ReadonlyArray<PerfRecord>
+	return [...filtered]
 }
 
-export const clear = async (): Promise<void> => {
+export const clear = (): void => {
 	records = []
 }
 
@@ -128,9 +128,7 @@ const percentile = (sorted: number[], p: number): number => {
 	return sorted[Math.max(0, index)]!
 }
 
-export const getSummary = async (
-	filter?: PerfFilter
-): Promise<PerfSummary[]> => {
+export const getSummary = (filter?: PerfFilter): PerfSummary[] => {
 	const history = filterRecords(filter)
 
 	const grouped = new Map<string, number[]>()
@@ -161,15 +159,15 @@ export const getSummary = async (
 	return summaries.sort((a, b) => b.totalDuration - a.totalDuration)
 }
 
-export const getRecentForOperation = async (
+export const getRecentForOperation = (
 	name: string,
 	limit = 10
-): Promise<PerfRecord[]> => {
+): PerfRecord[] => {
 	const filtered = records.filter((r) => r.name === name)
 	return filtered.slice(-limit)
 }
 
 // Export raw data for future server/data lake push
-export const exportData = async (): Promise<PerfRecord[]> => {
+export const exportData = (): PerfRecord[] => {
 	return [...records]
 }

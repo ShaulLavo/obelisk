@@ -8,10 +8,9 @@ import { Duration } from '../../shared/Duration'
 export const SummaryTab: Component = () => {
 	const [summary, setSummary] = createSignal<PerfSummary[]>([])
 
-	// Refresh summary every second
 	onMount(() => {
-		const refresh = async () => {
-			const data = await getSummary()
+		const refresh = () => {
+			const data = getSummary()
 			setSummary(data)
 		}
 		refresh()

@@ -28,9 +28,8 @@ export const PerfPanel: Component = () => {
 	})
 	onCleanup(unsubscribe)
 
-	onMount(async () => {
-		// Load existing history
-		const history = await getHistory()
+	onMount(() => {
+		const history = getHistory()
 		setRecords(history.slice(-100) as PerfRecord[])
 	})
 

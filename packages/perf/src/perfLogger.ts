@@ -1,15 +1,6 @@
 import type { PerfBreakdownEntry, PerfRecord, PerfSummary } from './perfStore'
 import { getSummary, getRecentForOperation } from './perfStore'
-const formatBytes = (bytes: number): string => {
-	if (!Number.isFinite(bytes) || bytes < 0) return '0 Bytes'
-	if (bytes === 0) return '0 Bytes'
-	const units = ['Bytes', 'KB', 'MB', 'GB', 'TB'] as const
-	const maxIndex = units.length - 1
-	const index = Math.min(Math.max(Math.floor(Math.log(bytes) / Math.log(1024)), 0), maxIndex)
-	const value = bytes / 1024 ** index
-	const rounded = Math.round(value * 10) / 10
-	return `${Number.isInteger(rounded) ? rounded.toString() : rounded.toFixed(1)} ${units[index]}`
-}
+import { formatBytes } from '@repo/utils'
 type LogLevel = 'debug' | 'info' | 'warn' | 'silent'
 
 let currentLogLevel: LogLevel = 'silent'
@@ -190,21 +181,21 @@ const formatSummaryTable = (summaries: PerfSummary[]): string => {
 	return [divider, headerRow, divider, ...dataRows, divider].join('\n')
 }
 
-export const logSummary = async (filter?: {
+export const logSummary = (filter?: {
 	name?: string
 	since?: number
-}): Promise<void> => {
-	const summaries = await getSummary(filter)
+}): void => {
+	const summaries = getSummary(filter)
 
 	console.info('📊 Performance Summary')
 	console.info(formatSummaryTable(summaries))
 }
 
-export const logRecentOperations = async (
+export const logRecentOperations = (
 	name: string,
 	limit = 10
-): Promise<void> => {
-	const records = await getRecentForOperation(name, limit)
+): void => {
+	const records = getRecentForOperation(name, limit)
 
 	console.info(`📈 Recent "${name}" operations (${records.length})`)
 
