@@ -32,9 +32,8 @@ export const SystemFilesSection = (props: SystemFilesSectionProps) => {
 
 	const isSelected = (path: string) => actions.isSelectedPath(path)
 
-	const handleFileSelect = async (path: string) => {
+	const handleFileSelect = (path: string) => {
 		void actions.selectPath(path)
-		// Also open the file in the editor
 		props.onFileOpen?.(path)
 	}
 

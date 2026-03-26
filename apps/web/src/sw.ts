@@ -23,11 +23,10 @@ const FONT_CACHE_KEY_PATTERN = /^\/fonts\/[^/]+$/
  * Service Worker Installation
  */
 self.addEventListener('install', (event) => {
-	console.log('[SW] Installing service worker for font caching')
+	console.debug('[SW] Installing service worker for font caching')
 
 	event.waitUntil(
 		caches.open(CACHE_NAME).then(() => {
-			console.log('[SW] Font cache opened successfully')
 			return Promise.resolve()
 		})
 	)
@@ -40,7 +39,7 @@ self.addEventListener('install', (event) => {
  * Service Worker Activation
  */
 self.addEventListener('activate', (event) => {
-	console.log('[SW] Activating service worker for font caching')
+	console.debug('[SW] Activating service worker for font caching')
 
 	event.waitUntil(
 		caches
@@ -52,7 +51,7 @@ self.addEventListener('activate', (event) => {
 							cacheName.startsWith('nerdfonts-') &&
 							cacheName !== CACHE_NAME
 						) {
-							console.log('[SW] Deleting old cache:', cacheName)
+							console.debug('[SW] Deleting old cache:', cacheName)
 							return caches.delete(cacheName)
 						}
 						return undefined
@@ -76,7 +75,6 @@ self.addEventListener('fetch', (event) => {
 		return
 	}
 
-	console.log('[SW] Intercepting font request:', url.pathname)
 	event.respondWith(handleFontRequest(request))
 })
 
@@ -109,14 +107,12 @@ async function handleFontRequest(request: Request): Promise<Response> {
 	try {
 		const cachedResponse = await cache.match(cacheKey)
 		if (cachedResponse) {
-			console.log('[SW] Serving font from cache:', fontName)
 			updateFontAccessTime(fontName).catch((err) => {
 				console.warn('[SW] Failed to update access time:', err)
 			})
 			return cachedResponse
 		}
 
-		console.log('[SW] Font not in cache, fetching from network:', fontName)
 		const networkResponse = await fetch(request)
 
 		if (networkResponse.ok) {
@@ -135,7 +131,6 @@ async function handleFontRequest(request: Request): Promise<Response> {
 			})
 
 			await cache.put(cacheKey, cachedResp.clone())
-			console.log('[SW] Font cached successfully:', fontName)
 
 			storeFontMetadata(fontName, {
 				cachedAt: new Date().toISOString(),
@@ -159,7 +154,6 @@ async function handleFontRequest(request: Request): Promise<Response> {
 
 		const staleResponse = await cache.match(cacheKey)
 		if (staleResponse) {
-			console.log('[SW] Serving stale font from cache due to error:', fontName)
 			return staleResponse
 		}
 
@@ -352,4 +346,4 @@ async function handleClearFontCache(fontName?: string): Promise<{
 	return { cleared: clearedCount > 0, clearedCount }
 }
 
-console.log('[SW] Service worker script loaded')
+console.debug('[SW] Service worker script loaded')

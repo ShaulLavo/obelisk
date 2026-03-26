@@ -146,15 +146,7 @@ export function CursorProvider(props: CursorProviderProps) {
 						documentLength()
 					)
 			)
-		if (!cachedData) {
-			// 			console.log('[CursorContext] applySingleNewlineInsert: lazy load line text', {
-			// 				startLine,
-			// 				startLineId,
-			// 				lineStart,
-			// 				textLength: currentText.length,
-			// 			})
-		}
-		const column = startIndex - lineStart
+			const column = startIndex - lineStart
 
 		// Split the line
 		const prefix = currentText.slice(0, column)
@@ -359,11 +351,6 @@ export function CursorProvider(props: CursorProviderProps) {
 			})
 			setLineDataRevision((v) => v + 1)
 		})
-		// 		console.log(
-		// 			'[delete] batch took',
-		// 			(performance.now() - t0).toFixed(1),
-		// 			'ms'
-		// 		)
 
 		return true
 	}
@@ -646,29 +633,13 @@ export function CursorProvider(props: CursorProviderProps) {
 		const precomputed = props.precomputedLineStarts?.()
 		const usePrecomputed = precomputed && precomputed.length > 0
 
-		// 		console.log('[CursorContext] initializeFromContent called', {
-		// 			contentLength: content.length,
-		// 			hasPrecomputedLineStarts: usePrecomputed,
-		// 			precomputedLineCount: precomputed?.length,
-		// 		})
-
 		const length = content.length
 		const starts = usePrecomputed
 			? precomputed
 			: buildLineStartsFromText(content)
 
-		if (usePrecomputed) {
-			// 			console.log('[CursorContext] using precomputed lineStarts', { lineCount: starts.length })
-			// 		} else {
-			// 			console.log('[CursorContext] built lineStarts from content', { lineCount: starts.length })
-		}
-
 		const ids = createLineIds(starts.length)
 		const data = buildLineDataFromText(content, ids, starts)
-		// 		console.log('[CursorContext] built lineData', {
-		// 			idCount: ids.length,
-		// 			dataKeys: Object.keys(data).length,
-		// 		})
 
 		batch(() => {
 			setActivePieceTable(undefined)
@@ -678,7 +649,6 @@ export function CursorProvider(props: CursorProviderProps) {
 			setLineDataById(reconcile(data))
 			syncCursorStateToDocument()
 		})
-		// 		console.log('[CursorContext] batch complete, pendingLineDataReset = false')
 		pendingLineDataReset = false
 	}
 
@@ -689,20 +659,7 @@ export function CursorProvider(props: CursorProviderProps) {
 		// Track contentVersion to detect external file changes
 		const version = props.contentVersion?.()
 
-		// 		console.log('[CursorContext] createEffect triggered', {
-		// 			selected,
-		// 			path,
-		// 			hasSnapshot: !!snapshot,
-		// 			snapshotLength: snapshot?.length,
-		// 			initializedPath,
-		// 			currentLineStartsLength: lineStarts().length,
-		// 			currentDocLength: documentLength(),
-		// 			contentVersion: version,
-		// 			lastSeenContentVersion,
-		// 		})
-
 		if (!selected || !path) {
-			// 			console.log('[CursorContext] not selected or no path, clearing state')
 			initializedPath = undefined
 			lastSeenContentVersion = undefined
 			batch(() => {
@@ -723,7 +680,6 @@ export function CursorProvider(props: CursorProviderProps) {
 			version !== lastSeenContentVersion
 
 		if (initializedPath !== path) {
-			// 			console.log('[CursorContext] new path, initializing', { oldPath: initializedPath, newPath: path })
 			initializedPath = path
 			lastSeenContentVersion = version
 			if (snapshot) {
@@ -754,22 +710,12 @@ export function CursorProvider(props: CursorProviderProps) {
 			setActivePieceTable(snapshot)
 			const currentLength = documentLength()
 			if (lineStarts().length === 0 || currentLength !== snapshot.length) {
-				// 				console.log('[CursorContext] snapshot length mismatch, reinitializing', {
-				// 					lineStartsLength: lineStarts().length,
-				// 					currentLength,
-				// 					snapshotLength: snapshot.length,
-				// 				})
 				initializeFromSnapshot(snapshot)
 			}
 		} else {
 			const content = props.content()
 			const currentLength = documentLength()
 			if (lineStarts().length === 0 || currentLength !== content.length) {
-				// 				console.log('[CursorContext] content length mismatch, reinitializing', {
-				// 					lineStartsLength: lineStarts().length,
-				// 					currentLength,
-				// 					contentLength: content.length,
-				// 				})
 				initializeFromContent(content)
 			}
 		}

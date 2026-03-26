@@ -258,7 +258,7 @@ export class CacheManagementUtilities {
 					totalSize += fontMetadata.size
 				} catch (error) {
 					errors.push(
-						`Failed to restore font ${fontMetadata.name}: ${(error as any).message}`
+						`Failed to restore font ${fontMetadata.name}: ${error instanceof Error ? error.message : String(error)}`
 					)
 				}
 			}
@@ -365,18 +365,16 @@ export class CacheManagementUtilities {
 		}
 	}
 
-	private async removeDuplicateEntries(): Promise<{ spaceSaved: number }> {
-		// This would implement logic to remove duplicate entries
-		// between Cache API and Service Worker cache
-		return { spaceSaved: 0 } // Placeholder
+	private removeDuplicateEntries(): { spaceSaved: number } {
+		return { spaceSaved: 0 }
 	}
 
-	private async defragmentCache(): Promise<void> {
-		// This would implement cache defragmentation
+	private defragmentCache(): void {
+		// Placeholder for cache defragmentation
 	}
 
-	private async optimizeCacheMetadata(): Promise<void> {
-		// This would optimize cache metadata storage
+	private optimizeCacheMetadata(): void {
+		// Placeholder for cache metadata optimization
 	}
 
 	private async getCacheManifest(): Promise<unknown> {
@@ -384,12 +382,12 @@ export class CacheManagementUtilities {
 		return await cacheManifestService.generateManifest()
 	}
 
-	private async storeBackup(backupId: string, backupData: unknown): Promise<void> {
+	private storeBackup(backupId: string, backupData: unknown): void {
 		const backupJson = JSON.stringify(backupData)
 		localStorage.setItem(`cache-backup-${backupId}`, backupJson)
 	}
 
-	private async loadBackup(backupId: string): Promise<CacheBackupData | null> {
+	private loadBackup(backupId: string): CacheBackupData | null {
 		const backupJson = localStorage.getItem(`cache-backup-${backupId}`)
 		return backupJson ? JSON.parse(backupJson) : null
 	}

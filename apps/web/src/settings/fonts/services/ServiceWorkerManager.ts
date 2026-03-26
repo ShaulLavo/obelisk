@@ -49,8 +49,6 @@ export class ServiceWorkerManager {
 
 			this.isRegistered = true
 
-			this.isRegistered = true
-
 			navigator.serviceWorker.addEventListener(
 				'message',
 				this.handleServiceWorkerMessage.bind(this)

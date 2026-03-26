@@ -1,32 +1,21 @@
 import { createContext, useContext, type ParentProps, createMemo, createEffect } from 'solid-js'
 import { createStore, produce } from 'solid-js/store'
-import type { SyncStatusInfo, ConflictInfo as EditorConflictInfo } from '@repo/code-editor/sync'
+import {
+	type SyncStatusInfo,
+	type ConflictInfo as EditorConflictInfo,
+	deriveSyncStatusType,
+	NOT_WATCHED_STATUS,
+} from '@repo/code-editor/sync'
 import { createFilePath } from '@repo/fs'
 import type { DocumentStore, Document } from '../doc'
 
-const NOT_WATCHED_STATUS: SyncStatusInfo = {
-	type: 'not-watched',
-	lastSyncTime: 0,
-	hasLocalChanges: false,
-	hasExternalChanges: false,
-}
-
 function documentToSyncStatus(doc: Document): SyncStatusInfo {
-	const syncState = doc.syncState()
 	const hasLocal = doc.isDirty()
 	const hasExternal = doc.hasExternalChanges()
-	const lastSync = doc.lastSyncedAt() ?? 0
-
-	let type: SyncStatusInfo['type']
-	if (syncState === 'synced') type = 'synced'
-	else if (syncState === 'local-changes') type = 'dirty'
-	else if (syncState === 'external-changes') type = 'external-changes'
-	else if (syncState === 'conflict') type = 'conflict'
-	else type = 'synced'
 
 	return {
-		type,
-		lastSyncTime: lastSync,
+		type: deriveSyncStatusType(hasLocal, hasExternal),
+		lastSyncTime: doc.lastSyncedAt() ?? 0,
 		hasLocalChanges: hasLocal,
 		hasExternalChanges: hasExternal,
 	}

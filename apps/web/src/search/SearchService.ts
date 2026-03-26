@@ -6,9 +6,9 @@ import {
 	removeFromIndex,
 	renameInIndex,
 } from '../workers/sqliteClient'
-import type { SearchBackend, SearchResult, FileMetadata } from './types'
+import type { SearchResult, FileMetadata } from './types'
 
-export class SearchService implements SearchBackend {
+export class SearchService {
 	async init(): Promise<void> {
 		const result = await initSqlite()
 		if (!result.opfsEnabled) {

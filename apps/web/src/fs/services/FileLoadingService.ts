@@ -106,19 +106,13 @@ export interface LoadFileOptions {
 export async function loadFile(options: LoadFileOptions): Promise<FileLoadResult> {
 	const { source, path, fileCache, forceReload, onSyntaxReady } = options
 
-	// Get file size first
 	const fileSize = await getFileSize(source, path)
-
-	// Read preview bytes for binary detection
 	const previewBytes = await readFilePreviewBytes(source, path)
-
-	// Check cache (unless force reload)
 	let cachedEntry = forceReload ? {} : await fileCache.getAsync(path)
 
 	const detection = detectBinaryFromPreview(path, previewBytes)
 	const isBinary = !detection.isText
 
-	// If we have cached piece table, use it
 	if (cachedEntry.pieceTable && !forceReload) {
 		const { pieceTable, stats } = cachedEntry
 		const content = pieceTable ? getPieceTableText(pieceTable) : ''
@@ -155,7 +149,6 @@ export async function loadFile(options: LoadFileOptions): Promise<FileLoadResult
 		}
 	}
 
-	// Read full file content
 	const buffer = await readFileBuffer(source, path)
 	const textBytes = new Uint8Array(buffer)
 	const content = textDecoder.decode(textBytes)
