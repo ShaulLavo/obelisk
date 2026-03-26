@@ -49,7 +49,7 @@ export class FontResourceCleanup {
 			FontResourceCleanup.instance.cleanupInProgress = false
 			FontResourceCleanup.instance.setCleanupStatus('idle')
 		}
-		FontResourceCleanup.instance = undefined as any
+		FontResourceCleanup.instance = undefined!
 	}
 
 	/**
@@ -88,7 +88,7 @@ export class FontResourceCleanup {
 
 			// Memory usage (if available)
 			if ('memory' in performance) {
-				const memory = (performance as any).memory
+				const memory = (performance as unknown as { memory: { usedJSHeapSize: number } }).memory
 				stats.memoryUsage = memory.usedJSHeapSize
 			}
 
@@ -428,8 +428,8 @@ export class FontResourceCleanup {
 	private async forceGarbageCollection(): Promise<void> {
 		try {
 			// Force garbage collection if available
-			if ('gc' in window && typeof (window as any).gc === 'function') {
-				;(window as any).gc()
+			if ('gc' in window && typeof (window as unknown as { gc?: () => void }).gc === 'function') {
+				;(window as unknown as { gc: () => void }).gc()
 				console.log('🗑️ Forced garbage collection')
 			}
 

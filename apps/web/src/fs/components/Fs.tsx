@@ -16,9 +16,9 @@ export const Fs = () => {
 	const [documentStore, setDocumentStore] = createSignal<DocumentStore>()
 
 	const openFileAsTab = (filePath: string) => {
-		const manager = layoutManager()
-		if (manager && (manager as any).openFileAsTab) {
-			;(manager as any).openFileAsTab(filePath)
+		const manager = layoutManager() as LayoutManager & { openFileAsTab?: (path: string) => void } | undefined
+		if (manager?.openFileAsTab) {
+			manager.openFileAsTab(filePath)
 			actions.setSelectedPathOnly(filePath)
 		}
 	}

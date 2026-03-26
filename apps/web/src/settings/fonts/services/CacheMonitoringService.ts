@@ -248,8 +248,8 @@ export class CacheMonitoringService {
 
 						removedFonts.push(fontName)
 						console.log(`[CacheMonitoringService] Removed font: ${fontName}`)
-					} catch (error: any) {
-						const errorMsg = `Failed to remove font ${fontName}: ${error.message}`
+					} catch (error) {
+						const errorMsg = `Failed to remove font ${fontName}: ${error instanceof Error ? error.message : String(error)}`
 						errors.push(errorMsg)
 						console.error('[CacheMonitoringService]', errorMsg)
 					}
@@ -267,14 +267,14 @@ export class CacheMonitoringService {
 				errors,
 				newStats: finalStats,
 			}
-		} catch (error: any) {
+		} catch (error) {
 			console.error('[CacheMonitoringService] Cache cleanup failed:', error)
 
 			return {
 				success: false,
 				removedFonts: [],
 				freedSpace: 0,
-				errors: [error.message],
+				errors: [error instanceof Error ? error.message : String(error)],
 				newStats: await this.getCacheStats(),
 			}
 		}
@@ -356,12 +356,12 @@ export class CacheMonitoringService {
 			}
 
 			return healthCheck
-		} catch (error: any) {
+		} catch (error) {
 			console.error('[CacheMonitoringService] Health check failed:', error)
 
 			return {
 				status: 'critical',
-				issues: [`Health check failed: ${error.message}`],
+				issues: [`Health check failed: ${error instanceof Error ? error.message : String(error)}`],
 				recommendations: [
 					'Check browser console for detailed error information',
 				],

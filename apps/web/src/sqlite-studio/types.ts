@@ -1,14 +1,16 @@
+export type SqliteValue = string | number | null | Uint8Array
+
 export type TableInfo = {
 	cid: number
 	name: string
 	type: string
 	notnull: number
-	dflt_value: any
+	dflt_value: SqliteValue
 	pk: number
 }
 
 export type EditingCell = {
-	row: Record<string, any>
+	row: Record<string, SqliteValue>
 	col: string
-	value: any
+	value: SqliteValue
 }

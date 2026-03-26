@@ -10,10 +10,8 @@ export type ViewModeDefinition = {
 	isDefault?: boolean
 	/** Optional state management hooks for this view mode */
 	stateHooks?: {
-		/** Hook to create view mode-specific state */
-		createState?: () => any
-		/** Hook to cleanup view mode-specific state */
-		cleanup?: (state: any) => void
+		createState?: () => unknown
+		cleanup?: (state: unknown) => void
 	}
 }
 

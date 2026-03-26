@@ -118,16 +118,16 @@ export class CacheManagementUtilities {
 					optimizations.push(`Removed duplicate cache entries`)
 					spaceSaved += duplicateCleanup.spaceSaved
 				}
-			} catch (error: any) {
-				errors.push(`Failed to remove duplicates: ${error.message}`)
+			} catch (error) {
+				errors.push(`Failed to remove duplicates: ${error instanceof Error ? error.message : String(error)}`)
 			}
 
 			// 2. Defragment cache storage
 			try {
 				await this.defragmentCache()
 				optimizations.push('Defragmented cache storage')
-			} catch (error: any) {
-				errors.push(`Failed to defragment cache: ${error.message}`)
+			} catch (error) {
+				errors.push(`Failed to defragment cache: ${error instanceof Error ? error.message : String(error)}`)
 			}
 
 			// 3. Update service worker cache
@@ -136,16 +136,16 @@ export class CacheManagementUtilities {
 					await serviceWorkerManager.forceUpdate()
 					optimizations.push('Updated service worker cache')
 				}
-			} catch (error: any) {
-				errors.push(`Failed to update service worker: ${error.message}`)
+			} catch (error) {
+				errors.push(`Failed to update service worker: ${error instanceof Error ? error.message : String(error)}`)
 			}
 
 			// 4. Optimize cache headers and metadata
 			try {
 				await this.optimizeCacheMetadata()
 				optimizations.push('Optimized cache metadata')
-			} catch (error: any) {
-				errors.push(`Failed to optimize metadata: ${error.message}`)
+			} catch (error) {
+				errors.push(`Failed to optimize metadata: ${error instanceof Error ? error.message : String(error)}`)
 			}
 
 			// Generate recommendations
@@ -175,7 +175,7 @@ export class CacheManagementUtilities {
 				errors,
 				recommendations,
 			}
-		} catch (error: any) {
+		} catch (error) {
 			console.error(
 				'[CacheManagementUtilities] Cache optimization failed:',
 				error
@@ -185,7 +185,7 @@ export class CacheManagementUtilities {
 				success: false,
 				optimizations,
 				spaceSaved,
-				errors: [...errors, error.message],
+				errors: [...errors, error instanceof Error ? error.message : String(error)],
 				recommendations,
 			}
 		}
@@ -298,7 +298,7 @@ export class CacheManagementUtilities {
 				errors,
 				totalSize,
 			}
-		} catch (error: any) {
+		} catch (error) {
 			console.error(
 				'[CacheManagementUtilities] Failed to restore from backup:',
 				error
@@ -307,7 +307,7 @@ export class CacheManagementUtilities {
 			return {
 				success: false,
 				restoredFonts: [],
-				errors: [error.message],
+				errors: [error instanceof Error ? error.message : String(error)],
 				totalSize: 0,
 			}
 		}
@@ -435,24 +435,22 @@ export class CacheManagementUtilities {
 		console.log('[CacheManagementUtilities] Optimizing cache metadata')
 	}
 
-	private async getCacheManifest(): Promise<any> {
+	private async getCacheManifest(): Promise<unknown> {
 		const { cacheManifestService } = await import('./CacheManifestService')
 		return await cacheManifestService.generateManifest()
 	}
 
-	private async storeBackup(backupId: string, backupData: any): Promise<void> {
-		// Store backup in IndexedDB
+	private async storeBackup(backupId: string, backupData: unknown): Promise<void> {
 		const backupJson = JSON.stringify(backupData)
 		localStorage.setItem(`cache-backup-${backupId}`, backupJson)
 	}
 
-	private async loadBackup(backupId: string): Promise<any> {
-		// Load backup from IndexedDB
+	private async loadBackup(backupId: string): Promise<unknown> {
 		const backupJson = localStorage.getItem(`cache-backup-${backupId}`)
 		return backupJson ? JSON.parse(backupJson) : null
 	}
 
-	private async restoreFontMetadata(metadata: any): Promise<void> {
+	private async restoreFontMetadata(metadata: unknown): Promise<void> {
 		const { fontMetadataService } = await import('./FontMetadataService')
 		await fontMetadataService.storeFontMetadata(metadata)
 	}

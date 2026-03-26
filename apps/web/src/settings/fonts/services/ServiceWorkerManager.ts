@@ -28,7 +28,7 @@ export interface ServiceWorkerClearResult {
 export class ServiceWorkerManager {
 	private registration: ServiceWorkerRegistration | null = null
 	private isRegistered = false
-	private messageHandlers = new Map<string, (data: any) => void>()
+	private messageHandlers = new Map<string, (data: unknown) => void>()
 
 	/**
 	 * Initialize and register the service worker
@@ -151,7 +151,7 @@ export class ServiceWorkerManager {
 	/**
 	 * Register a message handler for service worker messages
 	 */
-	onMessage(type: string, handler: (data: any) => void): void {
+	onMessage(type: string, handler: (data: unknown) => void): void {
 		this.messageHandlers.set(type, handler)
 	}
 
@@ -165,7 +165,7 @@ export class ServiceWorkerManager {
 	/**
 	 * Send a message to the service worker and wait for response
 	 */
-	private async sendMessage(type: string, data?: any): Promise<any> {
+	private async sendMessage(type: string, data?: unknown): Promise<unknown> {
 		if (!this.registration || !this.registration.active) {
 			throw new Error('Service worker not active')
 		}
@@ -238,7 +238,7 @@ export class ServiceWorkerManager {
 	 */
 	private async handleStoreMetadata(
 		fontName: string,
-		metadata: any
+		metadata: unknown
 	): Promise<void> {
 		try {
 			const { fontMetadataService } = await import('./FontMetadataService')
