@@ -73,7 +73,7 @@ if (!globalThis.Buffer) {
 }
 
 const logDebug = (message: GitProgressMessage) => {
-	console.log('[git-worker]', JSON.stringify(message, null, 2))
+	console.debug('[git-worker]', JSON.stringify(message, null, 2))
 }
 
 const emitProgress = async (
