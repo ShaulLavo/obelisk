@@ -140,6 +140,7 @@
         "vite": "^7.3.0",
         "vite-plugin-solid": "^2.11.8",
         "vitest": "^4.0.16",
+        "vitest-browser-solid": "*",
       },
     },
     "packages/code-editor": {
@@ -413,10 +414,7 @@
       "name": "@repo/utils",
       "version": "0.0.0",
       "dependencies": {
-        "@repo/perf": "*",
-        "clsx": "^2.1.1",
         "solid-js": "^1.9.5",
-        "tailwind-merge": "^3.3.1",
       },
       "devDependencies": {
         "@repo/eslint-config": "*",

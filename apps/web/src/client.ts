@@ -12,8 +12,9 @@ const isBinaryResponse = (response: Response) => {
 
 // TODO: Investigate why bun version mismatch keeps happening - causes elysia type incompatibility
 // Note: App type import removed to fix Docker build - server module has Node.js dependencies
+// treaty<any> resolves to a union including a string literal, so cast to any for property access
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const client = treaty<any>(env.apiOrigin, {
+export const client: any = treaty<any>(env.apiOrigin, {
 	onResponse: async (response) => {
 		if (!isBinaryResponse(response)) return null
 		return response.arrayBuffer()

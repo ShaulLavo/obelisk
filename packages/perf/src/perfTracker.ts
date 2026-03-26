@@ -118,10 +118,8 @@ export const trackSync = <T>(
 		const breakdown = convertBreakdown(tableOutput)
 
 		if (persist) {
-			// Fire-and-forget for sync operations
-			void record(name, duration, breakdown, metadata).then((perfRecord) => {
-				logOperation(perfRecord, { showBreakdown, level })
-			})
+			const perfRecord = record(name, duration, breakdown, metadata)
+			logOperation(perfRecord, { showBreakdown, level })
 		} else {
 			const perfRecord = createTransientRecord(
 				name,

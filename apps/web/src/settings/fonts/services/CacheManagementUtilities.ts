@@ -11,6 +11,14 @@ import type {
 	CacheCleanupOptions,
 	CacheCleanupResult,
 } from './CacheMonitoringService'
+import type { FontMetadata } from './FontMetadataService'
+
+type CacheBackupData = {
+	version: string
+	timestamp: string
+	fonts: FontMetadata[]
+	manifest: unknown
+}
 
 export interface CacheOptimizationResult {
 	success: boolean
@@ -445,12 +453,12 @@ export class CacheManagementUtilities {
 		localStorage.setItem(`cache-backup-${backupId}`, backupJson)
 	}
 
-	private async loadBackup(backupId: string): Promise<unknown> {
+	private async loadBackup(backupId: string): Promise<CacheBackupData | null> {
 		const backupJson = localStorage.getItem(`cache-backup-${backupId}`)
 		return backupJson ? JSON.parse(backupJson) : null
 	}
 
-	private async restoreFontMetadata(metadata: unknown): Promise<void> {
+	private async restoreFontMetadata(metadata: FontMetadata): Promise<void> {
 		const { fontMetadataService } = await import('./FontMetadataService')
 		await fontMetadataService.storeFontMetadata(metadata)
 	}

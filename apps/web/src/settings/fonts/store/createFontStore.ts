@@ -177,7 +177,7 @@ export const createFontStore = (): FontStore => {
 
 			const updates: Promise<void>[] = []
 
-			for (const [name, base64Data] of Object.entries(response.data)) {
+			for (const [name, base64Data] of Object.entries(response.data as Record<string, string>)) {
 				if (base64Data) {
 					// Decode and cache
 					const binaryString = atob(base64Data)

@@ -95,7 +95,7 @@ export class ServiceWorkerManager {
 			throw new Error('Service worker not available')
 		}
 
-		return this.sendMessage('GET_CACHE_STATS')
+		return this.sendMessage<ServiceWorkerCacheStats>('GET_CACHE_STATS')
 	}
 
 	/**
@@ -108,7 +108,7 @@ export class ServiceWorkerManager {
 			throw new Error('Service worker not available')
 		}
 
-		return this.sendMessage('CLEANUP_CACHE', options)
+		return this.sendMessage<ServiceWorkerCleanupResult>('CLEANUP_CACHE', options)
 	}
 
 	/**
@@ -119,7 +119,7 @@ export class ServiceWorkerManager {
 			throw new Error('Service worker not available')
 		}
 
-		return this.sendMessage('CLEAR_FONT_CACHE', { fontName })
+		return this.sendMessage<ServiceWorkerClearResult>('CLEAR_FONT_CACHE', { fontName })
 	}
 
 	/**
@@ -165,7 +165,7 @@ export class ServiceWorkerManager {
 	/**
 	 * Send a message to the service worker and wait for response
 	 */
-	private async sendMessage(type: string, data?: unknown): Promise<unknown> {
+	private async sendMessage<T = unknown>(type: string, data?: unknown): Promise<T> {
 		if (!this.registration || !this.registration.active) {
 			throw new Error('Service worker not active')
 		}
@@ -238,7 +238,7 @@ export class ServiceWorkerManager {
 	 */
 	private async handleStoreMetadata(
 		fontName: string,
-		metadata: unknown
+		metadata: { cachedAt: string | number; size: number; version: string }
 	): Promise<void> {
 		try {
 			const { fontMetadataService } = await import('./FontMetadataService')

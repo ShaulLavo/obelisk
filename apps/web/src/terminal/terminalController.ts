@@ -391,13 +391,14 @@ const createGhosttyRuntime = async (
 		convertEol: true,
 		cursorBlink: true,
 		// Use shared UI scrollbar to keep backend parity.
+		// scrollbar is supported by the local ghostty-web build but missing from the published @0.4.0 types
 		scrollbar: false,
 		fontSize: FONT_SIZE,
 		fontFamily: FONT_FAMILY,
 		theme: {
 			...mapTheme(theme),
 		},
-	})
+	} as ConstructorParameters<typeof GhosttyTerminal>[0] & { scrollbar?: boolean })
 
 	const fitAddon = new GhosttyFitAddon()
 
