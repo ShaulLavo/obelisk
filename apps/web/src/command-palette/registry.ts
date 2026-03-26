@@ -40,22 +40,14 @@ class CommandPaletteRegistryImpl implements CommandPaletteRegistry {
 	async execute(id: string): Promise<void> {
 		const command = this.commands.get(id)
 		if (!command) {
-			console.warn(`Command not found: ${id}`)
-			return
+			throw new Error(`Command not found: ${id}`)
 		}
 
-		// Check conditional availability
 		if (command.when && !command.when()) {
-			console.warn(`Command "${id}" is not available in current context`)
-			return
+			throw new Error(`Command "${id}" is not available in current context`)
 		}
 
-		try {
-			await command.handler()
-		} catch (error) {
-			console.error(`Command failed: ${id}`, error)
-			throw error
-		}
+		await command.handler()
 	}
 }
 
