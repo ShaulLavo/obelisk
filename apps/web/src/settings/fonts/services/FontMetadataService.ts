@@ -1,4 +1,5 @@
 import localforage from 'localforage'
+import { createLazySingleton } from './createLazySingleton'
 
 export interface FontMetadata {
 	name: string
@@ -276,18 +277,10 @@ export class FontMetadataService {
 	}
 }
 
-let _fontMetadataService: FontMetadataService | null = null
+const _singleton = createLazySingleton(() => new FontMetadataService())
+
 /** Lazy singleton -- created on first access, not at import time. */
-export function getFontMetadataService(): FontMetadataService {
-	if (!_fontMetadataService) {
-		_fontMetadataService = new FontMetadataService()
-	}
-	return _fontMetadataService
-}
+export const getFontMetadataService = _singleton.get
 
 /** @deprecated Use getFontMetadataService() instead. */
-export const fontMetadataService = new Proxy({} as FontMetadataService, {
-	get(_target, prop, receiver) {
-		return Reflect.get(getFontMetadataService(), prop, receiver)
-	},
-})
+export const fontMetadataService = _singleton.deprecated

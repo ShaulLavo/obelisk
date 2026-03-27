@@ -1,4 +1,5 @@
 import { fontMetadataService, type FontMetadata } from './FontMetadataService'
+import { createLazySingleton } from './createLazySingleton'
 
 export type CacheErrorType =
 	| 'cache_api_unavailable'
@@ -347,18 +348,10 @@ export class CacheErrorRecoveryService {
 	}
 }
 
-let _cacheErrorRecovery: CacheErrorRecoveryService | null = null
+const _singleton = createLazySingleton(() => new CacheErrorRecoveryService())
+
 /** Lazy singleton -- created on first access, not at import time. */
-export function getCacheErrorRecovery(): CacheErrorRecoveryService {
-	if (!_cacheErrorRecovery) {
-		_cacheErrorRecovery = new CacheErrorRecoveryService()
-	}
-	return _cacheErrorRecovery
-}
+export const getCacheErrorRecovery = _singleton.get
 
 /** @deprecated Use getCacheErrorRecovery() instead. */
-export const cacheErrorRecovery = new Proxy({} as CacheErrorRecoveryService, {
-	get(_target, prop, receiver) {
-		return Reflect.get(getCacheErrorRecovery(), prop, receiver)
-	},
-})
+export const cacheErrorRecovery = _singleton.deprecated

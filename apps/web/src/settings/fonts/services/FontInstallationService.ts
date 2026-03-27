@@ -1,4 +1,5 @@
 import { fontCacheService } from './FontCacheService'
+import { createLazySingleton } from './createLazySingleton'
 
 export type FontInstallationStatus = {
 	fontName: string
@@ -162,18 +163,10 @@ export class FontInstallationService {
 	}
 }
 
-let _fontInstallationService: FontInstallationService | null = null
+const _singleton = createLazySingleton(() => new FontInstallationService())
+
 /** Lazy singleton -- created on first access, not at import time. */
-export function getFontInstallationService(): FontInstallationService {
-	if (!_fontInstallationService) {
-		_fontInstallationService = new FontInstallationService()
-	}
-	return _fontInstallationService
-}
+export const getFontInstallationService = _singleton.get
 
 /** @deprecated Use getFontInstallationService() instead. */
-export const fontInstallationService = new Proxy({} as FontInstallationService, {
-	get(_target, prop, receiver) {
-		return Reflect.get(getFontInstallationService(), prop, receiver)
-	},
-})
+export const fontInstallationService = _singleton.deprecated

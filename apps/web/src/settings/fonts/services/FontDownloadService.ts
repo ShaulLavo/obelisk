@@ -2,6 +2,7 @@ import { client } from '~/client'
 import { fontCacheService } from './FontCacheService'
 import { fontInstallationService } from './FontInstallationService'
 import { RetryService, RETRY_PRESETS } from './RetryService'
+import { createLazySingleton } from './createLazySingleton'
 
 export type DownloadProgress = {
 	fontName: string
@@ -207,18 +208,10 @@ export class FontDownloadService {
 	}
 }
 
-let _fontDownloadService: FontDownloadService | null = null
+const _singleton = createLazySingleton(() => new FontDownloadService())
+
 /** Lazy singleton -- created on first access, not at import time. */
-export function getFontDownloadService(): FontDownloadService {
-	if (!_fontDownloadService) {
-		_fontDownloadService = new FontDownloadService()
-	}
-	return _fontDownloadService
-}
+export const getFontDownloadService = _singleton.get
 
 /** @deprecated Use getFontDownloadService() instead. */
-export const fontDownloadService = new Proxy({} as FontDownloadService, {
-	get(_target, prop, receiver) {
-		return Reflect.get(getFontDownloadService(), prop, receiver)
-	},
-})
+export const fontDownloadService = _singleton.deprecated

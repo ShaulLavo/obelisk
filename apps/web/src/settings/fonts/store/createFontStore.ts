@@ -146,23 +146,19 @@ export const createFontStore = (): FontStore => {
 	}
 
 	const downloadMultipleFonts = async (names: string[]): Promise<void> => {
-		// Add all to queue
 		setState('downloadQueue', (queue) => new Set([...queue, ...names]))
 
 		try {
-			// Call batch API
 			const response = await client.fonts.batch.post({ names })
 
 			if (!response.data) {
 				throw new Error('No data received from batch download')
 			}
 
-			// Process each font result
 			const { fontCacheService } = await import('../services/FontCacheService')
 			const { fontInstallationService } =
 				await import('../services/FontInstallationService')
 
-			// Initialize services
 			await fontCacheService.init()
 			await fontInstallationService.initialize()
 
@@ -170,7 +166,6 @@ export const createFontStore = (): FontStore => {
 
 			for (const [name, base64Data] of Object.entries(response.data as Record<string, string>)) {
 				if (base64Data) {
-					// Decode and cache
 					const binaryString = atob(base64Data)
 					const bytes = new Uint8Array(binaryString.length)
 					for (let i = 0; i < binaryString.length; i++) {

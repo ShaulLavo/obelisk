@@ -14,6 +14,7 @@ import { fontMetadataService } from './FontMetadataService'
 import { cacheErrorRecovery } from './CacheErrorRecovery'
 import { serviceWorkerManager } from './ServiceWorkerManager'
 import type { FontMetadata, CacheStats } from './FontMetadataService'
+import { createLazySingleton } from './createLazySingleton'
 
 // Re-export types for convenience
 export type { FontMetadata, CacheStats }
@@ -341,18 +342,10 @@ export class FontCacheService {
 	}
 }
 
-let _fontCacheService: FontCacheService | null = null
+const _singleton = createLazySingleton(() => new FontCacheService())
+
 /** Lazy singleton -- created on first access, not at import time. */
-export function getFontCacheService(): FontCacheService {
-	if (!_fontCacheService) {
-		_fontCacheService = new FontCacheService()
-	}
-	return _fontCacheService
-}
+export const getFontCacheService = _singleton.get
 
 /** @deprecated Use getFontCacheService() instead. */
-export const fontCacheService = new Proxy({} as FontCacheService, {
-	get(_target, prop, receiver) {
-		return Reflect.get(getFontCacheService(), prop, receiver)
-	},
-})
+export const fontCacheService = _singleton.deprecated

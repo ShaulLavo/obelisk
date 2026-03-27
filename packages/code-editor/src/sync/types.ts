@@ -212,6 +212,16 @@ export interface PendingConflict {
 }
 
 /**
+ * Sentinel status for files that are not being watched
+ */
+export const NOT_WATCHED_STATUS: SyncStatusInfo = {
+	type: 'not-watched',
+	lastSyncTime: 0,
+	hasLocalChanges: false,
+	hasExternalChanges: false,
+}
+
+/**
  * Default configuration values
  */
 export const DEFAULT_EDITOR_SYNC_CONFIG: EditorSyncConfig = {

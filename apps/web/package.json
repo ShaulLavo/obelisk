@@ -44,6 +44,7 @@
     "typescript": "^5.7.2",
     "vite": "^7.3.0",
     "vite-plugin-solid": "^2.11.8",
+    "@tailwindcss/vite": "^4.1.17",
     "vitest": "^4.0.16",
     "vitest-browser-solid": "*"
   },
@@ -73,7 +74,6 @@
     "@solid-primitives/storage": "^4.3.3",
     "@solid-primitives/transition-group": "^1.1.2",
     "@solidjs/router": "^0.15.4",
-    "@tailwindcss/vite": "^4.1.17",
     "@tanstack/solid-table": "^8.21.3",
     "@tanstack/solid-virtual": "^3.13.12",
     "@tree-sitter-grammars/tree-sitter-xml": "^0.7.0",

@@ -1,53 +1,29 @@
-/**
- * A safe wrapper around localStorage that gracefully handles:
- * - Storage unavailability (e.g., in private browsing mode)
- * - Quota exceeded errors
- * - Parse errors
- * - Any other unexpected exceptions
- */
+// Safe wrappers around localStorage that return null / no-op on any error.
 
-/**
- * Safely retrieves an item from localStorage.
- * Returns null if the item doesn't exist or if any error occurs.
- */
 export function safeGetItem(key: string): string | null {
 	try {
 		return window.localStorage.getItem(key)
 	} catch (error) {
-		// Silently ignore errors (storage unavailable, quota exceeded, etc.)
 		return null
 	}
 }
 
-/**
- * Safely sets an item in localStorage.
- * Silently ignores any errors that occur during the operation.
- */
 export function safeSetItem(key: string, value: string): void {
 	try {
 		window.localStorage.setItem(key, value)
 	} catch (error) {
-		// Silently ignore errors (quota exceeded, storage unavailable, etc.)
+		// no-op
 	}
 }
 
-/**
- * Safely removes an item from localStorage.
- * Silently ignores any errors that occur during the operation.
- */
 export function safeRemoveItem(key: string): void {
 	try {
 		window.localStorage.removeItem(key)
 	} catch (error) {
-		// Silently ignore errors (storage unavailable, etc.)
+		// no-op
 	}
 }
 
-/**
- * Creates a memory-safe storage adapter that:
- * - Returns undefined if window is not defined (SSR safety)
- * - Wraps all localStorage operations in try-catch blocks
- */
 export function createMemorySafeStorage() {
 	if (typeof window === 'undefined') {
 		return undefined

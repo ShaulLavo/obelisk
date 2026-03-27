@@ -23,12 +23,24 @@
  *   CacheManagementUtilities  — Automated maintenance
  */
 
-// Core services
-export { fontCacheService } from './FontCacheService'
-export { fontMetadataService } from './FontMetadataService'
-export { fontDownloadService } from './FontDownloadService'
-export { fontInstallationService } from './FontInstallationService'
+// Core services — getter functions (primary API)
+export { getFontCacheService } from './FontCacheService'
+export { getFontMetadataService } from './FontMetadataService'
+export { getFontDownloadService } from './FontDownloadService'
+export { getFontInstallationService } from './FontInstallationService'
+export { getCacheErrorRecovery } from './CacheErrorRecovery'
 export { RetryService, RETRY_PRESETS } from './RetryService'
+
+// Deprecated singleton proxies (backward compatibility — prefer the getX() functions above)
+/** @deprecated Use getFontCacheService() instead. */
+export { fontCacheService } from './FontCacheService'
+/** @deprecated Use getFontMetadataService() instead. */
+export { fontMetadataService } from './FontMetadataService'
+/** @deprecated Use getFontDownloadService() instead. */
+export { fontDownloadService } from './FontDownloadService'
+/** @deprecated Use getFontInstallationService() instead. */
+export { fontInstallationService } from './FontInstallationService'
+/** @deprecated Use getCacheErrorRecovery() instead. */
 export { cacheErrorRecovery } from './CacheErrorRecovery'
 
 // Type exports (public)

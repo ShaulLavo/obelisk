@@ -1,3 +1,5 @@
+import { createLazySingleton } from './createLazySingleton'
+
 export interface ServiceWorkerCacheStats {
 	fontCount: number
 	totalSize: number
@@ -145,9 +147,6 @@ export class ServiceWorkerManager {
 		})
 	}
 
-	/**
-	 * Handle messages from service worker
-	 */
 	private handleServiceWorkerMessage(event: MessageEvent): void {
 		const { type, fontName, metadata } = event.data
 
@@ -169,9 +168,6 @@ export class ServiceWorkerManager {
 		}
 	}
 
-	/**
-	 * Handle font accessed notification from service worker
-	 */
 	private async handleFontAccessed(fontName: string): Promise<void> {
 		try {
 			const { fontMetadataService } = await import('./FontMetadataService')
@@ -182,9 +178,6 @@ export class ServiceWorkerManager {
 		}
 	}
 
-	/**
-	 * Handle metadata storage request from service worker
-	 */
 	private async handleStoreMetadata(
 		fontName: string,
 		metadata: { cachedAt: string | number; size: number; version: string }
@@ -208,17 +201,11 @@ export class ServiceWorkerManager {
 		}
 	}
 
-	/**
-	 * Check if URL is a font request (cache key pattern)
-	 */
 	private isFontRequest(url: URL): boolean {
 		// Only match cache keys: /fonts/{fontName}
 		return /^\/fonts\/[^/]+$/.test(url.pathname)
 	}
 
-	/**
-	 * Notify about service worker updates
-	 */
 	private notifyServiceWorkerUpdate(): void {
 		if (typeof window !== 'undefined') {
 			window.dispatchEvent(
@@ -257,18 +244,10 @@ export class ServiceWorkerManager {
 	}
 }
 
-let _serviceWorkerManager: ServiceWorkerManager | null = null
+const _singleton = createLazySingleton(() => new ServiceWorkerManager())
+
 /** Lazy singleton -- created on first access, not at import time. */
-export function getServiceWorkerManager(): ServiceWorkerManager {
-	if (!_serviceWorkerManager) {
-		_serviceWorkerManager = new ServiceWorkerManager()
-	}
-	return _serviceWorkerManager
-}
+export const getServiceWorkerManager = _singleton.get
 
 /** @deprecated Use getServiceWorkerManager() instead. */
-export const serviceWorkerManager = new Proxy({} as ServiceWorkerManager, {
-	get(_target, prop, receiver) {
-		return Reflect.get(getServiceWorkerManager(), prop, receiver)
-	},
-})
+export const serviceWorkerManager = _singleton.deprecated
