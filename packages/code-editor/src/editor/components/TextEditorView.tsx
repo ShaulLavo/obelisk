@@ -77,7 +77,6 @@ export const TextEditorView = (props: EditorProps) => {
 		null
 	)
 
-	const showMinimap = () => true
 	const showHighlights = () => true
 
 	useScrollBenchmark({ scrollElement })
@@ -666,16 +665,14 @@ export const TextEditorView = (props: EditorProps) => {
 					onToggleFold={toggleFold}
 					onLineMouseDown={handleLineMouseDown}
 				/>
-				<Show when={showMinimap()}>
-					<Minimap
-						scrollElement={scrollElement}
-						errors={props.errors}
-						treeSitterWorker={props.treeSitterWorker}
-						filePath={props.document.filePath()}
-						version={props.documentVersion}
-						content={props.document.content}
-					/>
-				</Show>
+				<Minimap
+					scrollElement={scrollElement}
+					errors={props.errors}
+					treeSitterWorker={props.treeSitterWorker}
+					filePath={props.document.filePath()}
+					version={props.documentVersion}
+					content={props.document.content}
+				/>
 				<HorizontalScrollbar
 					scrollElement={scrollElement}
 					class="absolute bottom-0 left-0 right-[14px] z-50"

@@ -231,18 +231,11 @@ export function FileLoadingIndicator(props: {
 /** Binary file indicator */
 export function BinaryFileIndicator(props: {
 	filePath: string
-	fileSize?: number
 	onViewAsText?: () => void
 }) {
 	const fileName = () => {
 		const parts = props.filePath.split('/')
 		return parts[parts.length - 1] || props.filePath
-	}
-
-	const formatSize = (bytes: number) => {
-		if (bytes < 1024) return `${bytes} B`
-		if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-		return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 	}
 
 	return (
@@ -270,13 +263,8 @@ export function BinaryFileIndicator(props: {
 				<p class="text-sm">This file cannot be edited as text</p>
 			</div>
 
-			<div class="flex flex-col items-center gap-1">
-				<div class="rounded bg-muted/50 px-3 py-1.5 font-mono text-xs">
-					{fileName()}
-				</div>
-				<Show when={props.fileSize}>
-					<p class="text-xs opacity-60">{formatSize(props.fileSize!)}</p>
-				</Show>
+			<div class="rounded bg-muted/50 px-3 py-1.5 font-mono text-xs">
+				{fileName()}
 			</div>
 
 			<Show when={props.onViewAsText}>

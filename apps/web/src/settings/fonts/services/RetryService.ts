@@ -57,13 +57,17 @@ export const RETRY_PRESETS = {
 		backoffFactor: 2,
 		retryCondition: (error: Error) => {
 			const message = error.message.toLowerCase()
+			// Check for HTTP 5xx status codes (e.g., "500", "502", "503")
+			const hasServerStatus = /\b5\d{2}\b/.test(message)
+			// Don't retry on HTTP 4xx status codes (client errors)
+			const hasClientStatus = /\b4\d{2}\b/.test(message)
 			return (
 				(message.includes('fetch') ||
 					message.includes('network') ||
 					message.includes('timeout') ||
 					message.includes('server') ||
-					message.includes('5')) &&
-				!message.includes('4')
+					hasServerStatus) &&
+				!hasClientStatus
 			)
 		},
 	},

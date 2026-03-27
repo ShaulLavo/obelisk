@@ -212,8 +212,6 @@ export class FontCacheService {
 			}
 
 			for (const fontName of fontsToRemove) {
-				const cacheKey = `/fonts/${fontName}`
-				await this.cache?.delete(cacheKey)
 				await this.removeFont(fontName)
 			}
 		} catch (error) {

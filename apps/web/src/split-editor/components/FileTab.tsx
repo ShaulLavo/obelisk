@@ -227,7 +227,7 @@ export function FileTab(props: FileTabProps) {
 	}
 	const fileStats = () => fileState()?.stats
 	const isBinary = () => fileStats()?.contentKind === 'binary'
-	// Note: File size isn't stored in ParseResult - BinaryFileIndicator handles undefined gracefully
+
 
 	// Handle retry for errors
 	const handleRetry = () => {
