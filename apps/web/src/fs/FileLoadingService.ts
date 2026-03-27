@@ -48,9 +48,6 @@ const toSyntaxResult = (result: { captures: TreeSitterCapture[]; folds: FoldRang
 	errors: result.errors,
 })
 
-/**
- * Result of loading a file's content.
- */
 export interface FileLoadResult {
 	/** File size in bytes */
 	fileSize: number
@@ -68,9 +65,6 @@ export interface FileLoadResult {
 	fromCache: boolean
 }
 
-/**
- * Result of syntax highlighting.
- */
 export interface SyntaxResult {
 	highlights: TreeSitterCapture[]
 	folds: FoldRange[]
@@ -78,9 +72,6 @@ export interface SyntaxResult {
 	errors: TreeSitterError[]
 }
 
-/**
- * Options for loading a file.
- */
 export interface LoadFileOptions {
 	/** File system source */
 	source: FsSource
@@ -94,15 +85,6 @@ export interface LoadFileOptions {
 	onSyntaxReady?: (syntax: SyntaxResult) => void
 }
 
-/**
- * Load a file's content and metadata.
- *
- * This is the single entry point for all file loading operations.
- * Handles caching, binary detection, and piece table creation.
- *
- * Tree-sitter parsing happens asynchronously - results are delivered
- * via the onSyntaxReady callback.
- */
 export async function loadFile(options: LoadFileOptions): Promise<FileLoadResult> {
 	const { source, path, fileCache, forceReload, onSyntaxReady } = options
 

@@ -5,6 +5,10 @@ import jsJsxHighlightsQuerySource from 'tree-sitter-javascript/queries/highlight
 import tsHighlightsQuerySource from '../../treeSitter/queries/typescript-highlights.scm?raw'
 import jsFoldsQuerySource from '../../treeSitter/queries/javascript-folds.scm?raw'
 import tsFoldsQuerySource from '../../treeSitter/queries/typescript-folds.scm?raw'
+import jsonHighlightsQuerySource from '../../treeSitter/queries/json-highlights.scm?raw'
+import htmlHighlightsQuerySource from '../../treeSitter/queries/html-highlights.scm?raw'
+import markdownHighlightsQuerySource from '../../treeSitter/queries/markdown-highlights.scm?raw'
+import xmlHighlightsQuerySource from '../../treeSitter/queries/xml-highlights.scm?raw'
 
 // File extension to language ID mapping
 export const EXTENSION_MAP: Record<string, LanguageId> = {
@@ -62,22 +66,22 @@ export const LANGUAGE_CONFIG: Record<
 	},
 	json: {
 		wasm: '/tree-sitter/tree-sitter-json.wasm',
-		highlightQueries: ['/tree-sitter/json-highlights.scm'],
+		highlightQueries: [jsonHighlightsQuerySource],
 		foldQueries: [],
 	},
 	html: {
 		wasm: '/tree-sitter/tree-sitter-html.wasm',
-		highlightQueries: ['/tree-sitter/html-highlights.scm'],
+		highlightQueries: [htmlHighlightsQuerySource],
 		foldQueries: [],
 	},
 	markdown: {
 		wasm: '/tree-sitter/tree-sitter-markdown.wasm',
-		highlightQueries: ['/tree-sitter/markdown-highlights.scm'],
+		highlightQueries: [markdownHighlightsQuerySource],
 		foldQueries: [],
 	},
 	xml: {
 		wasm: '/tree-sitter/tree-sitter-xml.wasm',
-		highlightQueries: ['/tree-sitter/xml-highlights.scm'],
+		highlightQueries: [xmlHighlightsQuerySource],
 		foldQueries: [],
 	},
 }

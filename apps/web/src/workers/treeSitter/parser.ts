@@ -1,10 +1,6 @@
 import { Parser, Language, Query } from 'web-tree-sitter';
 import type { LanguageId } from './types';
 import { LANGUAGE_CONFIG, locateWasm } from './constants';
-import { up } from 'up-fetch';
-
-const upfetch = up(fetch);
-
 let parserInstance: Parser | null = null;
 let parserInitPromise: Promise<void> | null = null;
 export const languageCache = new Map<string, Language>();
@@ -13,13 +9,7 @@ export const queryCache = new Map<
 	{ highlight: Query[]; fold: Query[]; }
 >();
 
-const fetchQuery = async (url: string): Promise<string> => {
-	return upfetch(url, {
-		parseResponse: (res) => res.text()
-	});
-};
-
-export const ensureParser = async (languageId?: LanguageId) => {
+const initParser = async () => {
 	if (!parserInitPromise) {
 		parserInitPromise = (async () => {
 			await Parser.init({ locateFile: locateWasm });
@@ -30,65 +20,60 @@ export const ensureParser = async (languageId?: LanguageId) => {
 		});
 	}
 	await parserInitPromise;
+};
 
-	if (!languageId || !LANGUAGE_CONFIG[languageId]) return undefined;
+const loadLanguage = async (languageId: LanguageId): Promise<Language | undefined> => {
+	const cached = languageCache.get(languageId);
+	if (cached) return cached;
+
 	const config = LANGUAGE_CONFIG[languageId];
+	if (!config) return undefined;
 
-	if (!parserInstance) return undefined;
-
-	// Load Language if not cached
-	let language = languageCache.get(languageId);
-	if (!language) {
-		try {
-			language = await Language.load(config.wasm);
-			languageCache.set(languageId, language);
-		} catch {
-			return undefined;
-		}
+	try {
+		const language = await Language.load(config.wasm);
+		languageCache.set(languageId, language);
+		return language;
+	} catch {
+		return undefined;
 	}
+};
+
+const loadQueries = (languageId: LanguageId, language: Language) => {
+	if (queryCache.has(languageId)) return;
+
+	const config = LANGUAGE_CONFIG[languageId];
+	if (!config) return;
+
+	const highlightQueries: Query[] = [];
+	const foldQueries: Query[] = [];
+
+	try {
+		const highlightSource = config.highlightQueries.join('\n');
+		const foldSource = config.foldQueries.join('\n');
+
+		if (highlightSource.trim()) {
+			highlightQueries.push(new Query(language, highlightSource));
+		}
+		if (foldSource.trim()) {
+			foldQueries.push(new Query(language, foldSource));
+		}
+	} catch {
+		// Failed to load queries
+	}
+
+	queryCache.set(languageId, { highlight: highlightQueries, fold: foldQueries });
+};
+
+export const ensureParser = async (languageId?: LanguageId) => {
+	await initParser();
+
+	if (!languageId || !LANGUAGE_CONFIG[languageId] || !parserInstance) return undefined;
+
+	const language = await loadLanguage(languageId);
+	if (!language) return undefined;
 
 	parserInstance.setLanguage(language);
-
-	// Load Queries if not cached
-	if (!queryCache.has(languageId)) {
-		const highlightQueries: Query[] = [];
-		const foldQueries: Query[] = [];
-
-		try {
-			// Combine sources
-			let combinedHighlightSource = '';
-			for (const source of config.highlightQueries) {
-				if (source.startsWith('/')) {
-					combinedHighlightSource += (await fetchQuery(source)) + '\n';
-				} else {
-					combinedHighlightSource += source + '\n';
-				}
-			}
-
-			let combinedFoldSource = '';
-			for (const source of config.foldQueries) {
-				if (source.startsWith('/')) {
-					combinedFoldSource += (await fetchQuery(source)) + '\n';
-				} else {
-					combinedFoldSource += source + '\n';
-				}
-			}
-
-			if (combinedHighlightSource.trim()) {
-				highlightQueries.push(new Query(language, combinedHighlightSource));
-			}
-			if (combinedFoldSource.trim()) {
-				foldQueries.push(new Query(language, combinedFoldSource));
-			}
-		} catch {
-			// Failed to load queries
-		}
-
-		queryCache.set(languageId, {
-			highlight: highlightQueries,
-			fold: foldQueries,
-		});
-	}
+	loadQueries(languageId, language);
 
 	return { parser: parserInstance, languageId };
 };
