@@ -179,14 +179,14 @@ export class CacheErrorRecoveryService {
 				try {
 					await caches.delete('nerdfonts-v1')
 				} catch (error) {
-					console.debug('[CacheErrorRecovery] Cache API delete failed during rebuild', error)
+					// Cache API delete failed during rebuild — continue with other cleanup
 				}
 			}
 
 			try {
 				await fontMetadataService.clearAllMetadata()
 			} catch (error) {
-				console.debug('[CacheErrorRecovery] Metadata clear failed during rebuild', error)
+				// Metadata clear failed during rebuild — continue with other cleanup
 			}
 
 			try {
@@ -197,7 +197,7 @@ export class CacheErrorRecoveryService {
 					}
 				}
 			} catch (error) {
-				console.debug('[CacheErrorRecovery] localStorage cleanup failed during rebuild', error)
+				// localStorage cleanup failed during rebuild — continue with other cleanup
 			}
 
 			return {
@@ -234,7 +234,7 @@ export class CacheErrorRecoveryService {
 
 					await fontMetadataService.removeFontMetadata(metadata.name)
 				} catch (error) {
-					console.debug('[CacheErrorRecovery] Failed to remove font during size reduction', metadata.name, error)
+					// Individual font removal failed — continue with remaining fonts
 				}
 			}
 
@@ -292,9 +292,8 @@ export class CacheErrorRecoveryService {
 			try {
 				localStorage.setItem(`font-metadata-${name}`, JSON.stringify(metadata))
 				return
-			} catch (error) {
-				// localStorage may be full or unavailable; fall through to memory storage
-				console.debug('[CacheErrorRecovery] localStorage write failed, falling back to memory', error)
+			} catch {
+				// localStorage may be full or unavailable — fall through to memory storage
 			}
 		}
 
@@ -314,9 +313,8 @@ export class CacheErrorRecoveryService {
 				if (stored) {
 					return JSON.parse(stored)
 				}
-			} catch (error) {
-				// localStorage read failed; fall through to memory storage
-				console.debug('[CacheErrorRecovery] localStorage read failed, falling back to memory', error)
+			} catch {
+				// localStorage read failed — fall through to memory storage
 			}
 		}
 

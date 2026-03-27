@@ -167,9 +167,6 @@ export class FontDownloadService {
 		}
 	}
 
-	/**
-	 * Download and install a font in one operation
-	 */
 	async downloadAndInstallFont(
 		name: string,
 		downloadUrl: string,
@@ -196,9 +193,6 @@ export class FontDownloadService {
 		return this.activeDownloads.has(name)
 	}
 
-	/**
-	 * Get list of fonts currently being downloaded
-	 */
 	getActiveDownloads(): string[] {
 		return Array.from(this.activeDownloads.keys())
 	}

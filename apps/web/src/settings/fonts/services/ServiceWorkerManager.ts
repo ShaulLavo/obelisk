@@ -1,10 +1,3 @@
-/**
- * Service Worker Manager for Font Caching
- *
- * Handles service worker registration, communication, and provides
- * an interface for the main thread to interact with the service worker.
- */
-
 export interface ServiceWorkerCacheStats {
 	fontCount: number
 	totalSize: number
@@ -30,9 +23,6 @@ export class ServiceWorkerManager {
 	private isRegistered = false
 	private messageHandlers = new Map<string, (data: unknown) => void>()
 
-	/**
-	 * Initialize and register the service worker
-	 */
 	async init(): Promise<void> {
 		if (!('serviceWorker' in navigator)) {
 			return
@@ -69,16 +59,10 @@ export class ServiceWorkerManager {
 		})
 	}
 
-	/**
-	 * Check if service worker is supported and registered
-	 */
 	isSupported(): boolean {
 		return 'serviceWorker' in navigator && this.isRegistered
 	}
 
-	/**
-	 * Get cache statistics from service worker
-	 */
 	async getCacheStats(): Promise<ServiceWorkerCacheStats> {
 		if (!this.isSupported()) {
 			throw new Error('Service worker not available')
@@ -87,9 +71,6 @@ export class ServiceWorkerManager {
 		return this.sendMessage<ServiceWorkerCacheStats>('GET_CACHE_STATS')
 	}
 
-	/**
-	 * Request cache cleanup from service worker
-	 */
 	async cleanupCache(options?: {
 		maxSize?: number
 	}): Promise<ServiceWorkerCleanupResult> {
@@ -100,9 +81,6 @@ export class ServiceWorkerManager {
 		return this.sendMessage<ServiceWorkerCleanupResult>('CLEANUP_CACHE', options)
 	}
 
-	/**
-	 * Clear specific font or all fonts from service worker cache
-	 */
 	async clearFontCache(fontName?: string): Promise<ServiceWorkerClearResult> {
 		if (!this.isSupported()) {
 			throw new Error('Service worker not available')
@@ -111,9 +89,6 @@ export class ServiceWorkerManager {
 		return this.sendMessage<ServiceWorkerClearResult>('CLEAR_FONT_CACHE', { fontName })
 	}
 
-	/**
-	 * Get cache manifest for offline availability
-	 */
 	async getCacheManifest(): Promise<string[]> {
 		if (!this.isSupported()) {
 			return []
@@ -128,29 +103,19 @@ export class ServiceWorkerManager {
 			return keys
 				.filter((request) => this.isFontRequest(new URL(request.url)))
 				.map((request) => request.url)
-		} catch (error) {
-			console.debug('[ServiceWorkerManager] Failed to get cache manifest', error)
+		} catch {
 			return []
 		}
 	}
 
-	/**
-	 * Register a message handler for service worker messages
-	 */
 	onMessage(type: string, handler: (data: unknown) => void): void {
 		this.messageHandlers.set(type, handler)
 	}
 
-	/**
-	 * Remove a message handler
-	 */
 	offMessage(type: string): void {
 		this.messageHandlers.delete(type)
 	}
 
-	/**
-	 * Send a message to the service worker and wait for response
-	 */
 	private async sendMessage<T = unknown>(type: string, data?: unknown): Promise<T> {
 		if (!this.registration || !this.registration.active) {
 			throw new Error('Service worker not active')

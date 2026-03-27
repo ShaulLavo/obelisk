@@ -24,7 +24,7 @@ export const useFileSystemObserver = ({
 	let observer: FileSystemObserverPolyfill | null = null
 	let isObserving = false
 
-	const handleChangeRecords = async (_records: FileSystemChangeRecord[]) => {
+	const handleChangeRecords = (_records: FileSystemChangeRecord[]) => {
 		// Event handling not yet implemented
 	}
 
@@ -39,7 +39,7 @@ export const useFileSystemObserver = ({
 		}
 
 		observer = createFileSystemObserver((records) => {
-			void handleChangeRecords(records)
+			handleChangeRecords(records)
 		}, pollIntervalMs)
 
 		try {
