@@ -27,7 +27,6 @@ export interface FontLoadingMetrics {
 }
 
 class FontPerformanceMonitor {
-	private static instance: FontPerformanceMonitor;
 	private metrics: Map<string, FontLoadingMetrics> = new Map();
 	private performanceDataSignal = createSignal<PerformanceMetrics>({
 		fontDownloadTime: 0,
@@ -39,13 +38,6 @@ class FontPerformanceMonitor {
 	});
 	private performanceData = this.performanceDataSignal[0];
 	private setPerformanceData = this.performanceDataSignal[1];
-
-	static getInstance(): FontPerformanceMonitor {
-		if (!FontPerformanceMonitor.instance) {
-			FontPerformanceMonitor.instance = new FontPerformanceMonitor();
-		}
-		return FontPerformanceMonitor.instance;
-	}
 
 	/**
 	 * Start tracking a font download operation
@@ -202,11 +194,14 @@ class FontPerformanceMonitor {
 	}
 }
 
+// Singleton instance
+const fontPerformanceMonitor = new FontPerformanceMonitor();
+
 /**
  * Hook for accessing performance monitoring
  */
 export function usePerformanceMonitor() {
-	const monitor = FontPerformanceMonitor.getInstance();
+	const monitor = fontPerformanceMonitor;
 
 	return {
 		startFontDownload: (fontName: string) =>
@@ -282,7 +277,7 @@ export class FontLoadingOptimizer {
 	): Promise<void> {
 		return new Promise((resolve, reject) => {
 			const wrappedDownload = async () => {
-				const monitor = FontPerformanceMonitor.getInstance();
+				const monitor = fontPerformanceMonitor;
 
 				try {
 					this.activeDownloads++;
@@ -433,14 +428,14 @@ export const PerformanceDebugger = {
 	 * Log performance metrics to console
 	 */
 	logMetrics(): void {
-		const monitor = FontPerformanceMonitor.getInstance();
+		const monitor = fontPerformanceMonitor;
 	},
 
 	/**
 	 * Export metrics as JSON
 	 */
 	exportMetrics(): string {
-		const monitor = FontPerformanceMonitor.getInstance();
+		const monitor = fontPerformanceMonitor;
 		return JSON.stringify(
 			{
 				timestamp: new Date().toISOString(),

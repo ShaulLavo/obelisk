@@ -61,7 +61,6 @@ export async function removeOldCacheEntries(
  * Comprehensive resource cleanup manager
  */
 export class FontResourceCleanup {
-	private static instance: FontResourceCleanup
 	private cleanupInProgress = false
 	private cleanupStatusSignal = createSignal<
 		'idle' | 'cleaning' | 'complete' | 'error'
@@ -69,22 +68,12 @@ export class FontResourceCleanup {
 	private cleanupStatus = this.cleanupStatusSignal[0]
 	private setCleanupStatus = this.cleanupStatusSignal[1]
 
-	static getInstance(): FontResourceCleanup {
-		if (!FontResourceCleanup.instance) {
-			FontResourceCleanup.instance = new FontResourceCleanup()
-		}
-		return FontResourceCleanup.instance
-	}
-
 	/**
-	 * Reset the singleton instance (for testing purposes only)
+	 * Reset state (for testing purposes only)
 	 */
-	static resetInstance(): void {
-		if (FontResourceCleanup.instance) {
-			FontResourceCleanup.instance.cleanupInProgress = false
-			FontResourceCleanup.instance.setCleanupStatus('idle')
-		}
-		FontResourceCleanup.instance = undefined!
+	reset(): void {
+		this.cleanupInProgress = false
+		this.setCleanupStatus('idle')
 	}
 
 	/**
@@ -512,4 +501,7 @@ export class FontResourceCleanup {
 		})
 	}
 }
+
+// Singleton instance
+export const fontResourceCleanup = new FontResourceCleanup()
 

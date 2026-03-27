@@ -41,26 +41,55 @@ export const createFsMutations = ({
 	setSavedContent,
 	getState,
 }: FsMutationDeps) => {
-	const createDir = async (parentPath: string, name: string) => {
+	/**
+	 * Validates and prepares common state for node creation.
+	 * Returns null if creation should be aborted (empty name, no tree, or duplicate).
+	 */
+	const prepareNodeCreation = (
+		parentPath: string,
+		name: string,
+		entityLabel: 'file' | 'folder'
+	): { trimmed: string; newPath: string; parentDepth: number } | null => {
 		const trimmed = name.trim()
-		if (!trimmed) return
+		if (!trimmed) return null
 
 		const state = getState()
-		if (!state.tree) return
+		if (!state.tree) return null
 
 		const newPath = buildPath(parentPath, trimmed)
 
 		if (getNode(newPath)) {
-			toast.error(`A folder named "${trimmed}" already exists`)
-			return
+			toast.error(`A ${entityLabel} named "${trimmed}" already exists`)
+			return null
 		}
+
+		const parentNode = getNode(parentPath)
+		const parentDepth = parentNode?.depth ?? 0
+
+		return { trimmed, newPath, parentDepth }
+	}
+
+	const finalizeNodeCreation = (
+		parentPath: string,
+		newPath: string,
+		node: TreeNode
+	) => {
+		batch(() => {
+			addTreeNode(parentPath, node)
+			setExpanded(parentPath, true)
+			setSelectedPath(newPath)
+		})
+	}
+
+	const createDir = async (parentPath: string, name: string) => {
+		const prep = prepareNodeCreation(parentPath, name, 'folder')
+		if (!prep) return
+
+		const { trimmed, newPath, parentDepth } = prep
 
 		try {
 			const ctx = await ensureFs(getActiveSource())
 			await ctx.ensureDir(newPath)
-
-			const parentNode = getNode(parentPath)
-			const parentDepth = parentNode?.depth ?? 0
 
 			const newNode: DirTreeNode = {
 				kind: 'dir',
@@ -72,11 +101,7 @@ export const createFsMutations = ({
 				isLoaded: true,
 			}
 
-			batch(() => {
-				addTreeNode(parentPath, newNode)
-				setExpanded(parentPath, true)
-				setSelectedPath(newPath)
-			})
+			finalizeNodeCreation(parentPath, newPath, newNode)
 		} catch (error) {
 			console.warn('createDir failed:', newPath, error)
 			toast.error('Failed to create directory')
@@ -88,26 +113,15 @@ export const createFsMutations = ({
 		name: string,
 		content?: string
 	) => {
-		const trimmed = name.trim()
-		if (!trimmed) return
+		const prep = prepareNodeCreation(parentPath, name, 'file')
+		if (!prep) return
 
-		const state = getState()
-		if (!state.tree) return
-
-		const newPath = buildPath(parentPath, trimmed)
-
-		if (getNode(newPath)) {
-			toast.error(`A file named "${trimmed}" already exists`)
-			return
-		}
+		const { trimmed, newPath, parentDepth } = prep
 
 		try {
 			const ctx = await ensureFs(getActiveSource())
 			const fileContent = content ?? ''
 			await ctx.write(newPath, fileContent)
-
-			const parentNode = getNode(parentPath)
-			const parentDepth = parentNode?.depth ?? 0
 
 			const newNode: FileTreeNode = {
 				kind: 'file',
@@ -118,11 +132,7 @@ export const createFsMutations = ({
 				size: new Blob([fileContent]).size,
 			}
 
-			batch(() => {
-				addTreeNode(parentPath, newNode)
-				setExpanded(parentPath, true)
-				setSelectedPath(newPath)
-			})
+			finalizeNodeCreation(parentPath, newPath, newNode)
 		} catch (error) {
 			console.warn('createFile failed:', newPath, error)
 			toast.error('Failed to create file')

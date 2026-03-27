@@ -45,7 +45,8 @@ export const FontCard = (props: FontCardProps) => {
 		}
 	}
 
-	const getButtonState = () => {
+	type ButtonState = 'installed' | 'downloading' | 'download'
+	const buttonState = (): ButtonState => {
 		if (props.isInstalled) return 'installed'
 		if (isInDownloadQueue() || props.pending) return 'downloading'
 		return 'download'
@@ -54,8 +55,7 @@ export const FontCard = (props: FontCardProps) => {
 	return (
 		<FontDownloadErrorBoundary
 			fontName={props.name}
-			onError={(error) => {
-			}}
+			onError={() => {}}
 		>
 			<Card class="hover:bg-card/80 transition-colors">
 				<CardContent class="p-4">
@@ -79,33 +79,38 @@ export const FontCard = (props: FontCardProps) => {
 						</Show>
 					</div>
 
-					<Button
-						onClick={handleDownload}
-						disabled={props.isInstalled || isInDownloadQueue() || props.pending}
-						variant={getButtonState() === 'installed' ? 'secondary' : 'default'}
-						class="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-						classList={{
-							'bg-primary text-primary-foreground hover:bg-primary/90':
-								getButtonState() === 'download',
-							'bg-success text-success-foreground hover:bg-success/90':
-								getButtonState() === 'installed',
-							'bg-muted text-muted-foreground':
-								getButtonState() === 'downloading',
-						}}
-					>
-						<Show when={getButtonState() === 'downloading'}>
-							<VsLoading class="w-3 h-3 animate-spin" />
-							Downloading...
-						</Show>
-						<Show when={getButtonState() === 'installed'}>
-							<VsCheck class="w-3 h-3" />
-							Installed
-						</Show>
-						<Show when={getButtonState() === 'download'}>
-							<VsDownload class="w-3 h-3" />
-							Download
-						</Show>
-					</Button>
+					{(() => {
+						const state = buttonState()
+						return (
+							<Button
+								onClick={handleDownload}
+								disabled={state !== 'download'}
+								variant={state === 'installed' ? 'secondary' : 'default'}
+								class="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+								classList={{
+									'bg-primary text-primary-foreground hover:bg-primary/90':
+										state === 'download',
+									'bg-success text-success-foreground hover:bg-success/90':
+										state === 'installed',
+									'bg-muted text-muted-foreground':
+										state === 'downloading',
+								}}
+							>
+								<Show when={state === 'downloading'}>
+									<VsLoading class="size-3 animate-spin" />
+									Downloading...
+								</Show>
+								<Show when={state === 'installed'}>
+									<VsCheck class="size-3" />
+									Installed
+								</Show>
+								<Show when={state === 'download'}>
+									<VsDownload class="size-3" />
+									Download
+								</Show>
+							</Button>
+						)
+					})()}
 				</CardContent>
 			</Card>
 		</FontDownloadErrorBoundary>

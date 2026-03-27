@@ -27,19 +27,11 @@ export type CacheRecoveryResult = {
  * Provides fallback storage options when Cache API or IndexedDB fail
  */
 export class CacheErrorRecoveryService {
-	private static instance: CacheErrorRecoveryService | null = null
 	private fallbackStorage = new Map<string, ArrayBuffer>()
 	private fallbackMetadata = new Map<string, FontMetadata>()
 	private cacheApiAvailable = true
 	private indexedDBAvailable = true
 	private fallbackMode = false
-
-	static getInstance(): CacheErrorRecoveryService {
-		if (!CacheErrorRecoveryService.instance) {
-			CacheErrorRecoveryService.instance = new CacheErrorRecoveryService()
-		}
-		return CacheErrorRecoveryService.instance
-	}
 
 	categorizeError(error: Error): CacheErrorType {
 		// Check DOMException.name first for reliable classification
@@ -355,4 +347,5 @@ export class CacheErrorRecoveryService {
 	}
 }
 
-export const cacheErrorRecovery = CacheErrorRecoveryService.getInstance()
+// Singleton instance
+export const cacheErrorRecovery = new CacheErrorRecoveryService()

@@ -35,6 +35,16 @@ export class FontDownloadService {
 			this.progressCallbacks.set(name, onProgress)
 		}
 
+		const emitProgress = (
+			fields: Omit<DownloadProgress, 'fontName'>
+		) => this.updateProgress(name, { fontName: name, ...fields })
+
+		const ensureNotAborted = () => {
+			if (abortController.signal.aborted) {
+				throw new Error('Download cancelled')
+			}
+		}
+
 		try {
 			// Initialize cache service with retry
 			const cacheInitResult = await RetryService.retryCacheOperation(
@@ -50,15 +60,11 @@ export class FontDownloadService {
 
 			const installedFonts = await fontCacheService.getInstalledFonts()
 			if (installedFonts.has(name)) {
-				this.updateProgress(name, { fontName: name, status: 'completed' })
+				emitProgress({ status: 'completed' })
 				return
 			}
 
-			this.updateProgress(name, {
-				fontName: name,
-				status: 'downloading',
-				progress: 0,
-			})
+			emitProgress({ status: 'downloading', progress: 0 })
 
 			// Download font data using server RPC with retry logic
 			const downloadResult = await RetryService.retryFontDownload(async () => {
@@ -66,9 +72,7 @@ export class FontDownloadService {
 					fetch: { signal: abortController.signal },
 				})
 
-				if (abortController.signal.aborted) {
-					throw new Error('Download cancelled')
-				}
+				ensureNotAborted()
 
 				if (!response.data || response.error) {
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -91,31 +95,18 @@ export class FontDownloadService {
 			}
 
 			const response = downloadResult.result!
+			ensureNotAborted()
 
-			if (abortController.signal.aborted) {
-				throw new Error('Download cancelled')
-			}
+			emitProgress({ status: 'installing', progress: 50 })
 
-			// Update progress: download complete, starting installation
-			this.updateProgress(name, {
-				fontName: name,
-				status: 'installing',
-				progress: 50,
-			})
-
-			// let fontData: ArrayBuffer
 			const responseData: unknown = response.data
 			if (responseData instanceof Response) {
 				await responseData.arrayBuffer()
-			} else if (responseData instanceof ArrayBuffer) {
-				// fontData = responseData
-			} else {
+			} else if (!(responseData instanceof ArrayBuffer)) {
 				throw new Error(`Unexpected response data type for font: ${name}`)
 			}
 
-			if (abortController.signal.aborted) {
-				throw new Error('Download cancelled')
-			}
+			ensureNotAborted()
 
 			// Cache the font data with retry logic
 			const cacheResult = await RetryService.retryCacheOperation(
@@ -127,25 +118,14 @@ export class FontDownloadService {
 				throw cacheResult.error || new Error('Failed to cache font data')
 			}
 
-			// Update progress: installation complete
-			this.updateProgress(name, {
-				fontName: name,
-				status: 'completed',
-				progress: 100,
-			})
-
+			emitProgress({ status: 'completed', progress: 100 })
 		} catch (error) {
 			const errorMessage =
 				error instanceof Error ? error.message : 'Unknown error'
-			this.updateProgress(name, {
-				fontName: name,
-				status: 'error',
-				error: errorMessage,
-			})
+			emitProgress({ status: 'error', error: errorMessage })
 
 			throw error
 		} finally {
-			// Clean up
 			this.activeDownloads.delete(name)
 			this.progressCallbacks.delete(name)
 		}

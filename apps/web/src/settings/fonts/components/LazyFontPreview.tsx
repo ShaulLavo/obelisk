@@ -8,7 +8,7 @@
 import { createSignal, createEffect, onCleanup, Show, For } from 'solid-js'
 import { createLazyFontPreview } from '../utils/performanceMonitoring'
 import { Button } from '@repo/ui/button'
-import { VsDownload, VsTrash } from '@repo/icons/vs'
+import { VsDownload, VsTrash, VsLoading } from '@repo/icons/vs'
 
 export interface LazyFontPreviewProps {
 	fontName: string
@@ -79,7 +79,7 @@ export const LazyFontPreview = (props: LazyFontPreviewProps) => {
 										fallback={<span>{previewText()}</span>}
 									>
 										<div class="flex items-center gap-2">
-											<div class="w-3 h-3 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
+											<VsLoading class="size-3 animate-spin text-muted-foreground" />
 											<span>Loading font...</span>
 										</div>
 									</Show>
@@ -146,7 +146,7 @@ export const OptimizedFontCard = (props: OptimizedFontCardProps) => {
 				}}
 			>
 				<Show when={props.isDownloading}>
-					<div class="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+					<VsLoading class="size-3 animate-spin" />
 					Downloading...
 				</Show>
 				<Show when={props.isInstalled}>

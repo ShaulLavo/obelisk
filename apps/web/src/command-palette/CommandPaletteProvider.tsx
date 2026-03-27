@@ -34,15 +34,18 @@ interface CommandPaletteContextValue {
 
 const CommandPaletteContext = createContext<CommandPaletteContextValue>()
 
-export function useCommandPaletteContext(): CommandPaletteContextValue {
+export function useCommandPalettes(): CommandPaletteContextValue {
 	const context = useContext(CommandPaletteContext)
 	if (!context) {
 		throw new Error(
-			'useCommandPaletteContext must be used within a CommandPaletteProvider'
+			'useCommandPalettes must be used within a CommandPaletteProvider'
 		)
 	}
 	return context
 }
+
+/** @deprecated Use useCommandPalettes instead */
+export const useCommandPaletteContext = useCommandPalettes
 
 export const CommandPaletteProvider: ParentComponent = (props) => {
 	const registry = getCommandPaletteRegistry()

@@ -121,10 +121,13 @@ export function SyncStatusProvider(props: SyncStatusProviderProps) {
 	)
 }
 
-export function useSyncStatusContext() {
+export function useSyncStatus() {
 	const context = useContext(SyncStatusContext)
 	if (!context) {
-		throw new Error('useSyncStatusContext must be used within a SyncStatusProvider')
+		throw new Error('useSyncStatus must be used within a SyncStatusProvider')
 	}
 	return context
 }
+
+/** @deprecated Use useSyncStatus instead */
+export const useSyncStatusContext = useSyncStatus

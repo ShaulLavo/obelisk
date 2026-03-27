@@ -52,14 +52,14 @@ export const CacheStatusIndicator = (props: CacheStatusIndicatorProps) => {
 		const status = cacheStatus()
 
 		if (status.fallback) {
-			return <VsWarning class="w-4 h-4 text-warning" />
+			return <VsWarning class="size-4 text-warning" />
 		}
 
 		if (!status.cacheAPI || !status.indexedDB) {
-			return <VsError class="w-4 h-4 text-destructive" />
+			return <VsError class="size-4 text-destructive" />
 		}
 
-		return <VsInfo class="w-4 h-4 text-muted-foreground" />
+		return <VsInfo class="size-4 text-muted-foreground" />
 	}
 
 	const getStatusMessage = () => {
@@ -190,8 +190,8 @@ export const CacheStatusBadge = (props: CacheStatusIndicatorProps) => {
 					'bg-muted text-muted-foreground': !cacheStatus().fallback,
 				}}
 			>
-				{getStatusText() === 'Fallback Mode' && <VsWarning class="w-3 h-3" />}
-				{getStatusText() === 'Limited Caching' && <VsError class="w-3 h-3" />}
+				{getStatusText() === 'Fallback Mode' && <VsWarning class="size-3" />}
+				{getStatusText() === 'Limited Caching' && <VsError class="size-3" />}
 				<span>{getStatusText()}</span>
 			</div>
 		</Show>

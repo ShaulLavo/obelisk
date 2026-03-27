@@ -18,16 +18,12 @@ export class FontInstallationService {
 		name: string,
 		onStatusChange?: FontInstallationCallback
 	): Promise<void> {
+		const emitStatus = (
+			fields: Omit<FontInstallationStatus, 'fontName'>
+		) => this.updateStatus(name, { fontName: name, ...fields }, onStatusChange)
+
 		if (this.installedFonts.has(name)) {
-			this.updateStatus(
-				name,
-				{
-					fontName: name,
-					isInstalled: true,
-					isLoading: false,
-				},
-				onStatusChange
-			)
+			emitStatus({ isInstalled: true, isLoading: false })
 			return
 		}
 
@@ -41,15 +37,7 @@ export class FontInstallationService {
 		}
 
 		try {
-			this.updateStatus(
-				name,
-				{
-					fontName: name,
-					isInstalled: false,
-					isLoading: true,
-				},
-				onStatusChange
-			)
+			emitStatus({ isInstalled: false, isLoading: true })
 
 			const fontData = await this.getFontDataFromCache(name)
 
@@ -64,29 +52,12 @@ export class FontInstallationService {
 			document.fonts.add(fontFace)
 			this.installedFonts.add(name)
 
-			this.updateStatus(
-				name,
-				{
-					fontName: name,
-					isInstalled: true,
-					isLoading: false,
-				},
-				onStatusChange
-			)
+			emitStatus({ isInstalled: true, isLoading: false })
 		} catch (error) {
 			const errorMessage =
 				error instanceof Error ? error.message : 'Unknown installation error'
 
-			this.updateStatus(
-				name,
-				{
-					fontName: name,
-					isInstalled: false,
-					isLoading: false,
-					error: errorMessage,
-				},
-				onStatusChange
-			)
+			emitStatus({ isInstalled: false, isLoading: false, error: errorMessage })
 
 			throw error
 		} finally {

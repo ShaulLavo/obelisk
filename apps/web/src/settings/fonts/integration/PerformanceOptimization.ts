@@ -37,11 +37,15 @@ const DEFAULT_CONFIG: OptimizationConfig = {
 	debugMode: false,
 }
 
+const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000
+const DEBUG_MONITORING_INTERVAL_MS = 30_000
+const MEMORY_PRESSURE_THRESHOLD = 80
+const MIN_HEALTHY_CACHE_HIT_RATE = 0.5
+
 /**
  * Main performance optimization controller
  */
 export class FontPerformanceOptimizer {
-	private static instance: FontPerformanceOptimizer
 	private config: OptimizationConfig
 	private performanceMonitor = usePerformanceMonitor()
 	private memoryMonitor = createMemoryMonitor()
@@ -52,23 +56,11 @@ export class FontPerformanceOptimizer {
 		this.initialize()
 	}
 
-	static getInstance(
-		config?: Partial<OptimizationConfig>
-	): FontPerformanceOptimizer {
-		if (!FontPerformanceOptimizer.instance) {
-			FontPerformanceOptimizer.instance = new FontPerformanceOptimizer(config)
-		}
-		return FontPerformanceOptimizer.instance
-	}
-
 	/**
-	 * Reset the singleton instance (for testing purposes only)
+	 * Reset state (for testing purposes only)
 	 */
-	static resetInstance(): void {
-		if (FontPerformanceOptimizer.instance) {
-			FontPerformanceOptimizer.instance.cleanup()
-		}
-		FontPerformanceOptimizer.instance = undefined as any
+	reset(): void {
+		this.cleanup()
 	}
 
 	private initialize(): void {
@@ -96,7 +88,7 @@ export class FontPerformanceOptimizer {
 		// Monitor font loading performance
 		// Log performance metrics every 30 seconds in debug mode
 		if (this.config.debugMode) {
-			this.debugInterval = PerformanceDebugger.startContinuousMonitoring(30000)
+			this.debugInterval = PerformanceDebugger.startContinuousMonitoring(DEBUG_MONITORING_INTERVAL_MS)
 		}
 	}
 
@@ -105,7 +97,7 @@ export class FontPerformanceOptimizer {
 		createEffect(() => {
 			const memoryUsage = this.memoryMonitor.memoryUsagePercentage()
 
-			if (memoryUsage > 80) {
+			if (memoryUsage > MEMORY_PRESSURE_THRESHOLD) {
 				this.triggerMemoryCleanup()
 			}
 		})
@@ -124,6 +116,18 @@ export class FontPerformanceOptimizer {
 
 	}
 
+	/** Run an operation with optional performance tracking bookends. */
+	private async withMonitoring<T>(
+		operation: () => Promise<T>,
+		onStart: () => void,
+		onComplete: (result: T) => void
+	): Promise<T> {
+		if (this.config.enablePerformanceMonitoring) onStart()
+		const result = await operation()
+		if (this.config.enablePerformanceMonitoring) onComplete(result)
+		return result
+	}
+
 	/**
 	 * Optimize font download with performance tracking
 	 */
@@ -131,15 +135,11 @@ export class FontPerformanceOptimizer {
 		fontName: string,
 		downloadFn: () => Promise<void>
 	): Promise<void> {
-		if (this.config.enablePerformanceMonitoring) {
-			this.performanceMonitor.startFontDownload(fontName)
-		}
-
-		await FontLoadingOptimizer.queueFontDownload(fontName, downloadFn)
-
-		if (this.config.enablePerformanceMonitoring) {
-			this.performanceMonitor.completeFontDownload(fontName, false)
-		}
+		await this.withMonitoring(
+			() => FontLoadingOptimizer.queueFontDownload(fontName, downloadFn),
+			() => this.performanceMonitor.startFontDownload(fontName),
+			() => this.performanceMonitor.completeFontDownload(fontName, false)
+		)
 	}
 
 	/**
@@ -149,15 +149,11 @@ export class FontPerformanceOptimizer {
 		fontName: string,
 		installFn: () => Promise<number>
 	): Promise<void> {
-		if (this.config.enablePerformanceMonitoring) {
-			this.performanceMonitor.startFontInstallation(fontName)
-		}
-
-		const size = await installFn()
-
-		if (this.config.enablePerformanceMonitoring) {
-			this.performanceMonitor.completeFontInstallation(fontName, size)
-		}
+		await this.withMonitoring(
+			installFn,
+			() => this.performanceMonitor.startFontInstallation(fontName),
+			(size) => this.performanceMonitor.completeFontInstallation(fontName, size)
+		)
 	}
 
 	/**
@@ -174,7 +170,7 @@ export class FontPerformanceOptimizer {
 	 */
 	private async triggerMemoryCleanup(): Promise<void> {
 		try {
-			await removeOldCacheEntries(7 * 24 * 60 * 60 * 1000)
+			await removeOldCacheEntries(ONE_WEEK_MS)
 
 			// Force garbage collection if available
 			if ('gc' in window && typeof (window as any).gc === 'function') {
@@ -202,7 +198,7 @@ export class FontPerformanceOptimizer {
 			config: this.config,
 			metrics,
 			memoryUsage,
-			isHealthy: memoryUsage < 80 && metrics.cacheHitRate > 0.5,
+			isHealthy: memoryUsage < MEMORY_PRESSURE_THRESHOLD && metrics.cacheHitRate > MIN_HEALTHY_CACHE_HIT_RATE,
 		}
 	}
 
@@ -232,10 +228,16 @@ export class FontPerformanceOptimizer {
 /**
  * Hook for using font performance optimization
  */
+// Singleton instance
+export const fontPerformanceOptimizer = new FontPerformanceOptimizer()
+
 export function useFontPerformanceOptimization(
 	config?: Partial<OptimizationConfig>
 ) {
-	const optimizer = FontPerformanceOptimizer.getInstance(config)
+	if (config) {
+		fontPerformanceOptimizer.updateConfig(config)
+	}
+	const optimizer = fontPerformanceOptimizer
 
 	onCleanup(() => {
 		optimizer.cleanup()

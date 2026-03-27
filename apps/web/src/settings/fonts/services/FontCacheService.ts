@@ -63,8 +63,9 @@ export class FontCacheService {
 		const cacheKey = `/fonts/${name}`
 
 		try {
-			if (!cacheErrorRecovery.isFallbackMode() && this.cache) {
-				const cachedResponse = await this.cache.match(cacheKey)
+			const cache = this.activeCache
+			if (cache) {
+				const cachedResponse = await cache.match(cacheKey)
 				if (cachedResponse) {
 					await this.updateLastAccessedSafely(name)
 					return await cachedResponse.arrayBuffer()
@@ -118,9 +119,10 @@ export class FontCacheService {
 		await this.ensureInitialized()
 
 		try {
-			if (!cacheErrorRecovery.isFallbackMode() && this.cache) {
+			const cache = this.activeCache
+			if (cache) {
 				const cacheKey = `/fonts/${name}`
-				const cachedResponse = await this.cache.match(cacheKey)
+				const cachedResponse = await cache.match(cacheKey)
 				return !!cachedResponse
 			} else {
 				const fallbackData = await cacheErrorRecovery.getFontFallback(name)
@@ -141,12 +143,13 @@ export class FontCacheService {
 		await this.ensureInitialized()
 
 		try {
-			if (!cacheErrorRecovery.isFallbackMode() && this.cache) {
+			const cache = this.activeCache
+			if (cache) {
 				const cacheKey = `/fonts/${name}`
-				await this.cache.delete(cacheKey)
+				await cache.delete(cacheKey)
 			}
 
-			if (!cacheErrorRecovery.isFallbackMode()) {
+			if (this.activeCache) {
 				await fontMetadataService.removeFontMetadata(name)
 			} else {
 				try {
@@ -163,25 +166,20 @@ export class FontCacheService {
 		}
 	}
 
+	private static emptyCacheStats(): CacheStats {
+		return { totalSize: 0, fontCount: 0, lastCleanup: new Date() }
+	}
+
 	async getCacheStats(): Promise<CacheStats> {
 		await this.ensureInitialized()
 
 		try {
-			if (!cacheErrorRecovery.isFallbackMode()) {
+			if (this.activeCache) {
 				return await fontMetadataService.getCacheStats()
-			} else {
-				return {
-					totalSize: 0,
-					fontCount: 0,
-					lastCleanup: new Date(),
-				}
 			}
+			return FontCacheService.emptyCacheStats()
 		} catch (error) {
-			return {
-				totalSize: 0,
-				fontCount: 0,
-				lastCleanup: new Date(),
-			}
+			return FontCacheService.emptyCacheStats()
 		}
 	}
 
@@ -255,6 +253,11 @@ export class FontCacheService {
 		}
 	}
 
+	/** Returns the active Cache handle when not in fallback mode, or null otherwise. */
+	private get activeCache(): Cache | null {
+		return !cacheErrorRecovery.isFallbackMode() ? this.cache : null
+	}
+
 	/**
 	 * Safely store font data with fallback options
 	 */
@@ -264,7 +267,8 @@ export class FontCacheService {
 		cacheKey: string
 	): Promise<void> {
 		try {
-			if (!cacheErrorRecovery.isFallbackMode() && this.cache) {
+			const cache = this.activeCache
+			if (cache) {
 				const fontResponse = new Response(fontData, {
 					headers: {
 						'Content-Type': 'font/ttf',
@@ -272,7 +276,7 @@ export class FontCacheService {
 					},
 				})
 
-				await this.cache.put(cacheKey, fontResponse.clone())
+				await cache.put(cacheKey, fontResponse.clone())
 			} else {
 				await cacheErrorRecovery.storeFontFallback(name, fontData)
 			}
@@ -291,7 +295,7 @@ export class FontCacheService {
 	 */
 	private async storeMetadataSafely(metadata: FontMetadata): Promise<void> {
 		try {
-			if (!cacheErrorRecovery.isFallbackMode()) {
+			if (this.activeCache) {
 				await fontMetadataService.storeFontMetadata(metadata)
 			} else {
 				await cacheErrorRecovery.storeMetadataFallback(metadata.name, metadata)
@@ -309,7 +313,7 @@ export class FontCacheService {
 	 */
 	private async updateLastAccessedSafely(name: string): Promise<void> {
 		try {
-			if (!cacheErrorRecovery.isFallbackMode()) {
+			if (this.activeCache) {
 				await fontMetadataService.updateLastAccessed(name)
 			} else {
 				const metadata = await cacheErrorRecovery.getMetadataFallback(name)
