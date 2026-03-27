@@ -33,6 +33,7 @@ export class FontCacheService {
 				await serviceWorkerManager.init()
 			} catch (swError) {
 				// Service worker init failed, continuing without offline support
+				console.debug('[FontCacheService] Service worker init failed, continuing without offline support', swError)
 			}
 
 			if (!('caches' in window)) {
@@ -155,7 +156,7 @@ export class FontCacheService {
 				try {
 					localStorage.removeItem(`font-metadata-${name}`)
 				} catch (error) {
-					// localStorage removal failed
+					console.debug('[FontCacheService] localStorage removal failed for', name, error)
 				}
 			}
 		} catch (error) {
@@ -323,7 +324,8 @@ export class FontCacheService {
 				}
 			}
 		} catch (error) {
-			// Last accessed update failed, non-critical
+			// Last accessed update is non-critical
+			console.debug('[FontCacheService] Failed to update lastAccessed for', name, error)
 		}
 	}
 

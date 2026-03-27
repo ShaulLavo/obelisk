@@ -122,6 +122,7 @@ export class CacheMonitoringService {
 				}
 			} catch (error) {
 				// SW stats are optional; fall back to null if unavailable
+				console.debug('[CacheMonitoring] Failed to get SW stats', error)
 			}
 
 			const manifest = await cacheManifestService.generateManifest()

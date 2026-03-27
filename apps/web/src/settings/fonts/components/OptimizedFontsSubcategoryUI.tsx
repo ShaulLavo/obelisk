@@ -32,7 +32,7 @@ import { Card, CardContent } from '@repo/ui/card'
 import { useFontRegistry, FontSource } from '../../../fonts'
 import type { FontEntry } from '../../../fonts'
 import { OptimizedFontCard, VirtualFontGrid } from './LazyFontPreview'
-import { useFontPerformanceOptimization } from '../integration/PerformanceOptimization'
+import { useFontPerformanceOptimization } from '../integration'
 import {
 	usePerformanceMonitor,
 	createMemoryMonitor,

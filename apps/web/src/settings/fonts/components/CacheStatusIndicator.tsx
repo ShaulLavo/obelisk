@@ -1,6 +1,6 @@
 import { createSignal, createEffect, onCleanup, Show } from 'solid-js'
 import { VsWarning, VsInfo, VsError } from '@repo/icons/vs'
-import { cacheErrorRecovery } from '../services/CacheErrorRecovery'
+import { cacheErrorRecovery } from '../services'
 
 export type CacheStatusIndicatorProps = {
 	class?: string

@@ -64,6 +64,7 @@ export class FontMetadataService {
 			const metadata = await this.store.getItem<FontMetadata>(name)
 			return metadata || null
 		} catch (error) {
+			console.debug('[FontMetadataService] Failed to get font metadata for', name, error)
 			return null
 		}
 	}
@@ -87,6 +88,7 @@ export class FontMetadataService {
 
 			return metadata
 		} catch (error) {
+			console.debug('[FontMetadataService] Failed to get all font metadata', error)
 			return []
 		}
 	}
@@ -106,7 +108,8 @@ export class FontMetadataService {
 				await this.storeFontMetadata(metadata)
 			}
 		} catch (error) {
-			// Last-accessed update is non-critical; swallow to avoid disrupting font usage
+			// Last-accessed update is non-critical; log for diagnostics only
+			console.debug('[FontMetadataService] Failed to update lastAccessed for', name, error)
 		}
 	}
 
@@ -115,6 +118,7 @@ export class FontMetadataService {
 			const metadata = await this.getAllFontMetadata()
 			return new Set(metadata.map((m) => m.name))
 		} catch (error) {
+			console.debug('[FontMetadataService] Failed to get installed fonts', error)
 			return new Set()
 		}
 	}
@@ -138,6 +142,7 @@ export class FontMetadataService {
 				lastCleanup,
 			}
 		} catch (error) {
+			console.debug('[FontMetadataService] Failed to get cache stats', error)
 			return {
 				totalSize: 0,
 				fontCount: 0,
@@ -153,6 +158,7 @@ export class FontMetadataService {
 			await this.store.setItem('last-cleanup', { date })
 		} catch (error) {
 			// Persisting last-cleanup timestamp is non-critical
+			console.debug('[FontMetadataService] Failed to persist last-cleanup timestamp', error)
 		}
 	}
 
@@ -211,6 +217,7 @@ export class FontMetadataService {
 			)
 		} catch (error) {
 			// Caching available fonts is an optimization; failure is non-critical
+			console.debug('[FontMetadataService] Failed to cache available fonts', error)
 		}
 	}
 
@@ -237,6 +244,7 @@ export class FontMetadataService {
 
 			return cacheData.fonts
 		} catch (error) {
+			console.debug('[FontMetadataService] Failed to get cached available fonts', error)
 			return null
 		}
 	}

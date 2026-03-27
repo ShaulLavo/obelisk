@@ -119,7 +119,7 @@ export class FontResourceCleanup {
 			// IndexedDB size estimation (approximate)
 			stats.indexedDBSize = await this.estimateIndexedDBSize()
 		} catch (error) {
-			// Resource stats unavailable
+			console.debug('[ResourceCleanup] Failed to gather resource stats', error)
 		}
 
 		return stats
@@ -302,6 +302,7 @@ export class FontResourceCleanup {
 			}
 		} catch (error) {
 			// Verification is best-effort; return partial results on failure
+			console.debug('[ResourceCleanup] Cleanup verification partially failed', error)
 		}
 
 		return verification

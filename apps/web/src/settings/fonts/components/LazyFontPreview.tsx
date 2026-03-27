@@ -48,6 +48,7 @@ export const LazyFontPreview = (props: LazyFontPreviewProps) => {
 				setFontLoaded(true)
 			}
 		} catch (error) {
+			console.debug('[LazyFontPreview] Failed to load font for preview', props.fontFamily, error)
 			setLoadError(true)
 		}
 	}

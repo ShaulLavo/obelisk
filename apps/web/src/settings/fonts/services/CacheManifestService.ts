@@ -48,6 +48,7 @@ export class CacheManifestService {
 				}
 			} catch (error) {
 				// SW stats are optional; fall back to null if unavailable
+				console.debug('[CacheManifestService] Failed to get SW stats', error)
 			}
 
 			// Build manifest entries

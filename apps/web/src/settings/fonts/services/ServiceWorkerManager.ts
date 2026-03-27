@@ -212,6 +212,7 @@ export class ServiceWorkerManager {
 			await fontMetadataService.updateLastAccessed(fontName)
 		} catch (error) {
 			// Last-accessed update is best-effort; non-critical
+			console.debug('[ServiceWorkerManager] Failed to update lastAccessed for', fontName, error)
 		}
 	}
 
@@ -237,6 +238,7 @@ export class ServiceWorkerManager {
 			await fontMetadataService.storeFontMetadata(fontMetadata)
 		} catch (error) {
 			// Metadata storage from SW is best-effort; non-critical
+			console.debug('[ServiceWorkerManager] Failed to store font metadata from SW', error)
 		}
 	}
 

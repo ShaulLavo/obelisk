@@ -74,7 +74,7 @@ export class CacheManagementUtilities {
 				this.isMaintenanceRunning = true
 				await this.performAutomatedMaintenance(schedule)
 			} catch (error) {
-				// Maintenance cycle failed
+				console.warn('[CacheManagement] Automated maintenance cycle failed', error)
 			} finally {
 				this.isMaintenanceRunning = false
 			}
@@ -356,7 +356,7 @@ export class CacheManagementUtilities {
 			// Perform health check
 			await cacheMonitoringService.performHealthCheck()
 		} catch (error) {
-			// Automated maintenance failed
+			console.warn('[CacheManagement] performAutomatedMaintenance failed', error)
 		}
 	}
 

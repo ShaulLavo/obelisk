@@ -1,8 +1,7 @@
 import { createStore } from 'solid-js/store'
 import { createResource, useTransition, batch } from 'solid-js'
 import { client } from '~/client'
-import { fontCacheService, fontInstallationService } from '../services'
-import { RetryService } from '../services/RetryService'
+import { fontCacheService, fontInstallationService, RetryService } from '../services'
 
 export type FontInfo = {
 	name: string
@@ -184,7 +183,7 @@ export const createFontStore = (): FontStore => {
 								await fontCacheService.storeFont(name, bytes.buffer)
 								await fontInstallationService.installFont(name)
 							} catch (e) {
-								// Error handled by caller
+								console.warn('[FontStore] Failed to install font from batch', name, e)
 							}
 						})()
 					)
@@ -197,7 +196,7 @@ export const createFontStore = (): FontStore => {
 				refetchCacheStats()
 			})
 		} catch (error) {
-			// Error handled by caller
+			console.warn('[FontStore] Batch font download failed', error)
 		} finally {
 			setState('downloadQueue', (queue) => {
 				const newQueue = new Set(queue)
@@ -231,7 +230,8 @@ export const createFontStore = (): FontStore => {
 		try {
 			await fontCacheService.init()
 			return await fontCacheService.getCacheStats()
-		} catch {
+		} catch (error) {
+			console.debug('[FontStore] Failed to get cache stats', error)
 			return { totalSize: 0, fontCount: 0 }
 		}
 	}

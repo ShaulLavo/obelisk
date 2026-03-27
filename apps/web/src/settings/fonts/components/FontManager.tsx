@@ -33,8 +33,8 @@ export const FontManager = () => {
 		setRemovingFont(fontName)
 		try {
 			await actions.removeFont(fontName)
-		} catch {
-			// Handle error silently or show user-friendly message
+		} catch (error) {
+			console.warn('[FontManager] Failed to remove font', fontName, error)
 		} finally {
 			setRemovingFont(null)
 		}
@@ -43,8 +43,8 @@ export const FontManager = () => {
 	const handleCleanupCache = async () => {
 		try {
 			await actions.cleanupCache()
-		} catch {
-			// Handle error silently or show user-friendly message
+		} catch (error) {
+			console.warn('[FontManager] Failed to clean up cache', error)
 		}
 	}
 

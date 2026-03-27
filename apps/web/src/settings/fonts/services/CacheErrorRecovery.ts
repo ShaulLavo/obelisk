@@ -178,15 +178,15 @@ export class CacheErrorRecoveryService {
 			if ('caches' in window) {
 				try {
 					await caches.delete('nerdfonts-v1')
-				} catch {
-					// Cache API may be unavailable or restricted
+				} catch (error) {
+					console.debug('[CacheErrorRecovery] Cache API delete failed during rebuild', error)
 				}
 			}
 
 			try {
 				await fontMetadataService.clearAllMetadata()
-			} catch {
-				// Metadata store may already be corrupted
+			} catch (error) {
+				console.debug('[CacheErrorRecovery] Metadata clear failed during rebuild', error)
 			}
 
 			try {
@@ -196,8 +196,8 @@ export class CacheErrorRecoveryService {
 						localStorage.removeItem(key)
 					}
 				}
-			} catch {
-				// localStorage may be full or restricted
+			} catch (error) {
+				console.debug('[CacheErrorRecovery] localStorage cleanup failed during rebuild', error)
 			}
 
 			return {
@@ -233,8 +233,8 @@ export class CacheErrorRecoveryService {
 					}
 
 					await fontMetadataService.removeFontMetadata(metadata.name)
-				} catch {
-					// Individual font removal failure doesn't block remaining cleanup
+				} catch (error) {
+					console.debug('[CacheErrorRecovery] Failed to remove font during size reduction', metadata.name, error)
 				}
 			}
 
@@ -294,6 +294,7 @@ export class CacheErrorRecoveryService {
 				return
 			} catch (error) {
 				// localStorage may be full or unavailable; fall through to memory storage
+				console.debug('[CacheErrorRecovery] localStorage write failed, falling back to memory', error)
 			}
 		}
 
@@ -315,6 +316,7 @@ export class CacheErrorRecoveryService {
 				}
 			} catch (error) {
 				// localStorage read failed; fall through to memory storage
+				console.debug('[CacheErrorRecovery] localStorage read failed, falling back to memory', error)
 			}
 		}
 

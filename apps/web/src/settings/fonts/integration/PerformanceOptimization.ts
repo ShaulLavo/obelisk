@@ -178,7 +178,7 @@ export class FontPerformanceOptimizer {
 			}
 
 		} catch (error) {
-			// Memory cleanup failed
+			console.warn('[FontPerformanceOptimizer] Memory cleanup failed', error)
 		}
 	}
 
@@ -317,7 +317,7 @@ export const ResourceCleanup = {
 			}
 
 		} catch (error) {
-			// Font resource cleanup failed
+			console.warn('[ResourceCleanup] Font resource cleanup failed', error)
 		}
 	},
 
