@@ -1,10 +1,3 @@
-/**
- * Lazy Font Preview Component
- *
- * Optimized font preview that only loads when visible in viewport.
- * Uses Intersection Observer for efficient lazy loading.
- */
-
 import { createSignal, createEffect, onCleanup, Show, For } from 'solid-js'
 import { Button } from '@repo/ui/button'
 import { VsDownload, VsTrash, VsLoading } from '@repo/icons/vs'
@@ -66,8 +59,7 @@ export const LazyFontPreview = (props: LazyFontPreviewProps) => {
 				await document.fonts.load(`1em "${props.fontFamily}"`)
 				setFontLoaded(true)
 			}
-		} catch (error) {
-			console.debug('[LazyFontPreview] Failed to load font for preview', props.fontFamily, error)
+		} catch {
 			setLoadError(true)
 		}
 	}
@@ -182,11 +174,6 @@ export const OptimizedFontCard = (props: OptimizedFontCardProps) => {
 	)
 }
 
-/**
- * Virtual Grid for Large Font Lists
- *
- * Renders only visible font cards for better performance with large lists
- */
 export interface VirtualFontGridProps {
 	fonts: Array<{
 		fontName: string

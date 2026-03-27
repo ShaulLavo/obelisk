@@ -110,8 +110,6 @@ export class RetryService {
 
 			try {
 				const result = await operation()
-
-
 				return {
 					success: true,
 					result,
@@ -120,29 +118,20 @@ export class RetryService {
 			} catch (error) {
 				lastError = error instanceof Error ? error : new Error(String(error))
 
-
-				// Check if we should retry this error
 				if (!config.retryCondition?.(lastError)) {
 					break
 				}
 
-				// Don't wait after the last attempt
 				if (attempt < config.maxRetries) {
 					const delay = Math.min(
 						config.baseDelay * Math.pow(config.backoffFactor, attempt),
 						config.maxDelay
 					)
-
-
-					// Call onRetry callback if provided
 					config.onRetry?.(attempt + 1, lastError)
-
 					await new Promise((resolve) => setTimeout(resolve, delay))
 				}
 			}
 		}
-
-
 
 		return {
 			success: false,

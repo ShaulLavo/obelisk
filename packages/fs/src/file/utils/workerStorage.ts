@@ -72,7 +72,9 @@ async function createWorkerStorage(): Promise<WorkerStorage> {
 	const root = await storageManager.getDirectory()
 
 	const fireAndForget = (promise: Promise<unknown>, context: string): void => {
-		promise.catch(() => {})
+		promise.catch((err) => {
+			console.debug('[WorkerStorage]', context, err)
+		})
 	}
 
 	type DirectoryWithEntries = FileSystemDirectoryHandle & {

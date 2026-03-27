@@ -7,19 +7,13 @@ export type FontOption = {
 	label: string
 }
 
-/**
- * Hook that integrates the font store with the settings store
- * Provides dynamic font family options that include installed fonts
- */
 export const useFontSettingsIntegration = () => {
 	const fontStore = useFontStore()
 	const [settingsState, settingsActions] = useSettings()
 
-	// Get the current editor font family setting
 	const currentFontFamily = () =>
 		settingsActions.getSetting<string>('editor.font.family')
 
-	// Get installed fonts and create font options
 	const installedFontOptions = createMemo(() => {
 		const installed = fontStore.installedFonts()
 		if (!installed) return []
@@ -32,7 +26,6 @@ export const useFontSettingsIntegration = () => {
 		)
 	})
 
-	// Combine default font options with installed fonts
 	const allFontOptions = createMemo((): FontOption[] => {
 		const defaultOptions: FontOption[] = [
 			{
@@ -51,17 +44,14 @@ export const useFontSettingsIntegration = () => {
 
 		const installedOptions = installedFontOptions()
 
-		// Filter out installed fonts that are already in defaults
 		const uniqueInstalledOptions = installedOptions.filter(
 			(installed) =>
 				!defaultOptions.some((def) => def.value === installed.value)
 		)
 
-		// Return defaults first, then installed fonts
 		return [...defaultOptions, ...uniqueInstalledOptions]
 	})
 
-	// Check if the currently selected font is available
 	const isCurrentFontAvailable = createMemo(() => {
 		const current = currentFontFamily()
 		const options = allFontOptions()
@@ -69,7 +59,6 @@ export const useFontSettingsIntegration = () => {
 		return options.some((option) => option.value === current)
 	})
 
-	// Get the display name for the current font
 	const currentFontDisplayName = createMemo(() => {
 		const current = currentFontFamily()
 		const options = allFontOptions()
@@ -78,7 +67,6 @@ export const useFontSettingsIntegration = () => {
 		return option?.label || 'Unknown Font'
 	})
 
-	// Check if a font name is currently in use
 	const isFontInUse = (fontName: string): boolean => {
 		const current = currentFontFamily()
 		return (
@@ -86,26 +74,18 @@ export const useFontSettingsIntegration = () => {
 		)
 	}
 
-	// Set the editor font family
 	const setEditorFontFamily = (fontValue: string) => {
 		settingsActions.setSetting('editor.font.family', fontValue)
 	}
 
 	return {
-		// Font options for dropdowns
 		allFontOptions,
 		installedFontOptions,
-
-		// Current font info
 		currentFontFamily,
 		currentFontDisplayName,
 		isCurrentFontAvailable,
-
-		// Actions
 		setEditorFontFamily,
 		isFontInUse,
-
-		// Font store access
 		fontStore,
 	}
 }
