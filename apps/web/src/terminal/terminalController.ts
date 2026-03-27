@@ -275,8 +275,8 @@ export const createTerminalController = async (
 			const date = new Date().toLocaleTimeString()
 			const terminalInfo =
 				backend === 'xterm'
-					? `Vibe Terminal (xterm + ${options.rendererType || 'webgl'})`
-					: `Vibe Terminal (${backend})`
+					? `Obelisk Terminal (xterm + ${options.rendererType || 'webgl'})`
+					: `Obelisk Terminal (${backend})`
 
 			const info = [
 				`${BOLD}${MAGENTA}Just Init Message${RESET}`,

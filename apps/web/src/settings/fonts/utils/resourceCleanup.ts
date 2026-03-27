@@ -428,6 +428,7 @@ export class FontResourceCleanup {
 
 			return true
 		} catch (error) {
+			console.debug('[ResourceCleanup] Failed to remove font from IndexedDB', fontName, error)
 			return false
 		}
 	}
@@ -446,6 +447,7 @@ export class FontResourceCleanup {
 			}
 			return false
 		} catch (error) {
+			console.debug('[ResourceCleanup] Failed to remove document font', fontName, error)
 			return false
 		}
 	}
@@ -457,7 +459,8 @@ export class FontResourceCleanup {
 				return estimate.usage || 0
 			}
 			return 0
-		} catch (e) {
+		} catch (error) {
+			console.debug('[ResourceCleanup] Failed to estimate IndexedDB size', error)
 			return 0
 		}
 	}
@@ -473,7 +476,8 @@ export class FontResourceCleanup {
 				request.onsuccess = () => resolve(request.result || [])
 				request.onerror = () => reject(request.error)
 			})
-		} catch (e) {
+		} catch (error) {
+			console.debug('[ResourceCleanup] Failed to get all IndexedDB entries', error)
 			return []
 		}
 	}
@@ -489,7 +493,8 @@ export class FontResourceCleanup {
 					: 0
 				return now - lastAccessed > maxAge
 			})
-		} catch (e) {
+		} catch (error) {
+			console.debug('[ResourceCleanup] Failed to get old IndexedDB entries', error)
 			return []
 		}
 	}

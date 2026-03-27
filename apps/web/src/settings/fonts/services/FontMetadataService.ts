@@ -54,7 +54,12 @@ export class FontMetadataService {
 
 	async storeFontMetadata(metadata: FontMetadata): Promise<void> {
 		await this.ensureInitialized()
-		await this.store.setItem(metadata.name, metadata)
+
+		try {
+			await this.store.setItem(metadata.name, metadata)
+		} catch (error) {
+			console.debug('[FontMetadataService] Failed to store font metadata for', metadata.name, error)
+		}
 	}
 
 	async getFontMetadata(name: string): Promise<FontMetadata | null> {
@@ -95,7 +100,12 @@ export class FontMetadataService {
 
 	async removeFontMetadata(name: string): Promise<void> {
 		await this.ensureInitialized()
-		await this.store.removeItem(name)
+
+		try {
+			await this.store.removeItem(name)
+		} catch (error) {
+			console.debug('[FontMetadataService] Failed to remove font metadata for', name, error)
+		}
 	}
 
 	async updateLastAccessed(name: string): Promise<void> {
@@ -251,7 +261,12 @@ export class FontMetadataService {
 
 	async clearAllMetadata(): Promise<void> {
 		await this.ensureInitialized()
-		await this.store.clear()
+
+		try {
+			await this.store.clear()
+		} catch (error) {
+			console.debug('[FontMetadataService] Failed to clear all metadata', error)
+		}
 	}
 
 	private async ensureInitialized(): Promise<void> {

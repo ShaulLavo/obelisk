@@ -382,8 +382,9 @@ const createOpfsBinaryAsyncStore = async (dirName: string): Promise<Store> => {
 					filenames.add(name)
 				}
 			}
-		} catch {
+		} catch (error) {
 			// ignore enumeration failures; directory might not support entries
+			console.debug('[vfsStoreBench] Async store: failed to enumerate directory entries', error)
 		}
 	}
 
@@ -458,8 +459,9 @@ const createOpfsBinarySyncStore = async (dirName: string): Promise<Store> => {
 					filenames.add(name)
 				}
 			}
-		} catch {
+		} catch (error) {
 			// ignore enumeration failures
+			console.debug('[vfsStoreBench] Sync store: failed to enumerate directory entries', error)
 		}
 	}
 
@@ -470,8 +472,9 @@ const createOpfsBinarySyncStore = async (dirName: string): Promise<Store> => {
 		if (!handle) return
 		try {
 			handle.close()
-		} catch {
+		} catch (error) {
 			// ignore close errors
+			console.debug('[vfsStoreBench] Failed to close sync access handle', filename, error)
 		} finally {
 			handles.delete(filename)
 		}
@@ -677,13 +680,15 @@ const rawBinarySyncAdapter: RawBinaryAdapter = {
 			async close() {
 				try {
 					handle.flush()
-				} catch {
+				} catch (error) {
 					// ignore flush errors
+					console.debug('[vfsStoreBench] Failed to flush handle on close', error)
 				}
 				try {
 					handle.close()
-				} catch {
+				} catch (error) {
 					// ignore close errors
+					console.debug('[vfsStoreBench] Failed to close handle', error)
 				}
 				try {
 					await directory.removeEntry(fileName)

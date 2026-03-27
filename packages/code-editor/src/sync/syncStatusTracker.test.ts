@@ -6,7 +6,7 @@ import {
 	getStatusBadgeColor,
 	getStatusIcon,
 	getStatusShortText,
-} from './sync-status-tracker'
+} from './syncStatusTracker'
 import type { SyncStatusInfo, SyncStatusType } from './types'
 
 const ALL_STATUS_TYPES: SyncStatusType[] = [

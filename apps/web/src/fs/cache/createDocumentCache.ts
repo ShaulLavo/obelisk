@@ -77,8 +77,9 @@ export function createDocumentCache(): DocumentCache {
 				memoryCache.set(path as FilePath, entry)
 				return entry
 			}
-		} catch {
+		} catch (error) {
 			// IndexedDB unavailable — fall through to empty result
+			console.debug('[DocumentCache] IndexedDB read failed for', path, error)
 		}
 
 		return {}
@@ -106,8 +107,9 @@ export function createDocumentCache(): DocumentCache {
 				tx.oncomplete = () => resolve()
 				tx.onerror = () => reject(tx.error)
 			})
-		} catch {
+		} catch (error) {
 			// IndexedDB write failed — data remains in memory cache
+			console.debug('[DocumentCache] IndexedDB flush failed', error)
 		}
 	}
 

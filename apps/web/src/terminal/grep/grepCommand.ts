@@ -165,7 +165,8 @@ export async function loadGitignorePatterns(
 		const source = ctx.shell.state.activeSource ?? DEFAULT_SOURCE
 		const content = await readFileText(source, gitignorePath)
 		return parseGitignore(content)
-	} catch {
+	} catch (error) {
+		console.debug('[grep] Failed to load .gitignore patterns from', searchPath, error)
 		return []
 	}
 }

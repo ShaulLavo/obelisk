@@ -49,7 +49,7 @@ const applyEditBatch = (
 	return currentText
 }
 
-export const processTree = async (
+export const extractTreeAnnotations = async (
 	tree: Tree,
 	languageId: string,
 	path?: string
@@ -78,7 +78,7 @@ export const parseAndCacheText = async (
 
 	const tree = parser.parse(text)
 	if (!tree) return undefined
-	const result = await processTree(tree, languageId, path)
+	const result = await extractTreeAnnotations(tree, languageId, path)
 	setCachedEntry(path, {
 		tree,
 		text,
@@ -129,7 +129,7 @@ export const reparseWithEdit = async (
 	const nextTree = parser.parse(updatedText, cached.tree)
 	if (!nextTree) return undefined
 
-	const result = await processTree(nextTree, languageId, path)
+	const result = await extractTreeAnnotations(nextTree, languageId, path)
 	setCachedEntry(path, {
 		tree: nextTree,
 		text: updatedText,
@@ -161,7 +161,7 @@ export const reparseWithEditBatch = async (
 	if (!nextTree) return undefined
 
 	// Full reparse with queries
-	const result = await processTree(nextTree, languageId, path)
+	const result = await extractTreeAnnotations(nextTree, languageId, path)
 	setCachedEntry(path, {
 		tree: nextTree,
 		text: currentText,

@@ -13,8 +13,8 @@ const app = new Elysia()
 		swagger({
 			documentation: {
 				info: {
-					title: 'Vibe Server API',
-					description: 'API documentation for Vibe development server',
+					title: 'Slifer API',
+					description: 'API documentation for Anubis development server',
 					version: '1.0.0',
 				},
 				tags: [

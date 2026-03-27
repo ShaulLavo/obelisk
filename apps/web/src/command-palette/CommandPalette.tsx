@@ -1,7 +1,7 @@
 import { Dialog } from '@kobalte/core/dialog'
 import { Dynamic } from 'solid-js/web'
 import { For, Show, Suspense, createEffect, createSignal } from 'solid-js'
-import { useCommandPaletteContext } from './CommandPaletteProvider'
+import { useCommandPalettes } from './CommandPaletteProvider'
 import type { PaletteResult } from './useCommandPalette'
 import { VsSearch } from '@repo/icons/vs/VsSearch'
 import { VsFile } from '@repo/icons/vs/VsFile'
@@ -115,7 +115,7 @@ function ResultsList(props: {
 }
 
 export function CommandPalette() {
-	const { state, actions, results } = useCommandPaletteContext()
+	const { state, actions, results } = useCommandPalettes()
 	let inputRef: HTMLInputElement | undefined
 	let resultsContainerRef: HTMLDivElement | undefined
 	const [disablePointerSelection, setDisablePointerSelection] =

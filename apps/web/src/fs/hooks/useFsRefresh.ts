@@ -135,13 +135,8 @@ export const useFsRefresh = ({
 			return undefined
 		}
 
-		// If we have a stored file path from localStorage, use it directly
 		// The file might not be in the tree yet (parent dir not loaded), but selectPath can handle that
-		if (lastFilePath) {
-			return lastFilePath
-		}
-
-		return undefined
+		return lastFilePath
 	}
 
 	const refresh = async (

@@ -146,8 +146,9 @@ const reset = async (): Promise<void> => {
 	if (db) {
 		try {
 			db.close()
-		} catch {
+		} catch (error) {
 			// Ignore close errors
+			console.debug('[sqlite] Failed to close database', error)
 		}
 		db = null
 		client = null
@@ -156,8 +157,9 @@ const reset = async (): Promise<void> => {
 	try {
 		const root = await navigator.storage.getDirectory()
 		await root.removeEntry('vibe.sqlite3')
-	} catch {
+	} catch (error) {
 		// OPFS file might not exist
+		console.debug('[sqlite] Failed to remove OPFS database file', error)
 	}
 
 	initPromise = null

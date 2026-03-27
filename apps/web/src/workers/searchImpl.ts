@@ -29,8 +29,9 @@ export const ensureSchema = async (client: Sqlite3Client) => {
 				)
 			}
 		}
-	} catch {
+	} catch (error) {
 		// Migration check failed
+		console.debug('[searchImpl] Schema migration check failed', error)
 	}
 
 	await client.execute(

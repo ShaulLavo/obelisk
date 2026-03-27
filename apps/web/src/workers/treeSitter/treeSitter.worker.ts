@@ -8,7 +8,7 @@ import {
 } from './cache'
 import { ensureParser, disposeParser } from './parser'
 import {
-	processTree,
+	extractTreeAnnotations,
 	parseBufferAndCache,
 	reparseWithEdit,
 	reparseWithEditBatch,
@@ -28,7 +28,7 @@ const api: TreeSitterWorkerApi = {
 		const { parser } = res
 		const tree = parser.parse(source)
 		if (!tree) return undefined
-		const result = await processTree(tree, 'typescript')
+		const result = await extractTreeAnnotations(tree, 'typescript')
 		tree.delete()
 		return result
 	},

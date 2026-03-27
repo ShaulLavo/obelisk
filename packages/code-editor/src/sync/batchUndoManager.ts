@@ -4,7 +4,7 @@ import type {
 	EditorInstance,
 	EditorState,
 } from './types'
-import { EditorStateManager } from './editor-state-manager'
+import { EditorStateManager } from './editorStateManager'
 
 /**
  * Captured state for a single file before batch resolution

@@ -107,10 +107,10 @@ export class CacheErrorRecoveryService {
 		try {
 			switch (strategy) {
 				case 'fallback_memory':
-					return await this.enableMemoryFallback()
+					return this.enableMemoryFallback()
 
 				case 'fallback_localstorage':
-					return await this.enableLocalStorageFallback()
+					return this.enableLocalStorageFallback()
 
 				case 'clear_and_rebuild':
 					return await this.clearAndRebuildCache()
@@ -119,7 +119,7 @@ export class CacheErrorRecoveryService {
 					return await this.reduceCacheSize()
 
 				case 'disable_caching':
-					return await this.disableCaching()
+					return this.disableCaching()
 
 				default:
 					return {
@@ -132,11 +132,11 @@ export class CacheErrorRecoveryService {
 		} catch (recoveryError) {
 
 			// Last resort: disable caching entirely
-			return await this.disableCaching()
+			return this.disableCaching()
 		}
 	}
 
-	private async enableMemoryFallback(): Promise<CacheRecoveryResult> {
+	private enableMemoryFallback(): CacheRecoveryResult {
 		this.fallbackMode = true
 		this.cacheApiAvailable = false
 		this.indexedDBAvailable = false
@@ -150,7 +150,7 @@ export class CacheErrorRecoveryService {
 		}
 	}
 
-	private async enableLocalStorageFallback(): Promise<CacheRecoveryResult> {
+	private enableLocalStorageFallback(): CacheRecoveryResult {
 		try {
 			// Test localStorage availability
 			const testKey = 'font-cache-test'
@@ -168,7 +168,7 @@ export class CacheErrorRecoveryService {
 				fallbackActive: true,
 			}
 		} catch (error) {
-			return await this.enableMemoryFallback()
+			return this.enableMemoryFallback()
 		}
 	}
 
@@ -208,7 +208,7 @@ export class CacheErrorRecoveryService {
 				fallbackActive: false,
 			}
 		} catch (error) {
-			return await this.enableMemoryFallback()
+			return this.enableMemoryFallback()
 		}
 	}
 
@@ -249,7 +249,7 @@ export class CacheErrorRecoveryService {
 		}
 	}
 
-	private async disableCaching(): Promise<CacheRecoveryResult> {
+	private disableCaching(): CacheRecoveryResult {
 		this.fallbackMode = true
 		this.cacheApiAvailable = false
 		this.indexedDBAvailable = false
@@ -263,7 +263,7 @@ export class CacheErrorRecoveryService {
 		}
 	}
 
-	async storeFontFallback(name: string, data: ArrayBuffer): Promise<void> {
+	storeFontFallback(name: string, data: ArrayBuffer): void {
 		if (!this.fallbackMode) {
 			throw new Error('Fallback mode not enabled')
 		}
@@ -271,7 +271,7 @@ export class CacheErrorRecoveryService {
 		this.fallbackStorage.set(name, data)
 	}
 
-	async getFontFallback(name: string): Promise<ArrayBuffer | null> {
+	getFontFallback(name: string): ArrayBuffer | null {
 		if (!this.fallbackMode) {
 			return null
 		}

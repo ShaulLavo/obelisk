@@ -1,5 +1,5 @@
 // Editor registry
-export { EditorRegistryImpl } from './editor-registry'
+export { EditorRegistryImpl } from './editorRegistry'
 
 // Types
 export type {
@@ -16,15 +16,13 @@ export type {
 	ConflictInfo,
 	ConflictResolution,
 	ConflictResolutionStrategy,
-	PendingConflict,
-	BatchResolutionResult,
 	NotificationSystem,
 } from './types'
 
 export { DEFAULT_EDITOR_SYNC_CONFIG, deriveSyncStatusType } from './types'
 
 // Conflict resolution utilities
-export { getStrategyDisplayName, canAutoResolve, createResolution } from './conflict-manager'
+export { getStrategyDisplayName, canAutoResolve, createResolution } from './conflictManager'
 
 // Status derivation (pure functions)
 export {
@@ -37,7 +35,7 @@ export {
 	deriveStatusFromSynced,
 	deriveStatusFromDeletion,
 	NOT_WATCHED_STATUS,
-} from './status-derivation'
+} from './statusDerivation'
 
 // Status display utilities
 export {
@@ -47,16 +45,16 @@ export {
 	getStatusBadgeColor,
 	getStatusIcon,
 	getStatusShortText,
-} from './sync-status-tracker'
+} from './syncStatusTracker'
 
 // Editor state management
-export { EditorStateManager } from './editor-state-manager'
+export { EditorStateManager } from './editorStateManager'
 
 // Batch undo management
-export { BatchUndoManager, createBatchUndoManager } from './batch-undo-manager'
+export { BatchUndoManager, createBatchUndoManager } from './batchUndoManager'
 export type {
 	BatchUndoManagerOptions,
 	BatchUndoOperation,
 	FileUndoState,
 	UndoResult,
-} from './batch-undo-manager'
+} from './batchUndoManager'

@@ -43,7 +43,7 @@ class FontPerformanceMonitor {
 	 * Start tracking a font download operation
 	 */
 	startFontDownload(fontName: string): void {
-		const existing = this.metrics.get(fontName) || ({} as FontLoadingMetrics);
+		const existing: Partial<FontLoadingMetrics> = this.metrics.get(fontName) ?? {};
 		this.metrics.set(fontName, {
 			...existing,
 			fontName,
@@ -195,29 +195,7 @@ class FontPerformanceMonitor {
 }
 
 // Singleton instance
-const fontPerformanceMonitor = new FontPerformanceMonitor();
-
-/**
- * Hook for accessing performance monitoring
- */
-export function usePerformanceMonitor() {
-	const monitor = fontPerformanceMonitor;
-
-	return {
-		startFontDownload: (fontName: string) =>
-			monitor.startFontDownload(fontName),
-		completeFontDownload: (fontName: string, fromCache?: boolean) =>
-			monitor.completeFontDownload(fontName, fromCache),
-		startFontInstallation: (fontName: string) =>
-			monitor.startFontInstallation(fontName),
-		completeFontInstallation: (fontName: string, size: number) =>
-			monitor.completeFontInstallation(fontName, size),
-		getMetrics: () => monitor.getMetrics(),
-		getFontMetrics: (fontName: string) => monitor.getFontMetrics(fontName),
-		clearMetrics: () => monitor.clearMetrics(),
-		getPerformanceReport: () => monitor.getPerformanceReport(),
-	};
-}
+export const fontPerformanceMonitor = new FontPerformanceMonitor();
 
 /**
  * Lazy loading utility for font previews
@@ -426,36 +404,17 @@ export function createMemoryMonitor() {
  */
 export const PerformanceDebugger = {
 	/**
-	 * Log performance metrics to console
-	 */
-	logMetrics(): void {
-		const monitor = fontPerformanceMonitor;
-	},
-
-	/**
 	 * Export metrics as JSON
 	 */
 	exportMetrics(): string {
-		const monitor = fontPerformanceMonitor;
 		return JSON.stringify(
 			{
 				timestamp: new Date().toISOString(),
-				metrics: monitor.getMetrics(),
-				individualMetrics: monitor.getAllFontMetrics(),
+				metrics: fontPerformanceMonitor.getMetrics(),
+				individualMetrics: fontPerformanceMonitor.getAllFontMetrics(),
 			},
 			null,
 			2
 		);
-	},
-
-	/**
-	 * Start continuous monitoring
-	 */
-	startContinuousMonitoring(intervalMs: number = 10000): () => void {
-		const interval = setInterval(() => {
-			this.logMetrics();
-		}, intervalMs);
-
-		return () => clearInterval(interval);
 	},
 };

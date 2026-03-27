@@ -11,13 +11,26 @@
 
 import { createEffect, createSignal, onCleanup } from 'solid-js'
 import {
-	usePerformanceMonitor,
+	fontPerformanceMonitor,
 	FontLoadingOptimizer,
 	createMemoryMonitor,
 	PerformanceDebugger,
 } from '../utils/performanceMonitoring'
 import { removeOldCacheEntries } from '../utils/resourceCleanup'
 import type { FontRegistryActions } from '../../../fonts/types'
+
+/** Augment Window with optional debug & gc properties used by the font optimizer. */
+interface FontDebugWindow extends Window {
+	fontDebug?: {
+		getMetrics: () => ReturnType<typeof fontPerformanceMonitor.getMetrics>
+		getReport: () => ReturnType<typeof fontPerformanceMonitor.getPerformanceReport>
+		exportMetrics: () => string
+		clearMetrics: () => void
+		getMemoryInfo: () => unknown
+		triggerCleanup: () => Promise<void>
+	}
+	gc?: () => void
+}
 
 export interface OptimizationConfig {
 	enableLazyLoading: boolean
@@ -38,7 +51,6 @@ const DEFAULT_CONFIG: OptimizationConfig = {
 }
 
 const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000
-const DEBUG_MONITORING_INTERVAL_MS = 30_000
 const MEMORY_PRESSURE_THRESHOLD = 80
 const MIN_HEALTHY_CACHE_HIT_RATE = 0.5
 
@@ -47,9 +59,8 @@ const MIN_HEALTHY_CACHE_HIT_RATE = 0.5
  */
 export class FontPerformanceOptimizer {
 	private config: OptimizationConfig
-	private performanceMonitor = usePerformanceMonitor()
+	private performanceMonitor = fontPerformanceMonitor
 	private memoryMonitor = createMemoryMonitor()
-	private debugInterval?: () => void
 
 	constructor(config: Partial<OptimizationConfig> = {}) {
 		this.config = { ...DEFAULT_CONFIG, ...config }
@@ -86,10 +97,7 @@ export class FontPerformanceOptimizer {
 
 	private setupPerformanceMonitoring(): void {
 		// Monitor font loading performance
-		// Log performance metrics every 30 seconds in debug mode
-		if (this.config.debugMode) {
-			this.debugInterval = PerformanceDebugger.startContinuousMonitoring(DEBUG_MONITORING_INTERVAL_MS)
-		}
+		// Performance monitoring is handled via the singleton fontPerformanceMonitor
 	}
 
 	private setupMemoryMonitoring(): void {
@@ -105,7 +113,8 @@ export class FontPerformanceOptimizer {
 
 	private enableDebugMode(): void {
 		// Add global debug functions
-		;(window as any).fontDebug = {
+		const w = window as FontDebugWindow
+		w.fontDebug = {
 			getMetrics: () => this.performanceMonitor.getMetrics(),
 			getReport: () => this.performanceMonitor.getPerformanceReport(),
 			exportMetrics: () => PerformanceDebugger.exportMetrics(),
@@ -173,8 +182,9 @@ export class FontPerformanceOptimizer {
 			await removeOldCacheEntries(ONE_WEEK_MS)
 
 			// Force garbage collection if available
-			if ('gc' in window && typeof (window as any).gc === 'function') {
-				;(window as any).gc()
+			const w = window as FontDebugWindow
+			if (typeof w.gc === 'function') {
+				w.gc()
 			}
 
 		} catch (error) {
@@ -187,7 +197,7 @@ export class FontPerformanceOptimizer {
 	 */
 	getOptimizationStatus(): {
 		config: OptimizationConfig
-		metrics: ReturnType<ReturnType<typeof usePerformanceMonitor>['getMetrics']>
+		metrics: ReturnType<typeof fontPerformanceMonitor.getMetrics>
 		memoryUsage: number
 		isHealthy: boolean
 	} {
@@ -213,13 +223,10 @@ export class FontPerformanceOptimizer {
 	 * Cleanup resources
 	 */
 	cleanup(): void {
-		if (this.debugInterval) {
-			this.debugInterval()
-		}
-
 		// Clear debug functions
-		if ((window as any).fontDebug) {
-			delete (window as any).fontDebug
+		const w = window as FontDebugWindow
+		if (w.fontDebug) {
+			delete w.fontDebug
 		}
 
 	}

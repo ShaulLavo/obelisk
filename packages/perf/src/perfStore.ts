@@ -83,12 +83,13 @@ export const configureMaxEntries = (max: number): void => {
 	trimIfNeeded()
 }
 
-export const record = (
-	name: string,
-	duration: number,
-	breakdown: PerfBreakdownEntry[],
+export const record = (opts: {
+	name: string
+	duration: number
+	breakdown: PerfBreakdownEntry[]
 	metadata?: Record<string, unknown>
-): PerfRecord => {
+}): PerfRecord => {
+	const { name, duration, breakdown, metadata } = opts
 	const newRecord: PerfRecord = {
 		id: generateId(),
 		name,

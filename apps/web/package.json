@@ -84,7 +84,6 @@
     "isomorphic-git": "^1.36.1",
     "just-bash": "workspace:*",
     "localforage": "^1.10.0",
-    "nanoid": "^5.1.6",
     "shell-quote": "^1.8.2",
     "solid-js": "^1.9.5",
     "sqlite-wasm": "workspace:*",

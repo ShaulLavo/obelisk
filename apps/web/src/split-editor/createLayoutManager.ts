@@ -54,8 +54,6 @@ function findFirstPane(
 
 /** Options for creating a layout manager */
 export interface LayoutManagerOptions {
-	/** Callback when a tab is closed */
-	onTabClose?: (paneId: NodeId, tab: Tab) => void
 }
 
 export function createLayoutManager(options: LayoutManagerOptions = {}) {
@@ -318,9 +316,6 @@ export function createLayoutManager(options: LayoutManagerOptions = {}) {
 		)
 
 		if (closedTab) {
-			// Call options callback (for backwards compatibility)
-			options.onTabClose?.(paneId, closedTab)
-
 			// Notify all tab close handlers
 			for (const handler of tabCloseHandlers) {
 				try {

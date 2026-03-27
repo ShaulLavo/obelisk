@@ -189,8 +189,7 @@ export const useSqliteStudio = () => {
 
 			if (hasRowId()) {
 				whereClause = 'rowid = ?'
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				params.push((cell.row as any).rowid)
+				params.push(cell.row['rowid'])
 			} else if (primaryKeys().length > 0) {
 				whereClause = primaryKeys()
 					.map((pk) => `"${pk}" = ?`)

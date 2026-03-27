@@ -129,6 +129,7 @@ export class ServiceWorkerManager {
 				.filter((request) => this.isFontRequest(new URL(request.url)))
 				.map((request) => request.url)
 		} catch (error) {
+			console.debug('[ServiceWorkerManager] Failed to get cache manifest', error)
 			return []
 		}
 	}

@@ -245,10 +245,10 @@
     "repo:health": "bun run depcheck && bun run unimported && bun run tsprune"
   },
   "dependencies": {
-    "cheerio": "^1.1.2",
     "solid-js": "^1.9.5"
   },
   "devDependencies": {
+    "cheerio": "^1.1.2",
     "@repo/eslint-config": "*",
     "@repo/typescript-config": "*",
     "@types/node": "^24.10.1",

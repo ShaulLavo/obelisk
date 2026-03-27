@@ -1,4 +1,4 @@
-import { createEffect, createMemo } from 'solid-js'
+import { createMemo } from 'solid-js'
 import { useFontStore } from '../store/FontStoreProvider'
 import { useSettings } from '../../SettingsProvider'
 
@@ -90,17 +90,6 @@ export const useFontSettingsIntegration = () => {
 	const setEditorFontFamily = (fontValue: string) => {
 		settingsActions.setSetting('editor.font.family', fontValue)
 	}
-
-	// Effect to validate font availability when installed fonts change
-	createEffect(() => {
-		const installed = fontStore.installedFonts()
-		const current = currentFontFamily()
-
-		// If installed fonts are loaded and current font is not available,
-		// we could optionally reset to default, but for now just log
-		if (installed && !isCurrentFontAvailable()) {
-		}
-	})
 
 	return {
 		// Font options for dropdowns

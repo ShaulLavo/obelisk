@@ -10,13 +10,47 @@ const isBinaryResponse = (response: Response) => {
 	return normalized.startsWith('font/')
 }
 
-// TODO: Investigate why bun version mismatch keeps happening - causes elysia type incompatibility
-// Note: App type import removed to fix Docker build - server module has Node.js dependencies
-// treaty<any> resolves to a union including a string literal, so cast to any for property access
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const client: any = treaty<any>(env.apiOrigin, {
+/**
+ * Shape of the Eden treaty client for the Anubis API server.
+ *
+ * The full `App` type lives in `apps/server` and cannot be imported here
+ * without pulling in Node.js dependencies that break the web build. This
+ * lightweight interface describes the routes the web app actually uses so
+ * the rest of the codebase gets type-safety without the coupling.
+ *
+ * TODO: Investigate bun version mismatch that causes elysia type incompatibility.
+ */
+
+interface EdenResponse<T> {
+	data: T | null
+	error: { value?: { message?: string } } | null
+}
+
+interface FontByNameEndpoint {
+	get(options?: { fetch?: { signal?: AbortSignal } }): Promise<EdenResponse<ArrayBuffer | string>>
+}
+
+interface FontBatchEndpoint {
+	post(body: { names: string[] }): Promise<EdenResponse<Record<string, string>>>
+}
+
+interface FontsEndpoint {
+	(params: { name: string }): FontByNameEndpoint
+	get(): Promise<EdenResponse<string[]>>
+	batch: FontBatchEndpoint
+}
+
+export interface ApiClient {
+	fonts: FontsEndpoint
+}
+
+// Note: App type import removed to fix Docker build - server module has Node.js dependencies.
+// The ApiClient interface above provides type-safety for the routes the web app uses.
+const rawClient = treaty(env.apiOrigin, {
 	onResponse: async (response) => {
 		if (!isBinaryResponse(response)) return null
 		return response.arrayBuffer()
 	},
 })
+
+export const client = rawClient as unknown as ApiClient

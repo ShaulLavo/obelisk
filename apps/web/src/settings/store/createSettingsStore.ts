@@ -161,8 +161,11 @@ export const createSettingsStore = (
 
 	void initialize()
 
-	const handleSettingsFileSaved = (event: CustomEvent) => {
-		const newOverrides = event.detail as Record<string, unknown>
+	const handleSettingsFileSaved = (event: CustomEvent<Record<string, unknown>>) => {
+		const newOverrides: Record<string, unknown> =
+			event.detail != null && typeof event.detail === 'object' && !Array.isArray(event.detail)
+				? (event.detail as Record<string, unknown>)
+				: {}
 
 		setState(
 			produce((s) => {

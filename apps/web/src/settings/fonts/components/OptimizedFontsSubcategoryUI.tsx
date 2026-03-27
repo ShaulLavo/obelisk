@@ -19,7 +19,6 @@ import {
 	ErrorBoundary,
 	createEffect,
 	onMount,
-	onCleanup,
 } from 'solid-js'
 import {
 	VsSearch,
@@ -34,7 +33,7 @@ import type { FontEntry } from '../../../fonts'
 import { OptimizedFontCard, VirtualFontGrid } from './LazyFontPreview'
 import { useFontPerformanceOptimization } from '../integration'
 import {
-	usePerformanceMonitor,
+	fontPerformanceMonitor,
 	createMemoryMonitor,
 } from '../utils/performanceMonitoring'
 
@@ -68,7 +67,7 @@ const OptimizedFontsContent = () => {
 		preloadPopularFonts: true,
 		debugMode: import.meta.env.DEV,
 	})
-	const performanceMonitor = usePerformanceMonitor()
+	const performanceMonitor = fontPerformanceMonitor
 	const memoryMonitor = createMemoryMonitor()
 
 	const [searchQuery, setSearchQuery] = createSignal('')
@@ -161,13 +160,6 @@ const OptimizedFontsContent = () => {
 			registry.refetch()
 		})
 	}
-
-	// Cleanup on unmount
-	onCleanup(async () => {
-		// Optional: Clean up resources if needed
-		if (import.meta.env.DEV) {
-		}
-	})
 
 	// Performance stats
 	const performanceStats = createMemo(() => {

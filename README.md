@@ -1,6 +1,6 @@
-# Vibe
+# Anubis
 
-Vibe is the early scaffold for a full-stack, vibe-forward coding platform: Solid + Tailwind UI in `apps/web`, Bun + Elysia API in `apps/server`, and shared packages (`packages/fs`, `packages/code-editor`, `packages/ui`, `packages/eslint-config`, `packages/typescript-config`) wired together with Turborepo.
+Anubis is a full-stack, local-first coding platform: SolidJS + Tailwind UI in `apps/web` (Obelisk), Bun + Elysia API in `apps/server` (Slifer), and shared packages (`packages/fs`, `packages/code-editor`, `packages/ui`, `packages/eslint-config`, `packages/typescript-config`) wired together with Turborepo.
 
 ## Quick start
 

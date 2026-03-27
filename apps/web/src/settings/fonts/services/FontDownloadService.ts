@@ -75,10 +75,9 @@ export class FontDownloadService {
 				ensureNotAborted()
 
 				if (!response.data || response.error) {
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					const errorValue = (response.error as any)?.value
+					const errorMessage = response.error?.value?.message
 					throw new Error(
-						errorValue?.message || `Failed to download font: ${name}`
+						errorMessage || `Failed to download font: ${name}`
 					)
 				}
 

@@ -1,6 +1,6 @@
-# Vibe Web (Solid + Vite)
+# Obelisk — Anubis Web Client
 
-SolidJS front-end for the Vibe workspace: resizable file/tree + terminal UI backed by the shared `@repo/fs` and `@repo/code-editor` packages. See the repo root `README.md` for monorepo-wide commands and context.
+SolidJS front-end for the Anubis workspace: resizable file/tree + terminal UI backed by the shared `@repo/fs` and `@repo/code-editor` packages. See the repo root `README.md` for monorepo-wide commands and context.
 
 ## Prerequisites
 
@@ -46,4 +46,4 @@ SolidJS front-end for the Vibe workspace: resizable file/tree + terminal UI back
 
 ## Preview
 
-Example UI preview (placeholder): ![Vibe web preview](https://dummyimage.com/1200x720/0b1221/ffffff&text=Vibe+web+client+preview)
+Example UI preview (placeholder): ![Obelisk web preview](https://dummyimage.com/1200x720/0b1221/ffffff&text=Obelisk+web+client+preview)
