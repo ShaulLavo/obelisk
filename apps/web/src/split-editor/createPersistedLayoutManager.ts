@@ -124,12 +124,14 @@ export function createPersistedLayoutManager(
 		return null
 	}
 
-	return {
-		...baseManager,
-		initialize,
-		clearPersistedLayout,
-		getPersistedLayout,
-	}
+	// Use Object.create to preserve getters (e.g. openFileAsTab) from the base
+	// manager. A plain spread would snapshot getter values at spread time, losing
+	// reactivity to later setOpenFileAsTab calls.
+	const persisted = Object.create(baseManager) as PersistedLayoutManager
+	persisted.initialize = initialize
+	persisted.clearPersistedLayout = clearPersistedLayout
+	persisted.getPersistedLayout = getPersistedLayout
+	return persisted
 }
 
 /**

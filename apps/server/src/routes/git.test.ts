@@ -82,8 +82,8 @@ describe('Git Routes', () => {
 			)
 
 			expect(response.status).toBe(400)
-			const text = await response.text()
-			expect(text).toBe('Missing url query param')
+			const data = await response.json()
+			expect(data).toEqual({ error: 'Missing url query param' })
 		})
 
 		it('should return 400 for invalid URL', async () => {
@@ -92,8 +92,8 @@ describe('Git Routes', () => {
 			)
 
 			expect(response.status).toBe(400)
-			const text = await response.text()
-			expect(text).toBe('Invalid url')
+			const data = await response.json()
+			expect(data).toEqual({ error: 'Invalid url' })
 		})
 
 		it('should return 403 when host is not in allowed list', async () => {
@@ -104,8 +104,8 @@ describe('Git Routes', () => {
 			)
 
 			expect(response.status).toBe(403)
-			const text = await response.text()
-			expect(text).toBe('Host not allowed')
+			const data = await response.json()
+			expect(data).toEqual({ error: 'Host not allowed' })
 		})
 
 		it('should return 405 for disallowed methods', async () => {

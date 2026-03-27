@@ -5,7 +5,7 @@
  * so that SplitEditorPanel can stay focused on UI rendering.
  */
 
-import { createEffect, runWithOwner, type Owner } from 'solid-js'
+import { createEffect, createRoot, runWithOwner, type Owner } from 'solid-js'
 import { getCachedPieceTableContent } from '@repo/utils'
 import { createFilePath } from '@repo/fs'
 import { EditorInstanceAdapter } from '../../split-editor/EditorInstanceAdapter'
@@ -52,6 +52,7 @@ export function useSyncIntegration(deps: SyncIntegrationDeps): SyncIntegrationHa
 	let syncController: SyncController | null = null
 	let documentStore: DocumentStore | null = null
 	let unsubDirtyChange: (() => void) | null = null
+	let disposeRoot: (() => void) | null = null
 
 	function registerFileWithSync(filePath: string): void {
 		if (!documentStore || filePath === 'Untitled') return
@@ -59,7 +60,12 @@ export function useSyncIntegration(deps: SyncIntegrationDeps): SyncIntegrationHa
 		const normalizedPath = createFilePath(filePath)
 
 		// Register with document store for sync tracking
-		documentStore.open(toFilePath(filePath))
+		// Run within owner to keep SolidJS reactive context
+		if (owner) {
+			runWithOwner(owner, () => documentStore!.open(toFilePath(filePath)))
+		} else {
+			documentStore.open(toFilePath(filePath))
+		}
 
 		if (!editorAdapters.has(filePath)) {
 			const adapter = new EditorInstanceAdapter({
@@ -124,10 +130,24 @@ export function useSyncIntegration(deps: SyncIntegrationDeps): SyncIntegrationHa
 			syncController = new SyncController()
 			await syncController.start(fsContext.root)
 
-			documentStore = createDocumentStore({
-				rootCtx: fsContext,
-				syncController,
-			})
+			// Create document store within reactive owner so createMemo/createSignal
+			// calls inside it are properly owned and will be disposed
+			if (owner) {
+				documentStore = runWithOwner(owner, () =>
+					createDocumentStore({
+						rootCtx: fsContext,
+						syncController: syncController!,
+					})
+				)!
+			} else {
+				createRoot((dispose) => {
+					disposeRoot = dispose
+					documentStore = createDocumentStore({
+						rootCtx: fsContext,
+						syncController: syncController!,
+					})
+				})
+			}
 
 			// Register all currently open file tabs
 			for (const node of Object.values(layoutManager.state.nodes) as SplitNode[]) {
@@ -179,6 +199,7 @@ export function useSyncIntegration(deps: SyncIntegrationDeps): SyncIntegrationHa
 		editorRegistry.dispose()
 		documentStore?.dispose()
 		syncController?.dispose()
+		disposeRoot?.()
 	}
 
 	return {

@@ -259,19 +259,3 @@ body {
 	}
 }
 
-/* Theme toggle: disable default view transition so JS can animate the circle */
-/* Only applies when .theme-transitioning class is on html element */
-html.theme-transitioning::view-transition-old(*) {
-	animation: none;
-	display: none;
-}
-
-html.theme-transitioning::view-transition-new(*) {
-	animation: none;
-	mix-blend-mode: normal;
-}
-
-/* During theme toggle, disable all named view transitions so everything is part of root */
-html.theme-transitioning * {
-	view-transition-name: none !important;
-}

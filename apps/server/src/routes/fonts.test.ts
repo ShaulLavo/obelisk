@@ -25,8 +25,8 @@ describe('Fonts Routes', () => {
 			)
 
 			expect(response.status).toBe(404)
-			const text = await response.text()
-			expect(text).toBe('Font not found')
+			const data = await response.json()
+			expect(data).toEqual({ error: 'Font not found' })
 		})
 
 		// Note: Testing actual font download would require network access
@@ -41,8 +41,8 @@ describe('Fonts Routes', () => {
 			)
 
 			expect(response.status).toBe(404)
-			const text = await response.text()
-			expect(text).toBe('Font not found')
+			const data = await response.json()
+			expect(data).toEqual({ error: 'Font not found' })
 		})
 
 		it('should accept custom preview text query param', async () => {

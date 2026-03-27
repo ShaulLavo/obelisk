@@ -9,15 +9,28 @@ import {
 import type { SearchResult, FileMetadata } from './types'
 
 export class SearchService {
+	private initPromise: Promise<void> | null = null
+
 	async init(): Promise<void> {
-		await initSqlite()
+		if (!this.initPromise) {
+			this.initPromise = initSqlite().then(() => {})
+		}
+		await this.initPromise
 	}
 
-	search(query: string): Promise<SearchResult[]> {
+	private async ensureInitialized(): Promise<void> {
+		if (this.initPromise) {
+			await this.initPromise
+		}
+	}
+
+	async search(query: string): Promise<SearchResult[]> {
+		await this.ensureInitialized()
 		return searchFiles(query)
 	}
 
-	indexFiles(files: FileMetadata[]): Promise<void> {
+	async indexFiles(files: FileMetadata[]): Promise<void> {
+		await this.ensureInitialized()
 		return batchInsertFiles(files)
 	}
 

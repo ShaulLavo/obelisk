@@ -31,6 +31,9 @@ export function createLazySingleton<T extends object>(factory: () => T): {
 		get(_target, prop, receiver) {
 			return Reflect.get(get(), prop, receiver)
 		},
+		set(_target, prop, value) {
+			return Reflect.set(get(), prop, value)
+		},
 	})
 
 	return { get, deprecated }

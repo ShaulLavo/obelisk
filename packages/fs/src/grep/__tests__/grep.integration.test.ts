@@ -151,6 +151,7 @@ describe('Grep Integration', () => {
 		const matches = await coordinator.grep({
 			pattern: 'hello',
 			caseInsensitive: true,
+			paths: ['case.txt'],
 		})
 
 		expect(matches.length).toBe(3)
@@ -196,6 +197,7 @@ describe('Grep Integration', () => {
 		const matches = await coordinator.grep({
 			pattern: 'match',
 			invertMatch: true,
+			paths: ['invert.txt'],
 		})
 
 		expect(matches.length).toBe(2)

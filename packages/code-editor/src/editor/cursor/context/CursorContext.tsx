@@ -589,6 +589,61 @@ export function CursorProvider(props: CursorProviderProps) {
 		pendingLineDataReset = false
 	}
 
+	const updateFromSnapshot = (snapshot: PieceTableSnapshot) => {
+		const length = getPieceTableLength(snapshot)
+		const newStarts = buildLineStartsFromSnapshot(snapshot)
+		const prevIds = lineIds()
+		const prevStarts = lineStarts()
+		let nextIds: number[]
+
+		if (newStarts.length === prevIds.length) {
+			nextIds = prevIds.slice()
+			for (let i = 0; i < newStarts.length; i++) {
+				const oldStart = prevStarts[i]
+				const newStart = newStarts[i]
+				const oldEnd =
+					i + 1 < prevStarts.length ? prevStarts[i + 1] : documentLength()
+				const newEnd =
+					i + 1 < newStarts.length ? newStarts[i + 1] : length
+				const oldLen = (oldEnd ?? 0) - (oldStart ?? 0)
+				const newLen = (newEnd ?? 0) - (newStart ?? 0)
+				if (oldLen !== newLen) {
+					nextIds[i] = createLineIds(1)[0]!
+				}
+			}
+		} else {
+			let firstChanged = 0
+			while (
+				firstChanged < Math.min(prevStarts.length, newStarts.length)
+			) {
+				if (prevStarts[firstChanged] !== newStarts[firstChanged]) break
+				firstChanged++
+			}
+			const lineDelta = newStarts.length - prevStarts.length
+			nextIds = buildLineIdsForEdit(
+				{
+					prevLineIds: prevIds,
+					startLine: Math.max(0, firstChanged),
+					endLine: Math.max(0, firstChanged),
+					lineDelta,
+					expectedLineCount: newStarts.length,
+				},
+				createLineIds
+			)
+		}
+
+		const data = buildLineDataFromSnapshot(snapshot, nextIds, newStarts)
+		batch(() => {
+			setActivePieceTable(snapshot)
+			setDocumentLength(length)
+			setLineStarts(newStarts)
+			setLineIdsWithIndex(nextIds)
+			setLineDataById(reconcile(data))
+			syncCursorStateToDocument()
+		})
+		pendingLineDataReset = false
+	}
+
 	const initializeFromContent = (content: string) => {
 		const precomputed = props.precomputedLineStarts?.()
 		const usePrecomputed = precomputed && precomputed.length > 0
@@ -669,8 +724,11 @@ export function CursorProvider(props: CursorProviderProps) {
 		if (snapshot) {
 			setActivePieceTable(snapshot)
 			const currentLength = documentLength()
-			if (lineStarts().length === 0 || currentLength !== snapshot.length) {
+			const snapshotLength = getPieceTableLength(snapshot)
+			if (lineStarts().length === 0) {
 				initializeFromSnapshot(snapshot)
+			} else if (currentLength !== snapshotLength) {
+				updateFromSnapshot(snapshot)
 			}
 		} else {
 			const content = props.content()

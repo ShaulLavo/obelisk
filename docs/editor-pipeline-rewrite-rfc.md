@@ -80,7 +80,8 @@ Key decisions:
 - Make syntax highlighting eventually consistent instead of blocking typing
 - Start with vertical virtualization only
 - Handle pathological long lines with an isolated long-line mode instead of a general reactive 2D graph
-- Render text imperatively with pooled row nodes and line-level caches
+- Preserve the current scroll smoothness and no-flicker behavior as a hard requirement
+- Render text imperatively for a bounded visible range with line-level caches
 - Move selection and cursor rendering into one imperative overlay layer
 
 The desired end state is a code editor with:
@@ -529,12 +530,12 @@ This loop does not own:
 ### 2. Paint Loop
 
 ```text
-RAF -> flush dirty text rows -> flush gutter -> flush overlay -> commit view state
+RAF -> flush dirty visible rows -> flush gutter -> flush overlay -> commit view state
 ```
 
 This loop owns:
 
-- row pool updates
+- bounded visible-row updates
 - DOM text node updates
 - line HTML updates
 - cursor position paint
@@ -599,7 +600,7 @@ Solid shell
 ┌────────────────────┐   ┌────────────────────┐   ┌──────────────────┐
 │   EditorCore       │   │   EditorView       │   │ InputController  │
 │                    │   │                    │   │                  │
-│ - document model   │   │ - row pool         │   │ - beforeinput    │
+│ - document model   │   │ - visible rows     │   │ - beforeinput    │
 │ - selections       │   │ - text layer       │   │ - keydown        │
 │ - viewport         │   │ - overlay layer    │   │ - composition    │
 │ - dirty flags      │   │ - gutter layer     │   │ - pointer drag   │
@@ -651,7 +652,7 @@ The rewrite needs explicit authority boundaries so bugs have obvious owners.
 | document text, piece table, line starts, line IDs, history | `EditorCore` | the runtime source of truth |
 | selections, cursor, preferred column, composition session | `EditorCore` | semantic state lives in core, not in the textarea |
 | viewport state (`scrollTop`, `scrollLeft`, viewport size) | `EditorCore` | `EditorView` measures DOM state and reports it through `updateViewport` |
-| row pooling, DOM nodes, pixel geometry, hit testing | `EditorView` | mechanical complexity lives here, but not document semantics |
+| visible-range DOM management, DOM nodes, pixel geometry, hit testing | `EditorView` | mechanical complexity lives here, but not document semantics |
 | mirrored input buffer DOM value/selection | `InputController` | browser interop surface only; derived from core state |
 | syntax, diagnostics, bracket metadata storage | `DecorationStore` behind `EditorCore.applyDecorations` | worker never writes decorations directly into the view |
 | fold open/closed interactive state | `EditorCore` | user intent is core state |
@@ -1084,7 +1085,7 @@ Rules:
 
 Line IDs solve several problems cleanly:
 
-- stable row reuse during line shifts
+- stable visible-row identity and cache keys during line shifts
 - stable decoration identity for unaffected lines across edits
 - stable fold identity at the line level
 - stable visible cache keys
@@ -1762,7 +1763,7 @@ This preserves simplicity for the common case.
 
 ### Gutter Rendering
 
-The gutter should be part of the row pool, not a separately reactive component tree.
+The gutter should be part of the same bounded visible-range renderer, not a separately reactive component tree.
 
 Responsibilities:
 
@@ -1801,7 +1802,9 @@ Recommended policy:
 
 ### EditorView Invariants
 
-- pooled rows are reused whenever possible
+- visible-row DOM updates are bounded and predictable during scrolling
+- preserve the current scroll smoothness and no-flicker behavior even if another implementation strategy appears simpler on paper
+- DOM row recycling is out of scope for v1
 - text row rerenders are keyed by line identity and revisions, not framework rerenders
 - overlay updates do not require full text rerender
 - view does not interpret document semantics
@@ -1827,7 +1830,7 @@ This cuts architecture complexity drastically.
 
 Benefits:
 
-- easier row pooling
+- easier bounded visible-range rendering
 - easier overlay math
 - easier selection geometry
 - easier correctness
@@ -2171,7 +2174,7 @@ packages/code-editor/src/
 
   view/
     makeEditorView.ts
-    makeRowPool.ts
+    makeVisibleRangeRenderer.ts
     TextLayer.ts
     GutterLayer.ts
     OverlayLayer.ts
@@ -2398,18 +2401,18 @@ Pointer note:
 - navigation and command shortcuts still work
 - IME composition works for the supported browser matrix defined in this RFC
 
-## Phase 4 — Replace View with Row Pool
+## Phase 4 — Replace View with Imperative Visible-Range Renderer
 
 ### Objective
 
-Introduce `makeEditorView` with pooled rows and imperative DOM updates.
+Introduce `makeEditorView` with imperative DOM updates for a bounded visible range.
 
 ### Work Items
 
 - Create host DOM structure
 - Implement scroll container integration
-- Implement vertical row pool
-- Implement gutter rendering in pooled rows
+- Implement bounded vertical visible-range rendering
+- Implement gutter rendering in the same bounded renderer
 - Implement text rendering fast paths
 - Implement overlay layer for cursor and selection
 - Implement view measurement API for pointer hit testing and tab-aware geometry
@@ -2421,7 +2424,8 @@ Introduce `makeEditorView` with pooled rows and imperative DOM updates.
 
 - visible rows are not Solid components in the hot path
 - single-character insert updates only the necessary rows and overlays
-- scrolling recycles rows instead of remounting component subtrees
+- scrolling matches the current implementation's smoothness and no-flicker behavior
+- DOM row recycling is not introduced in v1
 
 ## Phase 5 — Rebuild Decoration Pipeline
 
@@ -2575,7 +2579,7 @@ Latency budgets are not enough.
 
 Initial memory budgets for v1:
 
-- row pool: hard cap of `200` pooled rows per active editor
+- mounted visible rows: hard cap of `200` per active editor
 - line HTML cache: soft cap of `4MB`, hard cap of `8MB`, LRU eviction by estimated UTF-16 string bytes
 - presentation fallback decoration cache: soft cap of `2MB` or `1000` lines, whichever comes first
 - mirrored input buffer: bounded small window, normally under `256` UTF-16 code units unless composition requires more
@@ -2613,7 +2617,7 @@ Test the core without the DOM:
 
 Test the imperative view with a fake core:
 
-- row pool reuse
+- bounded visible-row updates under scrolling
 - text row updates only when cache keys change
 - overlay updates on selection changes
 - gutter width updates when line digits change
@@ -2769,7 +2773,7 @@ Mitigation:
 Mitigation:
 
 - keep the view split into small imperative layers
-- row pool, text layer, gutter layer, and overlay layer should each remain focused
+- visible-range renderer, text layer, gutter layer, and overlay layer should each remain focused
 - preserve one scheduler and one session owner
 
 ---
@@ -3024,7 +3028,7 @@ User presses Enter
   -> EditorCore splits line / allocates line ID / updates line starts
   -> structureVersion increments
   -> dirty line range includes split zone and viewport metadata
-  -> scheduler flushes row pool remap + text + gutter + overlay
+  -> scheduler flushes visible-range mapping + text + gutter + overlay
   -> worker catches up later for folds/highlights
 ```
 

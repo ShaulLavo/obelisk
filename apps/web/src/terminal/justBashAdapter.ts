@@ -196,7 +196,6 @@ export function createJustBashAdapter(
 					return { stdout: '', stderr: `open: ${message}\n`, exitCode: 1 }
 				}
 			},
-			{ category: 'File operations' }
 		),
 		defineCommand(
 			'git',
@@ -260,7 +259,7 @@ export function createJustBashAdapter(
 
 				try {
 					const fsContext = await shellContext.getVfsContext()
-					const token = parsed.authToken ?? ctx.env.GIT_TOKEN
+					const token = parsed.authToken ?? ctx.env.get('GIT_TOKEN')
 					await cloneIntoVfs(fsContext, shellContext.actions, {
 						repoUrl,
 						targetPath,
@@ -276,7 +275,6 @@ export function createJustBashAdapter(
 					return { stdout: '', stderr: `git clone: ${message}\n`, exitCode: 1 }
 				}
 			},
-			{ category: 'Git' }
 		),
 
 		// wg: Fast worker-based grep
@@ -528,7 +526,6 @@ export function createJustBashAdapter(
 					}
 				}
 			},
-			{ category: 'Search' }
 		),
 	]
 	// Alias code to open

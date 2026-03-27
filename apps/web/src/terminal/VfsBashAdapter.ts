@@ -271,6 +271,15 @@ export class VfsBashAdapter implements IFileSystem {
 		return this.stat(path)
 	}
 
+	async realpath(path: string): Promise<string> {
+		// No symlinks in browser, realpath just normalizes
+		return this.resolvePath('/', path)
+	}
+
+	async utimes(_path: string, _atime: Date, _mtime: Date): Promise<void> {
+		// utimes is not supported in browser File System Access API
+	}
+
 	#normalizePath(path: string): string {
 		// VFS root is the project root
 		// Terminal: /package.json -> VFS: package.json

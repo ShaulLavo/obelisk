@@ -2,6 +2,7 @@ import { describe, expect, it, beforeEach, afterEach } from 'vitest'
 import { renderHook } from 'vitest-browser-solid'
 import { createSignal } from 'solid-js'
 import { create2DVirtualizer } from './create2DVirtualizer'
+import type { VirtualItem2D } from '../types'
 
 // ============================================================================
 // DOM Integration Tests for create2DVirtualizer
@@ -87,14 +88,14 @@ describe('create2DVirtualizer (DOM integration)', () => {
 		const items = result.current.virtualItems()
 
 		// Short lines should have full range
-		const shortLineItem = items.find((item) => item.index % 10 !== 0)
+		const shortLineItem = items.find((item: VirtualItem2D) => item.index % 10 !== 0)
 		if (shortLineItem) {
 			expect(shortLineItem.columnStart).toBe(0)
 			expect(shortLineItem.columnEnd).toBe(100)
 		}
 
 		// Long lines should be virtualized (sliced)
-		const longLineItem = items.find((item) => item.index % 10 === 0)
+		const longLineItem = items.find((item: VirtualItem2D) => item.index % 10 === 0)
 		if (longLineItem) {
 			// At scrollLeft=0, should render columnStart=0 and columnEnd < 1000
 			expect(longLineItem.columnStart).toBe(0)

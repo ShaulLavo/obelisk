@@ -30,7 +30,7 @@ It is an implementation plan, not a second RFC.
 - [ ] Phase 1 — Carve Out `EditorCore`
 - [ ] Phase 2 — Introduce `FrameScheduler`
 - [ ] Phase 3 — Replace Input Path
-- [ ] Phase 4 — Replace View with Row Pool
+- [ ] Phase 4 — Replace View with Imperative Visible-Range Renderer
 - [ ] Phase 5 — Rebuild Decoration Pipeline
 - [ ] Phase 6 — Folds, Width Scan, Long-Line Mode
 - [ ] Phase 7 — Reconnect Minimap and Persistence
@@ -223,16 +223,16 @@ Replace reactive input orchestration with a small DOM-event adapter that emits c
 
 ---
 
-## Phase 4 — Replace View with Row Pool
+## Phase 4 — Replace View with Imperative Visible-Range Renderer
 
 **Goal**
 
-Replace the reactive view tree with an imperative pooled-row renderer and a shared measurement API.
+Replace the reactive view tree with an imperative bounded visible-range renderer and a shared measurement API.
 
 **Create**
 
 - `packages/code-editor/src/view/makeEditorView.ts`
-- `packages/code-editor/src/view/makeRowPool.ts`
+- `packages/code-editor/src/view/makeVisibleRangeRenderer.ts`
 - `packages/code-editor/src/view/TextLayer.ts`
 - `packages/code-editor/src/view/GutterLayer.ts`
 - `packages/code-editor/src/view/OverlayLayer.ts`
@@ -249,7 +249,7 @@ Replace the reactive view tree with an imperative pooled-row renderer and a shar
 **Checklist**
 
 - [ ] Build the host DOM structure with scroll container, gutter layer, text layer, overlay layer, and hidden input surface.
-- [ ] Implement vertical row pooling with explicit overscan and hard cap.
+- [ ] Implement bounded vertical visible-range rendering with explicit overscan and hard cap.
 - [ ] Implement row cache keys using line ID, line revision, decoration revision, theme version, and render mode.
 - [ ] Implement plain-text fast path via `textContent`.
 - [ ] Implement decorated-line path via cached `innerHTML` only when the cache key changes.
@@ -263,7 +263,7 @@ Replace the reactive view tree with an imperative pooled-row renderer and a shar
 
 **Tests**
 
-- [ ] Test row reuse under scrolling.
+- [ ] Test scroll smoothness and no-flicker behavior against the current implementation.
 - [ ] Test single-character insert updating only necessary rows.
 - [ ] Test overlay-only cursor updates without text rerender.
 - [ ] Test tab-aware caret geometry.
@@ -272,7 +272,8 @@ Replace the reactive view tree with an imperative pooled-row renderer and a shar
 **Exit Gate**
 
 - [ ] Visible rows are no longer Solid components in the hot path.
-- [ ] Scrolling recycles rows instead of remounting subtree-heavy components.
+- [ ] Scrolling matches the current implementation's smoothness and no-flicker behavior.
+- [ ] DOM row recycling is not introduced in v1.
 - [ ] Input, overlay, and layout all consume the same measurement API.
 
 ---
