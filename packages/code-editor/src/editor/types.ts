@@ -2,7 +2,12 @@ import type { Accessor } from 'solid-js'
 import type { ParseResult } from '@repo/utils/parse'
 import type { PieceTableSnapshot } from '@repo/utils'
 import type { VisibleContentSnapshot } from './types/visibleContentCache'
-import type { TextRun } from './line/utils/textRuns'
+export type TextRun = {
+	text: string
+	depth?: number
+	highlightClass?: string
+	highlightScope?: string
+}
 
 export type VirtualItem = {
 	index: number

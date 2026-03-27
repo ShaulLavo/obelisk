@@ -1,23 +1,12 @@
-import type { LineBracketDepthMap, LineHighlightSegment } from '../../types'
+import type { LineBracketDepthMap, LineHighlightSegment, TextRun } from '../../types'
+
+export type { TextRun }
 
 export type NormalizedHighlightSegment = {
 	start: number
 	end: number
 	className: string
 	scope: string
-}
-
-/**
- * A text run with optional styling. Represents a contiguous chunk of text
- * that can be rendered as a single DOM node or span.
- */
-export type TextRun = {
-	text: string
-	// For bracket coloring
-	depth?: number
-	// For syntax highlighting
-	highlightClass?: string
-	highlightScope?: string
 }
 
 const escapeHtml = (value: string): string =>
