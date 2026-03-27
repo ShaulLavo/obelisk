@@ -128,6 +128,3 @@ export function useSyncStatus() {
 	}
 	return context
 }
-
-/** @deprecated Use useSyncStatus instead */
-export const useSyncStatusContext = useSyncStatus

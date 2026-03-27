@@ -44,9 +44,6 @@ export function useCommandPalettes(): CommandPaletteContextValue {
 	return context
 }
 
-/** @deprecated Use useCommandPalettes instead */
-export const useCommandPaletteContext = useCommandPalettes
-
 export const CommandPaletteProvider: ParentComponent = (props) => {
 	const registry = getCommandPaletteRegistry()
 	const [state, actions, results] = useCommandPalette()
