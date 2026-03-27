@@ -1,5 +1,5 @@
 import { createSignal, createMemo, type Accessor } from 'solid-js'
-import type { FilePath, createFilePath } from '@repo/fs'
+import type { FilePath } from '@repo/fs'
 import type { Document, DocumentStore, DocumentStoreOptions } from './types'
 import { createDocument } from './Document'
 
