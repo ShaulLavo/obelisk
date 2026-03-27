@@ -182,12 +182,3 @@ export async function buildTree(
 
 export type { BuildTreeOptions }
 
-export {
-	createFileTextStream,
-	getFileSize,
-	readFilePreviewBytes,
-	readFileText,
-	resolveSourceForPath,
-	safeReadFileText,
-	streamFileText,
-} from './streaming'

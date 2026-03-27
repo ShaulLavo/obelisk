@@ -2,7 +2,8 @@ import { batch, type Setter } from 'solid-js'
 import type { SetStoreFunction } from 'solid-js/store'
 import type { DirTreeNode, FileTreeNode, TreeNode } from '@repo/fs'
 import { createFilePath } from '@repo/fs'
-import { ensureFs, resolveSourceForPath } from './runtime/fsRuntime'
+import { ensureFs } from './runtime/fsRuntime'
+import { resolveSourceForPath } from './runtime/streaming'
 import type { FsSource, FsState } from './types'
 import {
 	createPieceTableSnapshot,
