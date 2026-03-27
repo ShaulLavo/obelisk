@@ -3,7 +3,7 @@ import { VsDownload, VsCheck, VsLoading } from '@repo/icons/vs'
 import { Card, CardContent } from '@repo/ui/card'
 import { Button } from '@repo/ui/button'
 import { useFontStore } from '../store/FontStoreProvider'
-import { FontDownloadErrorBoundary } from './ErrorBoundary/FontErrorBoundary'
+import { FontErrorBoundary } from './ErrorBoundary/FontErrorBoundary'
 
 export type FontCardProps = {
 	name: string
@@ -53,10 +53,11 @@ export const FontCard = (props: FontCardProps) => {
 	}
 
 	return (
-		<FontDownloadErrorBoundary
-			fontName={props.name}
+		<FontErrorBoundary
+			maxRetries={3}
+			retryDelay={2000}
 			onError={(error) => {
-				// Error handled by FontDownloadErrorBoundary UI
+				// Error handled by FontErrorBoundary UI
 			}}
 		>
 			<Card class="hover:bg-card/80 transition-colors">
@@ -115,6 +116,6 @@ export const FontCard = (props: FontCardProps) => {
 					})()}
 				</CardContent>
 			</Card>
-		</FontDownloadErrorBoundary>
+		</FontErrorBoundary>
 	)
 }

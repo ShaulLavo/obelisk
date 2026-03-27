@@ -341,4 +341,18 @@ export class FontCacheService {
 	}
 }
 
-export const fontCacheService = new FontCacheService()
+let _fontCacheService: FontCacheService | null = null
+/** Lazy singleton -- created on first access, not at import time. */
+export function getFontCacheService(): FontCacheService {
+	if (!_fontCacheService) {
+		_fontCacheService = new FontCacheService()
+	}
+	return _fontCacheService
+}
+
+/** @deprecated Use getFontCacheService() instead. */
+export const fontCacheService = new Proxy({} as FontCacheService, {
+	get(_target, prop, receiver) {
+		return Reflect.get(getFontCacheService(), prop, receiver)
+	},
+})

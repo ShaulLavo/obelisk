@@ -276,5 +276,18 @@ export class FontMetadataService {
 	}
 }
 
-// Singleton instance
-export const fontMetadataService = new FontMetadataService()
+let _fontMetadataService: FontMetadataService | null = null
+/** Lazy singleton -- created on first access, not at import time. */
+export function getFontMetadataService(): FontMetadataService {
+	if (!_fontMetadataService) {
+		_fontMetadataService = new FontMetadataService()
+	}
+	return _fontMetadataService
+}
+
+/** @deprecated Use getFontMetadataService() instead. */
+export const fontMetadataService = new Proxy({} as FontMetadataService, {
+	get(_target, prop, receiver) {
+		return Reflect.get(getFontMetadataService(), prop, receiver)
+	},
+})

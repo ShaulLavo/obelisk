@@ -27,7 +27,7 @@ import {
 	MAX_FILE_SIZE,
 	getErrorTitle,
 } from '../fileLoadingErrors'
-import { loadFile } from '../services/FileLoadingService'
+import { loadFile } from '../FileLoadingService'
 import { EditorRegistryImpl } from '@repo/code-editor/sync'
 import { SyncController, createFilePath as toFilePath } from '@repo/fs'
 import { createDocumentStore, type DocumentStore } from '../doc'

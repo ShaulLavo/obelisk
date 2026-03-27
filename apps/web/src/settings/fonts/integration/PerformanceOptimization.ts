@@ -1,4 +1,4 @@
-import { createEffect, onCleanup } from 'solid-js'
+import { createEffect } from 'solid-js'
 import type { FontRegistryActions } from '../../../fonts/types'
 
 interface FontDebugWindow extends Window {
@@ -45,9 +45,19 @@ export class FontPerformanceOptimizer {
 	private config: OptimizationConfig
 	private downloadQueue: Array<() => Promise<void>> = []
 	private activeDownloads = 0
+	private _initialized = false
 
 	constructor(config: Partial<OptimizationConfig> = {}) {
 		this.config = { ...DEFAULT_CONFIG, ...config }
+	}
+
+	/**
+	 * Initialize the optimizer. Must be called within a reactive owner
+	 * (e.g. inside a component or createRoot) so that createEffect works.
+	 */
+	init(): void {
+		if (this._initialized) return
+		this._initialized = true
 		this.initialize()
 	}
 
@@ -123,17 +133,6 @@ export class FontPerformanceOptimizer {
 		await this.queueDownload(fontName, downloadFn)
 	}
 
-	async optimizedFontInstallation(
-		_fontName: string,
-		installFn: () => Promise<number>
-	): Promise<void> {
-		await installFn()
-	}
-
-	preloadPopularFonts(_fontNames: string[]): void {
-		// Preloading is a no-op until a font loading optimizer is wired up
-	}
-
 	/**
 	 * Trigger memory cleanup when usage is high
 	 */
@@ -185,37 +184,27 @@ export class FontPerformanceOptimizer {
 	}
 }
 
-// Singleton instance
-export const fontPerformanceOptimizer = new FontPerformanceOptimizer()
-
-export function useFontPerformanceOptimization(
-	config?: Partial<OptimizationConfig>
-) {
-	if (config) {
-		fontPerformanceOptimizer.updateConfig(config)
+/** Lazy singleton -- created on first access, not at import time. */
+let _fontPerformanceOptimizer: FontPerformanceOptimizer | null = null
+export function getFontPerformanceOptimizer(): FontPerformanceOptimizer {
+	if (!_fontPerformanceOptimizer) {
+		_fontPerformanceOptimizer = new FontPerformanceOptimizer()
 	}
-	const optimizer = fontPerformanceOptimizer
-
-	onCleanup(() => {
-		optimizer.cleanup()
-	})
-
-	return {
-		optimizedFontDownload: (
-			fontName: string,
-			downloadFn: () => Promise<void>
-		) => optimizer.optimizedFontDownload(fontName, downloadFn),
-		optimizedFontInstallation: (
-			fontName: string,
-			installFn: () => Promise<number>
-		) => optimizer.optimizedFontInstallation(fontName, installFn),
-		preloadPopularFonts: (fontNames: string[]) =>
-			optimizer.preloadPopularFonts(fontNames),
-		getOptimizationStatus: () => optimizer.getOptimizationStatus(),
-		updateConfig: (newConfig: Partial<OptimizationConfig>) =>
-			optimizer.updateConfig(newConfig),
-	}
+	return _fontPerformanceOptimizer
 }
+
+/**
+ * @deprecated Use getFontPerformanceOptimizer() instead.
+ * Kept for backward-compatibility; resolves to the same lazy singleton.
+ */
+export const fontPerformanceOptimizer = new Proxy(
+	{} as FontPerformanceOptimizer,
+	{
+		get(_target, prop, receiver) {
+			return Reflect.get(getFontPerformanceOptimizer(), prop, receiver)
+		},
+	}
+)
 
 /**
  * Performance-optimized font registry wrapper
@@ -224,19 +213,21 @@ export function createOptimizedFontRegistry(
 	originalRegistry: FontRegistryActions,
 	config?: Partial<OptimizationConfig>
 ) {
-	const optimization = useFontPerformanceOptimization(config)
+	const optimizer = getFontPerformanceOptimizer()
+	if (config) {
+		optimizer.updateConfig(config)
+	}
 
 	return {
 		...originalRegistry,
 
 		downloadFont: async (fontName: string) => {
-			await optimization.optimizedFontDownload(fontName, async () => {
+			await optimizer.optimizedFontDownload(fontName, async () => {
 				await originalRegistry.downloadFont(fontName)
 			})
 		},
 
-		getOptimizationStatus: optimization.getOptimizationStatus,
-		preloadPopularFonts: optimization.preloadPopularFonts,
+		getOptimizationStatus: () => optimizer.getOptimizationStatus(),
 	}
 }
 

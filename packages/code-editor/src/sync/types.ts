@@ -223,7 +223,3 @@ export const DEFAULT_EDITOR_SYNC_CONFIG: EditorSyncConfig = {
 	showReloadNotifications: true,
 	preserveEditorState: true,
 }
-
-export interface NotificationSystem {
-	showNotification(message: string, type?: 'info' | 'warning' | 'error'): void
-}

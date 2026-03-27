@@ -25,11 +25,7 @@ const FONT_CACHE_KEY_PATTERN = /^\/fonts\/[^/]+$/
 self.addEventListener('install', (event) => {
 	console.debug('[SW] Installing service worker for font caching')
 
-	event.waitUntil(
-		caches.open(CACHE_NAME).then(() => {
-			return Promise.resolve()
-		})
-	)
+	event.waitUntil(caches.open(CACHE_NAME))
 
 	// Skip waiting to activate immediately
 	self.skipWaiting()

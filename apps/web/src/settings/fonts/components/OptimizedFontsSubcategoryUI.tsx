@@ -18,7 +18,6 @@ import {
 	useTransition,
 	ErrorBoundary,
 	createEffect,
-	onMount,
 } from 'solid-js'
 import {
 	VsSearch,
@@ -30,7 +29,7 @@ import { Card, CardContent } from '@repo/ui/card'
 import { useFontRegistry, FontSource } from '../../../fonts'
 import type { FontEntry } from '../../../fonts'
 import { OptimizedFontCard, VirtualFontGrid } from './LazyFontPreview'
-import { useFontPerformanceOptimization } from '../integration'
+import { fontPerformanceOptimizer } from '../integration'
 
 export const OptimizedFontsSubcategoryUI = () => {
 	return (
@@ -55,7 +54,7 @@ export const OptimizedFontsSubcategoryUI = () => {
 
 const OptimizedFontsContent = () => {
 	const registry = useFontRegistry()
-	const optimization = useFontPerformanceOptimization({
+	fontPerformanceOptimizer.updateConfig({
 		enableLazyLoading: true,
 		enablePerformanceMonitoring: true,
 		enableMemoryMonitoring: true,
@@ -91,28 +90,6 @@ const OptimizedFontsContent = () => {
 			.filter((f) => f.isLoaded && f.source === FontSource.NERDFONTS)
 	})
 
-	// Popular fonts for preloading
-	const popularFonts = createMemo(() => {
-		const popular = [
-			'JetBrainsMono',
-			'FiraCode',
-			'Hack',
-			'SourceCodePro',
-			'UbuntuMono',
-		]
-		return nerdfonts()
-			.filter((font) => popular.some((name) => font.id.includes(name)))
-			.map((font) => font.id)
-	})
-
-	// Preload popular fonts on mount
-	onMount(() => {
-		const popular = popularFonts()
-		if (popular.length > 0) {
-			optimization.preloadPopularFonts(popular)
-		}
-	})
-
 	// Enable virtual scrolling for large lists
 	createEffect(() => {
 		const shouldUseVirtual = filteredFonts().length > 50
@@ -123,7 +100,7 @@ const OptimizedFontsContent = () => {
 	const handleDownload = (font: FontEntry) => {
 		startTransition(async () => {
 			try {
-				await optimization.optimizedFontDownload(font.id, async () => {
+				await fontPerformanceOptimizer.optimizedFontDownload(font.id, async () => {
 					await registry.downloadFont(font.id)
 				})
 			} catch (error) {

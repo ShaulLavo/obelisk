@@ -28,7 +28,7 @@ export { fontCacheService } from './FontCacheService'
 export { fontMetadataService } from './FontMetadataService'
 export { fontDownloadService } from './FontDownloadService'
 export { fontInstallationService } from './FontInstallationService'
-export { RetryService } from './RetryService'
+export { RetryService, RETRY_PRESETS } from './RetryService'
 export { cacheErrorRecovery } from './CacheErrorRecovery'
 
 // Type exports (public)

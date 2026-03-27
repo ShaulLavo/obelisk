@@ -140,24 +140,6 @@ export class RetryService {
 		}
 	}
 
-	static async retryFontDownload<T>(
-		operation: () => Promise<T>
-	): Promise<RetryResult<T>> {
-		return RetryService.withRetry(operation, RETRY_PRESETS.fontDownload)
-	}
-
-	static async retryCacheOperation<T>(
-		operation: () => Promise<T>
-	): Promise<RetryResult<T>> {
-		return RetryService.withRetry(operation, RETRY_PRESETS.cacheOperation)
-	}
-
-	static async retryServerCall<T>(
-		operation: () => Promise<T>
-	): Promise<RetryResult<T>> {
-		return RetryService.withRetry(operation, RETRY_PRESETS.serverCall)
-	}
-
 	static createRetryWrapper<T extends any[], R>(
 		fn: (...args: T) => Promise<R>,
 		options: Partial<RetryOptions> = {}

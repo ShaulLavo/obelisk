@@ -1,7 +1,7 @@
 import { createStore } from 'solid-js/store'
 import { createResource, useTransition, batch } from 'solid-js'
 import { client } from '~/client'
-import { fontCacheService, fontInstallationService, RetryService } from '../services'
+import { fontCacheService, fontInstallationService, RetryService, RETRY_PRESETS } from '../services'
 
 export type FontInfo = {
 	name: string
@@ -55,13 +55,13 @@ export const createFontStore = (): FontStore => {
 
 	const [availableFonts, { refetch: refetchAvailableFonts }] = createResource(
 		async () => {
-			const result = await RetryService.retryServerCall(async () => {
+			const result = await RetryService.withRetry(async () => {
 				const response = await client.fonts.get()
 				if (response.data) {
 					return response.data
 				}
 				throw new Error('Failed to fetch available fonts')
-			})
+			}, RETRY_PRESETS.serverCall)
 
 			if (!result.success) {
 				throw (
@@ -76,7 +76,7 @@ export const createFontStore = (): FontStore => {
 
 	const [installedFonts, { refetch: refetchInstalledFonts }] = createResource(
 		async () => {
-			const result = await RetryService.retryCacheOperation(async () => {
+			const result = await RetryService.withRetry(async () => {
 				await fontCacheService.init()
 				await fontInstallationService.initialize()
 
@@ -91,7 +91,7 @@ export const createFontStore = (): FontStore => {
 				}
 
 				return installedFonts
-			})
+			}, RETRY_PRESETS.cacheOperation)
 
 			if (result.success) {
 				return result.result!
@@ -103,10 +103,10 @@ export const createFontStore = (): FontStore => {
 
 	const [cacheStats, { refetch: refetchCacheStats }] = createResource(
 		async () => {
-			const result = await RetryService.retryCacheOperation(async () => {
+			const result = await RetryService.withRetry(async () => {
 				await fontCacheService.init()
 				return await fontCacheService.getCacheStats()
-			})
+			}, RETRY_PRESETS.cacheOperation)
 
 			if (result.success) {
 				return result.result!

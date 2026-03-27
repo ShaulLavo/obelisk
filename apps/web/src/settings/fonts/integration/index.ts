@@ -1,7 +1,7 @@
 export {
 	FontPerformanceOptimizer,
 	fontPerformanceOptimizer,
-	useFontPerformanceOptimization,
+	getFontPerformanceOptimizer,
 	createOptimizedFontRegistry,
 	ResourceCleanup,
 	type OptimizationConfig,

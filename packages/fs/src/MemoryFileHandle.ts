@@ -2,8 +2,6 @@ export type MemHandle = MemoryDirectoryHandle | MemoryFileHandle
 
 export class MemoryFileHandle implements FileSystemFileHandle {
 	readonly kind = 'file'
-	readonly isFile = true
-	readonly isDirectory = false
 	readonly name: string
 	#data = new Uint8Array()
 
@@ -184,8 +182,6 @@ export class MemoryFileHandle implements FileSystemFileHandle {
 
 export class MemoryDirectoryHandle implements FileSystemDirectoryHandle {
 	readonly kind = 'directory'
-	readonly isDirectory = true
-	readonly isFile = false
 	readonly name: string
 	#children = new Map<string, MemHandle>()
 

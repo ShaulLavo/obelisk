@@ -162,4 +162,18 @@ export class FontInstallationService {
 	}
 }
 
-export const fontInstallationService = new FontInstallationService()
+let _fontInstallationService: FontInstallationService | null = null
+/** Lazy singleton -- created on first access, not at import time. */
+export function getFontInstallationService(): FontInstallationService {
+	if (!_fontInstallationService) {
+		_fontInstallationService = new FontInstallationService()
+	}
+	return _fontInstallationService
+}
+
+/** @deprecated Use getFontInstallationService() instead. */
+export const fontInstallationService = new Proxy({} as FontInstallationService, {
+	get(_target, prop, receiver) {
+		return Reflect.get(getFontInstallationService(), prop, receiver)
+	},
+})

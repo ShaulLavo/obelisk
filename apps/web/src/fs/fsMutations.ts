@@ -24,6 +24,8 @@ type FsMutationDeps = {
 	setSaving: Setter<boolean>
 	setDirty: (path: string, isDirty: boolean) => void
 	setSavedContent: (path: string, content: string) => void
+	/** Optional callback invoked after a file is successfully saved */
+	onSave?: (path: string, content: string) => void
 }
 
 const buildPath = (parentPath: string, name: string) =>
@@ -41,6 +43,7 @@ export const createFsMutations = ({
 	setDirty,
 	setSavedContent,
 	getState,
+	onSave,
 }: FsMutationDeps) => {
 	/**
 	 * Validates and prepares common state for node creation.
@@ -202,16 +205,7 @@ export const createFsMutations = ({
 				setDirty(path, false)
 			})
 
-			if (normalizedPath === '.system/userSettings.json') {
-				try {
-					const parsed = JSON.parse(content)
-					window.dispatchEvent(
-						new CustomEvent('settings-file-saved', { detail: parsed })
-					)
-				} catch (e) {
-					console.warn('Failed to parse saved settings JSON', e)
-				}
-			}
+			onSave?.(normalizedPath, content)
 
 			toast.success('File saved')
 		} catch (e) {

@@ -9,6 +9,9 @@ import { ensureFs } from '../../fs/runtime/fsRuntime'
 import type { FsSource } from '../../fs/types'
 import { createFontZoomStore, type FontModule } from '../../hooks/createFontZoomStore'
 
+/** Typed CustomEvent dispatched when the settings file is saved via the editor. */
+export type SettingsFileEvent = CustomEvent<Record<string, unknown>>
+
 import editorSchema from '@repo/settings/schemas/editor.json'
 import terminalSchema from '@repo/settings/schemas/terminal.json'
 import uiSchema from '@repo/settings/schemas/ui.json'
@@ -161,10 +164,11 @@ export const createSettingsStore = (
 
 	void initialize()
 
-	const handleSettingsFileSaved = (event: CustomEvent<Record<string, unknown>>) => {
+	const handleSettingsFileSaved = (event: Event) => {
+		const detail = (event as SettingsFileEvent).detail
 		const newOverrides: Record<string, unknown> =
-			event.detail != null && typeof event.detail === 'object' && !Array.isArray(event.detail)
-				? (event.detail as Record<string, unknown>)
+			detail != null && typeof detail === 'object' && !Array.isArray(detail)
+				? detail
 				: {}
 
 		setState(
@@ -176,15 +180,12 @@ export const createSettingsStore = (
 	}
 
 	if (typeof window !== 'undefined') {
-		window.addEventListener(
-			'settings-file-saved',
-			handleSettingsFileSaved as EventListener
-		)
+		window.addEventListener('settings-file-saved', handleSettingsFileSaved)
 
 		onCleanup(() => {
 			window.removeEventListener(
 				'settings-file-saved',
-				handleSettingsFileSaved as EventListener
+				handleSettingsFileSaved
 			)
 		})
 	}

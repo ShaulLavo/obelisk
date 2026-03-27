@@ -19,6 +19,7 @@ import {
 	getLineLength as getLineLengthFromStarts,
 	getLineStart,
 	getLineTextLength as getLineTextLengthFromStarts,
+	offsetToLineIndex,
 	offsetToPosition,
 	positionToOffset,
 } from '../utils/position'
@@ -99,29 +100,12 @@ export function CursorProvider(props: CursorProviderProps) {
 		updateCurrentState(() => ({}))
 	}
 
-	/** Binary search for the line containing a given character index. */
-	const findLineContaining = (startIndex: number, starts: number[]): number => {
-		let result = 0
-		let lo = 0
-		let hi = starts.length - 1
-		while (lo <= hi) {
-			const mid = (lo + hi) >> 1
-			if ((starts[mid] ?? 0) <= startIndex) {
-				result = mid
-				lo = mid + 1
-			} else {
-				hi = mid - 1
-			}
-		}
-		return result
-	}
-
 	const applySingleNewlineInsert = (startIndex: number): boolean => {
 		const prevLineStarts = lineStarts()
 		const prevLineIds = lineIds()
 		const prevLineCount = prevLineStarts.length
 
-		const startLine = findLineContaining(startIndex, prevLineStarts)
+		const startLine = offsetToLineIndex(startIndex, prevLineStarts, documentLength())
 
 		// Validate state
 		if (prevLineIds.length !== prevLineCount || prevLineIds.length === 0) {
@@ -221,7 +205,7 @@ export function CursorProvider(props: CursorProviderProps) {
 			return false
 		}
 
-		const lineIdx = findLineContaining(startIndex, prevLineStarts)
+		const lineIdx = offsetToLineIndex(startIndex, prevLineStarts, documentLength())
 
 		const lineId = prevLineIds[lineIdx]
 		if (typeof lineId !== 'number' || lineId < 0) {
@@ -283,7 +267,7 @@ export function CursorProvider(props: CursorProviderProps) {
 			return false
 		}
 
-		const lineIdx = findLineContaining(startIndex, prevLineStarts)
+		const lineIdx = offsetToLineIndex(startIndex, prevLineStarts, documentLength())
 
 		const lineId = prevLineIds[lineIdx]
 		if (typeof lineId !== 'number' || lineId < 0) {

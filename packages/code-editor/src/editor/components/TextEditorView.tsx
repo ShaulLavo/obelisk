@@ -142,42 +142,42 @@ export const TextEditorView = (props: EditorProps) => {
 
 	let settleScheduled = false
 	let lastSettledPath: string | undefined
-	createEffect(() => {
-		const currentPath = props.document.filePath()
 
-		if (!shouldGateEditsForPrecompute()) {
-			settleScheduled = false
-			precomputeReleased = false
-			if (!precomputeSettled()) setPrecomputeSettled(true)
-			return
-		}
+	/** Gating is not needed: settle immediately. */
+	const handleGatingNotRequired = () => {
+		settleScheduled = false
+		precomputeReleased = false
+		if (!precomputeSettled()) setPrecomputeSettled(true)
+	}
 
-		if (!isPrecomputedReady()) {
-			settleScheduled = false
-			precomputeReleased = false
-			if (precomputeSettled()) setPrecomputeSettled(false)
-			return
-		}
+	/** Precomputed highlights are still being built: block edits. */
+	const handlePrecomputeNotReady = () => {
+		settleScheduled = false
+		precomputeReleased = false
+		if (precomputeSettled()) setPrecomputeSettled(false)
+	}
 
-		// Warm cache: if precomputed data is already ready when we first check this file,
-		// settle immediately without waiting for RAF+idle (no heavy computation happened)
-		if (lastSettledPath !== currentPath && isPrecomputedReady()) {
-			lastSettledPath = currentPath
-			if (!precomputeReleased) {
-				precomputeReleased = true
-				releasePrecomputedSegments()
-			}
-			setPrecomputeSettled(true)
-			return
+	/**
+	 * Warm cache: precomputed data was already ready when we first visited
+	 * this file, so settle immediately without waiting for RAF+idle.
+	 */
+	const handleWarmCacheSettle = (currentPath: string | undefined) => {
+		lastSettledPath = currentPath
+		if (!precomputeReleased) {
+			precomputeReleased = true
+			releasePrecomputedSegments()
 		}
+		setPrecomputeSettled(true)
+	}
 
-		if (precomputeSettled() || settleScheduled) {
-			return
-		}
+	/**
+	 * Schedule deferred settle: give the browser a chance to do follow-up
+	 * work (including GC) before allowing edits. `requestIdleCallback` is
+	 * the most reliable signal that "expensive stuff" has settled.
+	 */
+	const scheduleDeferredSettle = (currentPath: string | undefined) => {
 		settleScheduled = true
 
-		// Give the browser a chance to do follow-up work (including GC) before edits.
-		// `requestIdleCallback` is the most reliable signal that "expensive stuff" has settled.
 		let timeoutId: ReturnType<typeof setTimeout> | undefined
 		let idleId: number | undefined
 		const rafId =
@@ -224,6 +224,25 @@ export const TextEditorView = (props: EditorProps) => {
 			if (timeoutId) clearTimeout(timeoutId)
 			settleScheduled = false
 		})
+	}
+
+	createEffect(() => {
+		const currentPath = props.document.filePath()
+
+		const isGatingRequired = shouldGateEditsForPrecompute()
+		const isReady = isPrecomputedReady()
+		const isNewFile = lastSettledPath !== currentPath
+		const isAlreadySettled = precomputeSettled() || settleScheduled
+
+		if (!isGatingRequired) {
+			handleGatingNotRequired()
+		} else if (!isReady) {
+			handlePrecomputeNotReady()
+		} else if (isNewFile && isReady) {
+			handleWarmCacheSettle(currentPath)
+		} else if (!isAlreadySettled) {
+			scheduleDeferredSettle(currentPath)
+		}
 	})
 
 	const isEditable = () =>

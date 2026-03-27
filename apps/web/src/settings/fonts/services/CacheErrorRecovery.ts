@@ -347,5 +347,18 @@ export class CacheErrorRecoveryService {
 	}
 }
 
-// Singleton instance
-export const cacheErrorRecovery = new CacheErrorRecoveryService()
+let _cacheErrorRecovery: CacheErrorRecoveryService | null = null
+/** Lazy singleton -- created on first access, not at import time. */
+export function getCacheErrorRecovery(): CacheErrorRecoveryService {
+	if (!_cacheErrorRecovery) {
+		_cacheErrorRecovery = new CacheErrorRecoveryService()
+	}
+	return _cacheErrorRecovery
+}
+
+/** @deprecated Use getCacheErrorRecovery() instead. */
+export const cacheErrorRecovery = new Proxy({} as CacheErrorRecoveryService, {
+	get(_target, prop, receiver) {
+		return Reflect.get(getCacheErrorRecovery(), prop, receiver)
+	},
+})

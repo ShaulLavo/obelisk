@@ -257,4 +257,18 @@ export class ServiceWorkerManager {
 	}
 }
 
-export const serviceWorkerManager = new ServiceWorkerManager()
+let _serviceWorkerManager: ServiceWorkerManager | null = null
+/** Lazy singleton -- created on first access, not at import time. */
+export function getServiceWorkerManager(): ServiceWorkerManager {
+	if (!_serviceWorkerManager) {
+		_serviceWorkerManager = new ServiceWorkerManager()
+	}
+	return _serviceWorkerManager
+}
+
+/** @deprecated Use getServiceWorkerManager() instead. */
+export const serviceWorkerManager = new Proxy({} as ServiceWorkerManager, {
+	get(_target, prop, receiver) {
+		return Reflect.get(getServiceWorkerManager(), prop, receiver)
+	},
+})

@@ -1,7 +1,7 @@
 import { client } from '~/client'
 import { fontCacheService } from './FontCacheService'
 import { fontInstallationService } from './FontInstallationService'
-import { RetryService } from './RetryService'
+import { RetryService, RETRY_PRESETS } from './RetryService'
 
 export type DownloadProgress = {
 	fontName: string
@@ -47,8 +47,9 @@ export class FontDownloadService {
 
 		try {
 			// Initialize cache service with retry
-			const cacheInitResult = await RetryService.retryCacheOperation(
-				() => fontCacheService.init()
+			const cacheInitResult = await RetryService.withRetry(
+				() => fontCacheService.init(),
+				RETRY_PRESETS.cacheOperation
 			)
 
 			if (!cacheInitResult.success) {
@@ -66,7 +67,7 @@ export class FontDownloadService {
 			emitProgress({ status: 'downloading', progress: 0 })
 
 			// Download font data using server RPC with retry logic
-			const downloadResult = await RetryService.retryFontDownload(async () => {
+			const downloadResult = await RetryService.withRetry(async () => {
 				const response = await client.fonts({ name }).get({
 					fetch: { signal: abortController.signal },
 				})
@@ -81,7 +82,7 @@ export class FontDownloadService {
 				}
 
 				return response
-			})
+			}, RETRY_PRESETS.fontDownload)
 
 			if (!downloadResult.success) {
 				throw (
@@ -107,8 +108,9 @@ export class FontDownloadService {
 			ensureNotAborted()
 
 			// Cache the font data with retry logic
-			const cacheResult = await RetryService.retryCacheOperation(
-				() => fontCacheService.downloadFont(name, downloadUrl)
+			const cacheResult = await RetryService.withRetry(
+				() => fontCacheService.downloadFont(name, downloadUrl),
+				RETRY_PRESETS.cacheOperation
 			)
 
 			if (!cacheResult.success) {
@@ -205,5 +207,18 @@ export class FontDownloadService {
 	}
 }
 
-// Singleton instance
-export const fontDownloadService = new FontDownloadService()
+let _fontDownloadService: FontDownloadService | null = null
+/** Lazy singleton -- created on first access, not at import time. */
+export function getFontDownloadService(): FontDownloadService {
+	if (!_fontDownloadService) {
+		_fontDownloadService = new FontDownloadService()
+	}
+	return _fontDownloadService
+}
+
+/** @deprecated Use getFontDownloadService() instead. */
+export const fontDownloadService = new Proxy({} as FontDownloadService, {
+	get(_target, prop, receiver) {
+		return Reflect.get(getFontDownloadService(), prop, receiver)
+	},
+})

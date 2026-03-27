@@ -155,6 +155,21 @@ export function FsProvider(props: { children: JSX.Element }) {
 		setSavedContent,
 		getState: () => state,
 		getActiveSource: () => state.activeSource,
+		onSave: (path, content) => {
+			if (path === '.system/userSettings.json') {
+				try {
+					const parsed = JSON.parse(content) as Record<string, unknown>
+					window.dispatchEvent(
+						new CustomEvent<Record<string, unknown>>(
+							'settings-file-saved',
+							{ detail: parsed }
+						)
+					)
+				} catch (e) {
+					console.warn('Failed to parse saved settings JSON', e)
+				}
+			}
+		},
 	})
 
 	const ensureDirPathLoaded = async (

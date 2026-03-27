@@ -3,6 +3,19 @@ import { onCleanup, onMount } from 'solid-js'
 import type { KeymapController } from '../keymap/KeymapContext'
 import { useFocusAwareZoom } from './useFocusAwareZoom'
 
+type ZoomShortcutDef = {
+	bindingId: string
+	shortcut: string
+	commandId: string
+}
+
+const ZOOM_SHORTCUTS: ZoomShortcutDef[] = [
+	{ bindingId: 'font-zoom.zoom-in-meta', shortcut: 'meta+=', commandId: 'font-zoom.zoom-in' },
+	{ bindingId: 'font-zoom.zoom-in-ctrl', shortcut: 'ctrl+=', commandId: 'font-zoom.zoom-in' },
+	{ bindingId: 'font-zoom.zoom-out-meta', shortcut: 'meta+-', commandId: 'font-zoom.zoom-out' },
+	{ bindingId: 'font-zoom.zoom-out-ctrl', shortcut: 'ctrl+-', commandId: 'font-zoom.zoom-out' },
+]
+
 /**
  * Registers font zoom keyboard shortcuts and mouse/touchpad support
  *
@@ -13,79 +26,40 @@ import { useFocusAwareZoom } from './useFocusAwareZoom'
  */
 export function registerFontZoomShortcuts(controller: KeymapController) {
 	const focusAwareZoom = useFocusAwareZoom()
+	const disposers: (() => void)[] = []
 
-	// Register keybindings for zoom shortcuts
-	const zoomInMetaBinding = controller.registerKeybinding({
-		shortcut: 'meta+=',
-		id: 'font-zoom.zoom-in-meta',
-		options: {
-			preventDefault: true,
-		},
-	})
-
-	const zoomInCtrlBinding = controller.registerKeybinding({
-		shortcut: 'ctrl+=',
-		id: 'font-zoom.zoom-in-ctrl',
-		options: {
-			preventDefault: true,
-		},
-	})
-
-	const zoomOutMetaBinding = controller.registerKeybinding({
-		shortcut: 'meta+-',
-		id: 'font-zoom.zoom-out-meta',
-		options: {
-			preventDefault: true,
-		},
-	})
-
-	const zoomOutCtrlBinding = controller.registerKeybinding({
-		shortcut: 'ctrl+-',
-		id: 'font-zoom.zoom-out-ctrl',
-		options: {
-			preventDefault: true,
-		},
+	// Register keybindings
+	const bindings = ZOOM_SHORTCUTS.map((def) => {
+		const binding = controller.registerKeybinding({
+			shortcut: def.shortcut,
+			id: def.bindingId,
+			options: { preventDefault: true },
+		})
+		return binding
 	})
 
 	// Register commands
-	const zoomInCommand = controller.registerCommand({
-		id: 'font-zoom.zoom-in',
-		run: () => {
-			focusAwareZoom.zoomFocused('in')
-		},
-	})
-
-	const zoomOutCommand = controller.registerCommand({
-		id: 'font-zoom.zoom-out',
-		run: () => {
-			focusAwareZoom.zoomFocused('out')
-		},
-	})
+	disposers.push(
+		controller.registerCommand({
+			id: 'font-zoom.zoom-in',
+			run: () => { focusAwareZoom.zoomFocused('in') },
+		}),
+		controller.registerCommand({
+			id: 'font-zoom.zoom-out',
+			run: () => { focusAwareZoom.zoomFocused('out') },
+		}),
+	)
 
 	// Bind commands to keybindings in global scope
-	const zoomInMetaCommandBinding = controller.bindCommand({
-		scope: 'global',
-		bindingId: 'font-zoom.zoom-in-meta',
-		commandId: 'font-zoom.zoom-in',
-	})
-
-	const zoomInCtrlCommandBinding = controller.bindCommand({
-		scope: 'global',
-		bindingId: 'font-zoom.zoom-in-ctrl',
-		commandId: 'font-zoom.zoom-in',
-	})
-
-	const zoomOutMetaCommandBinding = controller.bindCommand({
-		scope: 'global',
-		bindingId: 'font-zoom.zoom-out-meta',
-		commandId: 'font-zoom.zoom-out',
-	})
-
-	const zoomOutCtrlCommandBinding = controller.bindCommand({
-		scope: 'global',
-		bindingId: 'font-zoom.zoom-out-ctrl',
-		commandId: 'font-zoom.zoom-out',
-	})
+	for (const def of ZOOM_SHORTCUTS) {
+		disposers.push(
+			controller.bindCommand({
+				scope: 'global',
+				bindingId: def.bindingId,
+				commandId: def.commandId,
+			})
+		)
+	}
 
 	// Global wheel event listener for Ctrl+scroll/wheel
 	// We use a passive listener and handle zoom without preventDefault.
@@ -106,26 +80,9 @@ export function registerFontZoomShortcuts(controller: KeymapController) {
 
 	// Return cleanup function
 	const cleanup = () => {
-		// Dispose command bindings
-		zoomInMetaCommandBinding()
-		zoomInCtrlCommandBinding()
-		zoomOutMetaCommandBinding()
-		zoomOutCtrlCommandBinding()
-
-		// Dispose commands
-		zoomInCommand()
-		zoomOutCommand()
-
-		// Dispose keybindings
-		zoomInMetaBinding.dispose()
-		zoomInCtrlBinding.dispose()
-		zoomOutMetaBinding.dispose()
-		zoomOutCtrlBinding.dispose()
-
-		// Dispose wheel listener
-		if (wheelCleanup) {
-			wheelCleanup()
-		}
+		for (const dispose of disposers) dispose()
+		for (const binding of bindings) binding.dispose()
+		if (wheelCleanup) wheelCleanup()
 	}
 
 	onCleanup(cleanup)

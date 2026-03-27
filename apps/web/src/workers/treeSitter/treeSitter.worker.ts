@@ -28,7 +28,7 @@ const api: TreeSitterWorkerApi = {
 		const { parser } = res
 		const tree = parser.parse(source)
 		if (!tree) return undefined
-		const result = await extractTreeAnnotations(tree, 'typescript')
+		const result = extractTreeAnnotations(tree, 'typescript')
 		tree.delete()
 		return result
 	},

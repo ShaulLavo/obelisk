@@ -29,15 +29,15 @@ import type {
 	BracketInfo,
 	TreeSitterError,
 	FoldRange,
-} from '../../workers/treeSitter/types'
-import { parseBufferWithTreeSitter } from '../../treeSitter/workerClient'
+} from '../workers/treeSitter/types'
+import { parseBufferWithTreeSitter } from '../treeSitter/workerClient'
 import {
 	getFileSize,
 	readFilePreviewBytes,
 	readFileBuffer,
-} from '../runtime/streaming'
-import type { FsSource } from '../types'
-import type { DocumentCache } from '../cache/documentCache'
+} from './runtime/streaming'
+import type { FsSource } from './types'
+import type { DocumentCache } from './cache/documentCache'
 
 const textDecoder = new TextDecoder()
 

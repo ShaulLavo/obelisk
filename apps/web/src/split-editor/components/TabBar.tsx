@@ -69,9 +69,6 @@ export function TabBar(props: TabBarProps) {
 		const path = currentFilePath()
 		if (!path) return []
 
-		// Ensure registry is initialized
-		viewModeRegistry.initialize()
-
 		const modes = detectAvailableViewModes(path, undefined)
 		return modes
 			.map((mode) => viewModeRegistry.getViewMode(mode))
