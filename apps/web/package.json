@@ -46,7 +46,7 @@
     "vite-plugin-solid": "^2.11.8",
     "@tailwindcss/vite": "^4.1.17",
     "vitest": "^4.0.16",
-    "vitest-browser-solid": "*"
+    "vitest-browser-solid": "github:ShaulLavo/vitest-browser-solid"
   },
   "dependencies": {
     "@elysiajs/eden": "^1.4.5",
@@ -80,13 +80,13 @@
     "@xterm/xterm": "^5.5.0",
     "buffer": "^6.0.3",
     "comlink": "^4.4.2",
-    "ghostty-web": "^0.4.0",
+    "ghostty-web": "github:ShaulLavo/ghostty-web",
     "isomorphic-git": "^1.36.1",
-    "just-bash": "workspace:*",
+    "just-bash": "github:ShaulLavo/just-bash",
     "localforage": "^1.10.0",
     "shell-quote": "^1.8.2",
     "solid-js": "^1.9.5",
-    "sqlite-wasm": "workspace:*",
+    "sqlite-wasm": "github:ShaulLavo/sqlite-wasm",
     "tailwindcss": "^4.1.17",
     "tree-sitter-html": "^0.23.2",
     "tree-sitter-javascript": "^0.25.0",

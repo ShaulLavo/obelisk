@@ -45,6 +45,6 @@
     "typescript": "5.9.2",
     "vite-plugin-solid": "^2.11.10",
     "vitest": "^4.0.16",
-    "vitest-browser-solid": "*"
+    "vitest-browser-solid": "github:ShaulLavo/vitest-browser-solid"
   }
 }

@@ -33,7 +33,7 @@
     "typescript": "5.9.2",
     "vite-plugin-solid": "^2.11.8",
     "@tailwindcss/vite": "^4.1.17",
-    "vitest-browser-solid": "workspace:*"
+    "vitest-browser-solid": "github:ShaulLavo/vitest-browser-solid"
   },
   "dependencies": {
     "@corvu/resizable": "^0.2.5",
