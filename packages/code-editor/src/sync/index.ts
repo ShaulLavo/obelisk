@@ -11,7 +11,6 @@ export type {
 	TextSelection,
 	EditorState,
 	EditorInstance,
-	EditorRegistry,
 	EditorSyncConfig,
 	ConflictInfo,
 	ConflictResolution,

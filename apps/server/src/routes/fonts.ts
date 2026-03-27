@@ -29,7 +29,7 @@ export const fontsRoutes = new Elysia({ prefix: '/fonts' })
 
 			if (!subset) {
 				set.status = 404
-				return 'Font not found'
+				return { error: 'Font not found' }
 			}
 
 			return new Response(new Uint8Array(subset), {
@@ -57,7 +57,7 @@ export const fontsRoutes = new Elysia({ prefix: '/fonts' })
 			const font = await getExtractedFont(name)
 			if (!font) {
 				set.status = 404
-				return 'Font not found'
+				return { error: 'Font not found' }
 			}
 			return new Response(font, {
 				headers: {

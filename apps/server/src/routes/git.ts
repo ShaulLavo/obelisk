@@ -44,7 +44,7 @@ export const gitRoutes = new Elysia({ prefix: '/git' }).all(
 				: undefined)
 		if (!proxiedUrl) {
 			set.status = 400
-			return 'Missing url query param'
+			return { error: 'Missing url query param' }
 		}
 
 		let target: URL
@@ -52,19 +52,19 @@ export const gitRoutes = new Elysia({ prefix: '/git' }).all(
 			target = new URL(proxiedUrl)
 		} catch {
 			set.status = 400
-			return 'Invalid url'
+			return { error: 'Invalid url' }
 		}
 
 		if (!isAllowedGitHost(target.host)) {
 			set.status = 403
-			return 'Host not allowed'
+			return { error: 'Host not allowed' }
 		}
 
 		const method = request.method.toUpperCase()
 		const allowedMethods = ['GET', 'POST', 'HEAD']
 		if (!allowedMethods.includes(method)) {
 			set.status = 405
-			return 'Method not allowed'
+			return { error: 'Method not allowed' }
 		}
 
 		console.log(

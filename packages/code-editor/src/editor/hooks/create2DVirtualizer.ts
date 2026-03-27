@@ -187,12 +187,8 @@ export function create2DVirtualizer(
 		const enabled = options.enabled()
 		const element = options.scrollElement()
 
-		// 		console.log(`[create2DVirtualizer] scroll setup effect: enabled=${enabled}, hasElement=${!!element}`)
-
 		if (!enabled) return
 		if (!element) return
-
-		// 		console.log(`[create2DVirtualizer] setting up scroll listeners, element.scrollHeight=${element.scrollHeight}, element.clientHeight=${element.clientHeight}`)
 
 		// Initial Sync
 		setScrollTop(normalizeNumber(element.scrollTop))
@@ -217,7 +213,6 @@ export function create2DVirtualizer(
 		let lastQuantizedLeft = pendingScrollLeft
 
 		const onScroll = () => {
-			// 			console.log(`[create2DVirtualizer] onScroll fired: scrollTop=${element.scrollTop}`)
 			pendingScrollTop = normalizeNumber(element.scrollTop)
 			pendingScrollLeft = normalizeNumber(element.scrollLeft)
 
@@ -287,9 +282,7 @@ export function create2DVirtualizer(
 	const totalSize = createMemo(() => {
 		const count = options.count()
 		const rowHeight = options.rowHeight()
-		const size = computeTotalHeight2D(count, rowHeight)
-		// 		console.log(`[create2DVirtualizer] totalSize: count=${count}, rowHeight=${rowHeight}, size=${size}`)
-		return size
+		return computeTotalHeight2D(count, rowHeight)
 	})
 
 	const visibleRange = createMemo(
