@@ -25,10 +25,10 @@ export function autoHide(el: HTMLElement) {
 	window.addEventListener('mousemove', showOnHover)
 	return () => window.removeEventListener('mousemove', showOnHover)
 }
-export const setCSSVariable = (varName: string, color: string) => {
+export const setCSSVariable = (varName: string, value: string) => {
 	if (!varName.startsWith('--')) {
 		varName = `--${varName}`
 	}
 
-	document.documentElement.style.setProperty(varName, color)
+	document.documentElement.style.setProperty(varName, value)
 }
