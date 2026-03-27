@@ -247,8 +247,8 @@ export const createFontRegistry = (): FontRegistry => {
 							}
 						})
 					)
-				} catch (error) {
-					console.warn(`[FontRegistry] Failed to restore ${font.id}:`, error)
+				} catch {
+					// Silently ignore — font will remain in non-loaded state
 				}
 			}
 		}

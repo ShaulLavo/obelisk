@@ -42,7 +42,6 @@ export const FontCard = (props: FontCardProps) => {
 			await actions.downloadFont(props.name)
 		} catch (error) {
 			// Store handles retries; log here for component-level diagnostics
-			console.debug('[FontCard] Font download failed for', props.name, error)
 		}
 	}
 
@@ -57,7 +56,7 @@ export const FontCard = (props: FontCardProps) => {
 		<FontDownloadErrorBoundary
 			fontName={props.name}
 			onError={(error) => {
-				console.warn('[FontCard] Error boundary triggered for', props.name, error.type, error.message)
+				// Error handled by FontDownloadErrorBoundary UI
 			}}
 		>
 			<Card class="hover:bg-card/80 transition-colors">

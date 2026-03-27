@@ -34,7 +34,6 @@ export const FontManager = () => {
 		try {
 			await actions.removeFont(fontName)
 		} catch (error) {
-			console.warn('[FontManager] Failed to remove font', fontName, error)
 		} finally {
 			setRemovingFont(null)
 		}
@@ -44,7 +43,6 @@ export const FontManager = () => {
 		try {
 			await actions.cleanupCache()
 		} catch (error) {
-			console.warn('[FontManager] Failed to clean up cache', error)
 		}
 	}
 

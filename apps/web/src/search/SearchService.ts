@@ -12,8 +12,7 @@ export class SearchService {
 	async init(): Promise<void> {
 		const result = await initSqlite()
 		if (!result.opfsEnabled) {
-			console.warn('[SearchService] SQLite running in memory mode - search index will not persist')
-		}
+			}
 	}
 
 	search(query: string): Promise<SearchResult[]> {

@@ -79,7 +79,6 @@ export function createDocumentCache(): DocumentCache {
 			}
 		} catch (error) {
 			// IndexedDB unavailable — fall through to empty result
-			console.debug('[DocumentCache] IndexedDB read failed for', path, error)
 		}
 
 		return {}
@@ -109,7 +108,6 @@ export function createDocumentCache(): DocumentCache {
 			})
 		} catch (error) {
 			// IndexedDB write failed — data remains in memory cache
-			console.debug('[DocumentCache] IndexedDB flush failed', error)
 		}
 	}
 

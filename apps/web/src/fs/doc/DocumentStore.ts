@@ -62,8 +62,7 @@ export function createDocumentStore(options: DocumentStoreOptions): DocumentStor
 						doc.notifyExternalChange(content, mtime)
 					} catch (error) {
 						// File may have been deleted or permission revoked
-						console.debug('[DocumentStore] Failed to read file on external change', path, error)
-					}
+						}
 				}
 			)
 
