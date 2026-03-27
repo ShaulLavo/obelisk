@@ -99,28 +99,29 @@ export function CursorProvider(props: CursorProviderProps) {
 		updateCurrentState(() => ({}))
 	}
 
-	/**
-	 * Fast-path for inserting a single newline with no deletion.
-	 * Returns true if handled, false if general path needed.
-	 */
-	const applySingleNewlineInsert = (startIndex: number): boolean => {
-		const prevLineStarts = lineStarts()
-		const prevLineIds = lineIds()
-		const prevLineCount = prevLineStarts.length
-
-		// Find the line containing startIndex
-		let startLine = 0
+	/** Binary search for the line containing a given character index. */
+	const findLineContaining = (startIndex: number, starts: number[]): number => {
+		let result = 0
 		let lo = 0
-		let hi = prevLineCount - 1
+		let hi = starts.length - 1
 		while (lo <= hi) {
 			const mid = (lo + hi) >> 1
-			if ((prevLineStarts[mid] ?? 0) <= startIndex) {
-				startLine = mid
+			if ((starts[mid] ?? 0) <= startIndex) {
+				result = mid
 				lo = mid + 1
 			} else {
 				hi = mid - 1
 			}
 		}
+		return result
+	}
+
+	const applySingleNewlineInsert = (startIndex: number): boolean => {
+		const prevLineStarts = lineStarts()
+		const prevLineIds = lineIds()
+		const prevLineCount = prevLineStarts.length
+
+		const startLine = findLineContaining(startIndex, prevLineStarts)
 
 		// Validate state
 		if (prevLineIds.length !== prevLineCount || prevLineIds.length === 0) {
@@ -220,19 +221,7 @@ export function CursorProvider(props: CursorProviderProps) {
 			return false
 		}
 
-		// Find the line containing startIndex
-		let lineIdx = 0
-		let lo = 0
-		let hi = prevLineCount - 1
-		while (lo <= hi) {
-			const mid = (lo + hi) >> 1
-			if ((prevLineStarts[mid] ?? 0) <= startIndex) {
-				lineIdx = mid
-				lo = mid + 1
-			} else {
-				hi = mid - 1
-			}
-		}
+		const lineIdx = findLineContaining(startIndex, prevLineStarts)
 
 		const lineId = prevLineIds[lineIdx]
 		if (typeof lineId !== 'number' || lineId < 0) {
@@ -240,7 +229,6 @@ export function CursorProvider(props: CursorProviderProps) {
 		}
 
 		const lineStart = prevLineStarts[lineIdx] ?? 0
-		// Lazy: compute from content if not cached
 		const cachedData = lineDataById[lineId]
 		const currentText =
 			cachedData?.text ??
@@ -295,18 +283,7 @@ export function CursorProvider(props: CursorProviderProps) {
 			return false
 		}
 
-		let lineIdx = 0
-		let lo = 0
-		let hi = prevLineCount - 1
-		while (lo <= hi) {
-			const mid = (lo + hi) >> 1
-			if ((prevLineStarts[mid] ?? 0) <= startIndex) {
-				lineIdx = mid
-				lo = mid + 1
-			} else {
-				hi = mid - 1
-			}
-		}
+		const lineIdx = findLineContaining(startIndex, prevLineStarts)
 
 		const lineId = prevLineIds[lineIdx]
 		if (typeof lineId !== 'number' || lineId < 0) {
@@ -314,7 +291,6 @@ export function CursorProvider(props: CursorProviderProps) {
 		}
 
 		const lineStart = prevLineStarts[lineIdx] ?? 0
-		// Lazy: compute from content if not cached
 		const cachedData = lineDataById[lineId]
 		const currentText =
 			cachedData?.text ??
