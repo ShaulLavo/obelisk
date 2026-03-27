@@ -114,14 +114,6 @@ export const FontErrorBoundary = (props: FontErrorBoundaryProps) => {
 
 		await new Promise((resolve) => setTimeout(resolve, delay))
 
-		setRetryCount((prev) => prev + 1)
-		setIsRetrying(false)
-
-		// Trigger re-render by clearing error state
-		setLastError(null)
-
-		// Force component re-mount by reloading the page section
-		// This is a simple approach - in production you might want more sophisticated retry logic
 		window.location.reload()
 	}
 

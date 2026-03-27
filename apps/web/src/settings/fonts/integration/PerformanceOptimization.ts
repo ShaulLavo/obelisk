@@ -1,32 +1,8 @@
-/**
- * Performance Optimization Integration
- *
- * Integrates all performance optimizations for the font management system:
- * - Lazy loading
- * - Performance monitoring
- * - Memory management
- * - Caching strategies
- * - Resource cleanup
- */
-
-import { createEffect, createSignal, onCleanup } from 'solid-js'
-import {
-	fontPerformanceMonitor,
-	FontLoadingOptimizer,
-	createMemoryMonitor,
-	PerformanceDebugger,
-} from '../utils/performanceMonitoring'
-import { removeOldCacheEntries } from '../utils/resourceCleanup'
+import { createEffect, onCleanup } from 'solid-js'
 import type { FontRegistryActions } from '../../../fonts/types'
 
-/** Augment Window with optional debug & gc properties used by the font optimizer. */
 interface FontDebugWindow extends Window {
 	fontDebug?: {
-		getMetrics: () => ReturnType<typeof fontPerformanceMonitor.getMetrics>
-		getReport: () => ReturnType<typeof fontPerformanceMonitor.getPerformanceReport>
-		exportMetrics: () => string
-		clearMetrics: () => void
-		getMemoryInfo: () => unknown
 		triggerCleanup: () => Promise<void>
 	}
 	gc?: () => void
@@ -52,15 +28,23 @@ const DEFAULT_CONFIG: OptimizationConfig = {
 
 const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000
 const MEMORY_PRESSURE_THRESHOLD = 80
-const MIN_HEALTHY_CACHE_HIT_RATE = 0.5
+
+/** Returns memory usage as a percentage, or 0 if the API is unavailable. */
+function getMemoryUsagePercentage(): number {
+	const perf = performance as Performance & {
+		memory?: { usedJSHeapSize: number; jsHeapSizeLimit: number }
+	}
+	if (!perf.memory) return 0
+	return (perf.memory.usedJSHeapSize / perf.memory.jsHeapSizeLimit) * 100
+}
 
 /**
  * Main performance optimization controller
  */
 export class FontPerformanceOptimizer {
 	private config: OptimizationConfig
-	private performanceMonitor = fontPerformanceMonitor
-	private memoryMonitor = createMemoryMonitor()
+	private downloadQueue: Array<() => Promise<void>> = []
+	private activeDownloads = 0
 
 	constructor(config: Partial<OptimizationConfig> = {}) {
 		this.config = { ...DEFAULT_CONFIG, ...config }
@@ -92,74 +76,62 @@ export class FontPerformanceOptimizer {
 	}
 
 	private setupMemoryMonitoring(): void {
-		// Monitor memory usage and warn if it gets too high
 		createEffect(() => {
-			const memoryUsage = this.memoryMonitor.memoryUsagePercentage()
-
+			const memoryUsage = getMemoryUsagePercentage()
 			if (memoryUsage > MEMORY_PRESSURE_THRESHOLD) {
-				this.triggerMemoryCleanup()
+				void this.triggerMemoryCleanup()
 			}
 		})
 	}
 
 	private enableDebugMode(): void {
-		// Add global debug functions
 		const w = window as FontDebugWindow
 		w.fontDebug = {
-			getMetrics: () => this.performanceMonitor.getMetrics(),
-			getReport: () => this.performanceMonitor.getPerformanceReport(),
-			exportMetrics: () => PerformanceDebugger.exportMetrics(),
-			clearMetrics: () => this.performanceMonitor.clearMetrics(),
-			getMemoryInfo: () => this.memoryMonitor.memoryInfo(),
 			triggerCleanup: () => this.triggerMemoryCleanup(),
 		}
-
 	}
 
-	/** Run an operation with optional performance tracking bookends. */
-	private async withMonitoring<T>(
-		operation: () => Promise<T>,
-		onStart: () => void,
-		onComplete: (result: T) => void
-	): Promise<T> {
-		if (this.config.enablePerformanceMonitoring) onStart()
-		const result = await operation()
-		if (this.config.enablePerformanceMonitoring) onComplete(result)
-		return result
+	private async queueDownload(
+		_fontName: string,
+		downloadFn: () => Promise<void>
+	): Promise<void> {
+		if (this.activeDownloads < this.config.maxConcurrentDownloads) {
+			this.activeDownloads++
+			try {
+				await downloadFn()
+			} finally {
+				this.activeDownloads--
+				const next = this.downloadQueue.shift()
+				if (next) {
+					this.activeDownloads++
+					void next().finally(() => {
+						this.activeDownloads--
+					})
+				}
+			}
+		} else {
+			await new Promise<void>((resolve, reject) => {
+				this.downloadQueue.push(() => downloadFn().then(resolve, reject))
+			})
+		}
 	}
 
-	/**
-	 * Optimize font download with performance tracking
-	 */
 	async optimizedFontDownload(
 		fontName: string,
 		downloadFn: () => Promise<void>
 	): Promise<void> {
-		await this.withMonitoring(
-			() => FontLoadingOptimizer.queueFontDownload(fontName, downloadFn),
-			() => this.performanceMonitor.startFontDownload(fontName),
-			() => this.performanceMonitor.completeFontDownload(fontName, false)
-		)
+		await this.queueDownload(fontName, downloadFn)
 	}
 
-	/**
-	 * Optimize font installation with performance tracking
-	 */
 	async optimizedFontInstallation(
-		fontName: string,
+		_fontName: string,
 		installFn: () => Promise<number>
 	): Promise<void> {
-		await this.withMonitoring(
-			installFn,
-			() => this.performanceMonitor.startFontInstallation(fontName),
-			(size) => this.performanceMonitor.completeFontInstallation(fontName, size)
-		)
+		await installFn()
 	}
 
-	preloadPopularFonts(fontNames: string[]): void {
-		if (!this.config.preloadPopularFonts) return
-
-		FontLoadingOptimizer.preloadPopularFonts(fontNames)
+	preloadPopularFonts(_fontNames: string[]): void {
+		// Preloading is a no-op until a font loading optimizer is wired up
 	}
 
 	/**
@@ -167,14 +139,21 @@ export class FontPerformanceOptimizer {
 	 */
 	private async triggerMemoryCleanup(): Promise<void> {
 		try {
-			await removeOldCacheEntries(ONE_WEEK_MS)
+			const cache = await caches.open('nerdfonts-v1')
+			const keys = await cache.keys()
+			const oneWeekAgo = Date.now() - ONE_WEEK_MS
+			for (const request of keys) {
+				const response = await cache.match(request)
+				const dateHeader = response?.headers.get('date')
+				if (dateHeader && new Date(dateHeader).getTime() < oneWeekAgo) {
+					await cache.delete(request)
+				}
+			}
 
-			// Force garbage collection if available
 			const w = window as FontDebugWindow
 			if (typeof w.gc === 'function') {
 				w.gc()
 			}
-
 		} catch (error) {
 			console.warn('[FontPerformanceOptimizer] Memory cleanup failed', error)
 		}
@@ -182,18 +161,15 @@ export class FontPerformanceOptimizer {
 
 	getOptimizationStatus(): {
 		config: OptimizationConfig
-		metrics: ReturnType<typeof fontPerformanceMonitor.getMetrics>
 		memoryUsage: number
 		isHealthy: boolean
 	} {
-		const metrics = this.performanceMonitor.getMetrics()
-		const memoryUsage = this.memoryMonitor.memoryUsagePercentage()
+		const memoryUsage = getMemoryUsagePercentage()
 
 		return {
 			config: this.config,
-			metrics,
 			memoryUsage,
-			isHealthy: memoryUsage < MEMORY_PRESSURE_THRESHOLD && metrics.cacheHitRate > MIN_HEALTHY_CACHE_HIT_RATE,
+			isHealthy: memoryUsage < MEMORY_PRESSURE_THRESHOLD,
 		}
 	}
 
@@ -202,18 +178,13 @@ export class FontPerformanceOptimizer {
 	}
 
 	cleanup(): void {
-		// Clear debug functions
 		const w = window as FontDebugWindow
 		if (w.fontDebug) {
 			delete w.fontDebug
 		}
-
 	}
 }
 
-/**
- * Hook for using font performance optimization
- */
 // Singleton instance
 export const fontPerformanceOptimizer = new FontPerformanceOptimizer()
 
@@ -258,17 +229,13 @@ export function createOptimizedFontRegistry(
 	return {
 		...originalRegistry,
 
-		// Wrap download function with optimization
 		downloadFont: async (fontName: string) => {
 			await optimization.optimizedFontDownload(fontName, async () => {
 				await originalRegistry.downloadFont(fontName)
 			})
 		},
 
-		// Add optimization status
 		getOptimizationStatus: optimization.getOptimizationStatus,
-
-		// Add preloading capability
 		preloadPopularFonts: optimization.preloadPopularFonts,
 	}
 }
@@ -279,7 +246,6 @@ export function createOptimizedFontRegistry(
 export const ResourceCleanup = {
 	async cleanupFontResources(): Promise<void> {
 		try {
-			// Clear font caches
 			const cache = await caches.open('nerdfonts-v1')
 			const keys = await cache.keys()
 
@@ -287,18 +253,15 @@ export const ResourceCleanup = {
 				await cache.delete(key)
 			}
 
-			// Clear IndexedDB font metadata
 			const dbRequest = indexedDB.deleteDatabase('nerdfonts-metadata')
 			await new Promise((resolve, reject) => {
 				dbRequest.onsuccess = () => resolve(undefined)
 				dbRequest.onerror = () => reject(dbRequest.error)
 			})
 
-			// Remove fonts from document
 			if (document.fonts) {
 				document.fonts.clear()
 			}
-
 		} catch (error) {
 			console.warn('[ResourceCleanup] Font resource cleanup failed', error)
 		}
@@ -308,9 +271,8 @@ export const ResourceCleanup = {
 		try {
 			const cache = await caches.open('nerdfonts-v1')
 			const keys = await cache.keys()
-
 			return keys.length === 0
-		} catch (error) {
+		} catch {
 			return false
 		}
 	},

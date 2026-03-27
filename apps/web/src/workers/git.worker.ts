@@ -268,16 +268,14 @@ class MemoryFs {
 						`ENOTDIR: path exists and is not a directory, ${path}`
 					)
 				}
-				if (options?.recursive) {
-					this.#ensureDir(normalized)
-					return
-				}
-				const parent = getDirName(normalized)
-				if (parent && !this.#entries.has(parent)) {
-					throw createFsError(
-						'ENOENT',
-						`ENOENT: no such file or directory, ${parent}`
-					)
+				if (!options?.recursive) {
+					const parent = getDirName(normalized)
+					if (parent && !this.#entries.has(parent)) {
+						throw createFsError(
+							'ENOENT',
+							`ENOENT: no such file or directory, ${parent}`
+						)
+					}
 				}
 				this.#ensureDir(normalized)
 			},

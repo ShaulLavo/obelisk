@@ -6,9 +6,28 @@
  */
 
 import { createSignal, createEffect, onCleanup, Show, For } from 'solid-js'
-import { createLazyFontPreview } from '../utils/performanceMonitoring'
 import { Button } from '@repo/ui/button'
 import { VsDownload, VsTrash, VsLoading } from '@repo/icons/vs'
+
+function createLazyVisibility() {
+	const [isVisible, setIsVisible] = createSignal(false)
+	let el: Element | undefined
+	const observer = new IntersectionObserver(([entry]) => {
+		if (entry?.isIntersecting) {
+			setIsVisible(true)
+			observer.disconnect()
+		}
+	})
+	const ref = (node: Element) => {
+		el = node
+		observer.observe(node)
+	}
+	onCleanup(() => {
+		observer.disconnect()
+		el = undefined
+	})
+	return { ref, isVisible }
+}
 
 export interface LazyFontPreviewProps {
 	fontName: string
@@ -19,7 +38,7 @@ export interface LazyFontPreviewProps {
 }
 
 export const LazyFontPreview = (props: LazyFontPreviewProps) => {
-	const { ref, isVisible } = createLazyFontPreview()
+	const { ref, isVisible } = createLazyVisibility()
 	const [fontLoaded, setFontLoaded] = createSignal(false)
 	const [loadError, setLoadError] = createSignal(false)
 

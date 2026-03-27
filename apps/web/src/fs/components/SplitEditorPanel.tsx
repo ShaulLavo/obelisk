@@ -28,7 +28,7 @@ import {
 	getErrorTitle,
 } from '../fileLoadingErrors'
 import { loadFile } from '../services/FileLoadingService'
-import { EditorRegistryImpl, type NotificationSystem } from '@repo/code-editor/sync'
+import { EditorRegistryImpl } from '@repo/code-editor/sync'
 import { SyncController, createFilePath as toFilePath } from '@repo/fs'
 import { createDocumentStore, type DocumentStore } from '../doc'
 
@@ -60,18 +60,6 @@ export const SplitEditorPanel = (props: SplitEditorPanelProps) => {
 	let syncController: SyncController | null = null
 	let documentStore: DocumentStore | null = null
 	let unsubDirtyChange: (() => void) | null = null
-
-	// Notification system that uses toast
-	const notificationSystem: NotificationSystem = {
-		showNotification: (
-			message: string,
-			type: 'info' | 'warning' | 'error' = 'info'
-		) => {
-			if (type === 'error') toast.error(message)
-			else if (type === 'warning') toast.warning(message)
-			else toast.info(message)
-		},
-	}
 
 	// Subscribe to tab close events for resource cleanup
 	const unsubTabClose = layoutManager.onTabClose((_paneId, closedTab) => {

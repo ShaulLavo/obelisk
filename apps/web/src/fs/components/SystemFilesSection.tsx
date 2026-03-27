@@ -1,13 +1,12 @@
 import { For } from 'solid-js'
 import { VsSettingsGear } from '@repo/icons/vs/VsSettingsGear'
-import { VsTools } from '@repo/icons/vs/VsTools'
 import { useFs } from '../context/FsContext'
 import { Button } from '@repo/ui/button'
 
 type SystemFile = {
 	name: string
 	path: string
-	icon?: 'settings' | 'tools'
+	icon?: 'settings'
 }
 
 const SYSTEM_FILES: SystemFile[] = [
@@ -37,16 +36,7 @@ export const SystemFilesSection = (props: SystemFilesSectionProps) => {
 		props.onFileOpen?.(path)
 	}
 
-	const renderFileIcon = (file: SystemFile) => {
-		switch (file.icon) {
-			case 'settings':
-				return <VsSettingsGear size={16} />
-			case 'tools':
-				return <VsTools size={16} />
-			default:
-				return <VsSettingsGear size={16} />
-		}
-	}
+	const renderFileIcon = (_file: SystemFile) => <VsSettingsGear size={16} />
 
 	return (
 		<For each={SYSTEM_FILES}>

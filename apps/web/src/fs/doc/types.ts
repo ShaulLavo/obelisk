@@ -157,7 +157,15 @@ export interface DocumentStoreOptions {
 	syncController?: {
 		watch(path: string): void
 		unwatch(path: string): void
-		on(event: string, handler: (e: any) => void): () => void
+		on(
+			event: 'external-change',
+			handler: (e: { path: string; detectedAt: number }) => void
+		): () => void
+		on(
+			event: 'deleted',
+			handler: (e: { path: string }) => void
+		): () => void
+		on(event: string, handler: (e: unknown) => void): () => void
 	}
 }
 

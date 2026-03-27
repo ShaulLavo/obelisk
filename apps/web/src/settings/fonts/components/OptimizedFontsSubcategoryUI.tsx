@@ -23,7 +23,6 @@ import {
 import {
 	VsSearch,
 	VsRefresh,
-	VsInfo,
 	VsSettings,
 	VsCheck,
 } from '@repo/icons/vs'
@@ -32,10 +31,6 @@ import { useFontRegistry, FontSource } from '../../../fonts'
 import type { FontEntry } from '../../../fonts'
 import { OptimizedFontCard, VirtualFontGrid } from './LazyFontPreview'
 import { useFontPerformanceOptimization } from '../integration'
-import {
-	fontPerformanceMonitor,
-	createMemoryMonitor,
-} from '../utils/performanceMonitoring'
 
 export const OptimizedFontsSubcategoryUI = () => {
 	return (
@@ -67,12 +62,8 @@ const OptimizedFontsContent = () => {
 		preloadPopularFonts: true,
 		debugMode: import.meta.env.DEV,
 	})
-	const performanceMonitor = fontPerformanceMonitor
-	const memoryMonitor = createMemoryMonitor()
-
 	const [searchQuery, setSearchQuery] = createSignal('')
 	const [isPending, startTransition] = useTransition()
-	const [showPerformanceStats, setShowPerformanceStats] = createSignal(false)
 	const [useVirtualScrolling, setUseVirtualScrolling] = createSignal(false)
 
 	// Reading the resource triggers Suspense
@@ -161,19 +152,6 @@ const OptimizedFontsContent = () => {
 		})
 	}
 
-	// Performance stats
-	const performanceStats = createMemo(() => {
-		const metrics = performanceMonitor.getMetrics()
-		const memoryUsage = memoryMonitor.memoryUsagePercentage()
-		const optimizationStatus = optimization.getOptimizationStatus()
-
-		return {
-			...metrics,
-			memoryUsage,
-			isHealthy: optimizationStatus.isHealthy,
-		}
-	})
-
 	return (
 		<div class="space-y-6">
 			<div class="flex items-center justify-between">
@@ -181,16 +159,6 @@ const OptimizedFontsContent = () => {
 					<h3 class="text-sm font-medium text-foreground">
 						Available NerdFonts
 					</h3>
-					<Show when={import.meta.env.DEV}>
-						<button
-							onClick={() => setShowPerformanceStats(!showPerformanceStats())}
-							class="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-							title="Toggle performance stats"
-						>
-							<VsInfo class="w-3 h-3" />
-							Stats
-						</button>
-					</Show>
 				</div>
 				<div class="flex items-center gap-2">
 					<Show when={useVirtualScrolling()}>
@@ -211,10 +179,6 @@ const OptimizedFontsContent = () => {
 					</button>
 				</div>
 			</div>
-
-			<Show when={showPerformanceStats() && import.meta.env.DEV}>
-				<PerformanceStatsPanel stats={performanceStats()} />
-			</Show>
 
 			<div class="relative">
 				<VsSearch class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
