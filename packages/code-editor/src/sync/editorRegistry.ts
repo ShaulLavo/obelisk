@@ -1,9 +1,9 @@
-import type { EditorRegistry, EditorInstance } from './types'
+import type { EditorInstance } from './types'
 
 /**
- * Implementation of EditorRegistry for tracking open editors
+ * Registry for tracking open editors
  */
-export class EditorRegistryImpl implements EditorRegistry {
+export class EditorRegistryImpl {
 	/** Map of file paths to editor instances */
 	private readonly editors = new Map<string, EditorInstance>()
 	

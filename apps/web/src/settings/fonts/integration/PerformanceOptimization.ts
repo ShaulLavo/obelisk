@@ -75,10 +75,6 @@ export class FontPerformanceOptimizer {
 	}
 
 	private initialize(): void {
-		if (this.config.enablePerformanceMonitoring) {
-			this.setupPerformanceMonitoring()
-		}
-
 		if (this.config.enableMemoryMonitoring) {
 			this.setupMemoryMonitoring()
 		}
@@ -93,11 +89,6 @@ export class FontPerformanceOptimizer {
 				this.cleanup()
 			})
 		}
-	}
-
-	private setupPerformanceMonitoring(): void {
-		// Monitor font loading performance
-		// Performance monitoring is handled via the singleton fontPerformanceMonitor
 	}
 
 	private setupMemoryMonitoring(): void {
@@ -165,9 +156,6 @@ export class FontPerformanceOptimizer {
 		)
 	}
 
-	/**
-	 * Preload popular fonts for better UX
-	 */
 	preloadPopularFonts(fontNames: string[]): void {
 		if (!this.config.preloadPopularFonts) return
 
@@ -192,9 +180,6 @@ export class FontPerformanceOptimizer {
 		}
 	}
 
-	/**
-	 * Get current optimization status
-	 */
 	getOptimizationStatus(): {
 		config: OptimizationConfig
 		metrics: ReturnType<typeof fontPerformanceMonitor.getMetrics>
@@ -212,16 +197,10 @@ export class FontPerformanceOptimizer {
 		}
 	}
 
-	/**
-	 * Update optimization configuration
-	 */
 	updateConfig(newConfig: Partial<OptimizationConfig>): void {
 		this.config = { ...this.config, ...newConfig }
 	}
 
-	/**
-	 * Cleanup resources
-	 */
 	cleanup(): void {
 		// Clear debug functions
 		const w = window as FontDebugWindow
@@ -298,9 +277,6 @@ export function createOptimizedFontRegistry(
  * Resource cleanup utilities
  */
 export const ResourceCleanup = {
-	/**
-	 * Clean up font-related resources
-	 */
 	async cleanupFontResources(): Promise<void> {
 		try {
 			// Clear font caches
@@ -328,9 +304,6 @@ export const ResourceCleanup = {
 		}
 	},
 
-	/**
-	 * Verify resource cleanup
-	 */
 	async verifyCleanup(): Promise<boolean> {
 		try {
 			const cache = await caches.open('nerdfonts-v1')

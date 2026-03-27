@@ -97,9 +97,6 @@ export class RetryService {
 		},
 	}
 
-	/**
-	 * Execute a function with retry logic and exponential backoff
-	 */
 	static async withRetry<T>(
 		operation: () => Promise<T>,
 		options: Partial<RetryOptions> = {}
@@ -154,39 +151,24 @@ export class RetryService {
 		}
 	}
 
-	/**
-	 * Retry with the font download preset
-	 */
 	static async retryFontDownload<T>(
-		operation: () => Promise<T>,
-		_fontName: string
+		operation: () => Promise<T>
 	): Promise<RetryResult<T>> {
 		return RetryService.withRetry(operation, RETRY_PRESETS.fontDownload)
 	}
 
-	/**
-	 * Retry with the cache operation preset
-	 */
 	static async retryCacheOperation<T>(
-		operation: () => Promise<T>,
-		_operationName: string
+		operation: () => Promise<T>
 	): Promise<RetryResult<T>> {
 		return RetryService.withRetry(operation, RETRY_PRESETS.cacheOperation)
 	}
 
-	/**
-	 * Retry with the server call preset
-	 */
 	static async retryServerCall<T>(
-		operation: () => Promise<T>,
-		_endpoint: string
+		operation: () => Promise<T>
 	): Promise<RetryResult<T>> {
 		return RetryService.withRetry(operation, RETRY_PRESETS.serverCall)
 	}
 
-	/**
-	 * Create a retry wrapper for a function
-	 */
 	static createRetryWrapper<T extends any[], R>(
 		fn: (...args: T) => Promise<R>,
 		options: Partial<RetryOptions> = {}

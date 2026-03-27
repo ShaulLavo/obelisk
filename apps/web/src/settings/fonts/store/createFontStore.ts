@@ -61,7 +61,7 @@ export const createFontStore = (): FontStore => {
 					return response.data
 				}
 				throw new Error('Failed to fetch available fonts')
-			}, '/fonts')
+			})
 
 			if (!result.success) {
 				throw (
@@ -91,7 +91,7 @@ export const createFontStore = (): FontStore => {
 				}
 
 				return installedFonts
-			}, 'installed fonts retrieval')
+			})
 
 			if (result.success) {
 				return result.result!
@@ -106,7 +106,7 @@ export const createFontStore = (): FontStore => {
 			const result = await RetryService.retryCacheOperation(async () => {
 				await fontCacheService.init()
 				return await fontCacheService.getCacheStats()
-			}, 'cache stats retrieval')
+			})
 
 			if (result.success) {
 				return result.result!

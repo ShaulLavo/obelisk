@@ -48,8 +48,7 @@ export class FontDownloadService {
 		try {
 			// Initialize cache service with retry
 			const cacheInitResult = await RetryService.retryCacheOperation(
-				() => fontCacheService.init(),
-				'cache initialization'
+				() => fontCacheService.init()
 			)
 
 			if (!cacheInitResult.success) {
@@ -82,7 +81,7 @@ export class FontDownloadService {
 				}
 
 				return response
-			}, name)
+			})
 
 			if (!downloadResult.success) {
 				throw (
@@ -109,8 +108,7 @@ export class FontDownloadService {
 
 			// Cache the font data with retry logic
 			const cacheResult = await RetryService.retryCacheOperation(
-				() => fontCacheService.downloadFont(name, downloadUrl),
-				`font caching for ${name}`
+				() => fontCacheService.downloadFont(name, downloadUrl)
 			)
 
 			if (!cacheResult.success) {

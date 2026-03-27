@@ -127,21 +127,6 @@ export interface EditorInstance {
 }
 
 /**
- * Registry for tracking open editors
- */
-export interface EditorRegistry {
-	/** Get editor instance for a file path */
-	getEditor(path: string): EditorInstance | undefined
-	
-	/** Get all open file paths */
-	getOpenFiles(): string[]
-	
-	/** Subscribe to editor open/close events */
-	onEditorOpen(callback: (path: string, editor: EditorInstance) => void): () => void
-	onEditorClose(callback: (path: string) => void): () => void
-}
-
-/**
  * Configuration for editor sync behavior
  */
 export interface EditorSyncConfig {
