@@ -2,14 +2,14 @@ import { releaseProxy, transfer, wrap, type Remote } from 'comlink'
 import type {
 	TreeSitterWorkerApi,
 	TreeSitterEditPayload,
-} from '../workers/treeSitter/types'
+} from '../workers/tree-sitter/types'
 
 const supportsWorkers =
 	typeof window !== 'undefined' && typeof Worker !== 'undefined'
 
 const createTreeSitterWorker = () =>
 	new Worker(
-		new URL('../workers/treeSitter/treeSitter.worker.ts', import.meta.url),
+		new URL('../workers/tree-sitter/treeSitter.worker.ts', import.meta.url),
 		{
 			type: 'module',
 		}

@@ -1,6 +1,5 @@
 import type {
 	EditorSyntaxHighlight,
-	LineEntry,
 	LineHighlightSegment,
 } from '../types'
 
@@ -124,24 +123,6 @@ export const mergeLineSegments = (
 	return result
 }
 
-const clampToLine = (
-	entry: LineEntry,
-	absoluteStart: number,
-	absoluteEnd: number
-): [number, number] | null => {
-	const lineStart = entry.start
-	const visibleLength = entry.text.length
-	const lineAbsoluteEnd = lineStart + entry.length
-	const start = Math.max(absoluteStart, lineStart)
-	const end = Math.min(absoluteEnd, lineAbsoluteEnd)
-	const relativeStart = Math.max(0, Math.min(visibleLength, start - lineStart))
-	const relativeEnd = Math.max(0, Math.min(visibleLength, end - lineStart))
-	if (relativeStart >= relativeEnd) {
-		return null
-	}
-	return [relativeStart, relativeEnd]
-}
-
 const clampToLineMeta = (
 	lineStart: number,
 	lineLength: number,
@@ -166,8 +147,6 @@ export type HighlightShiftOffset = {
 	oldEndIndex: number
 	newEndIndex: number
 }
-
-type HighlightRange = { start: number; end: number }
 
 const mapBoundaryToOld = (
 	position: number,

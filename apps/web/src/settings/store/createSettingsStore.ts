@@ -8,9 +8,11 @@ import {
 import { ensureFs } from '../../fs/runtime/fsRuntime'
 import type { FsSource } from '../../fs/types'
 import { createFontZoomStore, type FontModule } from '../../hooks/createFontZoomStore'
-
-/** Typed CustomEvent dispatched when the settings file is saved via the editor. */
-export type SettingsFileEvent = CustomEvent<Record<string, unknown>>
+import {
+	dispatchSettingsFileChanged,
+	SETTINGS_FILE_SAVED,
+	type SettingsFileSavedEvent,
+} from './settingsSyncEvents'
 
 import editorSchema from '@repo/settings/schemas/editor.json'
 import terminalSchema from '@repo/settings/schemas/terminal.json'
@@ -26,6 +28,15 @@ export type SettingsState = {
 }
 
 export type SettingsActions = {
+	/**
+	 * Retrieve a setting value by key.
+	 *
+	 * WARNING: The generic parameter T is an **unchecked cast** (`as T`).
+	 * Settings are loaded from JSON schemas at runtime, so there is no
+	 * compile-time type map. Callers are responsible for passing the
+	 * correct T. If a type map is added in the future, constrain T to
+	 * its keys to get compile-time safety.
+	 */
 	getSetting: <T>(key: string) => T
 	setSetting: (key: string, value: unknown) => void
 	resetSetting: (key: string) => void
@@ -128,11 +139,7 @@ export const createSettingsStore = (
 			const content = JSON.stringify(unwrap(state.userOverrides), null, 2)
 			await ctx.write(USER_SETTINGS_FILE_PATH, content)
 
-			window.dispatchEvent(
-				new CustomEvent('settings-file-changed', {
-					detail: { path: USER_SETTINGS_FILE_PATH, content },
-				})
-			)
+			dispatchSettingsFileChanged({ path: USER_SETTINGS_FILE_PATH, content })
 		} catch (error) {
 			console.error('[Settings] Failed to save settings:', error)
 		} finally {
@@ -165,7 +172,7 @@ export const createSettingsStore = (
 	void initialize()
 
 	const handleSettingsFileSaved = (event: Event) => {
-		const detail = (event as SettingsFileEvent).detail
+		const detail = (event as SettingsFileSavedEvent).detail
 		const newOverrides: Record<string, unknown> =
 			detail != null && typeof detail === 'object' && !Array.isArray(detail)
 				? detail
@@ -180,16 +187,17 @@ export const createSettingsStore = (
 	}
 
 	if (typeof window !== 'undefined') {
-		window.addEventListener('settings-file-saved', handleSettingsFileSaved)
+		window.addEventListener(SETTINGS_FILE_SAVED, handleSettingsFileSaved)
 
 		onCleanup(() => {
 			window.removeEventListener(
-				'settings-file-saved',
+				SETTINGS_FILE_SAVED,
 				handleSettingsFileSaved
 			)
 		})
 	}
 
+	/** See {@link SettingsActions.getSetting} for cast-safety caveat. */
 	const getSetting = <T>(key: string): T => {
 		return state.values[key] as T
 	}

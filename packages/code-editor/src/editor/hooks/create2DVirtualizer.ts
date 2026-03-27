@@ -212,51 +212,41 @@ export function create2DVirtualizer(
 		let lastQuantizedTop = pendingScrollTop
 		let lastQuantizedLeft = pendingScrollLeft
 
+		const flushScrollFrame = () => {
+			rafScrollState = 0
+
+			const rowHeight = normalizeRowHeight(options.rowHeight())
+			const charWidth = normalizeCharWidth(options.charWidth())
+			const nextTop = pendingScrollTop
+			const nextLeft = pendingScrollLeft
+			const didChange = nextTop !== lastAppliedTop || nextLeft !== lastAppliedLeft
+			if (!didChange) return
+
+			const quantizedTop = rowHeight > 0 ? Math.floor(nextTop / rowHeight) * rowHeight : nextTop
+			const quantizedLeft = charWidth > 0 ? Math.floor(nextLeft / charWidth) * charWidth : nextLeft
+
+			if (quantizedTop !== lastQuantizedTop || quantizedLeft !== lastQuantizedLeft) {
+				lastQuantizedTop = quantizedTop
+				lastQuantizedLeft = quantizedLeft
+				batch(() => {
+					setScrollTop(nextTop)
+					setScrollLeft(nextLeft)
+				})
+			}
+			if (!untrack(isScrolling)) setIsScrolling(true)
+			if (nextTop > lastAppliedTop) setScrollDirection('forward')
+			else if (nextTop < lastAppliedTop) setScrollDirection('backward')
+
+			lastAppliedTop = nextTop
+			lastAppliedLeft = nextLeft
+		}
+
 		const onScroll = () => {
 			pendingScrollTop = normalizeNumber(element.scrollTop)
 			pendingScrollLeft = normalizeNumber(element.scrollLeft)
 
 			if (!rafScrollState) {
-				rafScrollState = requestAnimationFrame(() => {
-					rafScrollState = 0
-
-					const rowHeight = normalizeRowHeight(options.rowHeight())
-					const charWidth = normalizeCharWidth(options.charWidth())
-					const nextTop = pendingScrollTop
-					const nextLeft = pendingScrollLeft
-					const quantizedTop =
-						rowHeight > 0
-							? Math.floor(nextTop / rowHeight) * rowHeight
-							: nextTop
-					const quantizedLeft =
-						charWidth > 0
-							? Math.floor(nextLeft / charWidth) * charWidth
-							: nextLeft
-					const didChange =
-						nextTop !== lastAppliedTop || nextLeft !== lastAppliedLeft
-
-					if (didChange) {
-						if (
-							quantizedTop !== lastQuantizedTop ||
-							quantizedLeft !== lastQuantizedLeft
-						) {
-							lastQuantizedTop = quantizedTop
-							lastQuantizedLeft = quantizedLeft
-							batch(() => {
-								setScrollTop(nextTop)
-								setScrollLeft(nextLeft)
-							})
-						}
-						if (!untrack(isScrolling)) {
-							setIsScrolling(true)
-						}
-						if (nextTop > lastAppliedTop) setScrollDirection('forward')
-						else if (nextTop < lastAppliedTop) setScrollDirection('backward')
-
-						lastAppliedTop = nextTop
-						lastAppliedLeft = nextLeft
-					}
-				})
+				rafScrollState = requestAnimationFrame(flushScrollFrame)
 			}
 
 			clearTimeout(scrollTimeoutId)

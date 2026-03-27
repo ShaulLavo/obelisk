@@ -1,12 +1,9 @@
 /**
  * Optimized Fonts Subcategory UI
  *
- * Performance-optimized font browser with:
- * - Lazy loading for font previews
+ * Extends the base NerdFonts browser with:
  * - Virtual scrolling for large lists
- * - Performance monitoring
- * - Memory management
- * - Resource cleanup
+ * - Concurrency-limited downloads via the performance optimizer
  */
 
 import {
@@ -14,22 +11,19 @@ import {
 	For,
 	Show,
 	createSignal,
-	createMemo,
-	useTransition,
-	ErrorBoundary,
 	createEffect,
+	ErrorBoundary,
 } from 'solid-js'
 import {
 	VsSearch,
 	VsRefresh,
-	VsSettings,
 	VsCheck,
 } from '@repo/icons/vs'
-import { Card, CardContent } from '@repo/ui/card'
-import { useFontRegistry, FontSource } from '../../../fonts'
+// Card, CardContent available from @repo/ui/card if needed
 import type { FontEntry } from '../../../fonts'
 import { OptimizedFontCard, VirtualFontGrid } from './LazyFontPreview'
 import { fontPerformanceOptimizer } from '../integration'
+import { useNerdfontsBrowser } from '../hooks/useNerdfontsBrowser'
 
 export const OptimizedFontsSubcategoryUI = () => {
 	return (
@@ -53,81 +47,32 @@ export const OptimizedFontsSubcategoryUI = () => {
 }
 
 const OptimizedFontsContent = () => {
-	const registry = useFontRegistry()
 	fontPerformanceOptimizer.updateConfig({
-		enableLazyLoading: true,
 		enablePerformanceMonitoring: true,
 		enableMemoryMonitoring: true,
-		preloadPopularFonts: true,
 		debugMode: import.meta.env.DEV,
 	})
-	const [searchQuery, setSearchQuery] = createSignal('')
-	const [isPending, startTransition] = useTransition()
+
+	const {
+		registry,
+		searchQuery,
+		setSearchQuery,
+		isPending,
+		filteredFonts,
+		installedFonts,
+		handleDownload,
+		handleRemove,
+		handleRefresh,
+	} = useNerdfontsBrowser({
+		wrapDownload: (fontId, fn) =>
+			fontPerformanceOptimizer.optimizedFontDownload(fontId, fn),
+	})
+
 	const [useVirtualScrolling, setUseVirtualScrolling] = createSignal(false)
 
-	// Reading the resource triggers Suspense
-	const nerdfonts = createMemo(() => {
-		const available = registry.availableFontsResource() ?? []
-		return available.filter((f) => f.source === FontSource.NERDFONTS)
-	})
-
-	// Filter fonts by search query
-	const filteredFonts = createMemo(() => {
-		const fonts = nerdfonts()
-		const query = searchQuery().toLowerCase()
-		if (!query) return fonts
-		return fonts.filter(
-			(font) =>
-				font.displayName.toLowerCase().includes(query) ||
-				font.id.toLowerCase().includes(query)
-		)
-	})
-
-	// Installed fonts from all sources
-	const installedFonts = createMemo(() => {
-		return registry
-			.allFonts()
-			.filter((f) => f.isLoaded && f.source === FontSource.NERDFONTS)
-	})
-
-	// Enable virtual scrolling for large lists
 	createEffect(() => {
-		const shouldUseVirtual = filteredFonts().length > 50
-		setUseVirtualScrolling(shouldUseVirtual)
+		setUseVirtualScrolling(filteredFonts().length > 50)
 	})
-
-	// Handle font download with optimization
-	const handleDownload = (font: FontEntry) => {
-		startTransition(async () => {
-			try {
-				await fontPerformanceOptimizer.optimizedFontDownload(font.id, async () => {
-					await registry.downloadFont(font.id)
-				})
-			} catch (error) {
-				// Download errors are surfaced via the font store's reactive state
-				console.debug('[OptimizedFontsSubcategoryUI] Font download failed:', error)
-			}
-		})
-	}
-
-	// Handle font removal with optimization
-	const handleRemove = (font: FontEntry) => {
-		startTransition(async () => {
-			try {
-				await registry.removeFont(font.id)
-			} catch (error) {
-				// Removal errors are surfaced via the font store's reactive state
-				console.debug('[OptimizedFontsSubcategoryUI] Font removal failed:', error)
-			}
-		})
-	}
-
-	// Handle refresh
-	const handleRefresh = () => {
-		startTransition(() => {
-			registry.refetch()
-		})
-	}
 
 	return (
 		<div class="space-y-6">
@@ -303,60 +248,6 @@ const OptimizedInstalledFontItem = (props: OptimizedInstalledFontItemProps) => {
 				Remove
 			</button>
 		</div>
-	)
-}
-
-interface PerformanceStats {
-	isHealthy: boolean
-	memoryUsage: number
-	totalFontsLoaded: number
-	fontDownloadTime: number
-	cacheHitRate: number
-}
-
-const PerformanceStatsPanel = (props: { stats: PerformanceStats }) => {
-	return (
-		<Card class="bg-muted/50">
-			<CardContent class="p-4">
-				<div class="flex items-center gap-2 mb-3">
-					<VsSettings class="w-4 h-4" />
-					<h4 class="text-sm font-medium">Performance Stats</h4>
-					<div
-						class="w-2 h-2 rounded-full"
-						classList={{
-							'bg-green-500': props.stats.isHealthy,
-							'bg-yellow-500':
-								!props.stats.isHealthy && props.stats.memoryUsage < 90,
-							'bg-red-500': props.stats.memoryUsage >= 90,
-						}}
-					/>
-				</div>
-				<div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-					<div>
-						<span class="text-muted-foreground">Fonts Loaded:</span>
-						<span class="ml-2 font-mono">{props.stats.totalFontsLoaded}</span>
-					</div>
-					<div>
-						<span class="text-muted-foreground">Avg Download:</span>
-						<span class="ml-2 font-mono">
-							{props.stats.fontDownloadTime.toFixed(0)}ms
-						</span>
-					</div>
-					<div>
-						<span class="text-muted-foreground">Cache Hit Rate:</span>
-						<span class="ml-2 font-mono">
-							{(props.stats.cacheHitRate * 100).toFixed(0)}%
-						</span>
-					</div>
-					<div>
-						<span class="text-muted-foreground">Memory:</span>
-						<span class="ml-2 font-mono">
-							{props.stats.memoryUsage.toFixed(1)}%
-						</span>
-					</div>
-				</div>
-			</CardContent>
-		</Card>
 	)
 }
 

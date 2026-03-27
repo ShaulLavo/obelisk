@@ -7,7 +7,7 @@ import {
 	onCleanup,
 	onMount,
 } from 'solid-js'
-import { DEFAULT_SOURCE } from '../config/constants'
+import { getDefaultSource } from '../config/constants'
 import { createFsMutations } from '../fsMutations'
 import { restoreHandleCache } from '../runtime/handleCache'
 import { createFsState } from '../hooks/createFsState'
@@ -22,6 +22,11 @@ import { getRootHandle, invalidateFs } from '../runtime/fsRuntime'
 import { useFileSystemObserver } from '../hooks/useFileSystemObserver'
 import { pickNewLocalRoot as doPick } from '@repo/fs'
 import { createDocumentCache } from '../cache'
+import {
+	dispatchSettingsFileSaved,
+	SETTINGS_FILE_CHANGED,
+	type SettingsFileChangedEvent,
+} from '../../settings/store/settingsSyncEvents'
 
 export function FsProvider(props: { children: JSX.Element }) {
 	const {
@@ -159,12 +164,7 @@ export function FsProvider(props: { children: JSX.Element }) {
 			if (path === '.system/userSettings.json') {
 				try {
 					const parsed = JSON.parse(content) as Record<string, unknown>
-					window.dispatchEvent(
-						new CustomEvent<Record<string, unknown>>(
-							'settings-file-saved',
-							{ detail: parsed }
-						)
-					)
+					dispatchSettingsFileSaved(parsed)
 				} catch (e) {
 					console.warn('Failed to parse saved settings JSON', e)
 				}
@@ -209,7 +209,7 @@ export function FsProvider(props: { children: JSX.Element }) {
 	const setSource = (source: FsSource) => refresh(source)
 
 	const { startObserving, stopObserving } = useFileSystemObserver({
-		getRootHandle: () => getRootHandle(state.activeSource ?? DEFAULT_SOURCE),
+		getRootHandle: () => getRootHandle(state.activeSource ?? getDefaultSource()),
 		pollIntervalMs: 1000,
 	})
 
@@ -218,15 +218,14 @@ export function FsProvider(props: { children: JSX.Element }) {
 			tree: state.tree,
 			activeSource: state.activeSource,
 		})
-		void refresh(state.activeSource ?? DEFAULT_SOURCE).then(() => {
+		void refresh(state.activeSource ?? getDefaultSource()).then(() => {
 			void startObserving()
 		})
 	})
 
 	onMount(() => {
 		const handleSettingsFileChanged = async (event: Event) => {
-			if (!(event instanceof CustomEvent)) return
-			const { path } = event.detail
+			const { path } = (event as SettingsFileChangedEvent).detail
 			const normalizedPath = createFilePath(path)
 			clearFileState(normalizedPath)
 
@@ -235,10 +234,10 @@ export function FsProvider(props: { children: JSX.Element }) {
 			}
 		}
 
-		window.addEventListener('settings-file-changed', handleSettingsFileChanged)
+		window.addEventListener(SETTINGS_FILE_CHANGED, handleSettingsFileChanged)
 		onCleanup(() => {
 			window.removeEventListener(
-				'settings-file-changed',
+				SETTINGS_FILE_CHANGED,
 				handleSettingsFileChanged
 			)
 		})
@@ -289,7 +288,6 @@ export function FsProvider(props: { children: JSX.Element }) {
 			deleteNode,
 			ensureDirPathLoaded,
 			updatePieceTableForPath,
-			fileCache,
 			saveFile,
 			setDirty,
 			setSavedContent,
@@ -304,6 +302,7 @@ export function FsProvider(props: { children: JSX.Element }) {
 			clearFileState,
 			setSyntax,
 		},
+		fileCache,
 	]
 
 	return (

@@ -4,7 +4,7 @@ import { VsDownload, VsTrash, VsLoading } from '@repo/icons/vs'
 
 function createLazyVisibility() {
 	const [isVisible, setIsVisible] = createSignal(false)
-	let el: Element | undefined
+	let _el: Element | undefined
 	const observer = new IntersectionObserver(([entry]) => {
 		if (entry?.isIntersecting) {
 			setIsVisible(true)
@@ -12,12 +12,12 @@ function createLazyVisibility() {
 		}
 	})
 	const ref = (node: Element) => {
-		el = node
+		_el = node
 		observer.observe(node)
 	}
 	onCleanup(() => {
 		observer.disconnect()
-		el = undefined
+		_el = undefined
 	})
 	return { ref, isVisible }
 }

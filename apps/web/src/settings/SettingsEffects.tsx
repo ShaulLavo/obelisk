@@ -135,14 +135,14 @@ export const SettingsEffects: Component = () => {
 		root.style.setProperty('--base-font-size', `${baseFontSize}px`)
 
 		// Track font size settings to create reactive dependencies
-		const uiFontSetting = settingsState.values['ui.font.size']
+		const _uiFontSetting = settingsState.values['ui.font.size']
 		const editorFontSetting = settingsState.values['editor.font.size']
-		const terminalFontSetting = settingsState.values['terminal.font.size']
+		const _terminalFontSetting = settingsState.values['terminal.font.size']
 
 		// Track zoom offsets to create reactive dependencies
-		const uiZoom = settingsActions.getZoomOffset('ui')
-		const editorZoom = settingsActions.getZoomOffset('editor')
-		const terminalZoom = settingsActions.getZoomOffset('terminal')
+		const _uiZoom = settingsActions.getZoomOffset('ui')
+		const _editorZoom = settingsActions.getZoomOffset('editor')
+		const _terminalZoom = settingsActions.getZoomOffset('terminal')
 
 		// UI font settings (global for file explorer, sidebars, settings, etc.)
 		const uiFontSize = settingsActions.getZoomedFontSize('ui')

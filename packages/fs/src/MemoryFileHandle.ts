@@ -14,7 +14,6 @@ export class MemoryFileHandle implements FileSystemFileHandle {
 	}
 
 	async createWritable(
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		_options?: FileSystemCreateWritableOptions
 	): Promise<FileSystemWritableFileStream> {
 		const chunks: Uint8Array[] = []

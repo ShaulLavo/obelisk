@@ -1,12 +1,12 @@
 import type { ParseResult } from '@repo/utils'
 import type { ViewMode } from '../types/ViewMode'
-import { viewModeRegistry } from '../registry/ViewModeRegistry'
+import { getViewModeRegistry } from '../registry/ViewModeRegistry'
 
 export const detectAvailableViewModes = (
 	path: string,
 	stats?: ParseResult
 ): ViewMode[] => {
-	const availableModes = viewModeRegistry.getAvailableModes(path, stats)
+	const availableModes = getViewModeRegistry().getAvailableModes(path, stats)
 	return availableModes.map((mode) => mode.id)
 }
 
@@ -14,7 +14,7 @@ export const getDefaultViewMode = (
 	path: string,
 	stats?: ParseResult
 ): ViewMode => {
-	return viewModeRegistry.getDefaultMode(path, stats)
+	return getViewModeRegistry().getDefaultMode(path, stats)
 }
 
 export const supportsMultipleViewModes = (
@@ -30,11 +30,11 @@ export const isViewModeValid = (
 	path: string,
 	stats?: ParseResult
 ): boolean => {
-	return viewModeRegistry.isViewModeAvailable(viewMode, path, stats)
+	return getViewModeRegistry().isViewModeAvailable(viewMode, path, stats)
 }
 
 export const getViewModeLabel = (viewMode: ViewMode): string => {
-	const mode = viewModeRegistry.getViewMode(viewMode)
+	const mode = getViewModeRegistry().getViewMode(viewMode)
 	return mode?.label ?? viewMode
 }
 

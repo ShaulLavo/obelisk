@@ -14,7 +14,11 @@ export class EditorRegistryImpl {
 	private readonly closeHandlers = new Set<(path: string) => void>()
 
 	/**
-	 * Register an editor instance for a file path
+	 * Register an editor instance for a file path.
+	 *
+	 * Handler errors are caught and logged (fire-and-forget): a failing
+	 * listener must not prevent other handlers from running or block
+	 * the registration itself.
 	 */
 	registerEditor(path: string, editor: EditorInstance): void {
 		// If editor already exists for this path, close it first
@@ -35,7 +39,11 @@ export class EditorRegistryImpl {
 	}
 
 	/**
-	 * Unregister an editor instance for a file path
+	 * Unregister an editor instance for a file path.
+	 *
+	 * Handler errors are caught and logged (fire-and-forget): a failing
+	 * listener must not prevent other handlers from running or block
+	 * the unregistration itself.
 	 */
 	unregisterEditor(path: string): void {
 		if (!this.editors.has(path)) {

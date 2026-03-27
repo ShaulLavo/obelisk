@@ -1,9 +1,4 @@
 /**
- * Font Cache Service
- *
- * Owns the Cache API storage for font binary data. This is a core service
- * consumed by the font registry (src/fonts/) via dynamic import.
- *
  * Direct singleton imports: fontMetadataService, cacheErrorRecovery, serviceWorkerManager.
  * These are acceptable here because FontCacheService is the primary orchestrator
  * for cache operations and needs synchronous access to error recovery state
@@ -15,10 +10,33 @@ import { cacheErrorRecovery } from './CacheErrorRecovery'
 import { serviceWorkerManager } from './ServiceWorkerManager'
 import type { FontMetadata, CacheStats } from './FontMetadataService'
 import { createLazySingleton } from './createLazySingleton'
+import { withFontStorage } from './withFontStorage'
 
 // Re-export types for convenience
 export type { FontMetadata, CacheStats }
 
+/**
+ * Owns the Cache API storage for font binary data. This is a core service
+ * consumed by the font registry (src/fonts/) via dynamic import.
+ *
+ * Error handling follows four strategies depending on the operation:
+ *
+ * 1. **Safe-default** -- Non-critical reads (`isFontCached`, `getCacheStats`)
+ *    swallow errors and return a harmless default (false, empty stats).
+ *
+ * 2. **Silent-swallow** -- Best-effort writes (`updateLastAccessedSafely`,
+ *    `storeMetadataSafely`) log at debug level and discard the error because
+ *    the primary operation (font download) already succeeded.
+ *
+ * 3. **Propagate-after-recovery** -- Operations that can fall back to an
+ *    alternate storage path (`downloadFont`, `removeFont`,
+ *    `storeFontDataSafely`). On error the service attempts recovery via
+ *    `CacheErrorRecovery`; if recovery fails the error is re-thrown.
+ *
+ * 4. **Propagate-always** -- Operations where failure is unrecoverable
+ *    (`cleanupCache`, `clearAllFonts`). Errors propagate directly to the
+ *    caller (except in test environments).
+ */
 export class FontCacheService {
 	private static readonly CACHE_NAME = 'nerdfonts-v1'
 	private static readonly MAX_CACHE_SIZE = 100 * 1024 * 1024 // 100MB
@@ -59,7 +77,12 @@ export class FontCacheService {
 		}
 	}
 
-	async downloadFont(name: string, url: string): Promise<ArrayBuffer> {
+	async downloadFont(
+		name: string,
+		url: string,
+		/** @internal Prevents infinite recursion during error recovery. */
+		inRecovery = false,
+	): Promise<ArrayBuffer> {
 		await this.ensureInitialized()
 
 		const cacheKey = `/fonts/${name}`
@@ -106,11 +129,14 @@ export class FontCacheService {
 
 			return fontData
 		} catch (error) {
+			if (inRecovery) {
+				throw error
+			}
 
 			const recovery = await cacheErrorRecovery.recoverFromError(error as Error)
 
 			if (recovery.success && recovery.fallbackActive) {
-				return await this.downloadFont(name, url)
+				return await this.downloadFont(name, url, true)
 			}
 
 			throw error
@@ -119,20 +145,20 @@ export class FontCacheService {
 
 	async isFontCached(name: string): Promise<boolean> {
 		await this.ensureInitialized()
-
-		try {
-			const cache = this.activeCache
-			if (cache) {
-				const cacheKey = `/fonts/${name}`
-				const cachedResponse = await cache.match(cacheKey)
-				return !!cachedResponse
-			} else {
+		return withFontStorage(
+			async () => {
+				const cache = this.activeCache
+				if (cache) {
+					const cacheKey = `/fonts/${name}`
+					const cachedResponse = await cache.match(cacheKey)
+					return !!cachedResponse
+				}
 				const fallbackData = await cacheErrorRecovery.getFontFallback(name)
 				return !!fallbackData
-			}
-		} catch (error) {
-			return false
-		}
+			},
+			false,
+			`FontCacheService.isFontCached(${name})`,
+		)
 	}
 
 	async storeFont(name: string, fontData: ArrayBuffer): Promise<void> {
@@ -174,15 +200,16 @@ export class FontCacheService {
 
 	async getCacheStats(): Promise<CacheStats> {
 		await this.ensureInitialized()
-
-		try {
-			if (this.activeCache) {
-				return await fontMetadataService.getCacheStats()
-			}
-			return FontCacheService.emptyCacheStats()
-		} catch (error) {
-			return FontCacheService.emptyCacheStats()
-		}
+		return withFontStorage(
+			async () => {
+				if (this.activeCache) {
+					return await fontMetadataService.getCacheStats()
+				}
+				return FontCacheService.emptyCacheStats()
+			},
+			FontCacheService.emptyCacheStats(),
+			'FontCacheService.getCacheStats',
+		)
 	}
 
 	async cleanupCache(): Promise<void> {
@@ -308,24 +335,23 @@ export class FontCacheService {
 		}
 	}
 
-	/**
-	 * Safely update last accessed time
-	 */
+	/** Safely update last accessed time (non-critical, failures are swallowed). */
 	private async updateLastAccessedSafely(name: string): Promise<void> {
-		try {
-			if (this.activeCache) {
-				await fontMetadataService.updateLastAccessed(name)
-			} else {
-				const metadata = await cacheErrorRecovery.getMetadataFallback(name)
-				if (metadata) {
-					metadata.lastAccessed = new Date()
-					await cacheErrorRecovery.storeMetadataFallback(name, metadata)
+		await withFontStorage(
+			async () => {
+				if (this.activeCache) {
+					await fontMetadataService.updateLastAccessed(name)
+				} else {
+					const metadata = await cacheErrorRecovery.getMetadataFallback(name)
+					if (metadata) {
+						metadata.lastAccessed = new Date()
+						await cacheErrorRecovery.storeMetadataFallback(name, metadata)
+					}
 				}
-			}
-		} catch (error) {
-			// Last accessed update is non-critical
-			console.debug('[FontCacheService] Failed to update lastAccessed for', name, error)
-		}
+			},
+			undefined,
+			`FontCacheService.updateLastAccessedSafely(${name})`,
+		)
 	}
 
 	/**

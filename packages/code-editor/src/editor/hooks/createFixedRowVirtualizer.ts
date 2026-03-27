@@ -3,7 +3,6 @@ import {
 	createMemo,
 	createSignal,
 	onCleanup,
-	untrack,
 	type Accessor,
 } from 'solid-js'
 import type { VirtualItem } from '../types'

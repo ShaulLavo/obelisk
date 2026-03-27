@@ -1,8 +1,8 @@
-import type { DirTreeNode, TreeNode, FilePath } from '@repo/fs'
+import type { DirTreeNode, TreeNode, FilePath, FsSource } from '@repo/fs'
 import type { DeferredDirMetadata } from './prefetch/treePrefetchWorkerTypes'
 import type { HighlightTransform, FileState } from './store/types'
 
-export type FsSource = 'memory' | 'local' | 'opfs'
+export type { FsSource }
 
 export type FsState = {
 	tree?: DirTreeNode

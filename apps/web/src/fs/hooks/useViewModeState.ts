@@ -2,7 +2,7 @@ import { createMemo, onCleanup } from 'solid-js'
 import type { Accessor } from 'solid-js'
 import type { ParseResult } from '@repo/utils'
 import type { ViewMode } from '../types/ViewMode'
-import { viewModeRegistry } from '../registry/ViewModeRegistry'
+import { getViewModeRegistry } from '../registry/ViewModeRegistry'
 
 /**
  * State management for view mode-specific functionality
@@ -17,7 +17,7 @@ export const useViewModeState = (
 	 * Get the current view mode definition
 	 */
 	const viewModeDefinition = createMemo(() => {
-		return viewModeRegistry.getViewMode(viewMode())
+		return getViewModeRegistry().getViewMode(viewMode())
 	})
 
 	/**
@@ -49,7 +49,7 @@ export const useViewModeState = (
 		const currentPath = path()
 		if (!currentPath) return true
 		
-		const availableModes = viewModeRegistry.getAvailableModes(currentPath, stats())
+		const availableModes = getViewModeRegistry().getAvailableModes(currentPath, stats())
 		const defaultMode = availableModes.find(mode => mode.isDefault)
 		
 		return defaultMode?.id === viewMode() || (!defaultMode && viewMode() === 'editor')

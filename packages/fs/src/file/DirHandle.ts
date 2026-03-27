@@ -4,6 +4,7 @@ import type {
 	DirTreeNode,
 	TreeOptions,
 	OpenMode,
+	HandleParent,
 } from './types'
 import { getParentPath, joinPaths } from './utils/path'
 import { iterateDirectoryEntries } from './utils/dir'
@@ -18,7 +19,7 @@ export class DirHandle {
 	readonly kind = 'dir' as const
 	readonly path: string
 	readonly name: string
-	readonly parent: DirHandle | null
+	readonly parent: HandleParent | null
 
 	constructor(ctx: RootCtx, path: string) {
 		const impl = ctx as RootCtxInternal

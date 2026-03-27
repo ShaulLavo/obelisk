@@ -1,6 +1,6 @@
 import type { Component } from 'solid-js'
 import { For, Show, createEffect, createSelector, createSignal } from 'solid-js'
-import * as Accordion from '@corvu/accordion'
+import * as AccordionPrimitive from '@kobalte/core/accordion'
 import { VsChevronRight } from '@repo/icons/vs/VsChevronRight'
 import { VsTextSize } from '@repo/icons/vs/VsTextSize'
 import { cn } from '../utils'
@@ -66,28 +66,22 @@ export const SettingsSidebarItem: Component<SettingsSidebarItemProps> = (
 	}
 
 	const [expandedItems, setExpandedItems] = createSignal<string[]>(
+		// eslint-disable-next-line solid/reactivity -- intentional one-time initial value
 		isSelected() || isParentOfSelected() ? [props.category.id] : []
 	)
 
 	const isExpanded = () => expandedItems().includes(props.category.id)
 
-	const handleExpandedChange = (value: string[] | string | null) => {
-		if (Array.isArray(value)) {
-			setExpandedItems(value)
-			return
-		}
-		if (value) {
-			setExpandedItems([value])
-			return
-		}
-		setExpandedItems([])
+	const handleExpandedChange = (value: string[]) => {
+		setExpandedItems(value)
 	}
 
 	const handleTriggerClick = () => {
 		if (isExpanded()) return
 		const nextId = fullId()
 		if (selectedCategory() === nextId) return
-		queueMicrotask(() => props.onCategorySelect(nextId))
+		const onSelect = props.onCategorySelect
+		queueMicrotask(() => onSelect(nextId))
 	}
 
 	createEffect(() => {
@@ -127,28 +121,30 @@ export const SettingsSidebarItem: Component<SettingsSidebarItemProps> = (
 				</Button>
 			}
 		>
-			<Accordion.Root
+			<AccordionPrimitive.Root
 				multiple={true}
 				value={expandedItems()}
-				onValueChange={handleExpandedChange}
+				onChange={handleExpandedChange}
 			>
-				<Accordion.Item value={props.category.id}>
-					<Accordion.Trigger
-						class={cn(
-							itemClass(),
-							'data-[expanded]:[&_[data-accordion-toggle=true]_svg]:rotate-90'
-						)}
-						onClick={handleTriggerClick}
-					>
-						<div class="flex items-center gap-2">
-							{renderIcon()}
-							<span class="truncate">{props.category.label}</span>
-						</div>
-						<span class="flex items-center" data-accordion-toggle="true">
-							<VsChevronRight class="h-3.5 w-3.5 text-muted-foreground transition-transform" />
-						</span>
-					</Accordion.Trigger>
-					<Accordion.Content class="overflow-hidden data-[expanded]:animate-accordion-down data-[collapsed]:animate-accordion-up">
+				<AccordionPrimitive.Item value={props.category.id}>
+					<AccordionPrimitive.Header class="flex">
+						<AccordionPrimitive.Trigger
+							class={cn(
+								itemClass(),
+								'[&[data-expanded]_[data-accordion-toggle=true]_svg]:rotate-90'
+							)}
+							onClick={handleTriggerClick}
+						>
+							<div class="flex items-center gap-2">
+								{renderIcon()}
+								<span class="truncate">{props.category.label}</span>
+							</div>
+							<span class="flex items-center" data-accordion-toggle="true">
+								<VsChevronRight class="h-3.5 w-3.5 text-muted-foreground transition-transform" />
+							</span>
+						</AccordionPrimitive.Trigger>
+					</AccordionPrimitive.Header>
+					<AccordionPrimitive.Content class="overflow-hidden data-[expanded]:animate-accordion-down data-[closed]:animate-accordion-up">
 						<div class="space-y-1 pt-1">
 							<For each={props.category.children || []}>
 								{(subcategory) => (
@@ -162,9 +158,9 @@ export const SettingsSidebarItem: Component<SettingsSidebarItemProps> = (
 								)}
 							</For>
 						</div>
-					</Accordion.Content>
-				</Accordion.Item>
-			</Accordion.Root>
+					</AccordionPrimitive.Content>
+				</AccordionPrimitive.Item>
+			</AccordionPrimitive.Root>
 		</Show>
 	)
 }

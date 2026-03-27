@@ -76,7 +76,7 @@ export const FontBrowser = () => {
 			<FontErrorBoundary
 				maxRetries={3}
 				retryDelay={2000}
-				onError={(error) => {
+				onError={(_error) => {
 					// Error handled by FontErrorBoundary UI
 				}}
 			>

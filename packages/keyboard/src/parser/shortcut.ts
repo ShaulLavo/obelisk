@@ -27,7 +27,7 @@ export function parseShortcut(
 		return normalizeCombo({ key: '+', modifiers })
 	}
 
-	const plusEqualMatch = raw.match(/^(.*)\+\=$/)
+	const plusEqualMatch = raw.match(/^(.*)\+=$/)
 	if (plusEqualMatch) {
 		const modsToken = (plusEqualMatch[1] ?? '').trim()
 

@@ -2,7 +2,7 @@ import { batch } from 'solid-js'
 import { createPieceTableSnapshot } from '@repo/utils'
 import type { PieceTableSnapshot } from '@repo/utils'
 import { trackOperation } from '@repo/perf'
-import { DEFAULT_SOURCE } from '../config/constants'
+import { getDefaultSource } from '../config/constants'
 import type { FsState } from '../types'
 import type { FsContextValue, SelectPathOptions } from '../context/FsContext'
 import { loadFile } from '../FileLoadingService'
@@ -60,7 +60,7 @@ export const useFileSelection = ({
 		}
 
 		const requestId = ++selectRequestId
-		const source = state.activeSource ?? DEFAULT_SOURCE
+		const source = state.activeSource ?? getDefaultSource()
 		const perfMetadata: Record<string, unknown> = { path, source }
 
 		try {

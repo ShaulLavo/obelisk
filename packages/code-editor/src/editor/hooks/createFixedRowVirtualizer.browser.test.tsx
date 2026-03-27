@@ -1,13 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import { render } from 'vitest-browser-solid'
-import { createSignal } from 'solid-js'
-import { createFixedRowVirtualizer } from './createFixedRowVirtualizer'
+import { createSignal, For } from 'solid-js'
+import {
+	createFixedRowVirtualizer,
+	type FixedRowVirtualizer,
+} from './createFixedRowVirtualizer'
 
 // ============================================================================
 // DOM Integration Tests - Runs in real browser via Vitest Browser Mode
 // ============================================================================
 
 describe('createFixedRowVirtualizer (browser)', () => {
+	/* eslint-disable solid/reactivity -- test component with static props */
 	const VirtualizerTest = (props: {
 		count?: number
 		enabled?: boolean
@@ -32,6 +36,7 @@ describe('createFixedRowVirtualizer (browser)', () => {
 		})
 
 		props.onMount?.({ virtualizer, setCount, setEnabled })
+		/* eslint-enable solid/reactivity */
 
 		return (
 			<div
@@ -51,26 +56,28 @@ describe('createFixedRowVirtualizer (browser)', () => {
 						position: 'relative',
 					}}
 				>
-					{virtualizer.virtualItems().map((item) => (
-						<div
-							style={{
-								position: 'absolute',
-								top: `${item.start}px`,
-								height: `${item.size}px`,
-								width: '100%',
-							}}
-							data-index={item.index}
-						>
-							Row {item.index}
-						</div>
-					))}
+					<For each={virtualizer.virtualItems()}>
+						{(item) => (
+							<div
+								style={{
+									position: 'absolute',
+									top: `${item.start}px`,
+									height: `${item.size}px`,
+									width: '100%',
+								}}
+								data-index={item.index}
+							>
+								Row {item.index}
+							</div>
+						)}
+					</For>
 				</div>
 			</div>
 		)
 	}
 
 	it('initializes with correct values', async () => {
-		let v: any
+		let v!: FixedRowVirtualizer
 		render(() => <VirtualizerTest onMount={(inst) => (v = inst.virtualizer)} />)
 
 		await expect.poll(() => v.viewportHeight()).toBe(200)
@@ -81,7 +88,7 @@ describe('createFixedRowVirtualizer (browser)', () => {
 	})
 
 	it('computes virtual items for visible range', async () => {
-		let v: any
+		let v!: FixedRowVirtualizer
 		const screen = render(() => (
 			<VirtualizerTest
 				overscan={2}
@@ -100,7 +107,7 @@ describe('createFixedRowVirtualizer (browser)', () => {
 	})
 
 	it('scrollToIndex scrolls to correct position', async () => {
-		let v: any
+		let v!: FixedRowVirtualizer
 		const screen = render(() => (
 			<VirtualizerTest onMount={(inst) => (v = inst.virtualizer)} />
 		))
@@ -118,7 +125,7 @@ describe('createFixedRowVirtualizer (browser)', () => {
 	})
 
 	it('scrollToIndex with center alignment', async () => {
-		let v: any
+		let v!: FixedRowVirtualizer
 		const screen = render(() => (
 			<VirtualizerTest onMount={(inst) => (v = inst.virtualizer)} />
 		))
@@ -136,7 +143,7 @@ describe('createFixedRowVirtualizer (browser)', () => {
 	})
 
 	it('scrollToIndex with auto alignment - already visible', async () => {
-		let v: any
+		let v!: FixedRowVirtualizer
 		const screen = render(() => (
 			<VirtualizerTest onMount={(inst) => (v = inst.virtualizer)} />
 		))
@@ -155,7 +162,7 @@ describe('createFixedRowVirtualizer (browser)', () => {
 	})
 
 	it('scrollToOffset scrolls to correct position', async () => {
-		let v: any
+		let v!: FixedRowVirtualizer
 		const screen = render(() => (
 			<VirtualizerTest onMount={(inst) => (v = inst.virtualizer)} />
 		))
@@ -170,7 +177,7 @@ describe('createFixedRowVirtualizer (browser)', () => {
 	})
 
 	it('scrollToOffset clamps to max offset', async () => {
-		let v: any
+		let v!: FixedRowVirtualizer
 		const screen = render(() => (
 			<VirtualizerTest onMount={(inst) => (v = inst.virtualizer)} />
 		))
@@ -186,7 +193,7 @@ describe('createFixedRowVirtualizer (browser)', () => {
 	})
 
 	it('tracks scroll direction during scroll', async () => {
-		let v: any
+		let v!: FixedRowVirtualizer
 		const screen = render(() => (
 			<VirtualizerTest onMount={(inst) => (v = inst.virtualizer)} />
 		))
@@ -207,8 +214,8 @@ describe('createFixedRowVirtualizer (browser)', () => {
 	})
 
 	it('updates when count changes', async () => {
-		let countSetter: any
-		let v: any
+		let countSetter!: (count: number) => void
+		let v!: FixedRowVirtualizer
 		render(() => (
 			<VirtualizerTest
 				onMount={(inst) => {
@@ -226,8 +233,8 @@ describe('createFixedRowVirtualizer (browser)', () => {
 	})
 
 	it('returns empty items when disabled', async () => {
-		let enabledSetter: any
-		let v: any
+		let enabledSetter!: (enabled: boolean) => void
+		let v!: FixedRowVirtualizer
 		render(() => (
 			<VirtualizerTest
 				onMount={(inst) => {

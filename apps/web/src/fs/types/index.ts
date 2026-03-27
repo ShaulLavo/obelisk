@@ -4,6 +4,7 @@ export type { ViewModeDefinition } from '../registry/ViewModeRegistry'
 export {
 	ViewModeRegistry,
 	viewModeRegistry,
+	getViewModeRegistry,
 } from '../registry/ViewModeRegistry'
 
 export {

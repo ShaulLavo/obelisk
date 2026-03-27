@@ -1,5 +1,7 @@
 /**
- * Font Registry Module
+ * Font Registry Module — Core font runtime: loading, rendering, and
+ * font-face management. Font settings UI and management lives in
+ * ../settings/fonts/.
  *
  * Resource-based font management with Suspense integration.
  *

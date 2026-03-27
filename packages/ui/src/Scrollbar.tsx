@@ -165,7 +165,7 @@ export const Scrollbar = (props: ScrollbarProps) => {
 
 	return (
 		<div
-			ref={setContainerRef}
+			ref={(el) => setContainerRef(el)}
 			class={clsx('scrollbar-container', props.class)}
 			style={{
 				position: 'relative',

@@ -20,4 +20,5 @@ export type {
 	RootCtx,
 	ResolvedPath,
 	RootCtxInternal,
+	HandleParent,
 } from './types'

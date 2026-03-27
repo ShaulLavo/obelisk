@@ -28,26 +28,22 @@ const buildPathIndex = (root: DirTreeNode): PathIndex => {
 	return index
 }
 
+const indexTreeNodes = (index: PathIndex, children: TreeNode[]): void => {
+	const stack: TreeNode[] = [...children]
+	while (stack.length) {
+		const node = stack.pop()!
+		if (node.path) index[createFilePath(node.path)] = node
+		if (node.kind === 'dir' && node.children) {
+			for (const child of node.children) stack.push(child)
+		}
+	}
+}
+
 const addChildrenToIndex = (
 	setPathIndex: SetStoreFunction<PathIndex>,
 	children: TreeNode[]
 ): void => {
-	setPathIndex(
-		produce((index: PathIndex) => {
-			const stack: TreeNode[] = [...children]
-			while (stack.length) {
-				const node = stack.pop()!
-				if (node.path) {
-					index[createFilePath(node.path)] = node
-				}
-				if (node.kind === 'dir' && node.children) {
-					for (const child of node.children) {
-						stack.push(child)
-					}
-				}
-			}
-		})
-	)
+	setPathIndex(produce((index: PathIndex) => indexTreeNodes(index, children)))
 }
 
 const findDirInDraft = (
@@ -89,24 +85,43 @@ export const createTreeState = () => {
 		})
 	}
 
+	const applyDirChildren = (draft: DirTreeNode | undefined, path: string, children: TreeNode[]) => {
+		if (!draft) return
+		const dir = findDirInDraft(draft, path)
+		if (!dir) return
+		dir.children = children
+		dir.isLoaded = true
+	}
+
 	const updateTreeDirectory = (path: string, children: TreeNode[]) => {
 		batch(() => {
-			setTreeState(
-				'root',
-				produce((draft) => {
-					if (!draft) return
-					const dir = findDirInDraft(draft, path)
-					if (dir) {
-						dir.children = children
-						dir.isLoaded = true
-					}
-				})
-			)
+			setTreeState('root', produce((draft) => applyDirChildren(draft, path, children)))
 			addChildrenToIndex(setPathIndex, children)
 		})
 	}
 
 	type PathIndexEntry = { path: string; node: TreeNode }
+
+	const applyBatchDirChildren = (
+		draft: DirTreeNode | undefined,
+		updates: Array<{ path: string; children: TreeNode[] }>
+	) => {
+		if (!draft) return
+		for (const { path, children } of updates) {
+			applyDirChildren(draft, path, children)
+		}
+	}
+
+	const applyBatchPathIndex = (
+		index: PathIndex,
+		updates: Array<{ pathIndexEntries: PathIndexEntry[] }>
+	) => {
+		for (const { pathIndexEntries } of updates) {
+			for (const { path, node } of pathIndexEntries) {
+				index[createFilePath(path)] = node
+			}
+		}
+	}
 
 	const updateTreeDirectories = (
 		updates: Array<{ path: string; children: TreeNode[]; pathIndexEntries: PathIndexEntry[] }>
@@ -114,50 +129,36 @@ export const createTreeState = () => {
 		if (updates.length === 0) return
 
 		batch(() => {
-			setTreeState(
-				'root',
-				produce((draft) => {
-					if (!draft) return
-					for (const { path, children } of updates) {
-						const dir = findDirInDraft(draft, path)
-						if (dir) {
-							dir.children = children
-							dir.isLoaded = true
-						}
-					}
-				})
-			)
-			setPathIndex(
-				produce((index: PathIndex) => {
-					for (const { pathIndexEntries } of updates) {
-						for (const { path, node } of pathIndexEntries) {
-							index[createFilePath(path)] = node
-						}
-					}
-				})
-			)
+			setTreeState('root', produce((draft) => applyBatchDirChildren(draft, updates)))
+			setPathIndex(produce((index: PathIndex) => applyBatchPathIndex(index, updates)))
 		})
+	}
+
+	const appendChildToDraft = (draft: DirTreeNode | undefined, parentPath: string, node: TreeNode) => {
+		if (!draft) return
+		const parent = findDirInDraft(draft, parentPath)
+		if (!parent) return
+		if (!parent.children) parent.children = []
+		parent.children.push(node)
 	}
 
 	const addTreeNode = (parentPath: string, node: TreeNode) => {
 		batch(() => {
-			setTreeState(
-				'root',
-				produce((draft) => {
-					if (!draft) return
-					const parent = findDirInDraft(draft, parentPath)
-					if (parent) {
-						if (!parent.children) {
-							parent.children = []
-						}
-						parent.children.push(node)
-					}
-				})
-			)
-			if (node.path) {
-				setPathIndex(createFilePath(node.path), node)
-			}
+			setTreeState('root', produce((draft) => appendChildToDraft(draft, parentPath, node)))
+			if (node.path) setPathIndex(createFilePath(node.path), node)
 		})
+	}
+
+	const removeChildFromDraft = (draft: DirTreeNode | undefined, parentPath: string, childPath: string) => {
+		if (!draft) return
+		const parent = parentPath ? findDirInDraft(draft, parentPath) : draft
+		if (!parent?.children) return
+		parent.children = parent.children.filter((c) => c.path !== childPath)
+	}
+
+	const purgePathsFromIndex = (index: PathIndex, fp: FilePath) => {
+		const toRemove = Object.keys(index).filter((p) => p === fp || p.startsWith(fp + '/'))
+		for (const p of toRemove) delete index[p as FilePath]
 	}
 
 	const removeTreeNode = (path: string) => {
@@ -165,26 +166,8 @@ export const createTreeState = () => {
 		const parentPath = path.split('/').slice(0, -1).join('/')
 
 		batch(() => {
-			setTreeState(
-				'root',
-				produce((draft) => {
-					if (!draft) return
-					const parent = parentPath ? findDirInDraft(draft, parentPath) : draft
-					if (parent && parent.children) {
-						parent.children = parent.children.filter((c) => c.path !== path)
-					}
-				})
-			)
-			setPathIndex(
-				produce((index) => {
-					const toRemove = Object.keys(index).filter(
-						(p) => p === fp || p.startsWith(fp + '/')
-					)
-					for (const p of toRemove) {
-						delete index[p as FilePath]
-					}
-				})
-			)
+			setTreeState('root', produce((draft) => removeChildFromDraft(draft, parentPath, path)))
+			setPathIndex(produce((index) => purgePathsFromIndex(index, fp)))
 		})
 	}
 

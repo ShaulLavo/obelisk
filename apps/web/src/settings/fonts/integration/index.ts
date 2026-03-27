@@ -3,6 +3,6 @@ export {
 	fontPerformanceOptimizer,
 	getFontPerformanceOptimizer,
 	createOptimizedFontRegistry,
-	ResourceCleanup,
+	queueDownload,
 	type OptimizationConfig,
 } from './PerformanceOptimization'

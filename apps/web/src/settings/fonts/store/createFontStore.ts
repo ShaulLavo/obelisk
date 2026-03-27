@@ -165,24 +165,19 @@ export const createFontStore = (): FontStore => {
 			const updates: Promise<void>[] = []
 
 			for (const [name, base64Data] of Object.entries(response.data as Record<string, string>)) {
-				if (base64Data) {
-					const binaryString = atob(base64Data)
-					const bytes = new Uint8Array(binaryString.length)
-					for (let i = 0; i < binaryString.length; i++) {
-						bytes[i] = binaryString.charCodeAt(i)
-					}
+				if (!base64Data) continue
 
-					updates.push(
-						(async () => {
-							try {
-								await fontCacheService.storeFont(name, bytes.buffer)
-								await fontInstallationService.installFont(name)
-							} catch (e) {
-								console.warn('[FontStore] Failed to install font from batch', name, e)
-							}
-						})()
-					)
+				const binaryString = atob(base64Data)
+				const bytes = new Uint8Array(binaryString.length)
+				for (let i = 0; i < binaryString.length; i++) {
+					bytes[i] = binaryString.charCodeAt(i)
 				}
+
+				updates.push(
+					fontCacheService.storeFont(name, bytes.buffer)
+						.then(() => fontInstallationService.installFont(name))
+						.catch((e) => console.warn('[FontStore] Failed to install font from batch', name, e))
+				)
 			}
 			await Promise.all(updates)
 

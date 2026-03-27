@@ -65,10 +65,6 @@ export class EditorInstanceAdapter implements EditorInstance {
 		return tabInfo.tab.state.cursorPosition
 	}
 
-	setCursorPosition(_position: CursorPosition): void {
-		// TODO: Requires integration with Editor component's internal state
-	}
-
 	getScrollPosition(): EditorScrollPosition {
 		const tabInfo = this.findTab()
 		if (!tabInfo) {
@@ -93,10 +89,6 @@ export class EditorInstanceAdapter implements EditorInstance {
 	getFoldedRegions(): FoldedRegion[] {
 		// TODO: Expose folded regions from Editor component
 		return []
-	}
-
-	setFoldedRegions(_regions: FoldedRegion[]): void {
-		// TODO: Requires integration with Editor component's fold state
 	}
 
 	onContentChange(callback: (content: string) => void): () => void {

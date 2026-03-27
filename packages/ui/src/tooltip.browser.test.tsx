@@ -10,7 +10,7 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { render, cleanup } from 'vitest-browser-solid'
 import { page } from 'vitest/browser'
-import { Tooltip, TooltipTrigger, TooltipContent, TooltipArrow } from './tooltip'
+import { Tooltip, TooltipTrigger, TooltipContent } from './tooltip'
 
 describe('Tooltip Browser Tests', () => {
 	afterEach(() => {

@@ -39,6 +39,67 @@ const collectRows = (entries: PerfBreakdownEntry[]): TableRow[] => {
 	})
 }
 
+/**
+ * Generic ASCII table formatter.
+ *
+ * @param headers - Column header labels.
+ * @param rows    - 2-D array of cell strings (one inner array per row).
+ * @param footerRows - Optional footer rows rendered after a divider.
+ */
+const formatTable = (
+	headers: string[],
+	rows: string[][],
+	footerRows: string[][] = []
+): string => {
+	const widths = headers.map((h, i) =>
+		Math.max(
+			h.length,
+			...rows.map((r) => (r[i] ?? '').length),
+			...footerRows.map((r) => (r[i] ?? '').length)
+		)
+	)
+
+	const divider =
+		'+' + widths.map((w) => '-'.repeat(w + 2)).join('+') + '+'
+	const fmtRow = (cells: string[], align: ('left' | 'right')[]) =>
+		'|' +
+		cells
+			.map((cell, i) => {
+				const w = widths[i]!
+				const padded =
+					align[i] === 'right' ? cell.padStart(w) : cell.padEnd(w)
+				return ` ${padded} `
+			})
+			.join('|') +
+		'|'
+
+	const headerAlign: ('left' | 'right')[] = headers.map(() => 'left')
+
+	const lines = [
+		divider,
+		fmtRow(headers, headerAlign),
+		divider,
+	]
+
+	const rowAlign: ('left' | 'right')[] = headers.map((_, i) =>
+		i === 0 ? 'left' : 'right'
+	)
+
+	for (const row of rows) {
+		lines.push(fmtRow(row, rowAlign))
+	}
+
+	if (footerRows.length > 0) {
+		lines.push(divider)
+		for (const row of footerRows) {
+			lines.push(fmtRow(row, rowAlign))
+		}
+	}
+
+	lines.push(divider)
+	return lines.join('\n')
+}
+
 const formatBreakdownTable = (
 	breakdown: PerfBreakdownEntry[],
 	totalDuration: number
@@ -57,37 +118,16 @@ const formatBreakdownTable = (
 
 	if (rows.length === 0) return ''
 
-	const labelHeader = 'step'
-	const durationHeader = 'duration'
-	const labelWidth = Math.max(
-		labelHeader.length,
-		...rows.map((row) => row.label.length),
-		'total'.length
-	)
-	const durationWidth = Math.max(
-		durationHeader.length,
-		...rows.map((row) => formatDurationTable(row.duration).length),
-		formatDurationTable(totalDuration).length
-	)
+	const dataRows = rows.map((row) => [
+		row.label,
+		formatDurationTable(row.duration),
+	])
+	const footerRows = [['total', formatDurationTable(totalDuration)]]
 
-	const divider = `+-${'-'.repeat(labelWidth)}-+-${'-'.repeat(durationWidth)}-+`
-	const header = `| ${labelHeader.padEnd(labelWidth)} | ${durationHeader.padEnd(durationWidth)} |`
-	const body = rows.map(
-		(row) =>
-			`| ${row.label.padEnd(labelWidth)} | ${formatDurationTable(row.duration).padStart(durationWidth)} |`
+	return (
+		'timing breakdown:\n' +
+		formatTable(['step', 'duration'], dataRows, footerRows)
 	)
-	const totalRow = `| ${'total'.padEnd(labelWidth)} | ${formatDurationTable(totalDuration).padStart(durationWidth)} |`
-
-	return [
-		'timing breakdown:',
-		divider,
-		header,
-		divider,
-		...body,
-		divider,
-		totalRow,
-		divider,
-	].join('\n')
 }
 
 const logWithLevel = (level: LogLevel, message: string): void => {
@@ -166,19 +206,7 @@ const formatSummaryTable = (summaries: PerfSummary[]): string => {
 		formatDuration(s.totalDuration),
 	])
 
-	const widths = headers.map((h, i) =>
-		Math.max(h.length, ...rows.map((r) => r[i]!.length))
-	)
-
-	const divider = '+' + widths.map((w) => '-'.repeat(w + 2)).join('+') + '+'
-	const headerRow =
-		'|' + headers.map((h, i) => ` ${h.padEnd(widths[i]!)} `).join('|') + '|'
-	const dataRows = rows.map(
-		(row) =>
-			'|' + row.map((cell, i) => ` ${cell.padEnd(widths[i]!)} `).join('|') + '|'
-	)
-
-	return [divider, headerRow, divider, ...dataRows, divider].join('\n')
+	return formatTable(headers, rows)
 }
 
 export const logSummary = (filter?: {

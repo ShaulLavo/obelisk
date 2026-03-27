@@ -34,6 +34,7 @@ export class SyncController {
 	private observerStrategy: ObserverStrategy | null = null
 	private observerUnsubscribe: (() => void) | null = null
 	private debounceTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	private eventHandlers = new Map<SyncEventType, Set<SyncEventHandler<any>>>()
 	private rootHandle: FileSystemDirectoryHandle | null = null
 	private watchedPaths = new Set<string>()

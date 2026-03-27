@@ -63,7 +63,7 @@ class MockSyncAccessHandle implements FileSystemSyncAccessHandle {
 }
 
 class MockFileHandle implements FileSystemFileHandle {
-	readonly kind: 'file' = 'file'
+	readonly kind = 'file' as const
 	data = new Uint8Array()
 
 	constructor(
@@ -142,7 +142,7 @@ class MockFileHandle implements FileSystemFileHandle {
 }
 
 class MockDirectoryHandle implements FileSystemDirectoryHandle {
-	readonly kind: 'directory' = 'directory'
+	readonly kind = 'directory' as const
 	readonly files = new Map<string, MockFileHandle>()
 	activeHandles = 0
 

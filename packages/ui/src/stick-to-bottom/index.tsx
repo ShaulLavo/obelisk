@@ -233,6 +233,72 @@ export function useStickToBottom(options: StickToBottomOptions = {}) {
 		)
 	}
 
+	const applySpringPhysics = (
+		behavior: Required<SpringAnimation>,
+		tickDelta: number,
+		scrollTop: number
+	) => {
+		state.velocity =
+			(behavior.damping * state.velocity +
+				behavior.stiffness * state.scrollDifference) /
+			behavior.mass
+		state.accumulated += state.velocity * tickDelta
+		state.scrollTop += state.accumulated
+		if (state.scrollTop !== scrollTop) state.accumulated = 0
+	}
+
+	const processScrollFrame = (
+		behavior: 'instant' | Required<SpringAnimation>,
+		ignoreEscapes: boolean,
+		waitElapsed: number,
+		durationElapsed: () => number,
+		startTarget: { value: number },
+		next: () => Promise<boolean>
+	): boolean | Promise<boolean> => {
+		if (!state.isAtBottom) {
+			state.animation = undefined
+			return false
+		}
+
+		const { scrollTop } = state
+		const tick = performance.now()
+		const tickDelta = (tick - (state.lastTick ?? tick)) / SIXTY_FPS_INTERVAL_MS
+
+		const anim = (state.animation ||= { behavior, promise: undefined, ignoreEscapes })
+		if (anim.behavior === behavior) state.lastTick = tick
+
+		if (isSelecting()) return next()
+		if (waitElapsed > Date.now()) return next()
+
+		if (scrollTop < Math.min(startTarget.value, state.calculatedTargetScrollTop)) {
+			if (state.animation?.behavior === behavior) {
+				if (behavior === 'instant') {
+					state.scrollTop = state.calculatedTargetScrollTop
+					return next()
+				}
+				applySpringPhysics(behavior, tickDelta, scrollTop)
+			}
+			return next()
+		}
+
+		if (durationElapsed() > Date.now()) {
+			startTarget.value = state.calculatedTargetScrollTop
+			return next()
+		}
+
+		state.animation = undefined
+
+		if (state.scrollTop < state.calculatedTargetScrollTop) {
+			return scrollToBottom({
+				animation: mergeAnimations(optionsRef(), optionsRef().resize),
+				ignoreEscapes,
+				duration: Math.max(0, durationElapsed() - Date.now()) || undefined,
+			}) as Promise<boolean>
+		}
+
+		return state.isAtBottom
+	}
+
 	const scrollToBottom: ScrollToBottom = (scrollOptions = {}) => {
 		if (typeof scrollOptions === 'string') {
 			scrollOptions = { animation: scrollOptions }
@@ -246,86 +312,20 @@ export function useStickToBottom(options: StickToBottomOptions = {}) {
 		const behavior = mergeAnimations(optionsRef(), scrollOptions.animation)
 		const { ignoreEscapes = false } = scrollOptions
 
-		let durationElapsed: number
-		let startTarget = state.calculatedTargetScrollTop
+		let durationElapsedMs: number
+		const startTarget = { value: state.calculatedTargetScrollTop }
 
 		if (scrollOptions.duration instanceof Promise) {
-			scrollOptions.duration.finally(() => {
-				durationElapsed = Date.now()
-			})
+			scrollOptions.duration.finally(() => { durationElapsedMs = Date.now() })
 		} else {
-			durationElapsed = waitElapsed + (scrollOptions.duration ?? 0)
+			durationElapsedMs = waitElapsed + (scrollOptions.duration ?? 0)
 		}
+		const getDurationElapsed = () => durationElapsedMs
 
 		const next = async (): Promise<boolean> => {
 			const promise = new Promise<boolean>((resolve) => {
 				requestAnimationFrame(() => {
-					if (!state.isAtBottom) {
-						state.animation = undefined
-						resolve(false)
-						return
-					}
-
-					const { scrollTop } = state
-					const tick = performance.now()
-					const tickDelta =
-						(tick - (state.lastTick ?? tick)) / SIXTY_FPS_INTERVAL_MS
-
-					const anim = (state.animation ||= {
-						behavior,
-						promise: undefined,
-						ignoreEscapes,
-					})
-
-					if (anim.behavior === behavior) {
-						state.lastTick = tick
-					}
-
-					if (isSelecting()) return resolve(next())
-					if (waitElapsed > Date.now()) return resolve(next())
-
-					if (
-						scrollTop < Math.min(startTarget, state.calculatedTargetScrollTop)
-					) {
-						if (state.animation?.behavior === behavior) {
-							if (behavior === 'instant') {
-								state.scrollTop = state.calculatedTargetScrollTop
-								return resolve(next())
-							}
-
-							state.velocity =
-								(behavior.damping * state.velocity +
-									behavior.stiffness * state.scrollDifference) /
-								behavior.mass
-							state.accumulated += state.velocity * tickDelta
-							state.scrollTop += state.accumulated
-
-							if (state.scrollTop !== scrollTop) {
-								state.accumulated = 0
-							}
-						}
-						return resolve(next())
-					}
-
-					if (durationElapsed > Date.now()) {
-						startTarget = state.calculatedTargetScrollTop
-						return resolve(next())
-					}
-
-					state.animation = undefined
-
-					if (state.scrollTop < state.calculatedTargetScrollTop) {
-						return resolve(
-							scrollToBottom({
-								animation: mergeAnimations(optionsRef(), optionsRef().resize),
-								ignoreEscapes,
-								duration:
-									Math.max(0, durationElapsed - Date.now()) || undefined,
-							}) as Promise<boolean>
-						)
-					}
-
-					resolve(state.isAtBottom)
+					resolve(processScrollFrame(behavior, ignoreEscapes, waitElapsed, getDurationElapsed, startTarget, next))
 				})
 			})
 
@@ -340,12 +340,8 @@ export function useStickToBottom(options: StickToBottomOptions = {}) {
 			})
 		}
 
-		if (scrollOptions.wait !== true) {
-			state.animation = undefined
-		}
-		if (state.animation?.behavior === behavior) {
-			return state.animation.promise!
-		}
+		if (scrollOptions.wait !== true) state.animation = undefined
+		if (state.animation?.behavior === behavior) return state.animation.promise!
 
 		const p = next()
 		state.animation = { behavior, ignoreEscapes, promise: p }
@@ -355,6 +351,31 @@ export function useStickToBottom(options: StickToBottomOptions = {}) {
 	const stopScroll: StopScroll = () => {
 		setEscapedFromLockInternal(true)
 		setIsAtBottomInternal(false)
+	}
+
+	const processScrollUpdate = (scrollTop: number, lastScrollTop: number, ignoreScrollToTop: number | undefined) => {
+		if (state.resizeDifference || scrollTop === ignoreScrollToTop) return
+
+		if (isSelecting()) {
+			setEscapedFromLockInternal(true)
+			setIsAtBottomInternal(false)
+			return
+		}
+
+		if (state.animation?.ignoreEscapes) {
+			state.scrollTop = lastScrollTop
+			return
+		}
+
+		if (scrollTop < lastScrollTop) {
+			setEscapedFromLockInternal(true)
+			setIsAtBottomInternal(false)
+		}
+		if (scrollTop > lastScrollTop) setEscapedFromLockInternal(false)
+
+		if (!state.escapedFromLock && state.isNearBottom) {
+			setIsAtBottomInternal(true)
+		}
 	}
 
 	const handleScroll = (e: Event) => {
@@ -370,34 +391,7 @@ export function useStickToBottom(options: StickToBottomOptions = {}) {
 		}
 
 		setIsNearBottom(state.isNearBottom)
-
-		setTimeout(() => {
-			if (state.resizeDifference || scrollTop === ignoreScrollToTop) return
-
-			if (isSelecting()) {
-				setEscapedFromLockInternal(true)
-				setIsAtBottomInternal(false)
-				return
-			}
-
-			const isScrollingDown = scrollTop > lastScrollTop
-			const isScrollingUp = scrollTop < lastScrollTop
-
-			if (state.animation?.ignoreEscapes) {
-				state.scrollTop = lastScrollTop
-				return
-			}
-
-			if (isScrollingUp) {
-				setEscapedFromLockInternal(true)
-				setIsAtBottomInternal(false)
-			}
-			if (isScrollingDown) setEscapedFromLockInternal(false)
-
-			if (!state.escapedFromLock && state.isNearBottom) {
-				setIsAtBottomInternal(true)
-			}
-		}, 1)
+		setTimeout(() => processScrollUpdate(scrollTop, lastScrollTop, ignoreScrollToTop), 1)
 	}
 
 	const handleWheel = (e: WheelEvent) => {
@@ -437,49 +431,52 @@ export function useStickToBottom(options: StickToBottomOptions = {}) {
 		}
 	})
 
+	const handleContentResize = (
+		entry: ResizeObserverEntry,
+		previousHeight: { value: number | undefined }
+	) => {
+		const { height } = entry.contentRect
+		const difference = height - (previousHeight.value ?? height)
+		state.resizeDifference = difference
+
+		if (state.scrollTop > state.targetScrollTop) {
+			state.scrollTop = state.targetScrollTop
+		}
+
+		setIsNearBottom(state.isNearBottom)
+
+		if (difference >= 0) {
+			const animation = mergeAnimations(
+				optionsRef(),
+				previousHeight.value ? optionsRef().resize : optionsRef().initial
+			)
+			scrollToBottom({
+				animation,
+				wait: true,
+				preserveScrollPosition: true,
+				duration: animation === 'instant' ? undefined : RETAIN_ANIMATION_DURATION_MS,
+			})
+		} else if (state.isNearBottom) {
+			setEscapedFromLockInternal(false)
+			setIsAtBottomInternal(true)
+		}
+
+		previousHeight.value = height
+		requestAnimationFrame(() => {
+			setTimeout(() => {
+				if (state.resizeDifference === difference) state.resizeDifference = 0
+			}, 1)
+		})
+	}
+
 	const contentRef = createRefCallback<HTMLElement>((content) => {
 		state.resizeObserver?.disconnect()
 		if (!content) return
 
-		let previousHeight: number | undefined
+		const previousHeight: { value: number | undefined } = { value: undefined }
 		state.resizeObserver = new ResizeObserver(([entry]) => {
 			if (!entry) return
-			const { height } = entry.contentRect
-			const difference = height - (previousHeight ?? height)
-			state.resizeDifference = difference
-
-			if (state.scrollTop > state.targetScrollTop) {
-				state.scrollTop = state.targetScrollTop
-			}
-
-			setIsNearBottom(state.isNearBottom)
-
-			if (difference >= 0) {
-				const animation = mergeAnimations(
-					optionsRef(),
-					previousHeight ? optionsRef().resize : optionsRef().initial
-				)
-				scrollToBottom({
-					animation,
-					wait: true,
-					preserveScrollPosition: true,
-					duration:
-						animation === 'instant' ? undefined : RETAIN_ANIMATION_DURATION_MS,
-				})
-			} else {
-				if (state.isNearBottom) {
-					setEscapedFromLockInternal(false)
-					setIsAtBottomInternal(true)
-				}
-			}
-
-			previousHeight = height
-
-			requestAnimationFrame(() => {
-				setTimeout(() => {
-					if (state.resizeDifference === difference) state.resizeDifference = 0
-				}, 1)
-			})
+			handleContentResize(entry, previousHeight)
 		})
 		state.resizeObserver.observe(content)
 	})

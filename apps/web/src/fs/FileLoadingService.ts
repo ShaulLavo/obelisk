@@ -29,8 +29,8 @@ import type {
 	BracketInfo,
 	TreeSitterError,
 	FoldRange,
-} from '../workers/treeSitter/types'
-import { parseBufferWithTreeSitter } from '../treeSitter/workerClient'
+} from '../workers/tree-sitter/types'
+import { parseBufferWithTreeSitter } from '../tree-sitter/workerClient'
 import {
 	getFileSize,
 	readFilePreviewBytes,
@@ -189,42 +189,41 @@ export async function loadFile(options: LoadFileOptions): Promise<FileLoadResult
 /**
  * Load only syntax highlighting for a file (no content loading).
  * Useful when content is already loaded but syntax isn't cached.
+ *
+ * Returns the parsed syntax result, or null if the language is unsupported
+ * or parsing fails.
  */
 export async function loadSyntax(
 	path: string,
 	content: string,
 	fileCache: DocumentCache,
-	onSyntaxReady: (syntax: SyntaxResult) => void
-): Promise<void> {
+): Promise<SyntaxResult | null> {
 	// Check cache first
 	const cached = await fileCache.getAsync(path)
 	if (cached.highlights) {
-		onSyntaxReady({
+		return {
 			highlights: cached.highlights,
 			folds: cached.folds ?? [],
 			brackets: cached.brackets ?? [],
 			errors: cached.errors ?? [],
-		})
-		return
+		}
 	}
 
 	// Parse with tree-sitter
 	const encoder = new TextEncoder()
 	const buffer = encoder.encode(content).buffer
-	const parsePromise = parseBufferWithTreeSitter(path, buffer)
 
-	if (parsePromise) {
-		parsePromise
-			.then((result) => {
-				if (result) {
-					const syntax = toSyntaxResult(result)
-					fileCache.set(path, syntax)
-					onSyntaxReady(syntax)
-				}
-			})
-			.catch((e) => {
-				// Expected for unsupported languages — tree-sitter may not have a parser
-				console.debug('tree-sitter parse skipped (loadSyntax):', path, e)
-			})
+	try {
+		const result = await parseBufferWithTreeSitter(path, buffer)
+		if (result) {
+			const syntax = toSyntaxResult(result)
+			fileCache.set(path, syntax)
+			return syntax
+		}
+	} catch (e) {
+		// Expected for unsupported languages — tree-sitter may not have a parser
+		console.debug('tree-sitter parse skipped (loadSyntax):', path, e)
 	}
+
+	return null
 }

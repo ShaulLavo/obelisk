@@ -22,8 +22,8 @@ export type FontZoomStore = {
 	getZoomOffset: (module: FontModule) => number
 }
 
-const MIN_FONT_SIZE = 6
-const MAX_FONT_SIZE = 48
+const _MIN_FONT_SIZE = 6
+const _MAX_FONT_SIZE = 48
 const ZOOM_STEP = 1
 
 let globalFontZoomStore: FontZoomStore | undefined
@@ -33,6 +33,7 @@ export const createFontZoomStore = (): FontZoomStore => {
 		return globalFontZoomStore
 	}
 
+	/* eslint-disable solid/reactivity -- store created once at module level, not in a component */
 	const [state, setState] = makePersisted(
 		createStore<FontZoomState>({
 			ui: 0,
@@ -43,6 +44,7 @@ export const createFontZoomStore = (): FontZoomStore => {
 			name: 'font-zoom-offsets',
 		}
 	)
+	/* eslint-enable solid/reactivity */
 
 	const zoomIn = (module: FontModule) => {
 		setState(module, (current) => current + ZOOM_STEP)

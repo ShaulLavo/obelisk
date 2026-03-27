@@ -10,6 +10,7 @@ export type SelectPathOptions = {
 	forceReload?: boolean
 }
 
+/** Public actions available to all consumers of the FsContext. */
 export type FsActions = {
 	refresh: (source?: FsSource) => Promise<void>
 	setSource: (source: FsSource) => Promise<void>
@@ -25,7 +26,6 @@ export type FsActions = {
 		path: string,
 		updater: (current: PieceTableSnapshot | undefined) => PieceTableSnapshot | undefined
 	) => void
-	fileCache: DocumentCache
 	saveFile: (path: string) => Promise<void>
 	setDirty: (path: string, isDirty: boolean) => void
 	setSavedContent: (path: string, content: string) => void
@@ -33,6 +33,14 @@ export type FsActions = {
 	pickNewRoot: () => Promise<void>
 	collapseAll: () => void
 	setCreationState: (state: { type: 'file' | 'folder'; parentPath: string } | null) => void
+}
+
+/**
+ * Internal actions for file-loading pipeline internals.
+ * These should only be used by components that participate in the loading pipeline
+ * (e.g., SplitEditorPanel, FileTab), not by general consumers.
+ */
+export type FsInternalActions = {
 	setLoadingState: (path: string, state: FileLoadingState) => void
 	setLoadingError: (path: string, error: FileLoadingError | null) => void
 	setLineStarts: (path: string, lineStarts: number[]) => void
@@ -41,14 +49,23 @@ export type FsActions = {
 	setSyntax: (path: string, syntax: SyntaxData | null) => void
 }
 
-export type FsContextValue = [FsState, FsActions]
+export type FsContextValue = [FsState, FsActions & FsInternalActions, DocumentCache]
 
 export const FsContext = createContext<FsContextValue>()
 
-export function useFs(): FsContextValue {
+export function useFs(): [FsState, FsActions & FsInternalActions] {
 	const ctx = useContext(FsContext)
 	if (!ctx) {
 		throw new Error('useFs must be used within an FsProvider')
 	}
-	return ctx
+	return [ctx[0], ctx[1]]
+}
+
+/** Access the shared document cache from the FsContext. */
+export function useFsCache(): DocumentCache {
+	const ctx = useContext(FsContext)
+	if (!ctx) {
+		throw new Error('useFsCache must be used within an FsProvider')
+	}
+	return ctx[2]
 }

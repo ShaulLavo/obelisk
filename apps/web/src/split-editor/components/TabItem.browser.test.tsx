@@ -112,8 +112,7 @@ describe('TabItem Component', () => {
 		unmount1()
 
 		// Test dirty tab (should show dirty indicator)
-		renderTabItem({ ...mockTab, isDirty: true })
-		viewMode: 'editor' as const,
+		renderTabItem({ ...mockTab, isDirty: true, viewMode: 'editor' as const })
 		dirtyIndicator = document.querySelector('.bg-primary')
 		expect(dirtyIndicator).toBeTruthy()
 

@@ -48,14 +48,14 @@ const RUNTIME_EXPORT = {
 	default: './lib/index.jsx',
 }
 
-const VS_EXPORT = {
+const _VS_EXPORT = {
 	import: './vs/index.js',
 	require: './vs/index.cjs',
 	types: './vs/index.d.ts',
 	default: './vs/index.js',
 }
 
-const VS_WILDCARD_EXPORT = {
+const _VS_WILDCARD_EXPORT = {
 	import: './vs/*.js',
 	require: './vs/*.cjs',
 	types: './vs/*.d.ts',

@@ -21,7 +21,6 @@
     "elysia": "^1.4.22",
     "jszip": "^3.10.1",
     "subset-font": "^2.4.0",
-    "up-fetch": "^2.5.0",
     "zod": "^4.1.13"
   },
   "devDependencies": {

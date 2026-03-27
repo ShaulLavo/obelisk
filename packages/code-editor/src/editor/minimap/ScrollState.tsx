@@ -87,7 +87,7 @@ export const ScrollStateProvider: ParentComponent = (props) => {
 		setScrollElementSignal(element)
 
 		if (element) {
-			scrollHandler = () => updateScrollState()
+			scrollHandler = updateScrollState
 			element.addEventListener('scroll', scrollHandler, { passive: true })
 			updateScrollState()
 		}

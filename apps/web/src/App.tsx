@@ -5,7 +5,7 @@ import { VfsPathBenchDashboard } from './bench/VfsPathBenchDashboard'
 import Main from './Main'
 import { Providers } from './Providers'
 import { SqliteStudio } from './sqlite-studio/SqliteStudio'
-import { disposeTreeSitterWorker } from './treeSitter/workerClient'
+import { disposeTreeSitterWorker } from './tree-sitter/workerClient'
 
 const App: Component = () => {
 	onCleanup(() => {

@@ -40,6 +40,7 @@ export const AutoHideWrapper: Component<AutoHideWrapperProps> = (props) => {
 		<div
 			class={clsx('auto-hide-wrapper', localProps.class)}
 			data-visibility={restProps.visibility}
+			// eslint-disable-next-line solid/reactivity -- wheelHandler reads reactive localProps.onWheel intentionally
 			on:wheel={wheelHandler()}
 			{...restProps}
 		>

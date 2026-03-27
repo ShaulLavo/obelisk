@@ -1,5 +1,5 @@
-import type { RootCtx, DirTreeNode, TreeNode } from '@repo/fs'
-import type { LocalEchoController } from './localEcho'
+import type { RootCtx, DirTreeNode } from '@repo/fs'
+import type { LocalEchoController } from './local-echo'
 import type { FsSource, FsState } from '../fs/types'
 import type { PathIndex } from '../fs/hooks/createTreeState'
 import type { FsActions } from '../fs/context/FsContext'

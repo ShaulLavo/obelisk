@@ -122,28 +122,18 @@ export class GrepCoordinator {
 				const worker = this.#workerPool[workerIndex]!.proxy
 
 				const result = await worker.grepFile(task)
+				const filtered = this.#filterResult(result, options)
 
-				if (!result.error) {
-					if (options.filesWithMatches) {
-						if (result.matchCount && result.matchCount > 0) {
-							allMatches.push({
-								path,
-								lineNumber: 0,
-								lineContent: '',
-								matchStart: 0,
-							})
-						}
-					} else if (options.filesWithoutMatch) {
-						if (!result.matchCount || result.matchCount === 0) {
-							allMatches.push({
-								path,
-								lineNumber: 0,
-								lineContent: '',
-								matchStart: 0,
-							})
-						}
+				if (filtered) {
+					if (options.filesWithMatches || options.filesWithoutMatch) {
+						allMatches.push({
+							path,
+							lineNumber: 0,
+							lineContent: '',
+							matchStart: 0,
+						})
 					} else {
-						allMatches.push(...result.matches)
+						allMatches.push(...filtered.matches)
 					}
 
 					matchesFoundTotal += result.matchCount ?? result.matches.length
@@ -163,7 +153,9 @@ export class GrepCoordinator {
 				) {
 					reachedLimit = true
 				}
-			} catch {
+			} catch (error) {
+				// File inaccessible during grep (permissions, deletion race, etc.)
+				console.debug('[GrepCoordinator] skipping file:', path, error)
 				filesScanned++
 			} finally {
 				releaseSlot()
@@ -201,7 +193,10 @@ export class GrepCoordinator {
 						pendingTasks.push(task)
 					}
 				}
-			} catch {}
+			} catch (error) {
+				// Directory walk failed (permission denied, missing dir, etc.)
+				console.debug('[GrepCoordinator] directory walk failed:', searchPath, error)
+			}
 		}
 
 		await Promise.all(pendingTasks)
@@ -274,31 +269,16 @@ export class GrepCoordinator {
 					includeDirs: true,
 					filter: (entry) => this.#shouldIncludeEntry(entry, options),
 				})) {
-					if (entry.kind === 'file') {
-						try {
-							const handle = await this.#fs.getFileHandleForRelative(
-								entry.path,
-								false
-							)
-							const task: GrepFileTask = {
-								fileHandle: handle,
-								path: entry.path,
-								patternBytes,
-								chunkSize,
-								options: effectiveOptions,
-							}
-
-							const worker = this.#workerPool[0]!.proxy
-							const result = await worker.grepFile(task)
-
-							const filtered = this.#filterResult(result, options)
-							if (filtered) yield filtered
-						} catch {
-							// Skip files we can't access
-						}
-					}
+					if (entry.kind !== 'file') continue
+					const result = await this.#grepSingleFile(entry.path, patternBytes, chunkSize, effectiveOptions)
+					if (!result) continue
+					const filtered = this.#filterResult(result, options)
+					if (filtered) yield filtered
 				}
-			} catch {}
+			} catch (error) {
+				// Directory walk failed (permission denied, missing dir, etc.)
+				console.debug('[GrepCoordinator] directory walk failed:', searchPath, error)
+			}
 		}
 	}
 
@@ -326,6 +306,24 @@ export class GrepCoordinator {
 			return result
 		}
 		return null
+	}
+
+	async #grepSingleFile(
+		path: string,
+		patternBytes: Uint8Array,
+		chunkSize: number,
+		options: GrepFileTask['options']
+	): Promise<GrepFileResult | null> {
+		try {
+			const handle = await this.#fs.getFileHandleForRelative(path, false)
+			const task: GrepFileTask = { fileHandle: handle, path, patternBytes, chunkSize, options }
+			const worker = this.#workerPool[0]!.proxy
+			return await worker.grepFile(task)
+		} catch (error) {
+			// Skip files we can't access
+			console.debug('[GrepCoordinator] skipping inaccessible file:', path, error)
+			return null
+		}
 	}
 
 	#resolveOptions(options: GrepOptions): GrepFileTask['options'] {
@@ -356,42 +354,20 @@ export class GrepCoordinator {
 		entry: { name: string; kind: string },
 		options: GrepOptions
 	): boolean {
-		if (!options.includeHidden && entry.name.startsWith('.')) {
-			return false
-		}
-
+		if (!options.includeHidden && entry.name.startsWith('.')) return false
 		if (entry.kind === 'directory') return true
 
 		const name = entry.name
 
-		if (
-			options.excludePatterns &&
-			this.#matchesPattern(name, options.excludePatterns)
-		) {
-			return false
-		}
+		if (options.excludePatterns && this.#matchesPattern(name, options.excludePatterns)) return false
 
-		if (options.typeNot) {
-			const typePatterns = FILE_TYPES[options.typeNot]
-			if (typePatterns && this.#matchesPattern(name, typePatterns)) {
-				return false
-			}
-		}
+		const typeNotPatterns = options.typeNot ? FILE_TYPES[options.typeNot] : undefined
+		if (typeNotPatterns && this.#matchesPattern(name, typeNotPatterns)) return false
 
-		let matchedInclude = true
-		if (options.includePatterns && options.includePatterns.length > 0) {
-			matchedInclude = this.#matchesPattern(name, options.includePatterns)
-		}
-		if (!matchedInclude) return false
+		if (options.includePatterns?.length && !this.#matchesPattern(name, options.includePatterns)) return false
 
-		if (options.type) {
-			const typePatterns = FILE_TYPES[options.type]
-			if (typePatterns) {
-				if (!this.#matchesPattern(name, typePatterns)) {
-					return false
-				}
-			}
-		}
+		const typePatterns = options.type ? FILE_TYPES[options.type] : undefined
+		if (typePatterns && !this.#matchesPattern(name, typePatterns)) return false
 
 		return true
 	}
@@ -402,21 +378,9 @@ export class GrepCoordinator {
 	 */
 	#matchesPattern(name: string, patterns: string[]): boolean {
 		for (const pattern of patterns) {
-			if (name === pattern) {
-				return true
-			}
-			if (pattern.startsWith('*.')) {
-				const ext = pattern.slice(1)
-				if (name.endsWith(ext)) {
-					return true
-				}
-			}
-			if (pattern.endsWith('*') && !pattern.startsWith('*')) {
-				const prefix = pattern.slice(0, -1)
-				if (name.startsWith(prefix)) {
-					return true
-				}
-			}
+			if (name === pattern) return true
+			if (pattern.startsWith('*.') && name.endsWith(pattern.slice(1))) return true
+			if (pattern.endsWith('*') && !pattern.startsWith('*') && name.startsWith(pattern.slice(0, -1))) return true
 		}
 		return false
 	}

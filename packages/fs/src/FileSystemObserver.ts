@@ -108,7 +108,7 @@ export class FileSystemObserverPolyfill {
 		}
 		if (this.isNative && global.FileSystemObserver) {
 			this.nativeObserver = new global.FileSystemObserver(
-				(records, _observer) => {
+				(records) => {
 					// Wrap the native callback to use our observer instance
 					this.callback(records as FileSystemChangeRecord[], this)
 				}
@@ -140,7 +140,7 @@ export class FileSystemObserverPolyfill {
 			this.pollingInFlight.add(handle)
 			try {
 				await this.checkForChanges(handle)
-			} catch (error) {
+			} catch {
 				const record: FileSystemChangeRecord = {
 					root: handle,
 					changedHandle: handle,
@@ -227,6 +227,7 @@ export class FileSystemObserverPolyfill {
 				}
 			}
 		} catch {
+			// intentionally empty
 		}
 
 		return { kind: 'directory', children }
@@ -287,7 +288,7 @@ export class FileSystemObserverPolyfill {
 			const oldChildren = oldSnap.children ?? new Map()
 			const newChildren = newSnap.children ?? new Map()
 
-			for (const [name, oldChild] of oldChildren) {
+			for (const [name] of oldChildren) {
 				if (!newChildren.has(name)) {
 					changes.push({
 						root: rootHandle,

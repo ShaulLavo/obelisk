@@ -4,7 +4,7 @@ import type {
 	BracketInfo,
 	TreeSitterError,
 	FoldRange,
-} from '../../workers/treeSitter/types'
+} from '../../workers/tree-sitter/types'
 
 export type DocumentCacheEntry = {
 	pieceTable?: PieceTableSnapshot

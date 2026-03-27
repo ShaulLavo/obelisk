@@ -1,4 +1,4 @@
-import type { LocalEchoController } from './localEcho'
+import type { LocalEchoController } from './local-echo'
 
 export const printColumns = (
 	localEcho: LocalEchoController | null,

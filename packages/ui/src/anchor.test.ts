@@ -14,7 +14,6 @@ import {
 	createSafePolygon,
 	createSafePolygonHandler,
 	type Placement,
-	type Point,
 } from './anchor'
 
 describe('anchor.ts', () => {

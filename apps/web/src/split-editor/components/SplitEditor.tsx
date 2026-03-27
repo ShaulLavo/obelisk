@@ -43,6 +43,7 @@ export function SplitEditor(props: SplitEditorProps) {
 	})
 
 	return (
+		// eslint-disable-next-line solid/reactivity -- layoutManager is a stable object reference
 		<LayoutContext.Provider value={props.layoutManager}>
 			<div
 				class={`split-editor h-full w-full ${props.class ?? ''}`}

@@ -40,7 +40,7 @@ export const FontCard = (props: FontCardProps) => {
 
 		try {
 			await actions.downloadFont(props.name)
-		} catch (error) {
+		} catch {
 			// Store handles retries; log here for component-level diagnostics
 		}
 	}
@@ -56,7 +56,7 @@ export const FontCard = (props: FontCardProps) => {
 		<FontErrorBoundary
 			maxRetries={3}
 			retryDelay={2000}
-			onError={(error) => {
+			onError={(_error) => {
 				// Error handled by FontErrorBoundary UI
 			}}
 		>

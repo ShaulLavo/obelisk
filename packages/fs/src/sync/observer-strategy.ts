@@ -1,6 +1,5 @@
 import type {
 	FileSystemChangeRecord,
-	FileSystemObserverCallback,
 } from '../FileSystemObserver'
 import { createFileSystemObserver, hasNativeObserver } from '../FileSystemObserver'
 
@@ -57,11 +56,7 @@ export class NativeObserverStrategy implements ObserverStrategy {
 		this.changeHandlers.clear()
 	}
 
-	on(event: 'change', handler: (changes: FileSystemChangeRecord[]) => void): () => void {
-		if (event !== 'change') {
-			throw new Error(`Unsupported event type: ${event}`)
-		}
-
+	on(_event: 'change', handler: (changes: FileSystemChangeRecord[]) => void): () => void {
 		this.changeHandlers.add(handler)
 
 		return () => {
@@ -112,11 +107,7 @@ export class PollingObserverStrategy implements ObserverStrategy {
 		this.changeHandlers.clear()
 	}
 
-	on(event: 'change', handler: (changes: FileSystemChangeRecord[]) => void): () => void {
-		if (event !== 'change') {
-			throw new Error(`Unsupported event type: ${event}`)
-		}
-
+	on(_event: 'change', handler: (changes: FileSystemChangeRecord[]) => void): () => void {
 		this.changeHandlers.add(handler)
 
 		return () => {

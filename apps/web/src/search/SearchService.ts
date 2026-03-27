@@ -10,9 +10,7 @@ import type { SearchResult, FileMetadata } from './types'
 
 export class SearchService {
 	async init(): Promise<void> {
-		const result = await initSqlite()
-		if (!result.opfsEnabled) {
-			}
+		await initSqlite()
 	}
 
 	search(query: string): Promise<SearchResult[]> {

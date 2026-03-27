@@ -57,7 +57,9 @@ export async function writeStreamToWritable(
 	} catch (err) {
 		try {
 			await reader.cancel(err)
-		} catch {}
+		} catch {
+			// intentionally empty
+		}
 		throw err
 	} finally {
 		reader.releaseLock()

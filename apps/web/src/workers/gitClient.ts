@@ -1,6 +1,5 @@
 import { wrap, proxy, type Remote } from 'comlink'
 import type {
-	GitCloneRequest,
 	GitFileCallback,
 	GitProgressCallback,
 	GitWorkerApi,

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* global console, process */
 import { build } from 'vite'
 
 // Intercept process.exit to see what's happening

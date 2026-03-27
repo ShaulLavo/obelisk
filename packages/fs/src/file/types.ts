@@ -3,6 +3,17 @@ import type { FileHandle } from './FileHandle'
 
 export type OpenMode = 'r' | 'rw' | 'rw-unsafe'
 
+/**
+ * Minimal interface for a directory handle, used as the parent reference
+ * in both DirHandle and FileHandle to avoid a mutual import cycle.
+ */
+export interface HandleParent {
+	readonly kind: 'dir'
+	readonly path: string
+	readonly name: string
+	readonly parent: HandleParent | null
+}
+
 export interface RootCtxOptions {
 	basePath?: string
 	normalizePaths?: boolean

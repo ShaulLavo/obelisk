@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import * as fc from 'fast-check'
-import { ByteContentHandle, ByteContentHandleFactory } from './content-handle'
+import { ByteContentHandleFactory } from './content-handle'
 
 describe('ContentHandle', () => {
 	describe('Property 7: Content Handle Round-Trip', () => {

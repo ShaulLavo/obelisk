@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, fireEvent, cleanup, screen } from '@solidjs/testing-library'
+import { render, fireEvent, cleanup } from '@solidjs/testing-library'
 import { Tooltip, TooltipTrigger, TooltipContent } from './tooltip'
 
 describe('Tooltip', () => {

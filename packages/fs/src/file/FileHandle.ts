@@ -3,6 +3,7 @@ import type {
 	RootCtxInternal,
 	OpenMode,
 	ReadableByteStream,
+	HandleParent,
 } from './types'
 import { getParentPath } from './utils/path'
 import {
@@ -12,7 +13,18 @@ import {
 	textEncoder,
 	writeToWritable,
 } from './utils/streams'
-import { DirHandle } from './DirHandle'
+
+/**
+ * Minimal interface for a DirHandle copy target, avoiding a direct import
+ * of DirHandle (which would create a mutual import cycle).
+ */
+type CopyTargetDir = {
+	readonly kind: 'dir'
+	create(): Promise<unknown>
+	getFile(name: string, mode?: OpenMode): FileHandle
+}
+
+type CopyTarget = CopyTargetDir | FileHandle
 
 export type SyncAccessHandle = {
 	read: (buffer: BufferSource, opts?: { at?: number }) => number
@@ -43,7 +55,7 @@ export class FileHandle {
 	readonly kind = 'file' as const
 	readonly path: string
 	readonly name: string
-	readonly parent: DirHandle | null
+	readonly parent: HandleParent | null
 
 	constructor(ctx: RootCtx, path: string, mode: OpenMode = 'r') {
 		const impl = ctx as RootCtxInternal
@@ -60,7 +72,7 @@ export class FileHandle {
 
 		const parentDirPath = getParentPath(resolved.relativeSegments)
 		this.parent =
-			parentDirPath === null ? null : new DirHandle(impl, parentDirPath)
+			parentDirPath === null ? null : impl.dir(parentDirPath)
 	}
 
 	async text(): Promise<string> {
@@ -136,26 +148,34 @@ export class FileHandle {
 
 		const writer = await this.createWriter()
 		try {
-			if (isReadableStream(content)) {
-				const reader = content.getReader()
-				let position = size
-
-				while (true) {
-					const { done, value } = await reader.read()
-					if (done) break
-					if (!value) continue
-					const chunk =
-						value instanceof Uint8Array
-							? value
-							: bufferSourceToUint8Array(value as BufferSource)
-					await writer.write(chunk as BufferSource, { at: position })
-					position += chunk.byteLength
-				}
-			} else {
+			if (!isReadableStream(content)) {
 				await writer.write(content, { at: size })
+				return
 			}
+			await this.#appendStream(writer, content, size)
 		} finally {
 			await writer.close()
+		}
+	}
+
+	async #appendStream(
+		writer: Awaited<ReturnType<FileHandle['createWriter']>>,
+		content: ReadableByteStream,
+		startPosition: number
+	): Promise<void> {
+		const reader = content.getReader()
+		let position = startPosition
+
+		while (true) {
+			const { done, value } = await reader.read()
+			if (done) break
+			if (!value) continue
+			const chunk =
+				value instanceof Uint8Array
+					? value
+					: bufferSourceToUint8Array(value as BufferSource)
+			await writer.write(chunk as BufferSource, { at: position })
+			position += chunk.byteLength
 		}
 	}
 
@@ -352,26 +372,28 @@ export class FileHandle {
 		}
 	}
 
-	async copyTo(target: DirHandle | FileHandle): Promise<FileHandle> {
-		if (target instanceof DirHandle) {
-			await target.create()
-			const destFile = target.getFile(this.name, this.#mode)
+	async copyTo(target: CopyTarget): Promise<FileHandle> {
+		if (target.kind === 'dir') {
+			const dir = target as CopyTargetDir
+			await dir.create()
+			const destFile = dir.getFile(this.name, this.#mode)
 			await destFile.write(await this.stream(), { truncate: true })
 			return destFile
 		}
 
+		const file = target as FileHandle
 		if (
-			target === this ||
-			(target.path === this.path && target.#ctx === this.#ctx)
+			file === this ||
+			(file.path === this.path && file.#ctx === this.#ctx)
 		) {
-			return target
+			return file
 		}
 
-		await target.write(await this.stream(), { truncate: true })
-		return target
+		await file.write(await this.stream(), { truncate: true })
+		return file
 	}
 
-	async moveTo(target: DirHandle | FileHandle): Promise<FileHandle> {
+	async moveTo(target: CopyTarget): Promise<FileHandle> {
 		const copied = await this.copyTo(target)
 		await this.remove()
 		return copied

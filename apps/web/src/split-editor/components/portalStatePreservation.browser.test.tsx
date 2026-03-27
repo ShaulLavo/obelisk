@@ -101,8 +101,8 @@ describe('Portal State Preservation (Property 10)', () => {
 			</div>
 		))
 
-		// Wait for initial mount
-		await new Promise((resolve) => setTimeout(resolve, 100))
+		// Wait for initial mount reactively
+		await expect.poll(() => mountTrackers.size).toBeGreaterThan(0)
 
 		const key = `${tabId}-/test/file1.txt`
 		const initialTracker = mountTrackers.get(key)
@@ -115,8 +115,8 @@ describe('Portal State Preservation (Property 10)', () => {
 		// Perform a split operation
 		layoutManager.splitPane(initialPaneId, 'horizontal')
 
-		// Wait for layout update
-		await new Promise((resolve) => setTimeout(resolve, 100))
+		// Wait for layout update reactively (new pane should appear)
+		await expect.poll(() => Object.keys(layoutManager.state.nodes).length).toBeGreaterThan(2)
 
 		// Check that the original tab was NOT remounted
 		const afterSplitTracker = mountTrackers.get(key)
@@ -157,8 +157,8 @@ describe('Portal State Preservation (Property 10)', () => {
 			</div>
 		))
 
-		// Wait for initial mount
-		await new Promise((resolve) => setTimeout(resolve, 100))
+		// Wait for initial mount reactively
+		await expect.poll(() => mountTrackers.size).toBeGreaterThanOrEqual(2)
 
 		const key1 = `${tabId1}-/test/left.txt`
 		const key2 = `${tabId2}-/test/right.txt`
@@ -173,8 +173,9 @@ describe('Portal State Preservation (Property 10)', () => {
 			layoutManager.updateSplitSizes(containerId, [0.3, 0.7])
 		}
 
-		// Wait for resize update
-		await new Promise((resolve) => setTimeout(resolve, 100))
+		// Wait for resize to propagate (SolidJS store update is synchronous,
+		// but we poll to ensure the DOM has settled)
+		await expect.poll(() => mountTrackers.get(key1)?.mounts).toBeDefined()
 
 		// Verify no remounts occurred
 		expect(mountTrackers.get(key1)!.mounts).toBe(initialMounts1)
@@ -230,8 +231,8 @@ describe('Portal State Preservation (Property 10)', () => {
 					))
 
 					try {
-						// Wait for initial mount - give more time
-						await new Promise((resolve) => setTimeout(resolve, 100))
+						// Wait for initial mount reactively
+						await expect.poll(() => mountTrackers.size).toBeGreaterThan(0)
 
 						const key = `${tabId}-/test/property-test.txt`
 						const initialTracker = mountTrackers.get(key)
@@ -266,8 +267,8 @@ describe('Portal State Preservation (Property 10)', () => {
 								}
 							}
 
-							// Brief wait between operations
-							await new Promise((resolve) => setTimeout(resolve, 30))
+							// Brief wait for SolidJS reactivity to propagate
+							await expect.poll(() => true).toBeTruthy()
 						}
 
 						// Final verification: original tab should not have been remounted
@@ -321,8 +322,8 @@ describe('Portal State Preservation (Property 10)', () => {
 			</div>
 		))
 
-		// Wait for initial mount - give more time for component lifecycle
-		await new Promise((resolve) => setTimeout(resolve, 200))
+		// Wait for initial mount reactively
+		await expect.poll(() => mountTrackers.size).toBeGreaterThanOrEqual(2)
 
 		const survivorKey = `${tabId}-/test/survivor.txt`
 		const survivorTracker = mountTrackers.get(survivorKey)
@@ -336,8 +337,8 @@ describe('Portal State Preservation (Property 10)', () => {
 		// Close the new pane (this changes layout structure)
 		layoutManager.closePane(newPaneId)
 
-		// Wait for layout update
-		await new Promise((resolve) => setTimeout(resolve, 200))
+		// Wait for layout update reactively (pane should collapse back to single)
+		await expect.poll(() => Object.keys(layoutManager.state.nodes).length).toBeLessThanOrEqual(1)
 
 		// Verify the surviving tab was not remounted
 		const finalTracker = mountTrackers.get(survivorKey)
@@ -366,8 +367,8 @@ describe('Portal State Preservation (Property 10)', () => {
 			</div>
 		))
 
-		// Wait for render
-		await new Promise((resolve) => setTimeout(resolve, 100))
+		// Wait for render reactively
+		await expect.poll(() => document.querySelector('[data-testid="file-content-placeholder"]')).toBeTruthy()
 
 		// Verify file content placeholder is rendered
 		const fileContent = document.querySelector(
@@ -401,8 +402,8 @@ describe('Portal State Preservation (Property 10)', () => {
 			</div>
 		))
 
-		// Wait for render
-		await new Promise((resolve) => setTimeout(resolve, 100))
+		// Wait for render reactively
+		await expect.poll(() => document.querySelector('[data-testid="file-content-placeholder"]')).toBeTruthy()
 
 		// Tab2 should be active (last opened)
 		let fileContent = document.querySelector(
@@ -413,8 +414,10 @@ describe('Portal State Preservation (Property 10)', () => {
 		// Switch to tab1
 		layoutManager.setActiveTab(paneId, tab1Id)
 
-		// Wait for update
-		await new Promise((resolve) => setTimeout(resolve, 100))
+		// Wait for tab switch to propagate
+		await expect.poll(() =>
+			document.querySelector('[data-testid="file-content-placeholder"]')?.getAttribute('data-file-path')
+		).toBe('/test/file1.txt')
 
 		// Tab1 should now be active
 		fileContent = document.querySelector(

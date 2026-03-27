@@ -1,14 +1,18 @@
 import type { LanguageId } from './types'
 
-import jsHighlightsQuerySource from '../../treeSitter/queries/javascript-highlights.scm?raw'
+import jsHighlightsQuerySource from '../../tree-sitter/queries/javascript-highlights.scm?raw'
 import jsJsxHighlightsQuerySource from 'tree-sitter-javascript/queries/highlights-jsx.scm?raw'
-import tsHighlightsQuerySource from '../../treeSitter/queries/typescript-highlights.scm?raw'
-import jsFoldsQuerySource from '../../treeSitter/queries/javascript-folds.scm?raw'
-import tsFoldsQuerySource from '../../treeSitter/queries/typescript-folds.scm?raw'
-import jsonHighlightsQuerySource from '../../treeSitter/queries/json-highlights.scm?raw'
-import htmlHighlightsQuerySource from '../../treeSitter/queries/html-highlights.scm?raw'
-import markdownHighlightsQuerySource from '../../treeSitter/queries/markdown-highlights.scm?raw'
-import xmlHighlightsQuerySource from '../../treeSitter/queries/xml-highlights.scm?raw'
+import tsHighlightsQuerySource from '../../tree-sitter/queries/typescript-highlights.scm?raw'
+import jsFoldsQuerySource from '../../tree-sitter/queries/javascript-folds.scm?raw'
+import tsFoldsQuerySource from '../../tree-sitter/queries/typescript-folds.scm?raw'
+import jsonHighlightsQuerySource from 'tree-sitter-json/queries/highlights.scm?raw'
+import htmlHighlightsQuerySource from 'tree-sitter-html/queries/highlights.scm?raw'
+import markdownHighlightsQuerySource from '../../tree-sitter/queries/markdown-highlights.scm?raw'
+import xmlHighlightsQuerySource from '@tree-sitter-grammars/tree-sitter-xml/queries/xml/highlights.scm?raw'
+import jsonFoldsQuerySource from '../../tree-sitter/queries/json-folds.scm?raw'
+import htmlFoldsQuerySource from '../../tree-sitter/queries/html-folds.scm?raw'
+import markdownFoldsQuerySource from '../../tree-sitter/queries/markdown-folds.scm?raw'
+import xmlFoldsQuerySource from '../../tree-sitter/queries/xml-folds.scm?raw'
 
 // File extension to language ID mapping
 export const EXTENSION_MAP: Record<string, LanguageId> = {
@@ -67,22 +71,22 @@ export const LANGUAGE_CONFIG: Record<
 	json: {
 		wasm: '/tree-sitter/tree-sitter-json.wasm',
 		highlightQueries: [jsonHighlightsQuerySource],
-		foldQueries: [],
+		foldQueries: [jsonFoldsQuerySource],
 	},
 	html: {
 		wasm: '/tree-sitter/tree-sitter-html.wasm',
 		highlightQueries: [htmlHighlightsQuerySource],
-		foldQueries: [],
+		foldQueries: [htmlFoldsQuerySource],
 	},
 	markdown: {
 		wasm: '/tree-sitter/tree-sitter-markdown.wasm',
 		highlightQueries: [markdownHighlightsQuerySource],
-		foldQueries: [],
+		foldQueries: [markdownFoldsQuerySource],
 	},
 	xml: {
 		wasm: '/tree-sitter/tree-sitter-xml.wasm',
 		highlightQueries: [xmlHighlightsQuerySource],
-		foldQueries: [],
+		foldQueries: [xmlFoldsQuerySource],
 	},
 }
 

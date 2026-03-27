@@ -4,8 +4,7 @@ import { VsSettingsGear } from '@repo/icons/vs/VsSettingsGear'
 import { VsFileBinary } from '@repo/icons/vs/VsFileBinary'
 import { Flex } from '@repo/ui/flex'
 import { Button } from '@repo/ui/button'
-import type { ViewMode } from '../types/ViewMode'
-import type { ViewModeDefinition } from '../registry/ViewModeRegistry'
+import type { ViewMode, ViewModeDefinition } from '../../shared/viewMode'
 
 type ViewModeToggleProps = {
 	currentPath: string

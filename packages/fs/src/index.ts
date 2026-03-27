@@ -6,7 +6,10 @@ export {
 	MemoryFileHandle,
 	pickNewLocalRoot,
 } from './getRoot'
-export type { MemHandle } from './getRoot'
+export type { FsType, MemHandle } from './getRoot'
+
+/** Alias for FsType, used in apps/web for historical reasons. */
+export type { FsType as FsSource } from './getRoot'
 
 export {
 	type FilePath,
@@ -43,6 +46,7 @@ export type {
 	SyncAccessHandle,
 	SyncCapableFileHandle,
 	OpenMode,
+	HandleParent,
 	RootCtxOptions,
 	TreeKind,
 	FsTreeBase,

@@ -131,10 +131,13 @@ export class FontDownloadService {
 		}
 	}
 
-	/**
-	 * Install a font using FontFace API after it's been downloaded and cached
-	 */
-	async installFont(name: string): Promise<void> {
+	async downloadAndInstallFont(
+		name: string,
+		downloadUrl: string,
+		onProgress?: DownloadProgressCallback
+	): Promise<void> {
+		await this.downloadFont(name, downloadUrl, onProgress)
+
 		const installResult = await RetryService.withRetry(
 			async () => {
 				await fontInstallationService.installFont(name, () => {})
@@ -146,14 +149,12 @@ export class FontDownloadService {
 				backoffFactor: 2,
 				retryCondition: (error: Error) => {
 					const message = error.message.toLowerCase()
-					// Don't retry on font format or browser support issues
 					if (
 						message.includes('unsupported') ||
 						message.includes('invalid font')
 					) {
 						return false
 					}
-					// Retry on temporary failures
 					return (
 						message.includes('failed to load') || message.includes('network')
 					)
@@ -168,19 +169,6 @@ export class FontDownloadService {
 				new Error('Font installation failed after retries')
 			)
 		}
-	}
-
-	async downloadAndInstallFont(
-		name: string,
-		downloadUrl: string,
-		onProgress?: DownloadProgressCallback
-	): Promise<void> {
-		// Download the font first
-		await this.downloadFont(name, downloadUrl, onProgress)
-
-		// Then install it using FontFace API
-		await this.installFont(name)
-
 	}
 
 	cancelDownload(name: string): void {

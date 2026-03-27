@@ -1,4 +1,5 @@
 import { createLazySingleton } from './createLazySingleton'
+import { withFontStorage } from './withFontStorage'
 
 export interface ServiceWorkerCacheStats {
 	fontCount: number
@@ -96,18 +97,20 @@ export class ServiceWorkerManager {
 			return []
 		}
 
-		try {
-			await this.getCacheStats()
-			// Return list of cached font URLs
-			const cache = await caches.open('nerdfonts-v1')
-			const keys = await cache.keys()
+		return withFontStorage(
+			async () => {
+				await this.getCacheStats()
+				// Return list of cached font URLs
+				const cache = await caches.open('nerdfonts-v1')
+				const keys = await cache.keys()
 
-			return keys
-				.filter((request) => this.isFontRequest(new URL(request.url)))
-				.map((request) => request.url)
-		} catch {
-			return []
-		}
+				return keys
+					.filter((request) => this.isFontRequest(new URL(request.url)))
+					.map((request) => request.url)
+			},
+			[],
+			'ServiceWorkerManager.getCacheManifest',
+		)
 	}
 
 	onMessage(type: string, handler: (data: unknown) => void): void {
@@ -169,36 +172,38 @@ export class ServiceWorkerManager {
 	}
 
 	private async handleFontAccessed(fontName: string): Promise<void> {
-		try {
-			const { fontMetadataService } = await import('./FontMetadataService')
-			await fontMetadataService.updateLastAccessed(fontName)
-		} catch (error) {
-			// Last-accessed update is best-effort; non-critical
-			console.debug('[ServiceWorkerManager] Failed to update lastAccessed for', fontName, error)
-		}
+		await withFontStorage(
+			async () => {
+				const { fontMetadataService } = await import('./FontMetadataService')
+				await fontMetadataService.updateLastAccessed(fontName)
+			},
+			undefined,
+			`ServiceWorkerManager.handleFontAccessed(${fontName})`,
+		)
 	}
 
 	private async handleStoreMetadata(
 		fontName: string,
 		metadata: { cachedAt: string | number; size: number; version: string }
 	): Promise<void> {
-		try {
-			const { fontMetadataService } = await import('./FontMetadataService')
+		await withFontStorage(
+			async () => {
+				const { fontMetadataService } = await import('./FontMetadataService')
 
-			const fontMetadata = {
-				name: fontName,
-				downloadUrl: '', // Not available from service worker
-				installedAt: new Date(metadata.cachedAt),
-				size: metadata.size,
-				version: metadata.version,
-				lastAccessed: new Date(metadata.cachedAt),
-			}
+				const fontMetadata = {
+					name: fontName,
+					downloadUrl: '', // Not available from service worker
+					installedAt: new Date(metadata.cachedAt),
+					size: metadata.size,
+					version: metadata.version,
+					lastAccessed: new Date(metadata.cachedAt),
+				}
 
-			await fontMetadataService.storeFontMetadata(fontMetadata)
-		} catch (error) {
-			// Metadata storage from SW is best-effort; non-critical
-			console.debug('[ServiceWorkerManager] Failed to store font metadata from SW', error)
-		}
+				await fontMetadataService.storeFontMetadata(fontMetadata)
+			},
+			undefined,
+			'ServiceWorkerManager.handleStoreMetadata',
+		)
 	}
 
 	private isFontRequest(url: URL): boolean {

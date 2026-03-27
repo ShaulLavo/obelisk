@@ -1,4 +1,3 @@
-import { trackMicro } from '@repo/perf'
 import type { Tree } from 'web-tree-sitter'
 import type {
 	TreeSitterParseResult,
@@ -52,7 +51,7 @@ const applyEditBatch = (
 export const extractTreeAnnotations = (
 	tree: Tree,
 	languageId: string,
-	path?: string
+	_path?: string
 ): TreeSitterParseResult => {
 	const { brackets, errors } = collectTreeData(tree)
 	const captures = runHighlightQueries(tree, languageId)

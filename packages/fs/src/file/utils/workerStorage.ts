@@ -56,12 +56,8 @@ export interface WorkerStorage {
 async function createWorkerStorage(): Promise<WorkerStorage> {
 	const handles = new Map<string, FileSystemSyncAccessHandle>()
 	const filenames = new Set<string>()
-	const globalScope = globalThis as typeof globalThis & {
-		addEventListener?: (type: string, listener: () => void) => void
-	}
 
-	const nav = (globalThis as typeof globalThis & { navigator?: Navigator })
-		.navigator
+	const nav = globalThis.navigator
 	const storageManager = nav?.storage
 	if (!storageManager?.getDirectory) {
 		throw new Error(
@@ -71,9 +67,15 @@ async function createWorkerStorage(): Promise<WorkerStorage> {
 
 	const root = await storageManager.getDirectory()
 
-	const fireAndForget = (promise: Promise<unknown>, context: string): void => {
+	const fireAndForgetRead = (promise: Promise<unknown>, context: string): void => {
 		promise.catch((err) => {
 			console.debug('[WorkerStorage]', context, err)
+		})
+	}
+
+	const fireAndForgetMutate = (promise: Promise<unknown>, context: string): void => {
+		promise.catch((err) => {
+			console.warn('[WorkerStorage]', context, err)
 		})
 	}
 
@@ -90,7 +92,9 @@ async function createWorkerStorage(): Promise<WorkerStorage> {
 					filenames.add(name)
 				}
 			}
-		} catch {}
+		} catch {
+			// Storage enumeration unavailable — start with empty key set
+		}
 	}
 
 	await loadInitialKeys()
@@ -100,7 +104,9 @@ async function createWorkerStorage(): Promise<WorkerStorage> {
 		if (handle) {
 			try {
 				handle.close()
-			} catch {}
+			} catch {
+				// Handle already closed or invalidated — safe to ignore
+			}
 			handles.delete(filename)
 		}
 	}
@@ -142,6 +148,7 @@ async function createWorkerStorage(): Promise<WorkerStorage> {
 		try {
 			return JSON.parse(textDecoder.decode(buffer))
 		} catch {
+			// Corrupted or non-JSON data on disk — treat as missing
 			return null
 		}
 	}
@@ -192,7 +199,7 @@ async function createWorkerStorage(): Promise<WorkerStorage> {
 			if (handle) {
 				return readFromHandle(handle)
 			}
-			fireAndForget(
+			fireAndForgetRead(
 				storage.getItemAsync(key),
 				`Failed to warm handle for key ${key}`
 			)
@@ -211,7 +218,7 @@ async function createWorkerStorage(): Promise<WorkerStorage> {
 				writeToHandle(handle, value)
 				return
 			}
-			fireAndForget(
+			fireAndForgetMutate(
 				storage.setItemAsync(key, value),
 				`Failed to persist key ${key} synchronously`
 			)
@@ -223,7 +230,7 @@ async function createWorkerStorage(): Promise<WorkerStorage> {
 		},
 
 		removeItem(key: string): void {
-			fireAndForget(deleteFile(encodeKey(key)), `Failed to remove key ${key}`)
+			fireAndForgetMutate(deleteFile(encodeKey(key)), `Failed to remove key ${key}`)
 		},
 
 		removeItemAsync(key: string): Promise<void> {
@@ -231,7 +238,7 @@ async function createWorkerStorage(): Promise<WorkerStorage> {
 		},
 
 		clear(): void {
-			fireAndForget(
+			fireAndForgetMutate(
 				storage.clearAsync(),
 				'Failed to clear storage synchronously'
 			)
@@ -247,6 +254,7 @@ async function createWorkerStorage(): Promise<WorkerStorage> {
 			try {
 				return decodeKey(keys[index]!)
 			} catch {
+				// Corrupted filename encoding — treat key as missing
 				return null
 			}
 		},
@@ -256,7 +264,9 @@ async function createWorkerStorage(): Promise<WorkerStorage> {
 			for (const filename of filenames) {
 				try {
 					result.push(decodeKey(filename))
-				} catch {}
+				} catch {
+					// Corrupted filename encoding — skip this key
+				}
 			}
 			return result
 		},
@@ -269,13 +279,15 @@ async function createWorkerStorage(): Promise<WorkerStorage> {
 			for (const handle of handles.values()) {
 				try {
 					handle.close()
-				} catch {}
+				} catch {
+					// Handle already closed or invalidated — safe to ignore
+				}
 			}
 			handles.clear()
 		},
 	}
 
-	globalScope.addEventListener?.('unload', () => {
+	globalThis.addEventListener?.('unload', () => {
 		storage.close()
 	})
 
@@ -286,7 +298,15 @@ async function createWorkerStorage(): Promise<WorkerStorage> {
  * Async-friendly sync storage for benchmarks.
  * Each op opens handle, does sync I/O, closes handle.
  * Pure disk speed, no caching.
+ *
+ * The returned methods (getItem, setItem, removeItem, clear, keys, flush, close)
+ * are declared `async` despite performing synchronous in-memory dict operations.
+ * This is intentional: the store conforms to an async storage interface so that
+ * callers can swap it with genuinely async backends (e.g. OPFS, IndexedDB)
+ * without changing their awaiting code.
  */
+// Methods are async to conform to the storage interface contract,
+// though operations are synchronous in-memory.
 export async function createSyncStore(storeName: string = 'sync-store') {
 	const root = await navigator.storage.getDirectory()
 	const fileHandle = await root.getFileHandle(`${storeName}.json`, {
@@ -308,6 +328,7 @@ export async function createSyncStore(storeName: string = 'sync-store') {
 		try {
 			data = JSON.parse(textDecoder.decode(buffer))
 		} catch {
+			// Corrupted store file — reset to empty
 			data = {}
 		}
 	}
@@ -358,7 +379,9 @@ export async function createSyncStore(storeName: string = 'sync-store') {
 			flush()
 			try {
 				handle.close()
-			} catch {}
+			} catch {
+				// Handle already closed or invalidated — safe to ignore
+			}
 		},
 	}
 }

@@ -30,7 +30,7 @@ import {
 	isContainer,
 	isPane,
 } from './types'
-import type { ViewMode } from '../fs/types/ViewMode'
+import type { ViewMode } from '../shared/viewMode'
 
 function generateId(): NodeId {
 	return crypto.randomUUID()
@@ -52,11 +52,28 @@ function findFirstPane(
 	return null
 }
 
+function replaceChildInParent(
+	nodes: Record<NodeId, SplitNode>,
+	parentId: NodeId,
+	oldChild: NodeId,
+	newChild: NodeId
+): void {
+	const parent = nodes[parentId] as SplitContainer | undefined
+	if (!parent || !isContainer(parent)) return
+	const idx = parent.children.indexOf(oldChild)
+	if (idx !== -1) parent.children[idx] = newChild
+}
+
 /** Options for creating a layout manager */
 export interface LayoutManagerOptions {
+	/** Opens a file as a new tab. Injected by SplitEditorPanel after file-loading logic is set up. */
+	openFileAsTab?: (filePath: string) => void
 }
 
 export function createLayoutManager(options: LayoutManagerOptions = {}) {
+	let openFileAsTabFn: ((filePath: string) => void) | undefined =
+		options.openFileAsTab
+
 	const [state, setState] = createStore<LayoutState>({
 		rootId: '',
 		nodes: {},
@@ -153,7 +170,6 @@ export function createLayoutManager(options: LayoutManagerOptions = {}) {
 		const newPaneId = generateId()
 		const newContainerId = generateId()
 
-		batch(() => {
 			setState(
 				produce((s) => {
 					const pane = s.nodes[paneId] as EditorPane | undefined
@@ -181,29 +197,21 @@ export function createLayoutManager(options: LayoutManagerOptions = {}) {
 
 					;(s.nodes[paneId] as EditorPane).parentId = newContainerId
 
-					if (parentId) {
-						const parent = s.nodes[parentId] as SplitContainer | undefined
-						if (parent && isContainer(parent)) {
-							const childIndex = parent.children.indexOf(paneId)
-							if (childIndex !== -1) {
-								parent.children[childIndex] = newContainerId
-							}
-						}
-					} else {
+					if (!parentId) {
 						s.rootId = newContainerId
+					} else {
+						replaceChildInParent(s.nodes, parentId, paneId, newContainerId)
 					}
 
 					s.nodes[newContainerId] = container
 					s.nodes[newPaneId] = newPane
 				})
 			)
-		})
-
+		
 		return newPaneId
 	}
 
 	function closePane(paneId: NodeId): void {
-		batch(() => {
 			setState(
 				produce((s) => {
 					const pane = s.nodes[paneId]
@@ -228,18 +236,10 @@ export function createLayoutManager(options: LayoutManagerOptions = {}) {
 
 					sibling.parentId = grandparentId
 
-					if (grandparentId) {
-						const grandparent = s.nodes[grandparentId] as
-							| SplitContainer
-							| undefined
-						if (grandparent && isContainer(grandparent)) {
-							const parentIndex = grandparent.children.indexOf(parentId)
-							if (parentIndex !== -1) {
-								grandparent.children[parentIndex] = siblingId
-							}
-						}
-					} else {
+					if (!grandparentId) {
 						s.rootId = siblingId
+					} else {
+						replaceChildInParent(s.nodes, grandparentId, parentId, siblingId)
 					}
 
 					delete s.nodes[paneId]
@@ -250,7 +250,6 @@ export function createLayoutManager(options: LayoutManagerOptions = {}) {
 					}
 				})
 			)
-		})
 	}
 
 	function openTab(
@@ -392,15 +391,14 @@ export function createLayoutManager(options: LayoutManagerOptions = {}) {
 				if (!pane || !isPane(pane)) return
 
 				const tab = pane.tabs.find((t) => t.id === tabId)
-				if (tab) {
-					// Update individual properties to properly trigger SolidJS store reactivity
-					if (updates.scrollTop !== undefined) tab.state.scrollTop = updates.scrollTop
-					if (updates.scrollLeft !== undefined) tab.state.scrollLeft = updates.scrollLeft
-					if (updates.scrollLineIndex !== undefined) tab.state.scrollLineIndex = updates.scrollLineIndex
-					if (updates.scrollLineHeight !== undefined) tab.state.scrollLineHeight = updates.scrollLineHeight
-					if (updates.cursorPosition !== undefined) tab.state.cursorPosition = updates.cursorPosition
-					if (updates.selections !== undefined) tab.state.selections = updates.selections
-				}
+				if (!tab) return
+				// Update individual properties to properly trigger SolidJS store reactivity
+				if (updates.scrollTop !== undefined) tab.state.scrollTop = updates.scrollTop
+				if (updates.scrollLeft !== undefined) tab.state.scrollLeft = updates.scrollLeft
+				if (updates.scrollLineIndex !== undefined) tab.state.scrollLineIndex = updates.scrollLineIndex
+				if (updates.scrollLineHeight !== undefined) tab.state.scrollLineHeight = updates.scrollLineHeight
+				if (updates.cursorPosition !== undefined) tab.state.cursorPosition = updates.cursorPosition
+				if (updates.selections !== undefined) tab.state.selections = updates.selections
 			})
 		)
 	}
@@ -544,29 +542,24 @@ export function createLayoutManager(options: LayoutManagerOptions = {}) {
 			const isHorizontalSplit = parent.direction === 'horizontal'
 			const isVerticalSplit = parent.direction === 'vertical'
 
-			if (
+			const isMatchingSplit =
 				(isHorizontalNav && isHorizontalSplit) ||
 				(isVerticalNav && isVerticalSplit)
-			) {
-				const currentChildIndex = parent.children.indexOf(currentNode.id)
-				if (currentChildIndex === -1) break
+			if (!isMatchingSplit) {
+				currentNode = parent
+				parentId = parent.parentId
+				continue
+			}
 
-				let targetChildIndex = -1
-				if (direction === 'left' || direction === 'up') {
-					targetChildIndex = currentChildIndex - 1
-				} else if (direction === 'right' || direction === 'down') {
-					targetChildIndex = currentChildIndex + 1
-				}
+			const currentChildIndex = parent.children.indexOf(currentNode.id)
+			if (currentChildIndex === -1) break
 
-				if (
-					targetChildIndex >= 0 &&
-					targetChildIndex < parent.children.length
-				) {
-					const targetChildId = parent.children[targetChildIndex]
-					if (targetChildId) {
-						return findFirstPane(state.nodes, targetChildId)
-					}
-				}
+			const delta = direction === 'left' || direction === 'up' ? -1 : 1
+			const targetChildIndex = currentChildIndex + delta
+			const targetChildId = parent.children[targetChildIndex]
+
+			if (targetChildId) {
+				return findFirstPane(state.nodes, targetChildId)
 			}
 
 			currentNode = parent
@@ -725,10 +718,16 @@ export function createLayoutManager(options: LayoutManagerOptions = {}) {
 		unlinkScrollSync,
 		getLayoutTree,
 		restoreLayout,
+
+		/** Opens a file as a new tab. Set via `setOpenFileAsTab` by SplitEditorPanel. */
+		get openFileAsTab(): ((filePath: string) => void) | undefined {
+			return openFileAsTabFn
+		},
+		/** Register the openFileAsTab implementation (replaces Object.assign monkey-patch). */
+		setOpenFileAsTab(fn: (filePath: string) => void): void {
+			openFileAsTabFn = fn
+		},
 	}
 }
 
-export type LayoutManager = ReturnType<typeof createLayoutManager> & {
-	/** Opens a file as a new tab. Injected at runtime by SplitEditorPanel. */
-	openFileAsTab?: (filePath: string) => void
-}
+export type LayoutManager = ReturnType<typeof createLayoutManager>

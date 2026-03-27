@@ -10,9 +10,6 @@ import {
 	Suspense,
 	For,
 	Show,
-	createSignal,
-	createMemo,
-	useTransition,
 	ErrorBoundary,
 } from 'solid-js'
 import {
@@ -24,9 +21,10 @@ import {
 	VsRefresh,
 } from '@repo/icons/vs'
 import { Card, CardContent } from '@repo/ui/card'
-import { useFontRegistry, FontSource, FontStatus } from '../../../fonts'
+import { FontStatus } from '../../../fonts'
 import type { FontEntry } from '../../../fonts'
 import { useFontPreview } from '../hooks/useFontPreview'
+import { useNerdfontsBrowser } from '../hooks/useNerdfontsBrowser'
 
 export const FontsSubcategoryUI = () => {
 	return (
@@ -44,66 +42,17 @@ export const FontsSubcategoryUI = () => {
 }
 
 const FontsContent = () => {
-	const registry = useFontRegistry()
-	const [searchQuery, setSearchQuery] = createSignal('')
-	const [isPending, startTransition] = useTransition()
-
-	// Reading the resource triggers Suspense
-	const nerdfonts = createMemo(() => {
-		// This read triggers Suspense until resolved
-		const available = registry.availableFontsResource() ?? []
-		return available.filter((f) => f.source === FontSource.NERDFONTS)
-	})
-
-	// Filter fonts by search query
-	const filteredFonts = createMemo(() => {
-		const fonts = nerdfonts()
-		const query = searchQuery().toLowerCase()
-		if (!query) return fonts
-		return fonts.filter(
-			(font) =>
-				font.displayName.toLowerCase().includes(query) ||
-				font.id.toLowerCase().includes(query)
-		)
-	})
-
-	// Installed fonts from all sources
-	const installedFonts = createMemo(() => {
-		return registry
-			.allFonts()
-			.filter((f) => f.isLoaded && f.source === FontSource.NERDFONTS)
-	})
-
-	// Handle font download with transition
-	const handleDownload = (font: FontEntry) => {
-		startTransition(async () => {
-			try {
-				await registry.downloadFont(font.id)
-			} catch (error) {
-				// Download errors are surfaced via the font store's reactive state
-				console.debug('[FontsSubcategoryUI] Font download failed:', error)
-			}
-		})
-	}
-
-	// Handle font removal with transition
-	const handleRemove = (font: FontEntry) => {
-		startTransition(async () => {
-			try {
-				await registry.removeFont(font.id)
-			} catch (error) {
-				// Removal errors are surfaced via the font store's reactive state
-				console.debug('[FontsSubcategoryUI] Font removal failed:', error)
-			}
-		})
-	}
-
-	// Handle refresh
-	const handleRefresh = () => {
-		startTransition(() => {
-			registry.refetch()
-		})
-	}
+	const {
+		registry,
+		searchQuery,
+		setSearchQuery,
+		isPending,
+		filteredFonts,
+		installedFonts,
+		handleDownload,
+		handleRemove,
+		handleRefresh,
+	} = useNerdfontsBrowser()
 
 	return (
 		<div class="space-y-6">
@@ -326,7 +275,7 @@ const InstalledFontItem = (props: InstalledFontItemProps) => {
 				</div>
 			</div>
 			<button
-				onClick={props.onRemove}
+				onClick={() => props.onRemove?.()}
 				class="px-3 py-1 text-xs text-destructive hover:bg-destructive/10 rounded"
 			>
 				Remove

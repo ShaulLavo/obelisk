@@ -7,7 +7,10 @@ const toKebabCase = (str: string): string =>
 	str.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase()
 
 /**
- * Flatten theme object to CSS vars and apply to :root
+ * Flatten theme object to CSS vars and apply to :root.
+ *
+ * Fire-and-forget: errors are caught and logged so that a malformed
+ * palette never breaks the caller. Theme application is best-effort.
  */
 export const syncToCssVars = (palette: ThemePalette) => {
 	const root = document.documentElement.style

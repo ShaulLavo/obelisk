@@ -68,6 +68,53 @@ export const clearWaiters = (): void => {
 // ============================================================================
 
 /**
+ * Blit a single font atlas glyph into the destination buffer.
+ */
+const blitGlyph = (
+	fontAtlas: Uint8Array | Uint8ClampedArray,
+	dest: Uint8ClampedArray,
+	atlasOffset: number,
+	xStart: number,
+	yStart: number,
+	charW: number,
+	charH: number,
+	destWidth: number,
+	deviceWidth: number,
+	deviceHeight: number,
+	foregroundAlpha: number,
+	deltaR: number,
+	deltaG: number,
+	deltaB: number,
+	bgR: number,
+	bgG: number,
+	bgB: number
+): void => {
+	let sourceIdx = atlasOffset
+	let rowStart = yStart * destWidth + xStart * Constants.RGBA_CHANNELS_CNT
+
+	for (let dy = 0; dy < charH; dy++) {
+		const py = yStart + dy
+		if (py >= deviceHeight) break
+		if (py < 0) { rowStart += destWidth; sourceIdx += charW; continue }
+
+		let destIdx = rowStart
+		for (let dx = 0; dx < charW; dx++) {
+			if (xStart + dx >= deviceWidth) { sourceIdx++; break }
+
+			const c = (fontAtlas[sourceIdx++]! / 255) * (foregroundAlpha / 255)
+			if (c > 0.02) {
+				dest[destIdx] = bgR + deltaR * c
+				dest[destIdx + 1] = bgG + deltaG * c
+				dest[destIdx + 2] = bgB + deltaB * c
+				dest[destIdx + 3] = Math.max(foregroundAlpha, 200)
+			}
+			destIdx += Constants.RGBA_CHANNELS_CNT
+		}
+		rowStart += destWidth
+	}
+}
+
+/**
  * Render a single line
  */
 export const renderLine = (
@@ -98,57 +145,23 @@ export const renderLine = (
 	for (let char = 0; char < safeMaxChars; char++) {
 		const val = tokens[tokenOffset + char]!
 		const charCode = val & 0xff
-
 		if (charCode <= 32) continue
 
 		const colorId = val >> 8
 		const rawColor = palette[colorId] ?? palette[0]!
-
-		const colorR = rawColor & 0xff
-		const colorG = (rawColor >> 8) & 0xff
-		const colorB = (rawColor >> 16) & 0xff
 		const foregroundAlpha = (rawColor >> 24) & 0xff
+		const deltaR = (rawColor & 0xff) - bgR
+		const deltaG = ((rawColor >> 8) & 0xff) - bgG
+		const deltaB = ((rawColor >> 16) & 0xff) - bgB
 
-		const deltaR = colorR - bgR
-		const deltaG = colorG - bgG
-		const deltaB = colorB - bgB
-
-		const charIndex = getCharIndex(charCode, scale)
-		const atlasOffset = charIndex * pixelsPerChar
+		const atlasOffset = getCharIndex(charCode, scale) * pixelsPerChar
 		const xStart = char * charW
 
-		let sourceIdx = atlasOffset
-		let rowStart = yStart * destWidth + xStart * Constants.RGBA_CHANNELS_CNT
-
-		for (let dy = 0; dy < charH; dy++) {
-			const py = yStart + dy
-			if (py >= deviceHeight) break
-			if (py < 0) {
-				rowStart += destWidth
-				continue
-			}
-
-			let destIdx = rowStart
-
-			for (let dx = 0; dx < charW; dx++) {
-				const px = xStart + dx
-				if (px >= deviceWidth) break
-
-				const charAlpha = fontAtlas[sourceIdx++]!
-				const c = (charAlpha / 255) * (foregroundAlpha / 255)
-
-				if (c > 0.02) {
-					dest[destIdx] = bgR + deltaR * c
-					dest[destIdx + 1] = bgG + deltaG * c
-					dest[destIdx + 2] = bgB + deltaB * c
-					dest[destIdx + 3] = Math.max(foregroundAlpha, 200)
-				}
-
-				destIdx += Constants.RGBA_CHANNELS_CNT
-			}
-
-			rowStart += destWidth
-		}
+		blitGlyph(
+			fontAtlas, dest, atlasOffset, xStart, yStart,
+			charW, charH, destWidth, deviceWidth, deviceHeight,
+			foregroundAlpha, deltaR, deltaG, deltaB, bgR, bgG, bgB
+		)
 	}
 }
 
@@ -302,6 +315,48 @@ const fullRepaint = (
 	return imageData
 }
 
+const patchDirtyLines = (
+	summary: MinimapTokenSummary,
+	ctx: OffscreenCanvasRenderingContext2D,
+	imageData: ImageData,
+	tokens: Uint16Array,
+	maxChars: number,
+	lineCount: number,
+	startLine: number,
+	endLine: number,
+	visibleLineCount: number,
+	charW: number,
+	charH: number,
+	pixelsPerChar: number,
+	scale: number,
+	deviceWidth: number,
+	deviceHeight: number,
+	palette: Uint32Array,
+	scrollY: number,
+	bgR: number,
+	bgG: number,
+	bgB: number
+): ImageData => {
+	const dirtyLines = findDirtyLinesInRange(tokens, maxChars, lineCount, startLine, endLine)
+
+	if (dirtyLines.size > visibleLineCount * 0.3) {
+		return fullRepaint(
+			summary, ctx, deviceWidth, deviceHeight,
+			charW, charH, pixelsPerChar, scale, palette, scrollY, bgR, bgG, bgB
+		)
+	}
+
+	clearLines(imageData.data, dirtyLines, charH, scrollY, deviceWidth, deviceHeight)
+	for (const line of dirtyLines) {
+		renderLine(
+			line, tokens, maxChars, imageData.data,
+			charW, charH, pixelsPerChar, scale,
+			deviceWidth, deviceHeight, palette, scrollY, bgR, bgG, bgB
+		)
+	}
+	return imageData
+}
+
 /**
  * Render from binary token summary with partial repainting
  */
@@ -400,89 +455,40 @@ export const renderFromSummary = (
 				)
 			: cachedImageData!
 
-	if (imageData === cachedImageData) {
-		if (deltaY !== 0) {
-			const absDeltaY = Math.abs(deltaY)
-			blitForScrollDelta(imageData.data, deviceWidth, deviceHeight, deltaY)
+	if (imageData === cachedImageData && deltaY !== 0) {
+		const absDeltaY = Math.abs(deltaY)
+		blitForScrollDelta(imageData.data, deviceWidth, deviceHeight, deltaY)
 
-			const patchStartY = deltaY > 0 ? deviceHeight - absDeltaY : 0
-			const patchEndY = patchStartY + absDeltaY
+		const patchStartY = deltaY > 0 ? deviceHeight - absDeltaY : 0
+		const patchEndY = patchStartY + absDeltaY
 
-			renderLinesIntersectingYRange(
-				summary,
-				imageData.data,
-				charW,
-				charH,
-				pixelsPerChar,
-				scale,
-				deviceWidth,
-				deviceHeight,
-				palette,
-				normalizedScrollY,
-				patchStartY,
-				patchEndY,
-				bgR,
-				bgG,
-				bgB
-			)
-		}
+		renderLinesIntersectingYRange(
+			summary,
+			imageData.data,
+			charW,
+			charH,
+			pixelsPerChar,
+			scale,
+			deviceWidth,
+			deviceHeight,
+			palette,
+			normalizedScrollY,
+			patchStartY,
+			patchEndY,
+			bgR,
+			bgG,
+			bgB
+		)
+	}
 
-		if (!tokensUnchanged) {
-			const dirtyLines = findDirtyLinesInRange(
-				tokens,
-				maxChars,
-				lineCount,
-				startLine,
-				endLine
-			)
-
-			if (dirtyLines.size > visibleLineCount * 0.3) {
-				imageData = fullRepaint(
-					summary,
-					ctx,
-					deviceWidth,
-					deviceHeight,
-					charW,
-					charH,
-					pixelsPerChar,
-					scale,
-					palette,
-					normalizedScrollY,
-					bgR,
-					bgG,
-					bgB
-				)
-			} else {
-				clearLines(
-					imageData.data,
-					dirtyLines,
-					charH,
-					normalizedScrollY,
-					deviceWidth,
-					deviceHeight
-				)
-
-				for (const line of dirtyLines) {
-					renderLine(
-						line,
-						tokens,
-						maxChars,
-						imageData.data,
-						charW,
-						charH,
-						pixelsPerChar,
-						scale,
-						deviceWidth,
-						deviceHeight,
-						palette,
-						normalizedScrollY,
-						bgR,
-						bgG,
-						bgB
-					)
-				}
-			}
-		}
+	if (imageData === cachedImageData && !tokensUnchanged) {
+		imageData = patchDirtyLines(
+			summary, ctx, imageData, tokens, maxChars, lineCount,
+			startLine, endLine, visibleLineCount,
+			charW, charH, pixelsPerChar, scale,
+			deviceWidth, deviceHeight, palette, normalizedScrollY,
+			bgR, bgG, bgB
+		)
 	}
 
 	ctx.putImageData(imageData, 0, 0)

@@ -3,7 +3,6 @@ import path from 'node:path'
 import { parse as parseEnvFile } from 'dotenv'
 import { z } from 'zod'
 
-// eslint-disable-next-line turbo/no-undeclared-env-vars
 const envMode = process.env.NODE_ENV ?? 'development'
 const envFiles = [
 	{ name: 'vite.env', allowOverride: false },
@@ -60,11 +59,7 @@ try {
 	envData = envSchema.parse(process.env)
 } catch (error) {
 	if (error instanceof z.ZodError) {
-		// Fallback if z.prettifyError doesn't exist, though it seems used in the codebase
-		const formatter =
-			(z as any).prettifyError ||
-			((e: z.ZodError) => JSON.stringify(e.format(), null, 2))
-		throw new Error(`Invalid environment variables:\n${formatter(error)}`)
+		throw new Error(`Invalid environment variables:\n${z.prettifyError(error)}`)
 	}
 	throw error
 }

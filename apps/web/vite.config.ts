@@ -11,7 +11,7 @@ import { env } from './vite-env'
 /**
  * Plugin to build the service worker as a separate bundle
  */
-function serviceWorkerPlugin(): Plugin {
+function _serviceWorkerPlugin(): Plugin {
 	return {
 		name: 'service-worker',
 		apply: 'build',
@@ -40,7 +40,7 @@ function serviceWorkerPlugin(): Plugin {
 /**
  * Plugin to serve the service worker in dev mode
  */
-function serviceWorkerDevPlugin(): Plugin {
+function _serviceWorkerDevPlugin(): Plugin {
 	return {
 		name: 'service-worker-dev',
 		apply: 'serve',
@@ -184,9 +184,6 @@ export default defineConfig(({ mode }) => {
 			include: [
 				'web-tree-sitter',
 			],
-			// Exclude packages used in workers - Vite's pre-bundling breaks worker imports
-			// See: https://github.com/vitejs/vite/issues/20859
-			exclude: ['up-fetch'],
 		},
 		test: {
 			projects: [

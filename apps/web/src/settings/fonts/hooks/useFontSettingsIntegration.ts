@@ -9,7 +9,7 @@ export type FontOption = {
 
 export const useFontSettingsIntegration = () => {
 	const fontStore = useFontStore()
-	const [settingsState, settingsActions] = useSettings()
+	const [_settingsState, settingsActions] = useSettings()
 
 	const currentFontFamily = () =>
 		settingsActions.getSetting<string>('editor.font.family')

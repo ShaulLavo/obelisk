@@ -14,6 +14,7 @@ import {
 	onCleanup,
 	onMount,
 	splitProps,
+	untrack,
 	useContext,
 } from 'solid-js'
 import { Portal } from 'solid-js/web'
@@ -95,7 +96,7 @@ export interface ContextMenuProps {
 	children?: JSX.Element
 }
 
-export interface ContextMenuTriggerProps extends ComponentProps<'div'> {}
+export type ContextMenuTriggerProps = ComponentProps<'div'>
 
 export interface ContextMenuContentProps extends ComponentProps<'div'> {
 	/** Gap from anchor point (px) */
@@ -113,7 +114,7 @@ export interface ContextMenuItemProps extends ComponentProps<'div'> {
 	textValue?: string
 }
 
-export interface ContextMenuSeparatorProps extends ComponentProps<'div'> {}
+export type ContextMenuSeparatorProps = ComponentProps<'div'>
 
 export interface ContextMenuGroupProps extends ComponentProps<'div'> {
 	/** Label for the group */
@@ -234,8 +235,8 @@ const ContextMenu: Component<ContextMenuProps> = (props) => {
 		registerItem,
 		searchBuffer,
 		itemLabels,
-		openDelay: local.openDelay ?? 150,
-		closeDelay: local.closeDelay ?? 300,
+		get openDelay() { return local.openDelay ?? 150 },
+		get closeDelay() { return local.closeDelay ?? 300 },
 		depth: 0,
 	}
 
@@ -342,7 +343,7 @@ const ContextMenuContent: Component<ContextMenuContentProps> = (props) => {
 				context.setFocusedIndex(context.itemCount() - 1)
 				break
 			case 'Enter':
-			case ' ':
+			case ' ': {
 				e.preventDefault()
 				// Trigger the focused item
 				const focusedItem = menuRef?.querySelector(
@@ -350,6 +351,7 @@ const ContextMenuContent: Component<ContextMenuContentProps> = (props) => {
 				) as HTMLElement | null
 				focusedItem?.click()
 				break
+			}
 			default:
 				// Type-ahead search: single character keys
 				if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
@@ -459,7 +461,7 @@ const ContextMenuItem: Component<ContextMenuItemProps> = (props) => {
 		return ''
 	}
 
-	const index = context.registerItem(getLabel())
+	const index = context.registerItem(untrack(getLabel))
 	const isFocused = createMemo(() => context.focusedIndex() === index)
 
 	const handleClick = (e: MouseEvent) => {
@@ -678,7 +680,7 @@ const ContextMenuSubTrigger: Component<ContextMenuSubTriggerProps> = (props) => 
 		return ''
 	}
 
-	const index = context.registerItem(getLabel())
+	const index = context.registerItem(untrack(getLabel))
 	const isFocused = createMemo(() => context.focusedIndex() === index)
 
 	let openTimeout: ReturnType<typeof setTimeout> | undefined

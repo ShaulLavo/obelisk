@@ -1,6 +1,7 @@
 import type { CommandDescriptor, CommandPaletteRegistry } from './types'
 import type { SelectPathOptions } from '../fs/context/FsContext'
 import type { FocusArea } from '../focus/focusManager'
+import type { ThemeMode } from '@repo/theme'
 import { TbSunMoon } from '@repo/icons/tb/TbSunMoon'
 import { VsFolderOpened } from '@repo/icons/vs/VsFolderOpened'
 import { TbFolderMinus } from '@repo/icons/tb/TbFolderMinus'
@@ -11,8 +12,6 @@ import { TbDeviceFloppy } from '@repo/icons/tb/TbDeviceFloppy'
 import { TbSettings } from '@repo/icons/tb/TbSettings'
 import { TbFileCode } from '@repo/icons/tb/TbFileCode'
 import { TbLayout } from '@repo/icons/tb/TbLayout'
-
-type ThemeMode = 'light' | 'dark' | 'system'
 
 export type BuiltinCommandDeps = {
 	fs: {

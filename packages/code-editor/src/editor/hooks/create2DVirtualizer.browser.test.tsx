@@ -32,8 +32,6 @@ describe('create2DVirtualizer (DOM integration)', () => {
 		const [enabled] = createSignal(true)
 		const [rowHeight] = createSignal(20)
 		const [charWidth] = createSignal(8)
-		const getLineLength = (_lineIndex: number) => 0
-
 		const { result, unmount } = renderHook(() =>
 			create2DVirtualizer({
 				count,
@@ -42,7 +40,7 @@ describe('create2DVirtualizer (DOM integration)', () => {
 				rowHeight,
 				charWidth,
 				overscan: 2,
-				getLineLength,
+				getLineLength: () => 0,
 				getLineId,
 			})
 		)
@@ -146,7 +144,7 @@ describe('create2DVirtualizer (DOM integration)', () => {
 		const endIndex = items[items.length - 1]?.index ?? 0
 
 		expect(calledIndices.size).toBeGreaterThan(0)
-		expect(calledIndices.size).toBeLessThan(count())
+		expect(calledIndices.size).toBeLessThan(200)
 		for (const index of calledIndices) {
 			expect(index).toBeGreaterThanOrEqual(startIndex)
 			expect(index).toBeLessThanOrEqual(endIndex)
@@ -211,8 +209,6 @@ describe('create2DVirtualizer (DOM integration)', () => {
 		const [enabled] = createSignal(true)
 		const [rowHeight] = createSignal(20)
 		const [charWidth] = createSignal(8)
-		const getLineLength = (_lineIndex: number) => 120
-
 		const { result, unmount } = renderHook(() =>
 			create2DVirtualizer({
 				count,
@@ -221,7 +217,7 @@ describe('create2DVirtualizer (DOM integration)', () => {
 				rowHeight,
 				charWidth,
 				overscan: 2,
-				getLineLength,
+				getLineLength: () => 120,
 				getLineId,
 			})
 		)
@@ -368,8 +364,6 @@ describe('create2DVirtualizer (DOM integration)', () => {
 		const [enabled, setEnabled] = createSignal(true)
 		const [rowHeight] = createSignal(20)
 		const [charWidth] = createSignal(8)
-		const getLineLength = (_lineIndex: number) => 0
-
 		const { result, unmount } = renderHook(() =>
 			create2DVirtualizer({
 				count,
@@ -378,7 +372,7 @@ describe('create2DVirtualizer (DOM integration)', () => {
 				rowHeight,
 				charWidth,
 				overscan: 2,
-				getLineLength,
+				getLineLength: () => 0,
 				getLineId,
 			})
 		)

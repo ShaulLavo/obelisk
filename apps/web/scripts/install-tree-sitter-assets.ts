@@ -23,12 +23,8 @@ const assetMappings = [
 	{ relativePath: 'tree-sitter-javascript/tree-sitter-javascript.wasm', destName: 'tree-sitter-javascript.wasm' },
 	{ relativePath: 'tree-sitter-typescript/tree-sitter-typescript.wasm', destName: 'tree-sitter-typescript.wasm' },
 	{ relativePath: 'tree-sitter-typescript/tree-sitter-tsx.wasm', destName: 'tree-sitter-tsx.wasm' },
-	{ relativePath: 'tree-sitter-typescript/queries/highlights.scm', destName: 'typescript-highlights.scm' },
 	{ relativePath: 'tree-sitter-json/tree-sitter-json.wasm', destName: 'tree-sitter-json.wasm' },
-	{ relativePath: 'tree-sitter-json/queries/highlights.scm', destName: 'json-highlights.scm' },
 	{ relativePath: 'tree-sitter-html/tree-sitter-html.wasm', destName: 'tree-sitter-html.wasm' },
-	{ relativePath: 'tree-sitter-html/queries/highlights.scm', destName: 'html-highlights.scm' },
-	{ relativePath: '@tree-sitter-grammars/tree-sitter-xml/queries/xml/highlights.scm', destName: 'xml-highlights.scm' },
 ]
 
 const assets = assetMappings.map(({ relativePath, destName }) => ({

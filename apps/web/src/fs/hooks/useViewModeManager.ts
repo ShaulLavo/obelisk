@@ -2,7 +2,7 @@ import { createMemo } from 'solid-js'
 import type { Accessor } from 'solid-js'
 import type { ParseResult } from '@repo/utils'
 import type { ViewMode } from '../types/ViewMode'
-import { viewModeRegistry } from '../registry/ViewModeRegistry'
+import { getViewModeRegistry } from '../registry/ViewModeRegistry'
 import { 
 	detectAvailableViewModes, 
 	getDefaultViewMode, 
@@ -51,12 +51,12 @@ export const useViewModeManager = (
 		return availableViewModes().map(mode => ({
 			id: mode,
 			label: getViewModeLabel(mode),
-			definition: viewModeRegistry.getViewMode(mode)
+			definition: getViewModeRegistry().getViewMode(mode)
 		}))
 	})
 
 	const getViewModeDefinition = (viewMode: ViewMode) => {
-		return viewModeRegistry.getViewMode(viewMode)
+		return getViewModeRegistry().getViewMode(viewMode)
 	}
 
 	return {

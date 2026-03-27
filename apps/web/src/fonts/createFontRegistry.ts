@@ -122,7 +122,7 @@ const fetchAvailableNerdfonts = async (): Promise<FontEntry[]> => {
 		return []
 	}
 
-	const availableFonts = response.data as Record<string, string>
+	const availableFonts = response.data
 
 	return Object.entries(availableFonts).map(([name, url]) => ({
 		id: name,
@@ -235,27 +235,26 @@ export const createFontRegistry = (): FontRegistry => {
 	// Restore cached fonts to document.fonts when they load
 	const restoreCachedFonts = async (fonts: FontEntry[]) => {
 		for (const font of fonts) {
-			if (font.status === FontStatus.CACHED && !font.isLoaded) {
-				try {
-					await loadFontToDocument(font.id)
-					setStore(
-						produce((s) => {
-							const existing = s.fonts.get(font.id)
-							if (existing) {
-								existing.isLoaded = true
-								existing.status = FontStatus.AVAILABLE
-							}
-						})
-					)
-				} catch {
-					// Silently ignore — font will remain in non-loaded state
-				}
+			if (font.status !== FontStatus.CACHED || font.isLoaded) continue
+			try {
+				await loadFontToDocument(font.id)
+				setStore(
+					produce((s) => {
+						const existing = s.fonts.get(font.id)
+						if (!existing) return
+						existing.isLoaded = true
+						existing.status = FontStatus.AVAILABLE
+					})
+				)
+			} catch {
+				// Silently ignore — font will remain in non-loaded state
 			}
 		}
 	}
 
 	// Effect to restore cached fonts when resource resolves
 	// Using createMemo to track and trigger restoration
+	// eslint-disable-next-line solid/reactivity -- fire-and-forget side effect; result intentionally unused
 	createMemo(() => {
 		const cached = cachedFontsResource()
 		if (cached.length > 0) {
@@ -345,29 +344,20 @@ export const createFontRegistry = (): FontRegistry => {
 		return store.downloading.has(id)
 	}
 
+	const updateFontState = (id: string, entry: FontEntry, downloading: boolean) => {
+		setStore(produce((s) => {
+			if (downloading) s.downloading.add(id)
+			else s.downloading.delete(id)
+			s.fonts.set(id, entry)
+		}))
+	}
+
 	const downloadFont = async (id: string): Promise<void> => {
 		const font = allFonts().find((f) => f.id === id)
-		if (!font?.downloadUrl) {
-			throw new Error(`Font ${id} not found or has no download URL`)
-		}
+		if (!font?.downloadUrl) throw new Error(`Font ${id} not found or has no download URL`)
+		if (store.downloading.has(id)) return
 
-		if (store.downloading.has(id)) {
-			return
-		}
-
-		// Mark as downloading
-		batch(() => {
-			setStore(
-				produce((s) => {
-					s.downloading.add(id)
-					const entry: FontEntry = {
-						...font,
-						status: FontStatus.DOWNLOADING,
-					}
-					s.fonts.set(id, entry)
-				})
-			)
-		})
+		batch(() => updateFontState(id, { ...font, status: FontStatus.DOWNLOADING }, true))
 
 		try {
 			const { fontDownloadService } =
@@ -375,36 +365,14 @@ export const createFontRegistry = (): FontRegistry => {
 			await fontDownloadService.downloadAndInstallFont(id, font.downloadUrl)
 			await loadFontToDocument(id)
 
-			batch(() => {
-				setStore(
-					produce((s) => {
-						s.downloading.delete(id)
-						const entry: FontEntry = {
-							...font,
-							status: FontStatus.AVAILABLE,
-							isLoaded: true,
-							installedAt: new Date(),
-						}
-						s.fonts.set(id, entry)
-					})
-				)
-			})
-
-			// Font downloaded and installed successfully
+			batch(() => updateFontState(id, {
+				...font, status: FontStatus.AVAILABLE, isLoaded: true, installedAt: new Date(),
+			}, false))
 		} catch (error) {
-			batch(() => {
-				setStore(
-					produce((s) => {
-						s.downloading.delete(id)
-						const entry: FontEntry = {
-							...font,
-							status: FontStatus.ERROR,
-							error: error instanceof Error ? error.message : 'Download failed',
-						}
-						s.fonts.set(id, entry)
-					})
-				)
-			})
+			batch(() => updateFontState(id, {
+				...font, status: FontStatus.ERROR,
+				error: error instanceof Error ? error.message : 'Download failed',
+			}, false))
 			throw error
 		}
 	}
@@ -427,18 +395,9 @@ export const createFontRegistry = (): FontRegistry => {
 		await fontCacheService.removeFont(id)
 
 		// Update store
-		setStore(
-			produce((s) => {
-				const entry: FontEntry = {
-					...font,
-					status: FontStatus.AVAILABLE,
-					isLoaded: false,
-					installedAt: undefined,
-					size: undefined,
-				}
-				s.fonts.set(id, entry)
-			})
-		)
+		updateFontState(id, {
+			...font, status: FontStatus.AVAILABLE, isLoaded: false, installedAt: undefined, size: undefined,
+		}, false)
 
 		// Font removed successfully
 	}

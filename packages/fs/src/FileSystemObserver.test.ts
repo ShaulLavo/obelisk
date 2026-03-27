@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import {
 	FileSystemObserverPolyfill,
 	createFileSystemObserver,
@@ -28,7 +28,7 @@ class MockFile {
 }
 
 class MockFileHandle implements FileSystemFileHandle {
-	readonly kind: 'file' = 'file'
+	readonly kind = 'file' as const
 	private _file: MockFile
 
 	constructor(
@@ -71,7 +71,7 @@ class MockFileHandle implements FileSystemFileHandle {
 }
 
 class MockDirectoryHandle implements FileSystemDirectoryHandle {
-	readonly kind: 'directory' = 'directory'
+	readonly kind = 'directory' as const
 	private files = new Map<string, MockFileHandle>()
 	private directories = new Map<string, MockDirectoryHandle>()
 
@@ -198,27 +198,6 @@ class MockDirectoryHandle implements FileSystemDirectoryHandle {
 // ============================================================================
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
-
-const collectRecords = (
-	pollInterval: number,
-	waitTime: number
-): Promise<FileSystemChangeRecord[]> => {
-	return new Promise((resolve) => {
-		const records: FileSystemChangeRecord[] = []
-		let observer: FileSystemObserverPolyfill
-
-		const callback: FileSystemObserverCallback = (recs) => {
-			records.push(...recs)
-		}
-
-		observer = new FileSystemObserverPolyfill(callback, pollInterval)
-
-		setTimeout(() => {
-			observer.disconnect()
-			resolve(records)
-		}, waitTime)
-	})
-}
 
 // ============================================================================
 // Tests

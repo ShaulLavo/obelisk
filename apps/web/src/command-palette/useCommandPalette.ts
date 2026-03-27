@@ -69,27 +69,69 @@ function commandToResult(cmd: CommandDescriptor): PaletteResult {
 	}
 }
 
-async function performSearch(searchQuery: string): Promise<PaletteResult[]> {
+/**
+ * Perform a palette search. The command-mode branch is synchronous (registry
+ * lookup), while the file-mode branch awaits the async search service.
+ * Both branches share the same signature so createResource can treat them
+ * uniformly.
+ */
+function performSearch(searchQuery: string): Promise<PaletteResult[]> {
 	if (!searchQuery.trim()) {
-		return []
+		return Promise.resolve([])
 	}
 
 	try {
+		// Command-mode search is synchronous (filtering in-memory commands).
+		// Only the file-search path uses async I/O.
 		const currentMode = detectModeFromQuery(searchQuery)
 
 		if (currentMode === 'command') {
+			// Synchronous — registry.search is an in-memory filter
 			const commandQuery = searchQuery.slice(1).trim()
 			const registry = getCommandPaletteRegistry()
 			const commands = registry.search(commandQuery)
-			return commands.map(commandToResult)
+			return Promise.resolve(commands.map(commandToResult))
 		} else {
-			const files = await searchService.search(searchQuery)
-			return files.map(fileToResult)
+			// Asynchronous — searchService.search hits the index
+			return searchService.search(searchQuery).then((files) =>
+				files.map(fileToResult)
+			)
 		}
 	} catch (error) {
 		console.error('Search failed:', error)
-		return []
+		return Promise.resolve([])
 	}
+}
+
+function activateFileResult(
+	result: PaletteResult,
+	fsActions: ReturnType<typeof useFs>[1],
+	actions: PaletteActions
+) {
+	const filePath = result.description
+	if (!filePath) {
+		actions.close()
+		return
+	}
+	void fsActions
+		.selectPath(filePath)
+		.then(() => actions.close())
+		.catch((error) => {
+			const errorMsg = error instanceof Error ? error.message : String(error)
+			const isNotFound = errorMsg.includes('not found') || errorMsg.includes('ENOENT') || errorMsg.includes('NotFoundError')
+			if (isNotFound) void searchService.removeFile(filePath)
+			actions.close()
+		})
+}
+
+function activateCommandResult(result: PaletteResult, actions: PaletteActions) {
+	const commandId = result.id.replace('cmd:', '')
+	const registry = getCommandPaletteRegistry()
+
+	void registry
+		.execute(commandId)
+		.then(() => actions.close())
+		.catch((error) => console.error('Command execution failed:', error))
 }
 
 export function useCommandPalette(): [
@@ -193,53 +235,15 @@ export function useCommandPalette(): [
 			const currentResults = results()
 			const currentIndex = selectedIndex()
 
-			if (
-				currentResults.length === 0 ||
-				currentIndex >= currentResults.length
-			) {
-				return
-			}
+			if (currentResults.length === 0 || currentIndex >= currentResults.length) return
 
 			const selectedResult = currentResults[currentIndex]
-			if (!selectedResult) {
-				return
-			}
+			if (!selectedResult) return
 
 			if (selectedResult.kind === 'file') {
-				const filePath = selectedResult.description
-				if (filePath) {
-					void fsActions
-						.selectPath(filePath)
-						.then(() => {
-							actions.close()
-						})
-						.catch((error) => {
-							const errorMsg =
-								error instanceof Error ? error.message : String(error)
-							if (
-								errorMsg.includes('not found') ||
-								errorMsg.includes('ENOENT') ||
-								errorMsg.includes('NotFoundError')
-							) {
-								void searchService.removeFile(filePath)
-							}
-							actions.close()
-						})
-				} else {
-					actions.close()
-				}
+				activateFileResult(selectedResult, fsActions, actions)
 			} else if (selectedResult.kind === 'command') {
-				const commandId = selectedResult.id.replace('cmd:', '')
-				const registry = getCommandPaletteRegistry()
-
-				void registry
-					.execute(commandId)
-					.then(() => {
-						actions.close()
-					})
-					.catch((error) => {
-						console.error('Command execution failed:', error)
-					})
+				activateCommandResult(selectedResult, actions)
 			}
 		},
 	}

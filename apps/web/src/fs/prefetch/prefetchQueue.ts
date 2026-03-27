@@ -98,9 +98,6 @@ export class PrefetchQueue {
 
 	constructor(private readonly options: PrefetchQueueOptions) {
 		this.workerCount = Math.max(1, Math.floor(options.workerCount))
-		if (this.workerCount < 1) {
-			throw new Error('PrefetchQueue requires at least one worker')
-		}
 		void searchService.init().catch((e) => {
 			console.warn('searchService: init failed', e)
 		})
@@ -248,18 +245,18 @@ export class PrefetchQueue {
 
 	private enqueueTargets(targets: readonly PrefetchTarget[]) {
 		let added = false
-		let skipped = 0
-		let alreadyInQueue = 0
+		let _skipped = 0
+		let _alreadyInQueue = 0
 		for (const target of targets) {
 			if (!this.hasPrefetchBudget()) break
 			if (this.shouldSkipTarget(target)) {
-				skipped++
+				_skipped++
 				continue
 			}
 			const isDeferred = this.shouldDeferPath(target.path)
 			const queue = isDeferred ? this.deferredQueue : this.primaryQueue
 			if (queue.has(target.path)) {
-				alreadyInQueue++
+				_alreadyInQueue++
 				continue
 			}
 			queue.set(target.path, target)
@@ -303,22 +300,22 @@ export class PrefetchQueue {
 				this.running = false
 				this.emitStatus(false)
 				this.logCompletion()
-				const pending = this.hasPendingTargets()
-				if (!this.disposed && pending) {
-					// Check if we're making progress
-					if (this.processedCount === this.lastProgressCheck) {
-						this.restartWithoutProgressCount++
-						if (this.restartWithoutProgressCount >= 3) {
-							// Don't restart again - we're stuck
-							return
-						}
-					} else {
-						this.lastProgressCheck = this.processedCount
-						this.restartWithoutProgressCount = 0
-					}
-					this.scheduleProcessing()
-				}
+				this.maybeRestartProcessing()
 			})
+	}
+
+	private maybeRestartProcessing() {
+		if (this.disposed || !this.hasPendingTargets()) return
+
+		if (this.processedCount === this.lastProgressCheck) {
+			this.restartWithoutProgressCount++
+			if (this.restartWithoutProgressCount >= 3) return // Stuck — stop retrying
+		} else {
+			this.lastProgressCheck = this.processedCount
+			this.restartWithoutProgressCount = 0
+		}
+
+		this.scheduleProcessing()
 	}
 
 	private takeFromQueue(

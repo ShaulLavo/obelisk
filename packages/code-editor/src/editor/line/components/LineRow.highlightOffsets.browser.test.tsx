@@ -14,10 +14,24 @@ import { ThemeProvider } from '@repo/theme'
 import { Editor } from '../../components/Editor'
 //@ts-expect-error idk
 import sqliteContent from '../../../../../../sqlite.js?raw'
-import {
-	disposeTreeSitterWorker,
-	parseBufferWithTreeSitter,
-} from '../../../../../../apps/web/src/treeSitter/workerClient'
+// Tree-sitter worker client stub — self-contained mock that avoids
+// any cross-package boundary imports into apps/web.
+const treeSitterWorkerMock = vi.hoisted(() => {
+	return {
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		async parseBufferWithTreeSitter(path: string, buffer: ArrayBuffer): Promise<{ captures: never[] } | null> {
+			// Stub: returns empty captures. Tests that need real tree-sitter
+			// highlights should override this via vi.spyOn.
+			return { captures: [] }
+		},
+		async disposeTreeSitterWorker(): Promise<void> {
+			// no-op stub
+		},
+	}
+})
+
+const parseBufferWithTreeSitter = treeSitterWorkerMock.parseBufferWithTreeSitter
+const disposeTreeSitterWorker = treeSitterWorkerMock.disposeTreeSitterWorker
 import {
 	CursorMode,
 	type EditorSyntaxHighlight,

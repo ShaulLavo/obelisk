@@ -1,3 +1,5 @@
+import { createMemo } from 'solid-js'
+import { Dynamic } from 'solid-js/web'
 import { getIconForFile } from '../utils/fileIcons'
 
 type FileIconProps = {
@@ -7,6 +9,6 @@ type FileIconProps = {
 }
 
 export const FileIcon = (props: FileIconProps) => {
-	const Icon = getIconForFile(props.name)
-	return <Icon size={props.size} class={props.class} />
+	const Icon = createMemo(() => getIconForFile(props.name))
+	return <Dynamic component={Icon()} size={props.size} class={props.class} />
 }

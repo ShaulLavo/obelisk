@@ -1,4 +1,4 @@
-import type { ViewMode } from '../fs/types/ViewMode'
+import type { ViewMode } from '../shared/viewMode'
 import type { SelectionRange } from '@repo/code-editor'
 
 export type NodeId = string

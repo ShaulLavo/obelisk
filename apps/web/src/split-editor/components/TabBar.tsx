@@ -14,8 +14,8 @@ import { TabItem } from './TabItem'
 import { isPane } from '../types'
 import { ViewModeToggle } from '../../fs/components/ViewModeToggle'
 import { detectAvailableViewModes } from '../../fs/utils/viewModeDetection'
-import { viewModeRegistry } from '../../fs/registry/ViewModeRegistry'
-import type { ViewMode } from '../../fs/types/ViewMode'
+import { getViewModeRegistry } from '../../fs/registry/ViewModeRegistry'
+import type { ViewMode } from '../../shared/viewMode'
 
 export interface TabBarProps {
 	paneId: string
@@ -71,7 +71,7 @@ export function TabBar(props: TabBarProps) {
 
 		const modes = detectAvailableViewModes(path, undefined)
 		return modes
-			.map((mode) => viewModeRegistry.getViewMode(mode))
+			.map((mode) => getViewModeRegistry().getViewMode(mode))
 			.filter((mode): mode is NonNullable<typeof mode> => mode !== undefined)
 	})
 

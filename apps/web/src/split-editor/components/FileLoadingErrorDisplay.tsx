@@ -271,7 +271,7 @@ export function BinaryFileIndicator(props: {
 				<button
 					type="button"
 					class="mt-2 inline-flex items-center gap-2 rounded-md bg-muted px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/80"
-					onClick={props.onViewAsText}
+					onClick={() => props.onViewAsText?.()}
 				>
 					View as Text
 				</button>

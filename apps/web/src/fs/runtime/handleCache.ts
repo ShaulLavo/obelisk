@@ -1,7 +1,10 @@
 import type { DirTreeNode } from '@repo/fs'
-import { DEFAULT_SOURCE } from '../config/constants'
+import { getDefaultSource } from '../config/constants'
 import type { FsSource } from '../types'
 import { primeFsCache } from './fsRuntime'
+
+/** Shared cache of resolved file handles, keyed by normalized file path. */
+export const fileHandleCache = new Map<string, FileSystemFileHandle>()
 
 const isValidDirectoryHandle = (
 	handle: unknown
@@ -25,7 +28,7 @@ export const restoreHandleCache = ({
 }: RestoreHandleCacheParams) => {
 	if (!tree) return
 
-	const source = activeSource ?? DEFAULT_SOURCE
+	const source = activeSource ?? getDefaultSource()
 
 	if (tree.kind === 'dir' && isValidDirectoryHandle(tree.handle)) {
 		primeFsCache(source, tree.handle)

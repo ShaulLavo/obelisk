@@ -20,9 +20,9 @@ const makeEntry = (
 
 const defaultLineProps = {
 	lineCount: () => 1000,
-	getLineStart: (i: number) => 0,
-	getLineLength: (i: number) => 100,
-	getLineTextLength: (i: number) => 100,
+	getLineStart: () => 0,
+	getLineLength: () => 100,
+	getLineTextLength: () => 100,
 }
 
 describe('createLineHighlights', () => {
@@ -170,7 +170,7 @@ describe('createLineHighlights', () => {
 				lineCount: () => 2,
 				getLineStart: (i: number) => (i === 0 ? 0 : 10),
 				getLineLength: (i: number) => (i === 0 ? 10 : 4),
-				getLineTextLength: (i: number) => 4,
+				getLineTextLength: () => 4,
 				highlights,
 				highlightOffset,
 			})

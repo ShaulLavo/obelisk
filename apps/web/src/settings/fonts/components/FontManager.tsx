@@ -3,6 +3,7 @@ import { VsTrash, VsInfo, VsCheck } from '@repo/icons/vs'
 import { Card, CardContent } from '@repo/ui/card'
 import { Button } from '@repo/ui/button'
 import { Flex } from '@repo/ui/flex'
+import { formatBytes } from '@repo/utils'
 import { useFontStore } from '../store/FontStoreProvider'
 import { useFontSettingsIntegration } from '../hooks/useFontSettingsIntegration'
 import { CacheStatusIndicator } from './CacheStatusIndicator'
@@ -17,14 +18,6 @@ export const FontManager = () => {
 		return fonts ? Array.from(fonts).sort() : []
 	}
 
-	const formatBytes = (bytes: number): string => {
-		if (bytes === 0) return '0 B'
-		const k = 1024
-		const sizes = ['B', 'KB', 'MB', 'GB']
-		const i = Math.floor(Math.log(bytes) / Math.log(k))
-		return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
-	}
-
 	const handleRemoveFont = async (fontName: string) => {
 		if (isFontInUse(fontName)) {
 			return
@@ -33,7 +26,8 @@ export const FontManager = () => {
 		setRemovingFont(fontName)
 		try {
 			await actions.removeFont(fontName)
-		} catch (error) {
+		} catch {
+		// intentionally empty
 		} finally {
 			setRemovingFont(null)
 		}
@@ -42,7 +36,8 @@ export const FontManager = () => {
 	const handleCleanupCache = async () => {
 		try {
 			await actions.cleanupCache()
-		} catch (error) {
+		} catch {
+			// intentionally empty
 		}
 	}
 

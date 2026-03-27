@@ -6,7 +6,7 @@ import {
 	buildTree,
 	LocalDirectoryFallbackSwitchError,
 } from '../runtime/fsRuntime'
-import { DEFAULT_SOURCE } from '../config/constants'
+import { getDefaultSource } from '../config/constants'
 import type { FsState, FsSource } from '../types'
 import type { TreePrefetchClient } from '../prefetch/treePrefetchClient'
 import { modal } from '@repo/ui/modal'
@@ -44,6 +44,20 @@ const mergeSystemFolder = (
 	return {
 		...mainTree,
 		children: newChildren,
+	}
+}
+
+const mergeOpfsSystemFolder = async (built: DirTreeNode, source: FsSource): Promise<DirTreeNode> => {
+	if (source === 'opfs') return built
+	try {
+		const opfsTree = await buildTree('opfs', {
+			expandedPaths: { '.system': true },
+			ensurePaths: ['.system'],
+		})
+		return mergeSystemFolder(built, opfsTree)
+	} catch {
+		// OPFS .system merge is best-effort, don't fail the whole refresh
+		return built
 	}
 }
 
@@ -140,7 +154,7 @@ export const useFsRefresh = ({
 	}
 
 	const refresh = async (
-		initialSource: FsSource = state.activeSource ?? DEFAULT_SOURCE
+		initialSource: FsSource = state.activeSource ?? getDefaultSource()
 	) => {
 		let source = initialSource
 		for (;;) {
@@ -167,17 +181,7 @@ export const useFsRefresh = ({
 				})
 
 				// Always merge .system folder from OPFS (regardless of active source)
-				if (source !== 'opfs') {
-					try {
-						const opfsTree = await buildTree('opfs', {
-							expandedPaths: { '.system': true },
-							ensurePaths: ['.system'],
-						})
-						built = mergeSystemFolder(built, opfsTree)
-					} catch {
-						// OPFS .system merge is best-effort, don't fail the whole refresh
-					}
-				}
+				built = await mergeOpfsSystemFolder(built, source)
 
 				const restorablePath = getRestorableFilePath()
 
@@ -217,9 +221,8 @@ export const useFsRefresh = ({
 				)
 
 				for (const [expandedPath, isOpen] of Object.entries(state.expanded)) {
-					if (isOpen) {
-						void ensureDirLoaded(expandedPath)
-					}
+					if (!isOpen) continue
+					void ensureDirLoaded(expandedPath)
 				}
 
 				if (restorablePath) {

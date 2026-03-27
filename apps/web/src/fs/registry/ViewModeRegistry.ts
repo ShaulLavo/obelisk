@@ -1,21 +1,16 @@
 import type { ParseResult } from '@repo/utils'
-import type { ViewMode } from '../types/ViewMode'
+import type {
+	ViewMode,
+	ViewModeDefinition,
+	ViewModeRegistryReader,
+} from '../../shared/viewMode'
 import { createFilePath } from '@repo/fs'
+import { createLazySingleton } from '../../settings/fonts/services/createLazySingleton'
 
-export type ViewModeDefinition = {
-	id: ViewMode
-	label: string
-	icon?: string
-	isAvailable: (path: string, stats?: ParseResult) => boolean
-	isDefault?: boolean
-	/** Optional state management hooks for this view mode */
-	stateHooks?: {
-		createState?: () => unknown
-		cleanup?: (state: unknown) => void
-	}
-}
+// Re-export shared types so existing consumers don't break
+export type { ViewModeDefinition } from '../../shared/viewMode'
 
-export class ViewModeRegistry {
+export class ViewModeRegistry implements ViewModeRegistryReader {
 	private modes = new Map<ViewMode, ViewModeDefinition>()
 	private initialized = false
 
@@ -115,5 +110,11 @@ export class ViewModeRegistry {
 	}
 }
 
-export const viewModeRegistry = new ViewModeRegistry()
-viewModeRegistry.initialize()
+const { get: getViewModeRegistry, deprecated: viewModeRegistry } =
+	createLazySingleton(() => {
+		const registry = new ViewModeRegistry()
+		registry.initialize()
+		return registry
+	})
+
+export { getViewModeRegistry, viewModeRegistry }

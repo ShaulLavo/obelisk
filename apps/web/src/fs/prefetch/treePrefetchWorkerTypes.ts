@@ -1,6 +1,4 @@
-import type { DirTreeNode, TreeNode } from '@repo/fs'
-
-type FsSource = 'memory' | 'local' | 'opfs'
+import type { DirTreeNode, TreeNode, FsSource } from '@repo/fs'
 
 export type PrefetchTarget = {
 	path: string

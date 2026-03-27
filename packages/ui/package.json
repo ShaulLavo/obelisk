@@ -36,7 +36,6 @@
     "vitest-browser-solid": "workspace:*"
   },
   "dependencies": {
-    "@corvu/accordion": "^0.2.5",
     "@corvu/resizable": "^0.2.5",
     "@kobalte/core": "^0.13.11",
     "@repo/icons": "*",

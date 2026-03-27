@@ -32,9 +32,11 @@ export type FontErrorBoundaryProps = {
 export const FontErrorBoundary = (props: FontErrorBoundaryProps) => {
 	const [retryCount, setRetryCount] = createSignal(0)
 	const [isRetrying, setIsRetrying] = createSignal(false)
-	const [lastError, setLastError] = createSignal<FontErrorInfo | null>(null)
+	const [_lastError, setLastError] = createSignal<FontErrorInfo | null>(null)
 
+	// eslint-disable-next-line solid/reactivity -- intentionally read once for static config
 	const maxRetries = props.maxRetries ?? 3
+	// eslint-disable-next-line solid/reactivity -- intentionally read once for static config
 	const baseRetryDelay = props.retryDelay ?? 1000
 
 	const categorizeError = (error: Error): FontErrorInfo => {
@@ -214,7 +216,7 @@ export const FontErrorBoundary = (props: FontErrorBoundaryProps) => {
 
 	return (
 		<ErrorBoundary
-			fallback={(error: Error, reset) => {
+			fallback={(error: Error, _reset) => {
 				const errorInfo = categorizeError(error)
 				setLastError(errorInfo)
 

@@ -4,3 +4,4 @@ export {
 } from './useFontSettingsIntegration'
 export { useFontPreview } from './useFontPreview'
 export { useMultiSelect } from './useMultiSelect'
+export { useNerdfontsBrowser } from './useNerdfontsBrowser'

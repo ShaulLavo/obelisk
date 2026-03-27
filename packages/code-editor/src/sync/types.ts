@@ -104,9 +104,9 @@ export interface EditorInstance {
 	/** Get current cursor position */
 	getCursorPosition(): CursorPosition
 	
-	/** Set cursor position */
-	setCursorPosition(position: CursorPosition): void
-	
+	/** Set cursor position (optional — not all editors support this) */
+	setCursorPosition?(position: CursorPosition): void
+
 	/** Get current scroll position */
 	getScrollPosition(): EditorScrollPosition
 	
@@ -116,40 +116,14 @@ export interface EditorInstance {
 	/** Get folded regions */
 	getFoldedRegions(): FoldedRegion[]
 	
-	/** Set folded regions */
-	setFoldedRegions(regions: FoldedRegion[]): void
+	/** Set folded regions (optional — not all editors support this) */
+	setFoldedRegions?(regions: FoldedRegion[]): void
 	
 	/** Subscribe to content changes */
 	onContentChange(callback: (content: string) => void): () => void
 	
 	/** Subscribe to dirty state changes */
 	onDirtyStateChange(callback: (isDirty: boolean) => void): () => void
-}
-
-/**
- * Configuration for editor sync behavior
- */
-export interface EditorSyncConfig {
-	/** Enable automatic file watching */
-	autoWatch: boolean
-	
-	/** Enable auto-reload for clean files */
-	autoReload: boolean
-	
-	/** Debounce delay for change notifications (ms) */
-	debounceMs: number
-	
-	/** Default conflict resolution strategy */
-	defaultConflictResolution: ConflictResolutionStrategy
-	
-	/** Maximum number of files to watch simultaneously (0 = unlimited) */
-	maxWatchedFiles: number
-	
-	/** Show notifications for auto-reloads */
-	showReloadNotifications: boolean
-	
-	/** Preserve editor state during updates */
-	preserveEditorState: boolean
 }
 
 /**
@@ -190,28 +164,6 @@ export interface ConflictResolution {
 }
 
 /**
- * Result of batch conflict resolution
- */
-export interface BatchResolutionResult {
-	/** Individual resolutions for each file */
-	resolutions: Map<string, ConflictResolution>
-	/** Strategy to apply to all files (if selected) */
-	applyToAll?: ConflictResolutionStrategy
-}
-
-/**
- * Pending conflict information for tracking
- */
-export interface PendingConflict {
-	/** File path */
-	path: string
-	/** Conflict information */
-	conflictInfo: ConflictInfo
-	/** Timestamp when conflict was detected */
-	timestamp: number
-}
-
-/**
  * Sentinel status for files that are not being watched
  */
 export const NOT_WATCHED_STATUS: SyncStatusInfo = {
@@ -219,17 +171,4 @@ export const NOT_WATCHED_STATUS: SyncStatusInfo = {
 	lastSyncTime: 0,
 	hasLocalChanges: false,
 	hasExternalChanges: false,
-}
-
-/**
- * Default configuration values
- */
-export const DEFAULT_EDITOR_SYNC_CONFIG: EditorSyncConfig = {
-	autoWatch: true,
-	autoReload: true,
-	debounceMs: 100,
-	defaultConflictResolution: 'manual-merge',
-	maxWatchedFiles: 0, // 0 = unlimited (watches all open tabs)
-	showReloadNotifications: true,
-	preserveEditorState: true,
 }

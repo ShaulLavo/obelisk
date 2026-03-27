@@ -140,6 +140,7 @@ export class RetryService {
 		}
 	}
 
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	static createRetryWrapper<T extends any[], R>(
 		fn: (...args: T) => Promise<R>,
 		options: Partial<RetryOptions> = {}

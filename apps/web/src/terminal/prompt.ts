@@ -45,7 +45,9 @@ const dimColorize = (rgb: Rgb, text: string) =>
  */
 const stripControlChars = (text: string): string =>
 	text
+		// eslint-disable-next-line no-control-regex
 		.replace(/\x1b\[[0-9;]*m/g, '') // Remove ANSI color/style codes
+		// eslint-disable-next-line no-control-regex
 		.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '') // Remove control chars (except \t, \n, \r)
 
 export const createPrompt = (

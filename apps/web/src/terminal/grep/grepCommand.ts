@@ -3,7 +3,7 @@ import type { GrepMatch, GrepProgress } from '@repo/fs'
 import { grep, createFilePath } from '@repo/fs'
 import { DEFERRED_SEGMENTS } from '../../fs/config/constants'
 import { readFileText } from '../../fs/runtime/streaming'
-import { DEFAULT_SOURCE } from '../../fs/config/constants'
+import { getDefaultSource } from '../../fs/config/constants'
 
 /**
  * Parsed grep command arguments
@@ -162,7 +162,7 @@ export async function loadGitignorePatterns(
 	}
 
 	try {
-		const source = ctx.shell.state.activeSource ?? DEFAULT_SOURCE
+		const source = ctx.shell.state.activeSource ?? getDefaultSource()
 		const content = await readFileText(source, gitignorePath)
 		return parseGitignore(content)
 	} catch (error) {

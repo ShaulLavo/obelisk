@@ -1,6 +1,6 @@
 import type { RootCtx } from '@repo/fs'
 import { createFilePath } from '@repo/fs'
-import { fileHandleCache } from './fsRuntime'
+import { fileHandleCache } from './handleCache'
 
 export const getCachedFileHandle = (path: string) =>
 	fileHandleCache.get(createFilePath(path))

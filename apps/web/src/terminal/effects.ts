@@ -1,4 +1,4 @@
-import type { TerminalLike } from './localEcho/types'
+import type { TerminalLike } from './local-echo/types'
 
 /**
  * Types out text character by character with a realistic typing effect

@@ -5,9 +5,6 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 import subsetFont from 'subset-font'
 import crypto from 'node:crypto'
-import { up } from 'up-fetch'
-
-const upfetch = up(fetch)
 
 const CACHE_DIR = path.join(__dirname, '..', '.cache')
 const FONTS_DIR = path.join(CACHE_DIR, 'fonts')
@@ -32,9 +29,9 @@ export async function getNerdFontLinks(): Promise<{
 	}
 
 	console.log('Fetching Nerd Fonts links...')
-	const html = await upfetch('https://www.nerdfonts.com/font-downloads', {
-		parseResponse: (res) => res.text(),
-	})
+	const html = await fetch('https://www.nerdfonts.com/font-downloads').then(
+		(res) => res.text()
+	)
 	const $ = cheerio.load(html)
 
 	const links = $('a')

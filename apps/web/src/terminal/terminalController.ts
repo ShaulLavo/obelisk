@@ -8,14 +8,14 @@ import {
 } from 'ghostty-web'
 import { WebglAddon } from '@xterm/addon-webgl'
 import { CanvasAddon } from '@xterm/addon-canvas'
-import { LocalEchoController } from './localEcho'
-import { typeEffect, batchTypeEffect } from './effects'
+import { LocalEchoController } from './local-echo'
+import { batchTypeEffect } from './effects'
 import { createJustBashAdapter } from './justBashAdapter'
 import { getSharedBuffer } from './sharedBuffer'
 import type { BufferEntry } from './sharedBuffer'
 import type { ShellContext } from './commands'
 import type { TerminalPrompt } from './prompt'
-import type { TerminalAddonLike, TerminalLike } from './localEcho/types'
+import type { TerminalAddonLike, TerminalLike } from './local-echo/types'
 import type { ThemePalette } from '@repo/theme'
 import type { ScrollbarSource } from '@repo/ui/useScrollbar'
 
@@ -112,7 +112,7 @@ export const createTerminalController = async (
 		sharedBuffer.add(type, text)
 	}
 	const recordingPrint = (text: string) => recordOutput('print', text)
-	const recordingPrintln = (text: string) => recordOutput('println', text)
+	const _recordingPrintln = (text: string) => recordOutput('println', text)
 	const recordPromptInput = (prompt: string, input: string) => {
 		if (prompt) {
 			sharedBuffer.add('print', prompt, 'history')
@@ -453,7 +453,7 @@ const createXtermRuntime = (
 				// Check if the addon's internal state suggests it's already disposed
 				// The error occurs when trying to access _isDisposed on undefined objects
 				originalDispose()
-			} catch (error) {
+			} catch (_error) {
 				// WebGL addon disposal error (likely already disposed)
 			}
 		}

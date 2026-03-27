@@ -1,10 +1,8 @@
 /**
  * View mode types for files
+ *
+ * Re-exported from shared/viewMode so that existing imports
+ * from `fs/types/ViewMode` continue to work.
  */
-export type BuiltInViewMode = 'editor' | 'ui' | 'binary'
-
-export type ViewMode = BuiltInViewMode | (string & {})
-
-export const isBuiltInViewMode = (mode: ViewMode): mode is BuiltInViewMode => {
-	return mode === 'editor' || mode === 'ui' || mode === 'binary'
-}
+export type { BuiltInViewMode, ViewMode } from '../../shared/viewMode'
+export { isBuiltInViewMode } from '../../shared/viewMode'

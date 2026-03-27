@@ -34,6 +34,7 @@ describe('Editor (browser integration)', () => {
 
 	// Helper component that renders the Editor
 	const TestEditor = (props: { content: string }) => {
+		// eslint-disable-next-line solid/reactivity -- props.content is static in tests
 		const document = createTestDocument(props.content)
 		const [isFileSelected] = createSignal(true)
 		const [fontSize] = createSignal(14)

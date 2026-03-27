@@ -101,6 +101,7 @@ export function useActiveFilePath(): Accessor<FilePath | null> {
  */
 export function useIsActiveFile(path: FilePath): Accessor<boolean> {
 	const { activeFilePath } = useActiveFile()
+	// eslint-disable-next-line solid/reactivity -- path is a static argument, not a reactive signal
 	return createMemo(() => activeFilePath() === path)
 }
 
@@ -126,6 +127,7 @@ function getTabFilePath(tab: Tab): FilePath | null {
  * Provider component that creates ActiveFileContext from a LayoutManager.
  */
 export function ActiveFileProvider(props: ActiveFileProviderProps): JSX.Element {
+	// eslint-disable-next-line solid/reactivity -- layoutManager is a stable object reference
 	const { layoutManager } = props
 
 	// Derive active file path from focused pane's active tab
@@ -145,42 +147,34 @@ export function ActiveFileProvider(props: ActiveFileProviderProps): JSX.Element 
 		return getTabFilePath(tab)
 	})
 
-	// Collect all open file paths
+	// Collect all open file paths — delegates to layoutManager.getAllTabs()
 	const openFilePaths = createMemo<FilePath[]>(() => {
-		const paths: FilePath[] = []
 		const seen = new Set<string>()
+		const paths: FilePath[] = []
 
-		for (const node of Object.values(layoutManager.state.nodes)) {
-			if (isPane(node)) {
-				for (const tab of node.tabs) {
-					const path = getTabFilePath(tab)
-					if (path && !seen.has(path)) {
-						seen.add(path)
-						paths.push(path)
-					}
-				}
+		for (const { tab } of layoutManager.getAllTabs()) {
+			const path = getTabFilePath(tab)
+			if (path && !seen.has(path)) {
+				seen.add(path)
+				paths.push(path)
 			}
 		}
 
 		return paths
 	})
 
-	// Get panes that have a file open
+	// Get panes that have a file open — delegates to layoutManager.getAllTabsForFile()
 	function getPanesWithFile(path: FilePath): NodeId[] {
+		const tabs = layoutManager.getAllTabsForFile(path)
+		// Deduplicate pane IDs (a pane could theoretically have the same file in multiple tabs)
+		const seen = new Set<string>()
 		const paneIds: NodeId[] = []
-
-		for (const [nodeId, node] of Object.entries(layoutManager.state.nodes)) {
-			if (isPane(node)) {
-				const hasFile = node.tabs.some((tab) => {
-					const tabPath = getTabFilePath(tab)
-					return tabPath === path
-				})
-				if (hasFile) {
-					paneIds.push(nodeId)
-				}
+		for (const { paneId } of tabs) {
+			if (!seen.has(paneId)) {
+				seen.add(paneId)
+				paneIds.push(paneId)
 			}
 		}
-
 		return paneIds
 	}
 

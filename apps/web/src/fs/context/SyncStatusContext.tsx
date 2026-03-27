@@ -111,6 +111,7 @@ export function SyncStatusProvider(props: SyncStatusProviderProps) {
 			}
 			return false
 		},
+		// eslint-disable-next-line solid/reactivity -- stable reference read once during setup
 		documentStore: props.documentStore ?? null,
 	}
 

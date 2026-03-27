@@ -53,7 +53,7 @@ describe('Empty State Display Properties', () => {
 					const { unmount } = render(() => (
 						<SplitEditor
 							layoutManager={layoutManager}
-							renderTabContent={(tab, pane) => (
+							renderTabContent={(tab, _pane) => (
 								<div data-testid="file-tab" data-file-path={tab.content.type === 'file' ? tab.content.filePath : ''}>
 									File content placeholder
 								</div>
@@ -73,8 +73,8 @@ describe('Empty State Display Properties', () => {
 						}
 					}
 
-					// Wait for render
-					await new Promise((resolve) => setTimeout(resolve, 100))
+					// Wait for render reactively
+					await expect.poll(() => document.querySelectorAll('[data-testid="empty-pane-content"]').length).toBeGreaterThan(0)
 
 					// Property: All empty panes should show the empty state content
 					const emptyPaneElements = document.querySelectorAll(
@@ -128,7 +128,7 @@ describe('Empty State Display Properties', () => {
 					const { unmount } = render(() => (
 						<SplitEditor
 							layoutManager={layoutManager}
-							renderTabContent={(tab, pane) => (
+							renderTabContent={(tab, _pane) => (
 								<div data-testid="file-tab" data-file-path={tab.content.type === 'file' ? tab.content.filePath : ''}>
 									File content placeholder
 								</div>
@@ -136,8 +136,8 @@ describe('Empty State Display Properties', () => {
 						/>
 					))
 
-					// Wait for initial render
-					await new Promise((resolve) => setTimeout(resolve, 50))
+					// Wait for initial render reactively
+					await expect.poll(() => document.querySelector('[data-testid="empty-pane-content"]')).toBeTruthy()
 
 					// First, verify empty state is shown when no tabs
 					let emptyState = document.querySelector('[data-testid="empty-pane-content"]')
@@ -150,8 +150,8 @@ describe('Empty State Display Properties', () => {
 						createFileContent(config.emptyFilePath)
 					)
 
-					// Wait for tab to render
-					await new Promise((resolve) => setTimeout(resolve, 100))
+					// Wait for tab to render reactively
+					await expect.poll(() => document.querySelector('[data-testid="file-tab"]')).toBeTruthy()
 
 					// Now the empty state should NOT be visible (a file tab should be shown instead)
 					emptyState = document.querySelector('[data-testid="empty-pane-content"]')
@@ -196,7 +196,7 @@ describe('Empty State Display Properties', () => {
 					const { unmount } = render(() => (
 						<SplitEditor
 							layoutManager={layoutManager}
-							renderTabContent={(tab, pane) => (
+							renderTabContent={(tab, _pane) => (
 								<div data-testid="file-tab" data-file-path={tab.content.type === 'file' ? tab.content.filePath : ''}>
 									File content placeholder
 								</div>
@@ -204,7 +204,8 @@ describe('Empty State Display Properties', () => {
 						/>
 					))
 
-					await new Promise((resolve) => setTimeout(resolve, 50))
+					// Wait for initial empty state to render
+					await expect.poll(() => document.querySelector('[data-testid="empty-pane-content"]')).toBeTruthy()
 
 					// Initially should show empty state
 					let emptyState = document.querySelector('[data-testid="empty-pane-content"]')
@@ -220,7 +221,8 @@ describe('Empty State Display Properties', () => {
 						tabIds.push(tabId)
 					}
 
-					await new Promise((resolve) => setTimeout(resolve, 100))
+					// Wait for file tabs to appear
+					await expect.poll(() => document.querySelector('[data-testid="file-tab"]')).toBeTruthy()
 
 					// Empty state should not be visible with tabs open
 					emptyState = document.querySelector('[data-testid="empty-pane-content"]')
@@ -231,7 +233,8 @@ describe('Empty State Display Properties', () => {
 						layoutManager.closeTab(layoutManager.state.rootId, tabId)
 					}
 
-					await new Promise((resolve) => setTimeout(resolve, 100))
+					// Wait for empty state to reappear after closing all tabs
+					await expect.poll(() => document.querySelector('[data-testid="empty-pane-content"]')).toBeTruthy()
 
 					// Empty state should return after all tabs are closed
 					emptyState = document.querySelector('[data-testid="empty-pane-content"]')

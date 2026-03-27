@@ -21,7 +21,7 @@ import {
 import type { FsSource } from '../types'
 
 // intentionally not exported from module
-const FALLBACK_ERROR = 'local-directory-fallback-error'
+const _FALLBACK_ERROR = 'local-directory-fallback-error'
 
 type FallbackMode = 'memory' | 'opfs'
 
@@ -176,6 +176,7 @@ export const LocalDirectoryFallbackModal: Component = () => {
 		})
 	}
 
+	// eslint-disable-next-line solid/reactivity -- one-time registration, not reactive
 	registerLocalDirectoryFallback(handleRequest)
 	onCleanup(() => {
 		unregisterLocalDirectoryFallback(handleRequest)

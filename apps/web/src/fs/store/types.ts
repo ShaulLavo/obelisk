@@ -6,7 +6,7 @@ import type {
 	BracketInfo,
 	TreeSitterError,
 	FoldRange,
-} from '../../workers/treeSitter/types'
+} from '../../workers/tree-sitter/types'
 import type { FileLoadingError } from '../fileLoadingErrors'
 
 export interface TextEdit {

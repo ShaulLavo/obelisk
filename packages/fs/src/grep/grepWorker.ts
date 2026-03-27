@@ -72,89 +72,17 @@ async function grepFile(task: GrepFileTask): Promise<GrepFileResult> {
 			}
 
 			if (options.invertMatch) {
-				let lineStart = 0
-				let currentLineNum = prevChunkLineCount
-				while (lineStart < chunk.length) {
-					const lineEnd = findByteForward(chunk, NEWLINE, lineStart)
-					if (lineEnd === chunk.length && !isLast) break
-
-					let hasMatch = false
-					for (const off of validOffsets) {
-						if (off >= lineStart && off < lineEnd) {
-							hasMatch = true
-							break
-						}
-					}
-
-					if (!hasMatch) {
-						if (options.count) {
-							matchCount++
-						} else {
-							const contentBytes = chunk.slice(lineStart, lineEnd)
-							const lineContent = new TextDecoder().decode(contentBytes)
-							matches.push({
-								path,
-								lineNumber: currentLineNum + 1,
-								lineContent: options.maxColumnsPreview
-									? truncateLine(lineContent, options.maxColumnsPreview)
-									: lineContent.trim(),
-								matchStart: 0,
-							})
-						}
-					}
-
-					lineStart = lineEnd + 1
-					currentLineNum++
-				}
+				const invertResult = collectInvertedMatches(
+					chunk, validOffsets, prevChunkLineCount, isLast, path, options
+				)
+				matchCount += invertResult.countOnly
+				matches.push(...invertResult.matches)
 			} else {
 				for (const offset of validOffsets) {
-					if (options.count) {
-						matchCount++
-						continue
-					}
-
+					if (options.count) { matchCount++; continue }
 					if (options.filesWithMatches && matches.length > 0) break
 
-					const lineInfo = extractLine(chunk, offset, prevChunkLineCount)
-
-					let context = undefined
-					if (
-						options.context ||
-						options.contextBefore ||
-						options.contextAfter
-					) {
-						const before = options.context ?? options.contextBefore ?? 0
-						const after = options.context ?? options.contextAfter ?? 0
-						context = extractContext(
-							chunk,
-							lineInfo.lineNumber,
-							offset,
-							before,
-							after
-						)
-					}
-
-					let content = lineInfo.lineContent.trim()
-					if (
-						options.maxColumnsPreview &&
-						content.length > options.maxColumnsPreview
-					) {
-						content = truncateLine(content, options.maxColumnsPreview)
-					}
-
-					if (options.onlyMatching) {
-						content = new TextDecoder().decode(
-							chunk.slice(offset, offset + patternBytes.length)
-						)
-					}
-
-					matches.push({
-						path,
-						lineNumber: lineInfo.lineNumber,
-						lineContent: content,
-						matchStart: lineInfo.columnOffset,
-						context,
-					})
+					matches.push(buildMatch(chunk, offset, prevChunkLineCount, patternBytes, path, options))
 				}
 			}
 
@@ -179,6 +107,88 @@ async function grepFile(task: GrepFileTask): Promise<GrepFileResult> {
 			bytesScanned,
 			error: error instanceof Error ? error.message : String(error),
 		}
+	}
+}
+
+function lineOverlapsAnyOffset(offsets: number[], lineStart: number, lineEnd: number): boolean {
+	for (const off of offsets) {
+		if (off >= lineStart && off < lineEnd) return true
+	}
+	return false
+}
+
+function collectInvertedMatches(
+	chunk: Uint8Array,
+	validOffsets: number[],
+	prevChunkLineCount: number,
+	isLast: boolean,
+	path: string,
+	options: GrepFileTask['options']
+): { countOnly: number; matches: GrepMatch[] } {
+	const matches: GrepMatch[] = []
+	let countOnly = 0
+	let lineStart = 0
+	let currentLineNum = prevChunkLineCount
+
+	while (lineStart < chunk.length) {
+		const lineEnd = findByteForward(chunk, NEWLINE, lineStart)
+		if (lineEnd === chunk.length && !isLast) break
+
+		if (!lineOverlapsAnyOffset(validOffsets, lineStart, lineEnd)) {
+			if (options.count) {
+				countOnly++
+			} else {
+				const contentBytes = chunk.slice(lineStart, lineEnd)
+				const lineContent = new TextDecoder().decode(contentBytes)
+				matches.push({
+					path,
+					lineNumber: currentLineNum + 1,
+					lineContent: options.maxColumnsPreview
+						? truncateLine(lineContent, options.maxColumnsPreview)
+						: lineContent.trim(),
+					matchStart: 0,
+				})
+			}
+		}
+
+		lineStart = lineEnd + 1
+		currentLineNum++
+	}
+
+	return { countOnly, matches }
+}
+
+function buildMatch(
+	chunk: Uint8Array,
+	offset: number,
+	prevChunkLineCount: number,
+	patternBytes: Uint8Array,
+	path: string,
+	options: GrepFileTask['options']
+): GrepMatch {
+	const lineInfo = extractLine(chunk, offset, prevChunkLineCount)
+
+	let context = undefined
+	const ctxBefore = options.context ?? options.contextBefore ?? 0
+	const ctxAfter = options.context ?? options.contextAfter ?? 0
+	if (ctxBefore > 0 || ctxAfter > 0) {
+		context = extractContext(chunk, lineInfo.lineNumber, offset, ctxBefore, ctxAfter)
+	}
+
+	let content = lineInfo.lineContent.trim()
+	if (options.maxColumnsPreview && content.length > options.maxColumnsPreview) {
+		content = truncateLine(content, options.maxColumnsPreview)
+	}
+	if (options.onlyMatching) {
+		content = new TextDecoder().decode(chunk.slice(offset, offset + patternBytes.length))
+	}
+
+	return {
+		path,
+		lineNumber: lineInfo.lineNumber,
+		lineContent: content,
+		matchStart: lineInfo.columnOffset,
+		context,
 	}
 }
 

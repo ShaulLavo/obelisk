@@ -32,7 +32,7 @@ describe('FileTab Component', () => {
 		const { unmount } = render(() => (
 			<SplitEditor
 				layoutManager={layoutManager}
-				renderTabContent={(tab, pane) => (
+				renderTabContent={(tab, _pane) => (
 					<div
 						data-testid="file-tab"
 						data-file-path={tab.content.filePath}
@@ -76,7 +76,7 @@ describe('FileTab Component', () => {
 		const { unmount } = render(() => (
 			<SplitEditor
 				layoutManager={layoutManager}
-				renderTabContent={(tab, pane) => (
+				renderTabContent={(_tab, _pane) => (
 					<div data-testid="file-tab">Mock FileTab</div>
 				)}
 			/>
@@ -113,7 +113,7 @@ describe('FileTab Component', () => {
 		const { unmount } = render(() => (
 			<SplitEditor
 				layoutManager={layoutManager}
-				renderTabContent={(tab, pane) => (
+				renderTabContent={(_tab, _pane) => (
 					<div data-testid="file-tab">Mock FileTab</div>
 				)}
 			/>

@@ -32,6 +32,22 @@ function formatGrepMatch(match: GrepMatch): string {
 	return `${ANSI_CYAN}${path}${ANSI_RESET}:${ANSI_YELLOW}${lineNumber}${ANSI_RESET}: ${displayContent}`
 }
 
+function formatGrepResult(
+	result: { path: string; matches: GrepMatch[]; matchCount?: number },
+	opts: { count: boolean; filesWithMatches: boolean; filesWithoutMatch: boolean }
+): string {
+	if (opts.count) {
+		const cnt = result.matchCount ?? result.matches.length
+		return cnt > 0 ? `${result.path}:${cnt}\n` : ''
+	}
+	if (opts.filesWithMatches || opts.filesWithoutMatch) {
+		return `${result.path}\n`
+	}
+	let out = ''
+	for (const m of result.matches) out += formatGrepMatch(m) + '\n'
+	return out
+}
+
 type GitCloneArgs = {
 	repoUrl?: string
 	targetDir?: string
@@ -481,38 +497,19 @@ export function createJustBashAdapter(
 					let output = ''
 					let matchFound = false
 
+					const emit = (text: string) => {
+						if (state.outputCallback) state.outputCallback(text)
+						else output += text
+					}
+
 					for await (const result of generator) {
 						matchFound = true
+						const line = formatGrepResult(result, { count, filesWithMatches, filesWithoutMatch })
 
-						let line = ''
-						if (count) {
-							const cnt = result.matchCount ?? result.matches.length
-							if (cnt > 0) {
-								line = `${result.path}:${cnt}\n`
-							}
-						} else if (filesWithMatches || filesWithoutMatch) {
-							line = `${result.path}\n`
-						} else {
-							for (const m of result.matches) {
-								line += formatGrepMatch(m) + '\n'
-							}
-						}
-
-						if (line) {
-							if (state.outputCallback) {
-								state.outputCallback(line)
-							} else {
-								output += line
-							}
-						}
+						if (line) emit(line)
 
 						if (output.length > 5 * 1024 * 1024) {
-							const msg = `... truncated (too much output)\n`
-							if (state.outputCallback) {
-								state.outputCallback(msg)
-							} else {
-								output += msg
-							}
+							emit(`... truncated (too much output)\n`)
 							break
 						}
 					}

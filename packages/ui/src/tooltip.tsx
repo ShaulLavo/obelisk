@@ -95,7 +95,7 @@ function useTooltipContext() {
 // ============================================================================
 
 const Tooltip: Component<TooltipProps> = (props) => {
-	const [local, others] = splitProps(props, [
+	const [local] = splitProps(props, [
 		'open',
 		'defaultOpen',
 		'onOpenChange',
@@ -136,8 +136,8 @@ const Tooltip: Component<TooltipProps> = (props) => {
 		triggerId,
 		contentId,
 		placement,
-		openDelay: local.openDelay ?? 150,
-		closeDelay: local.closeDelay ?? 0,
+		get openDelay() { return local.openDelay ?? 150 },
+		get closeDelay() { return local.closeDelay ?? 0 },
 	}
 
 	return (

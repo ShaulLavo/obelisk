@@ -9,20 +9,16 @@ interface FontDebugWindow extends Window {
 }
 
 export interface OptimizationConfig {
-	enableLazyLoading: boolean
 	enablePerformanceMonitoring: boolean
 	enableMemoryMonitoring: boolean
 	maxConcurrentDownloads: number
-	preloadPopularFonts: boolean
 	debugMode: boolean
 }
 
 const DEFAULT_CONFIG: OptimizationConfig = {
-	enableLazyLoading: true,
 	enablePerformanceMonitoring: true,
 	enableMemoryMonitoring: true,
 	maxConcurrentDownloads: 3,
-	preloadPopularFonts: true,
 	debugMode: false,
 }
 
@@ -39,12 +35,55 @@ function getMemoryUsagePercentage(): number {
 }
 
 /**
+ * Queue a download with bounded concurrency.
+ *
+ * Runs `downloadFn` immediately if the active count is below `maxConcurrent`,
+ * otherwise enqueues it and resolves when it eventually completes.
+ */
+export function queueDownload(
+	_name: string,
+	downloadFn: () => Promise<void>,
+	maxConcurrent: number = DEFAULT_CONFIG.maxConcurrentDownloads
+): Promise<void> {
+	return fontDownloadQueue.enqueue(downloadFn, maxConcurrent)
+}
+
+/** Shared mutable state backing `queueDownload`. */
+const fontDownloadQueue = {
+	active: 0,
+	pending: [] as Array<() => Promise<void>>,
+
+	async enqueue(
+		downloadFn: () => Promise<void>,
+		maxConcurrent: number
+	): Promise<void> {
+		if (this.active < maxConcurrent) {
+			this.active++
+			try {
+				await downloadFn()
+			} finally {
+				this.active--
+				const next = this.pending.shift()
+				if (next) {
+					this.active++
+					void next().finally(() => {
+						this.active--
+					})
+				}
+			}
+		} else {
+			await new Promise<void>((resolve, reject) => {
+				this.pending.push(() => downloadFn().then(resolve, reject))
+			})
+		}
+	},
+}
+
+/**
  * Main performance optimization controller
  */
 export class FontPerformanceOptimizer {
 	private config: OptimizationConfig
-	private downloadQueue: Array<() => Promise<void>> = []
-	private activeDownloads = 0
 	private _initialized = false
 
 	constructor(config: Partial<OptimizationConfig> = {}) {
@@ -61,9 +100,6 @@ export class FontPerformanceOptimizer {
 		this.initialize()
 	}
 
-	/**
-	 * Reset state (for testing purposes only)
-	 */
 	reset(): void {
 		this.cleanup()
 	}
@@ -77,7 +113,6 @@ export class FontPerformanceOptimizer {
 			this.enableDebugMode()
 		}
 
-		// Setup cleanup on page unload (only in browser environment)
 		if (typeof window !== 'undefined') {
 			window.addEventListener('beforeunload', () => {
 				this.cleanup()
@@ -101,41 +136,13 @@ export class FontPerformanceOptimizer {
 		}
 	}
 
-	private async queueDownload(
-		_fontName: string,
-		downloadFn: () => Promise<void>
-	): Promise<void> {
-		if (this.activeDownloads < this.config.maxConcurrentDownloads) {
-			this.activeDownloads++
-			try {
-				await downloadFn()
-			} finally {
-				this.activeDownloads--
-				const next = this.downloadQueue.shift()
-				if (next) {
-					this.activeDownloads++
-					void next().finally(() => {
-						this.activeDownloads--
-					})
-				}
-			}
-		} else {
-			await new Promise<void>((resolve, reject) => {
-				this.downloadQueue.push(() => downloadFn().then(resolve, reject))
-			})
-		}
-	}
-
 	async optimizedFontDownload(
 		fontName: string,
 		downloadFn: () => Promise<void>
 	): Promise<void> {
-		await this.queueDownload(fontName, downloadFn)
+		await queueDownload(fontName, downloadFn, this.config.maxConcurrentDownloads)
 	}
 
-	/**
-	 * Trigger memory cleanup when usage is high
-	 */
 	private async triggerMemoryCleanup(): Promise<void> {
 		try {
 			const cache = await caches.open('nerdfonts-v1')
@@ -229,42 +236,4 @@ export function createOptimizedFontRegistry(
 
 		getOptimizationStatus: () => optimizer.getOptimizationStatus(),
 	}
-}
-
-/**
- * Resource cleanup utilities
- */
-export const ResourceCleanup = {
-	async cleanupFontResources(): Promise<void> {
-		try {
-			const cache = await caches.open('nerdfonts-v1')
-			const keys = await cache.keys()
-
-			for (const key of keys) {
-				await cache.delete(key)
-			}
-
-			const dbRequest = indexedDB.deleteDatabase('nerdfonts-metadata')
-			await new Promise((resolve, reject) => {
-				dbRequest.onsuccess = () => resolve(undefined)
-				dbRequest.onerror = () => reject(dbRequest.error)
-			})
-
-			if (document.fonts) {
-				document.fonts.clear()
-			}
-		} catch (error) {
-			console.warn('[ResourceCleanup] Font resource cleanup failed', error)
-		}
-	},
-
-	async verifyCleanup(): Promise<boolean> {
-		try {
-			const cache = await caches.open('nerdfonts-v1')
-			const keys = await cache.keys()
-			return keys.length === 0
-		} catch {
-			return false
-		}
-	},
 }

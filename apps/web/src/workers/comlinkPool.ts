@@ -78,6 +78,7 @@ export class ComlinkPool<T extends object> {
 		})
 	}
 
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic proxy requires any return type
 	private createPooledProxy(path: PropertyKey[] = []): any {
 		const handler: ProxyHandler<() => Promise<unknown>> = {
 			get: (_target, prop) => {
@@ -92,7 +93,8 @@ export class ComlinkPool<T extends object> {
 				}
 
 				return this.run(async (remote) => {
-					let target: any = remote
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic property traversal
+				let target: any = remote
 					for (const key of path) {
 						target = target[key as keyof typeof target]
 					}

@@ -1,6 +1,10 @@
 /**
  * Font Services — Singleton Architecture
  *
+ * Font services use class-based patterns to manage stateful resources
+ * (caches, workers, initialization lifecycle). The rest of the codebase
+ * prefers factory functions.
+ *
  * Ownership boundaries:
  * - These services own the *caching, downloading, and installation* of fonts.
  * - They do NOT own which font is "active" or CSS variable state — that belongs

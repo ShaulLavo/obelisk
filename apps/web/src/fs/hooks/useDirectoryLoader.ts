@@ -2,7 +2,7 @@ import { batch } from 'solid-js'
 import type { SetStoreFunction } from 'solid-js/store'
 import { buildTree } from '../runtime/fsRuntime'
 import type { FsState } from '../types'
-import { DEFAULT_SOURCE } from '../config/constants'
+import { getDefaultSource } from '../config/constants'
 import type { DirTreeNode, FilePath } from '@repo/fs'
 import { createFilePath } from '@repo/fs'
 import { normalizeDirNodeMetadata } from '../utils/treeNodes'
@@ -61,7 +61,7 @@ export const useDirectoryLoader = ({
 		const ensurePaths = buildEnsurePaths()
 		const load = (async () => {
 			try {
-				const source = state.activeSource ?? DEFAULT_SOURCE
+				const source = state.activeSource ?? getDefaultSource()
 				const subtree = await buildTree(source, {
 					rootPath: path,
 					expandedPaths: expandedSnapshot,
@@ -119,7 +119,7 @@ export const useDirectoryLoader = ({
 		const ensurePaths = buildEnsurePaths()
 
 		try {
-			const source = state.activeSource ?? DEFAULT_SOURCE
+			const source = state.activeSource ?? getDefaultSource()
 			const subtree = await buildTree(source, {
 				rootPath: targetPath,
 				expandedPaths: expandedSnapshot,

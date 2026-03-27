@@ -26,8 +26,13 @@ interface EdenResponse<T> {
 	error: { value?: { message?: string } } | null
 }
 
+interface FontPreviewEndpoint {
+	get(options?: { query?: { text?: string }; fetch?: { signal?: AbortSignal } }): Promise<EdenResponse<ArrayBuffer>>
+}
+
 interface FontByNameEndpoint {
 	get(options?: { fetch?: { signal?: AbortSignal } }): Promise<EdenResponse<ArrayBuffer | string>>
+	preview: FontPreviewEndpoint
 }
 
 interface FontBatchEndpoint {
@@ -36,7 +41,7 @@ interface FontBatchEndpoint {
 
 interface FontsEndpoint {
 	(params: { name: string }): FontByNameEndpoint
-	get(): Promise<EdenResponse<string[]>>
+	get(): Promise<EdenResponse<Record<string, string>>>
 	batch: FontBatchEndpoint
 }
 

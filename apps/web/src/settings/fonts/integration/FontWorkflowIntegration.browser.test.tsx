@@ -78,8 +78,8 @@ describe('Font Management Workflow Integration', () => {
 
 		const { unmount } = render(() => <TestApp />)
 
-		// Wait for component to render
-		await new Promise(resolve => setTimeout(resolve, 200))
+		// Wait for component to render reactively
+		await expect.poll(() => document.querySelector('[data-testid="test-app"]')).toBeTruthy()
 
 		try {
 			// Verify the component rendered
@@ -118,8 +118,8 @@ describe('Font Management Workflow Integration', () => {
 
 		const { unmount } = render(() => <TestApp />)
 
-		// Wait for component to render
-		await new Promise(resolve => setTimeout(resolve, 200))
+		// Wait for component to render reactively
+		await expect.poll(() => document.querySelector('[data-testid="font-selector-container"]')).toBeTruthy()
 
 		try {
 			// Verify the component rendered
@@ -163,8 +163,8 @@ describe('Font Management Workflow Integration', () => {
 
 		const { unmount } = render(() => <TestApp />)
 
-		// Wait for components to render
-		await new Promise(resolve => setTimeout(resolve, 200))
+		// Wait for components to render reactively
+		await expect.poll(() => document.querySelector('[data-testid="combined-test"]')).toBeTruthy()
 
 		try {
 			// Verify both sections rendered
@@ -197,8 +197,8 @@ describe('Font Management Workflow Integration', () => {
 
 		const { unmount } = render(() => <TestApp />)
 
-		// Wait for component to render
-		await new Promise(resolve => setTimeout(resolve, 200))
+		// Wait for component to render reactively
+		await expect.poll(() => document.querySelector('[data-testid="nested-context"]')).toBeTruthy()
 
 		try {
 			// Verify nested structure rendered

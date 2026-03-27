@@ -1,5 +1,6 @@
 import localforage from 'localforage'
 import { createLazySingleton } from './createLazySingleton'
+import { withFontStorage } from './withFontStorage'
 
 export interface FontMetadata {
 	name: string
@@ -16,6 +17,14 @@ export interface CacheStats {
 	lastCleanup: Date
 }
 
+/**
+ * Manages persistent font metadata (install dates, sizes, access times, etc.)
+ * backed by a localforage (IndexedDB) store.
+ *
+ * All public methods except `init()` are fail-safe: on storage errors they
+ * log at debug level and return a safe default (empty array, null, empty set,
+ * or void) so callers never need to handle storage failures.
+ */
 export class FontMetadataService {
 	private static readonly DB_NAME = 'nerdfonts-metadata'
 	private static readonly STORE_NAME = 'fonts'
@@ -55,122 +64,109 @@ export class FontMetadataService {
 
 	async storeFontMetadata(metadata: FontMetadata): Promise<void> {
 		await this.ensureInitialized()
-
-		try {
-			await this.store.setItem(metadata.name, metadata)
-		} catch (error) {
-			console.debug('[FontMetadataService] Failed to store font metadata for', metadata.name, error)
-		}
+		await withFontStorage(
+			() => this.store.setItem(metadata.name, metadata).then(() => {}),
+			undefined,
+			`FontMetadataService.storeFontMetadata(${metadata.name})`,
+		)
 	}
 
 	async getFontMetadata(name: string): Promise<FontMetadata | null> {
 		await this.ensureInitialized()
-
-		try {
-			const metadata = await this.store.getItem<FontMetadata>(name)
-			return metadata || null
-		} catch (error) {
-			console.debug('[FontMetadataService] Failed to get font metadata for', name, error)
-			return null
-		}
+		return withFontStorage(
+			async () => (await this.store.getItem<FontMetadata>(name)) || null,
+			null,
+			`FontMetadataService.getFontMetadata(${name})`,
+		)
 	}
 
 	async getAllFontMetadata(): Promise<FontMetadata[]> {
 		await this.ensureInitialized()
+		return withFontStorage(
+			async () => {
+				const keys = await this.store.keys()
+				const fontKeys = keys.filter(
+					(key) => key !== FontMetadataService.AVAILABLE_FONTS_KEY
+				)
 
-		try {
-			const keys = await this.store.keys()
-			const fontKeys = keys.filter(
-				(key) => key !== FontMetadataService.AVAILABLE_FONTS_KEY
-			)
-
-			const metadata: FontMetadata[] = []
-			for (const key of fontKeys) {
-				const fontMetadata = await this.store.getItem<FontMetadata>(key)
-				if (fontMetadata) {
-					metadata.push(fontMetadata)
+				const metadata: FontMetadata[] = []
+				for (const key of fontKeys) {
+					const fontMetadata = await this.store.getItem<FontMetadata>(key)
+					if (fontMetadata) {
+						metadata.push(fontMetadata)
+					}
 				}
-			}
 
-			return metadata
-		} catch (error) {
-			console.debug('[FontMetadataService] Failed to get all font metadata', error)
-			return []
-		}
+				return metadata
+			},
+			[],
+			'FontMetadataService.getAllFontMetadata',
+		)
 	}
 
 	async removeFontMetadata(name: string): Promise<void> {
 		await this.ensureInitialized()
-
-		try {
-			await this.store.removeItem(name)
-		} catch (error) {
-			console.debug('[FontMetadataService] Failed to remove font metadata for', name, error)
-		}
+		await withFontStorage(
+			() => this.store.removeItem(name),
+			undefined,
+			`FontMetadataService.removeFontMetadata(${name})`,
+		)
 	}
 
 	async updateLastAccessed(name: string): Promise<void> {
 		await this.ensureInitialized()
-
-		try {
-			const metadata = await this.getFontMetadata(name)
-			if (metadata) {
-				metadata.lastAccessed = new Date()
-				await this.storeFontMetadata(metadata)
-			}
-		} catch (error) {
-			// Last-accessed update is non-critical; log for diagnostics only
-			console.debug('[FontMetadataService] Failed to update lastAccessed for', name, error)
-		}
+		await withFontStorage(
+			async () => {
+				const metadata = await this.getFontMetadata(name)
+				if (metadata) {
+					metadata.lastAccessed = new Date()
+					await this.storeFontMetadata(metadata)
+				}
+			},
+			undefined,
+			`FontMetadataService.updateLastAccessed(${name})`,
+		)
 	}
 
 	async getInstalledFonts(): Promise<Set<string>> {
-		try {
-			const metadata = await this.getAllFontMetadata()
-			return new Set(metadata.map((m) => m.name))
-		} catch (error) {
-			console.debug('[FontMetadataService] Failed to get installed fonts', error)
-			return new Set()
-		}
+		return withFontStorage(
+			async () => {
+				const metadata = await this.getAllFontMetadata()
+				return new Set(metadata.map((m) => m.name))
+			},
+			new Set<string>(),
+			'FontMetadataService.getInstalledFonts',
+		)
 	}
 
 	async getCacheStats(): Promise<CacheStats> {
-		try {
-			const metadata = await this.getAllFontMetadata()
+		return withFontStorage(
+			async () => {
+				const metadata = await this.getAllFontMetadata()
 
-			const totalSize = metadata.reduce((sum, m) => sum + m.size, 0)
-			const fontCount = metadata.length
+				const totalSize = metadata.reduce((sum, m) => sum + m.size, 0)
+				const fontCount = metadata.length
 
-			// Get last cleanup time from a special metadata entry
-			const lastCleanupData = await this.store.getItem<{ date: Date }>(
-				'last-cleanup'
-			)
-			const lastCleanup = lastCleanupData?.date || new Date(0)
+				// Get last cleanup time from a special metadata entry
+				const lastCleanupData = await this.store.getItem<{ date: Date }>(
+					'last-cleanup'
+				)
+				const lastCleanup = lastCleanupData?.date || new Date(0)
 
-			return {
-				totalSize,
-				fontCount,
-				lastCleanup,
-			}
-		} catch (error) {
-			console.debug('[FontMetadataService] Failed to get cache stats', error)
-			return {
-				totalSize: 0,
-				fontCount: 0,
-				lastCleanup: new Date(0),
-			}
-		}
+				return { totalSize, fontCount, lastCleanup }
+			},
+			{ totalSize: 0, fontCount: 0, lastCleanup: new Date(0) },
+			'FontMetadataService.getCacheStats',
+		)
 	}
 
 	async setLastCleanup(date: Date): Promise<void> {
 		await this.ensureInitialized()
-
-		try {
-			await this.store.setItem('last-cleanup', { date })
-		} catch (error) {
-			// Persisting last-cleanup timestamp is non-critical
-			console.debug('[FontMetadataService] Failed to persist last-cleanup timestamp', error)
-		}
+		await withFontStorage(
+			() => this.store.setItem('last-cleanup', { date }).then(() => {}),
+			undefined,
+			'FontMetadataService.setLastCleanup',
+		)
 	}
 
 	// LRU Cache Management
@@ -215,59 +211,54 @@ export class FontMetadataService {
 	// Available fonts caching
 	async cacheAvailableFonts(fonts: Record<string, string>): Promise<void> {
 		await this.ensureInitialized()
-
-		const cacheData = {
-			fonts,
-			cachedAt: new Date(),
-		}
-
-		try {
-			await this.store.setItem(
-				FontMetadataService.AVAILABLE_FONTS_KEY,
-				cacheData
-			)
-		} catch (error) {
-			// Caching available fonts is an optimization; failure is non-critical
-			console.debug('[FontMetadataService] Failed to cache available fonts', error)
-		}
+		await withFontStorage(
+			() =>
+				this.store
+					.setItem(FontMetadataService.AVAILABLE_FONTS_KEY, {
+						fonts,
+						cachedAt: new Date(),
+					})
+					.then(() => {}),
+			undefined,
+			'FontMetadataService.cacheAvailableFonts',
+		)
 	}
 
 	async getCachedAvailableFonts(): Promise<Record<string, string> | null> {
 		await this.ensureInitialized()
+		return withFontStorage(
+			async () => {
+				const cacheData = await this.store.getItem<{
+					fonts: Record<string, string>
+					cachedAt: Date
+				}>(FontMetadataService.AVAILABLE_FONTS_KEY)
 
-		try {
-			const cacheData = await this.store.getItem<{
-				fonts: Record<string, string>
-				cachedAt: Date
-			}>(FontMetadataService.AVAILABLE_FONTS_KEY)
+				if (!cacheData) return null
 
-			if (!cacheData) return null
+				const cachedAt = new Date(cacheData.cachedAt)
+				const expiryTime =
+					cachedAt.getTime() +
+					FontMetadataService.CACHE_EXPIRY_HOURS * 60 * 60 * 1000
 
-			const cachedAt = new Date(cacheData.cachedAt)
-			const expiryTime =
-				cachedAt.getTime() +
-				FontMetadataService.CACHE_EXPIRY_HOURS * 60 * 60 * 1000
+				if (Date.now() > expiryTime) {
+					await this.store.removeItem(FontMetadataService.AVAILABLE_FONTS_KEY)
+					return null
+				}
 
-			if (Date.now() > expiryTime) {
-				await this.store.removeItem(FontMetadataService.AVAILABLE_FONTS_KEY)
-				return null
-			}
-
-			return cacheData.fonts
-		} catch (error) {
-			console.debug('[FontMetadataService] Failed to get cached available fonts', error)
-			return null
-		}
+				return cacheData.fonts
+			},
+			null,
+			'FontMetadataService.getCachedAvailableFonts',
+		)
 	}
 
 	async clearAllMetadata(): Promise<void> {
 		await this.ensureInitialized()
-
-		try {
-			await this.store.clear()
-		} catch (error) {
-			console.debug('[FontMetadataService] Failed to clear all metadata', error)
-		}
+		await withFontStorage(
+			() => this.store.clear(),
+			undefined,
+			'FontMetadataService.clearAllMetadata',
+		)
 	}
 
 	private async ensureInitialized(): Promise<void> {

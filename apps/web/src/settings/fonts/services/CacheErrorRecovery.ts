@@ -130,7 +130,7 @@ export class CacheErrorRecoveryService {
 						fallbackActive: false,
 					}
 			}
-		} catch (recoveryError) {
+		} catch {
 
 			// Last resort: disable caching entirely
 			return this.disableCaching()
@@ -168,7 +168,7 @@ export class CacheErrorRecoveryService {
 					'Using localStorage for font metadata. Some features may be limited.',
 				fallbackActive: true,
 			}
-		} catch (error) {
+		} catch {
 			return this.enableMemoryFallback()
 		}
 	}
@@ -179,14 +179,14 @@ export class CacheErrorRecoveryService {
 			if ('caches' in window) {
 				try {
 					await caches.delete('nerdfonts-v1')
-				} catch (error) {
+				} catch {
 					// Cache API delete failed during rebuild — continue with other cleanup
 				}
 			}
 
 			try {
 				await fontMetadataService.clearAllMetadata()
-			} catch (error) {
+			} catch {
 				// Metadata clear failed during rebuild — continue with other cleanup
 			}
 
@@ -197,7 +197,7 @@ export class CacheErrorRecoveryService {
 						localStorage.removeItem(key)
 					}
 				}
-			} catch (error) {
+			} catch {
 				// localStorage cleanup failed during rebuild — continue with other cleanup
 			}
 
@@ -208,7 +208,7 @@ export class CacheErrorRecoveryService {
 					'Cache cleared and rebuilt. You may need to re-download fonts.',
 				fallbackActive: false,
 			}
-		} catch (error) {
+		} catch {
 			return this.enableMemoryFallback()
 		}
 	}
@@ -234,7 +234,7 @@ export class CacheErrorRecoveryService {
 					}
 
 					await fontMetadataService.removeFontMetadata(metadata.name)
-				} catch (error) {
+				} catch {
 					// Individual font removal failed — continue with remaining fonts
 				}
 			}
@@ -245,7 +245,7 @@ export class CacheErrorRecoveryService {
 				message: `Removed ${fontsToRemove.length} fonts to free up storage space.`,
 				fallbackActive: false,
 			}
-		} catch (error) {
+		} catch {
 			return await this.clearAndRebuildCache()
 		}
 	}

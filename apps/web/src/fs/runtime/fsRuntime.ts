@@ -22,8 +22,6 @@ export class LocalDirectoryFallbackSwitchError extends Error {
 	}
 }
 
-export const fileHandleCache = new Map<string, FileSystemFileHandle>()
-
 let awaitingPermissionModalId: string | null = null
 
 const showAwaitingPermissionModal = () => {
@@ -46,6 +44,24 @@ export function invalidateFs(source: FsSource) {
 	delete initPromises[source]
 }
 
+async function getRootHandleWithFallback(source: FsSource): Promise<FileSystemDirectoryHandle> {
+	try {
+		return await getRootDirectory(source, OPFS_ROOT_NAME, {
+			onAwaitingInteraction: showAwaitingPermissionModal,
+		})
+	} catch (error) {
+		if (source !== 'local' || !(error instanceof DirectoryPickerUnavailableError)) {
+			throw error
+		}
+		const fallback = await requestLocalDirectoryFallback('unsupported')
+		if (fallback.nextSource && fallback.nextSource !== source) {
+			primeFsCache(fallback.nextSource, fallback.handle)
+			throw new LocalDirectoryFallbackSwitchError(fallback.nextSource)
+		}
+		return fallback.handle
+	}
+}
+
 export async function ensureFs(source: FsSource): Promise<RootCtx> {
 	if (fsCache[source]) return fsCache[source]!
 
@@ -53,27 +69,9 @@ export async function ensureFs(source: FsSource): Promise<RootCtx> {
 		initPromises[source] = trackOperation(
 			'fs:ensureFs:init',
 			async ({ timeAsync, timeSync }) => {
-				const rootHandle = await timeAsync('get-root', async () => {
-					try {
-						return await getRootDirectory(source, OPFS_ROOT_NAME, {
-							onAwaitingInteraction: showAwaitingPermissionModal,
-						})
-					} catch (error) {
-						if (
-							source === 'local' &&
-							error instanceof DirectoryPickerUnavailableError
-						) {
-							const fallback =
-								await requestLocalDirectoryFallback('unsupported')
-							if (fallback.nextSource && fallback.nextSource !== source) {
-								primeFsCache(fallback.nextSource, fallback.handle)
-								throw new LocalDirectoryFallbackSwitchError(fallback.nextSource)
-							}
-							return fallback.handle
-						}
-						throw error
-					}
-				}).finally(() => {
+				const rootHandle = await timeAsync('get-root', () =>
+					getRootHandleWithFallback(source)
+				).finally(() => {
 					clearAwaitingPermissionModal()
 				})
 				fsCache[source] = timeSync('create-fs', () => createRootCtx(rootHandle))

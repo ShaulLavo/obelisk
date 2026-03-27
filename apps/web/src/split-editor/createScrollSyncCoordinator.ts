@@ -5,7 +5,7 @@
  * Subscribes to scroll events and applies proportional scrolling to other tabs in the group.
  */
 
-import { createEffect, createMemo, onCleanup } from 'solid-js'
+import { createMemo, onCleanup } from 'solid-js'
 import type { LayoutManager } from './createLayoutManager'
 import type { ScrollSyncGroup, ScrollSyncMode, TabId } from './types'
 

@@ -42,7 +42,9 @@ const readData = async (
 	} finally {
 		try {
 			handle.close()
-		} catch {}
+		} catch {
+			// intentionally empty
+		}
 	}
 }
 
@@ -59,7 +61,9 @@ const writeData = async (
 	} finally {
 		try {
 			handle.close()
-		} catch {}
+		} catch {
+			// intentionally empty
+		}
 	}
 }
 

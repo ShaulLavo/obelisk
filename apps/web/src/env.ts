@@ -24,5 +24,3 @@ export const env = {
 	isDev: envData.DEV,
 }
 
-export const IS_DEV = env.isDev
-export const BUILD_MODE = env.mode

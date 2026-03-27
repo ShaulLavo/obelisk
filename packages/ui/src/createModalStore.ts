@@ -42,7 +42,6 @@ export const createModalStore = () => {
 	const [state, setState] = createSignal<ModalState | null>(null)
 
 	const open = (options: ModalOptions) => {
-		const current = state()
 		const id = options.id ?? createModalId()
 
 		const next: ModalState = {

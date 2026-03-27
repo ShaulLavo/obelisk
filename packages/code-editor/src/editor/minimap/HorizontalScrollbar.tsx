@@ -49,14 +49,6 @@ export const HorizontalScrollbar = (props: HorizontalScrollbarProps) => {
 
 	let containerRef: HTMLDivElement | undefined
 
-	const getScrollElementOrWarn = () => {
-		const element = props.scrollElement()
-		if (!element) {
-			return null
-		}
-		return element
-	}
-
 	const updateScrollState = () => {
 		const element = props.scrollElement()
 		if (!element || !containerRef) return
@@ -125,7 +117,7 @@ export const HorizontalScrollbar = (props: HorizontalScrollbarProps) => {
 	const handlePointerDown = (event: PointerEvent) => {
 		event.preventDefault()
 
-		const element = getScrollElementOrWarn()
+		const element = props.scrollElement()
 		if (!element || !containerRef) return
 
 		const rect = containerRef.getBoundingClientRect()
@@ -165,7 +157,7 @@ export const HorizontalScrollbar = (props: HorizontalScrollbarProps) => {
 	const handlePointerMove = (event: PointerEvent) => {
 		if (!dragState || event.pointerId !== dragState.pointerId) return
 
-		const element = getScrollElementOrWarn()
+		const element = props.scrollElement()
 		if (!element || !containerRef) return
 
 		const rect = containerRef.getBoundingClientRect()
@@ -197,7 +189,7 @@ export const HorizontalScrollbar = (props: HorizontalScrollbarProps) => {
 
 	const handleWheel = (event: WheelEvent) => {
 		event.preventDefault()
-		const element = getScrollElementOrWarn()
+		const element = props.scrollElement()
 		if (element) {
 			// For horizontal scrollbar, use deltaX or shift+deltaY
 			element.scrollLeft += event.deltaX || event.deltaY

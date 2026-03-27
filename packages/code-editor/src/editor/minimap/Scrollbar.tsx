@@ -22,16 +22,8 @@ export const Scrollbar = (props: ScrollbarProps) => {
 	const thumbHeight = () =>
 		Math.max(SCROLLBAR_MIN_THUMB_HEIGHT, scrollState.sliderHeight)
 
-	const getScrollElementOrWarn = () => {
-		const element = scrollElement()
-		if (!element) {
-			return null
-		}
-		return element
-	}
-
 	const scrollToRatio = (ratio: number) => {
-		const element = getScrollElementOrWarn()
+		const element = scrollElement()
 		if (!element) return
 
 		const scrollHeight = element.scrollHeight
@@ -43,7 +35,7 @@ export const Scrollbar = (props: ScrollbarProps) => {
 	}
 
 	const scrollBy = (delta: number) => {
-		const element = getScrollElementOrWarn()
+		const element = scrollElement()
 		if (!element) return
 
 		element.scrollTop += delta
