@@ -48,10 +48,16 @@ export function useFileOpener(deps: FileOpenerDeps): FileOpenerHandle {
 
 	async function openFileAsTab(filePath: string): Promise<void> {
 		const focusedPaneId = layoutManager.state.focusedPaneId
-		if (!focusedPaneId) return
+		if (!focusedPaneId) {
+			// Clicking a file in the tree would otherwise do nothing at all here,
+			// with no error to explain it.
+			console.warn('[fs] cannot open file: no focused pane', { filePath })
+			return
+		}
 
 		// Prevent duplicate opens while file is being loaded
 		if (filesBeingOpened.has(filePath)) {
+			console.warn('[fs] open ignored: already opening', { filePath })
 			return
 		}
 
@@ -96,6 +102,12 @@ export function useFileOpener(deps: FileOpenerDeps): FileOpenerHandle {
 				toast.warning(`${filePath.split('/').pop()} is a binary file`)
 			}
 
+			console.debug('[fs] loaded', {
+				filePath,
+				contentLen: result.content.length,
+				fileSize: result.fileSize,
+				fromCache: result.fromCache,
+			})
 			// Load content into resource manager
 			actions.preloadFileContent(filePath, result.content)
 			actions.setLoadingState(filePath, { status: 'loaded' })

@@ -146,6 +146,50 @@
 		background-color: var(--editor-selection);
 	}
 
+	/*
+	 * Imperative runtime layers. The view builds these elements directly and
+	 * sets only geometry inline, so all appearance lives here.
+	 */
+	.editor-cursor {
+		background-color: var(--editor-foreground, currentColor);
+		will-change: transform;
+	}
+
+	/* Only blink while the editor holds focus, so an unfocused pane is quiet. */
+	.editor-host:focus-within .editor-cursor {
+		animation: editor-caret-blink 1.06s step-end infinite;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.editor-host:focus-within .editor-cursor {
+			animation: none;
+		}
+	}
+
+	@keyframes editor-caret-blink {
+		0%,
+		100% {
+			opacity: 1;
+		}
+		50% {
+			opacity: 0;
+		}
+	}
+
+	.editor-selection {
+		background-color: var(--editor-selection);
+	}
+
+	.editor-scroll-container {
+		cursor: text;
+	}
+
+	.editor-gutter-row {
+		color: var(--editor-line-number);
+		cursor: default;
+		user-select: none;
+	}
+
 	.whitespace-marker {
 		color: var(--editor-whitespace-marker);
 	}

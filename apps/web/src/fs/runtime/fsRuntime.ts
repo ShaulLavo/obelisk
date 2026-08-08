@@ -28,8 +28,13 @@ const showAwaitingPermissionModal = () => {
 	if (awaitingPermissionModalId !== null) return
 	awaitingPermissionModalId = modal({
 		heading: 'Waiting for permission',
-		body: 'Click or press a key to continue the directory picker.',
-		dismissable: false,
+		body: 'Click Continue to reopen the folder picker.',
+		// Deliberately dismissable. A modal dialog locks pointer events on the
+		// document while it is open, so a non-dismissable one here leaves the
+		// entire app unclickable — no caret, no selection, no way out — for as
+		// long as the picker is unresolved.
+		dismissable: true,
+		actions: [{ label: 'Continue', autoClose: true }],
 	})
 }
 

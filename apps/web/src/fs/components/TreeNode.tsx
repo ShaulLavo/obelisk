@@ -51,7 +51,11 @@ export const TreeNode = (props: TreeNodeProps) => {
 			if (props.onFileOpen) {
 				props.onFileOpen(props.node.path)
 			} else {
-				// Fallback to traditional selection
+				// selectPath loads the file but never opens a tab, so from the
+				// user's point of view clicking the file does nothing.
+				console.warn('[fs] tree click has no onFileOpen; falling back to selectPath', {
+					path: props.node.path,
+				})
 				void actions.selectPath(props.node.path)
 			}
 		}

@@ -44,6 +44,16 @@ export const createModalStore = () => {
 	const open = (options: ModalOptions) => {
 		const id = options.id ?? createModalId()
 
+		// Only one modal exists at a time, so opening replaces whatever is
+		// showing. Close the outgoing one properly: otherwise its owner still
+		// holds the old id, `dismiss(oldId)` no-ops against the new state, and a
+		// `dismissable: false` modal is orphaned on screen with no way to close.
+		const previous = state()
+		if (previous && previous.id !== id) {
+			console.info('[modal] replace', { previous: previous.id, next: id })
+			previous.options.onDismiss?.()
+		}
+
 		const next: ModalState = {
 			id,
 			options: {

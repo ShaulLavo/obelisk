@@ -30,7 +30,7 @@
     "fetch-icons": "turbo run fetch-icons",
     "prebuild": "test -d packages/icons/dist/vs || bun run --filter @repo/icons build",
     "build": "turbo run build",
-    "dev": "bun run build:icons && turbo run dev --filter=!desktop --filter=!vitest-browser-solid",
+    "dev": "bun run build:icons && turbo run dev --filter=!desktop",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",

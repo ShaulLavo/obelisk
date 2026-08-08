@@ -169,6 +169,9 @@ export default defineConfig(({ mode }) => {
 		},
 		server: {
 			port: webPort,
+			// Deliberately not strictPort: the API server accepts any loopback
+			// origin in dev, so drifting to a free port is harmless — whereas
+			// refusing to boot because something else holds the port is not.
 			headers: {
 				'Cross-Origin-Opener-Policy': 'same-origin',
 				'Cross-Origin-Embedder-Policy': 'require-corp',

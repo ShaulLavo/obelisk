@@ -6,6 +6,7 @@
  */
 
 import { createEffect, createRoot, runWithOwner, type Owner } from 'solid-js'
+import { unwrap } from 'solid-js/store'
 import { getCachedPieceTableContent } from '@repo/utils'
 import { createFilePath } from '@repo/fs'
 import { EditorInstanceAdapter } from '../../split-editor/EditorInstanceAdapter'
@@ -73,7 +74,7 @@ export function useSyncIntegration(deps: SyncIntegrationDeps): SyncIntegrationHa
 				getContent: () => {
 					const pt = state.files[normalizedPath]?.pieceTable
 					if (!pt) return ''
-					return getCachedPieceTableContent(pt)
+					return getCachedPieceTableContent(unwrap(pt))
 				},
 				setContent: (content: string) => {
 					actions.setPieceTableContent(filePath, content)
@@ -96,7 +97,7 @@ export function useSyncIntegration(deps: SyncIntegrationDeps): SyncIntegrationHa
 
 			const initialPt = state.files[normalizedPath]?.pieceTable
 			if (initialPt) {
-				previousContent.set(filePath, getCachedPieceTableContent(initialPt))
+				previousContent.set(filePath, getCachedPieceTableContent(unwrap(initialPt)))
 			}
 
 			if (owner) {
@@ -105,7 +106,7 @@ export function useSyncIntegration(deps: SyncIntegrationDeps): SyncIntegrationHa
 						const pt = state.files[normalizedPath]?.pieceTable
 						if (!pt) return
 
-						const content = getCachedPieceTableContent(pt)
+						const content = getCachedPieceTableContent(unwrap(pt))
 						const prev = previousContent.get(filePath)
 
 						if (prev !== undefined && content !== prev) {

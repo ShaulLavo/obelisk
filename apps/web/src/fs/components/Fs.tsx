@@ -17,10 +17,17 @@ export const Fs = () => {
 
 	const openFileAsTab = (filePath: string) => {
 		const manager = layoutManager()
-		if (manager?.openFileAsTab) {
-			manager.openFileAsTab(filePath)
-			actions.setSelectedPathOnly(filePath)
+		if (!manager?.openFileAsTab) {
+			// Silently returning here means clicking a file in the tree does
+			// nothing at all, with no error anywhere — say so instead.
+			console.warn(
+				'[fs] cannot open file: split editor is not ready',
+				{ filePath, hasManager: Boolean(manager) }
+			)
+			return
 		}
+		manager.openFileAsTab(filePath)
+		actions.setSelectedPathOnly(filePath)
 	}
 
 	return (

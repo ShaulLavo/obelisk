@@ -26,6 +26,9 @@ const EXACT_SCOPE_CLASS: Record<string, string> = {
 	'punctuation.bracket': 'syntax-punctuation-bracket',
 	error: 'syntax-error',
 	missing: 'syntax-missing',
+	// Emitted by the JS/TS queries for any capitalised identifier, so it covers
+	// class names, component names, and type references.
+	constructor: 'syntax-type',
 }
 
 // Prefix fallback mapping
@@ -57,13 +60,20 @@ export const getHighlightClassForScope = (
 	if (!scope) return undefined
 	if (SCOPE_CACHE.has(scope)) return SCOPE_CACHE.get(scope)
 
-	// Try exact match first
-	let result = EXACT_SCOPE_CLASS[scope]
+	// Own-property checks only. Scope names come from tree-sitter queries and
+	// collide with Object.prototype members — `constructor` in particular is
+	// emitted for every capitalised identifier — so a plain index would return
+	// an inherited function instead of a class name.
+	let result = Object.hasOwn(EXACT_SCOPE_CLASS, scope)
+		? EXACT_SCOPE_CLASS[scope]
+		: undefined
 
 	if (!result) {
 		// Fall back to prefix match
 		const prefix = scope.split('.')[0] ?? ''
-		result = PREFIX_SCOPE_CLASS[prefix]
+		result = Object.hasOwn(PREFIX_SCOPE_CLASS, prefix)
+			? PREFIX_SCOPE_CLASS[prefix]
+			: undefined
 	}
 
 	SCOPE_CACHE.set(scope, result)

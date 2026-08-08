@@ -1,6 +1,13 @@
 import * as DialogPrimitive from '@kobalte/core/dialog'
 import { VsClose } from '@repo/icons/vs/VsClose'
-import { createRoot, For, Show, type Component } from 'solid-js'
+import {
+	createEffect,
+	createRoot,
+	For,
+	onCleanup,
+	Show,
+	type Component,
+} from 'solid-js'
 import { Button } from './button'
 import { cn } from './lib/utils'
 import {
@@ -40,6 +47,45 @@ const Modal: Component = () => {
 		if (!state || !isDismissable()) return
 		modalStore.dismiss(state.id)
 	}
+
+	/*
+	 * A modal dialog locks `pointer-events: none` on <body> while it is open and
+	 * clears it on close. Closing here drops the portal via <Show> in the same
+	 * tick that `open` flips false, so that cleanup can be skipped — leaving the
+	 * entire app unclickable with no dialog on screen. Nothing looks wrong; the
+	 * UI simply stops responding to the mouse.
+	 *
+	 * Clear any leftover lock ourselves once no modal is open.
+	 */
+	createEffect(() => {
+		const body = document.body
+
+		// Keyed off the DOM rather than store state: the lock is a global side
+		// effect on one <body>, and a duplicated module instance would have its
+		// own store while sharing that body.
+		const releaseIfOrphaned = () => {
+			if (body.style.pointerEvents !== 'none') return
+			if (document.querySelector('[role="dialog"]')) return
+			body.style.removeProperty('pointer-events')
+		}
+
+		// Deferred so a real dialog's own cleanup always runs first.
+		const check = () => setTimeout(releaseIfOrphaned)
+
+		// Watch both the lock itself and the dialog portals, which mount as body
+		// children. The leak shows up as the dialog disappearing while the lock
+		// stays, and that changes no attribute on body — so watching the style
+		// alone would never fire for the case this exists to catch.
+		const observer = new MutationObserver(check)
+		observer.observe(body, {
+			attributes: true,
+			attributeFilter: ['style'],
+			childList: true,
+		})
+		check()
+
+		onCleanup(() => observer.disconnect())
+	})
 
 	return (
 		<DialogPrimitive.Root

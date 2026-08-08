@@ -68,10 +68,29 @@ const gitProxyAllowedHosts = envData.GIT_PROXY_ALLOWED_HOSTS
 			.filter(Boolean)
 	: []
 
+const resolvedWebOrigin =
+	webOrigin ?? (isProd ? envData.PROD_WEB_ORIGIN : devWebOrigin) ?? devWebOrigin
+
+/**
+ * In development Vite falls back to the next free port when the configured one
+ * is taken, so pinning CORS to a single port silently breaks every request from
+ * the app. Accept any loopback port instead; production stays pinned.
+ */
+const isLoopbackOrigin = (origin: string): boolean =>
+	/^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(origin)
+
+const corsOrigin: string | ((request: Request) => boolean) = isProd
+	? resolvedWebOrigin
+	: (request) => {
+			const origin = request.headers.get('origin')
+			return origin === null || isLoopbackOrigin(origin)
+		}
+
 export const env = {
 	serverPort,
 	webPort,
-	webOrigin: webOrigin ?? (isProd ? envData.PROD_WEB_ORIGIN : devWebOrigin) ?? devWebOrigin,
+	webOrigin: resolvedWebOrigin,
+	corsOrigin,
 	gitProxyAllowedHosts,
 	mode: envMode,
 	isProd,

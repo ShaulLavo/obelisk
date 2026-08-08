@@ -1,5 +1,5 @@
 import { batch } from 'solid-js'
-import { createStore, reconcile } from 'solid-js/store'
+import { createStore, reconcile, unwrap } from 'solid-js/store'
 import { createFilePath, type FilePath } from '@repo/fs'
 import { type ParseResult, type PieceTableSnapshot, getCachedPieceTableContent, createPieceTableSnapshot } from '@repo/utils'
 import type {
@@ -238,7 +238,10 @@ export const createFileStore = () => {
 			return
 		}
 
-		const currentContent = getCachedPieceTableContent(pieceTable)
+		// Unwrapped: a snapshot read back out of the store is a reactive proxy,
+		// and reading text through that proxy returns '' — which would mark every
+		// loaded file dirty. See the note in FileTab's pieceTable accessor.
+		const currentContent = getCachedPieceTableContent(unwrap(pieceTable))
 		setDirty(p, currentContent !== saved)
 	}
 

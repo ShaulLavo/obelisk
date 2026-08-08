@@ -122,10 +122,13 @@ export const SplitEditorPanel = (props: SplitEditorPanelProps) => {
 			}
 		}
 
-		const documentStore = await sync.initializeSync()
-
-		// Notify parent that layout manager is ready
+		// The layout manager is usable as soon as it is initialized. Announcing it
+		// only after sync finishes means any failure or stall in sync leaves the
+		// parent without a manager — and `Fs.openFileAsTab` silently does nothing,
+		// so clicking a file in the tree never opens it.
 		props.onLayoutManagerReady?.(layoutManager)
+
+		const documentStore = await sync.initializeSync()
 
 		// Notify parent that document store is ready
 		if (documentStore) {

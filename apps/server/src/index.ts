@@ -27,7 +27,7 @@ const app = new Elysia()
 	.use(staticPlugin())
 	.use(
 		cors({
-			origin: env.webOrigin,
+			origin: env.corsOrigin,
 			methods: ['GET', 'POST', 'HEAD', 'OPTIONS'],
 			allowedHeaders: ['authorization', 'content-type', 'git-protocol'],
 			exposeHeaders: ['content-type', 'content-encoding', 'cache-control'],

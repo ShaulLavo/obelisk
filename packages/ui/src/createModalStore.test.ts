@@ -42,6 +42,32 @@ describe('createModalStore', () => {
 		})
 	})
 
+	// Only one modal exists at a time. If opening a second silently discarded the
+	// first, the first modal's owner would still hold its id, dismiss(oldId)
+	// would no-op against the new state, and a `dismissable: false` modal could
+	// be left on screen with no way to close it — locking the whole app out.
+	it('closes the outgoing modal when a new one replaces it', () => {
+		withStore((store) => {
+			const onDismiss = vi.fn()
+			store.open({ heading: 'First', dismissable: false, onDismiss })
+			const secondId = store.open({ heading: 'Second' })
+
+			expect(onDismiss).toHaveBeenCalledTimes(1)
+			expect(store.state()?.id).toBe(secondId)
+			expect(store.state()?.options.heading).toBe('Second')
+		})
+	})
+
+	it('does not re-fire onDismiss when reopening the same id', () => {
+		withStore((store) => {
+			const onDismiss = vi.fn()
+			store.open({ id: 'same', heading: 'First', onDismiss })
+			store.open({ id: 'same', heading: 'Second' })
+			expect(onDismiss).not.toHaveBeenCalled()
+			expect(store.state()?.options.heading).toBe('Second')
+		})
+	})
+
 	it('ignores updates and dismissals for unknown ids', () => {
 		withStore((store) => {
 			const id = store.open({ heading: 'Keep me' })

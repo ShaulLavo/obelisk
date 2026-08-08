@@ -6,23 +6,17 @@
  */
 import {
 	createMemo,
-	createResource,
 	createSignal,
 	Show,
 } from 'solid-js'
-import { Editor } from '@repo/code-editor'
-import { CursorMode } from '@repo/code-editor'
-import type {
-	EditorProps,
-	ScrollPosition,
-} from '@repo/code-editor'
-import { toast } from '@repo/ui/toaster'
+import { ImperativeEditor } from '@repo/code-editor'
+import type { ViewState } from '@repo/code-editor'
 import { createFilePath } from '@repo/fs'
-import { getCachedPieceTableContent, type PieceTableSnapshot } from '@repo/utils'
+import { createEditorSyntaxWorker } from '~/workers/editorSyntaxClient'
+import { getCachedPieceTableContent } from '@repo/utils'
+import { unwrap } from 'solid-js/store'
 import { useLayoutManager } from './SplitEditor'
 import { useFs } from '~/fs/context/FsContext'
-import { useFocusManager } from '~/focus/focusManager'
-import { getTreeSitterWorker } from '~/tree-sitter/workerClient'
 import type { Tab, EditorPane } from '../types'
 import { createScrollSyncCoordinator } from '../createScrollSyncCoordinator'
 import type { ScrollEvent } from '../createScrollSyncCoordinator'
@@ -42,49 +36,37 @@ export interface FileTabProps {
 export function FileTab(props: FileTabProps) {
 	const layoutManager = useLayoutManager()
 	const [state, actions] = useFs()
-	const focus = useFocusManager()
 	const scrollSyncCoordinator = createScrollSyncCoordinator(layoutManager)
 	// Binary file view mode: when true, show text editor for binary files
 	const [viewBinaryAsText, setViewBinaryAsText] = createSignal(false)
-	// Get tree-sitter worker for minimap
-	const [treeSitterWorker] = createResource(async () => {
-		return getTreeSitterWorker()
-	})
 	// Normalized path for FsState lookups
 	const normalizedPath = createMemo(() => createFilePath(props.filePath))
 	// Get file state from unified store
 	const fileState = () => state.files[normalizedPath()]
-	// Get piece table from FsState (single source of truth)
-	const pieceTable = () => fileState()?.pieceTable
-	// Get highlights from FsState (accessors for Editor props)
-	const highlights = () => fileState()?.syntax?.highlights
-	const folds = () => fileState()?.syntax?.folds
-	const brackets = () => fileState()?.syntax?.brackets
-	const errors = () => fileState()?.syntax?.errors
+	// Get piece table from FsState (single source of truth).
+	//
+	// Unwrapped deliberately: the snapshot lives inside a Solid store, which
+	// wraps it in a reactive proxy. The proxy defeats the tree walk that reads
+	// the text out (its buffers no longer pass Array.isArray), so reading a
+	// proxied snapshot yields an empty string and every file renders blank.
+	// The `.pieceTable` access above is still tracked, so this stays reactive.
+	const pieceTable = () => {
+		const stored = fileState()?.pieceTable
+		return stored ? unwrap(stored) : undefined
+	}
 	// Get content from piece table
 	const content = createMemo(() => {
 		const pt = pieceTable()
 		if (!pt) return ''
 		return getCachedPieceTableContent(pt)
 	})
-	// Create document interface for the Editor using FsState
-	const document = createMemo(() => {
-		const contentValue = content()
-		type PT = PieceTableSnapshot | undefined
-		return {
-			filePath: () => props.filePath,
-			content: () => contentValue,
-			pieceTable: () => pieceTable() ?? undefined,
-			updatePieceTable: (updater: (current: PT) => PT) => {
-				actions.updatePieceTableForPath(props.filePath, (current) => {
-					return updater(current ?? undefined)
-				})
-			},
-			isEditable: () => true,
-			applyIncrementalEdit: undefined,
-		}
-	})
-	const handleScrollPositionChange = (position: ScrollPosition) => {
+	// Scroll position persistence
+	const handleScrollChange = (position: {
+		scrollTop: number
+		scrollLeft: number
+		lineIndex: number
+		lineHeight: number
+	}) => {
 		layoutManager.updateTabState(props.pane.id, props.tab.id, {
 			scrollTop: position.scrollTop,
 			scrollLeft: position.scrollLeft,
@@ -102,84 +84,41 @@ export function FileTab(props: FileTabProps) {
 		}
 		scrollSyncCoordinator.handleScroll(scrollEvent)
 	}
-	const initialScrollPosition = createMemo((): ScrollPosition => ({
-		scrollTop: props.tab.state.scrollTop,
-		lineIndex: props.tab.state.scrollLineIndex,
-		lineHeight: props.tab.state.scrollLineHeight,
-		scrollLeft: props.tab.state.scrollLeft,
-	}))
-	// Restore cursor position from persisted tab state
-	// Only provide if we have a non-zero position (user has interacted before)
-	const initialCursorPosition = createMemo(() => {
-		const pos = props.tab.state.cursorPosition
-		// Only restore if there's a meaningful position (not default 0,0)
-		if (pos.line === 0 && pos.column === 0) return undefined
-		return pos
-	})
-	const handleCursorPositionChange = (position: { line: number; column: number }) => {
+	const handleCursorChange = (position: { line: number; column: number }) => {
 		layoutManager.updateTabState(props.pane.id, props.tab.id, {
 			cursorPosition: position,
 		})
 	}
-	// Restore selections from persisted tab state
-	const initialSelections = createMemo(() => {
-		const sels = props.tab.state.selections
-		// Only restore if there are selections
-		if (!sels || sels.length === 0) return undefined
-		return sels
-	})
 	const handleSelectionsChange = (selections: { anchor: number; focus: number }[]) => {
 		layoutManager.updateTabState(props.pane.id, props.tab.id, {
 			selections,
 		})
 	}
-	const handleEditBlocked = () => {
-		toast.error('This file is read-only')
-	}
 	const handleSave = () => {
 		layoutManager.setTabDirty(props.pane.id, props.tab.id, false)
 	}
-	// Get cached lineStarts for instant tab switching
-	const cachedLineStarts = createMemo(() => {
-		// Access content to establish reactive dependency
-		content()
-		return fileState()?.lineStarts ?? undefined
+	// Build initial view state from persisted tab state
+	const initialViewState = createMemo((): Partial<ViewState> | undefined => {
+		const tabState = props.tab.state
+		const result: Partial<ViewState> = {
+			scrollTop: tabState.scrollTop,
+			scrollLeft: tabState.scrollLeft,
+		}
+		// Only restore cursor if there's a meaningful position
+		const pos = tabState.cursorPosition
+		if (pos.line !== 0 || pos.column !== 0) {
+			result.cursorLine = pos.line
+			result.cursorColumn = pos.column
+		}
+		// Restore selections if present
+		const sels = tabState.selections
+		if (sels && sels.length > 0) {
+			result.selections = sels
+		}
+		return result
 	})
 	// TODO: Add externalLoadVersion counter to FsState that increments on file reload
-	// This would let Editor reset cursor/scroll when file is externally modified
 	const contentVersion = () => 0
-	const editorProps = createMemo((): EditorProps => {
-		const doc = document()
-		const tsWorker = treeSitterWorker()
-		return {
-			document: doc,
-			isFileSelected: () => true,
-			stats: () => undefined,
-			fontSize: () => props.pane.viewSettings.fontSize,
-			fontFamily: () => 'JetBrains Mono, monospace',
-			cursorMode: () => CursorMode.Regular,
-			tabSize: () => 4,
-			registerEditorArea: (resolver) => focus.registerArea('editor', resolver),
-			activeScopes: focus.activeScopes,
-			highlights,
-			folds,
-			brackets,
-			errors,
-			treeSitterWorker: tsWorker ?? undefined,
-			onSave: handleSave,
-			initialScrollPosition: () => initialScrollPosition(),
-			onScrollPositionChange: handleScrollPositionChange,
-			initialCursorPosition: () => initialCursorPosition(),
-			onCursorPositionChange: handleCursorPositionChange,
-			initialSelections: () => initialSelections(),
-			onSelectionsChange: handleSelectionsChange,
-			onEditBlocked: handleEditBlocked,
-			initialVisibleContent: () => undefined,
-			onCaptureVisibleContent: () => {},
-			precomputedLineStarts: cachedLineStarts,
-			contentVersion,
-		}
-	})
 	// Reactive accessors for loading state from FsState
 	const loadingState = () => fileState()?.loadingState
 	const status = () => loadingState()?.status ?? 'idle'
@@ -191,9 +130,7 @@ export function FileTab(props: FileTabProps) {
 	const isBinary = () => fileStats()?.contentKind === 'binary'
 	// Handle retry for errors
 	const handleRetry = () => {
-		// Reset to loading state
 		actions.setLoadingState(props.filePath, { status: 'loading' })
-		// The parent component (SplitEditorPanel) should detect this and reload
 	}
 	return (
 		<div
@@ -242,7 +179,20 @@ export function FileTab(props: FileTabProps) {
 						</div>
 					</Show>
 					<div class="min-h-0 flex-1">
-						<Editor {...editorProps()} />
+						<ImperativeEditor
+							documentKey={() => props.filePath}
+							content={content}
+							contentVersion={contentVersion}
+							fontSize={() => props.pane.viewSettings.fontSize}
+							fontFamily={() => 'JetBrains Mono, monospace'}
+							tabSize={() => 4}
+							createWorker={createEditorSyntaxWorker}
+							onSave={handleSave}
+							onScrollChange={handleScrollChange}
+							onCursorChange={handleCursorChange}
+							onSelectionsChange={handleSelectionsChange}
+							initialViewState={initialViewState}
+						/>
 					</div>
 				</div>
 			</Show>
